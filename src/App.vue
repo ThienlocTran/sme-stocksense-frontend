@@ -1,7 +1,16 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import AppSidebar from './components/AppSidebar.vue'
+import AppTopbar from './components/AppTopbar.vue'
 </script>
 
 <template>
-  <HelloWorld />
+  <div class="app-shell">
+    <AppSidebar />
+    <div class="app-main">
+      <AppTopbar />
+      <main class="page-shell">
+        <RouterView />
+      </main>
+    </div>
+  </div>
 </template>
