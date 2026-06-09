@@ -10,22 +10,28 @@ import {
   getRoleLabel,
   getStatusLabel,
 } from '../../constants/employeeOptions'
-import { createEmployee, getEmployees, updateEmployee } from '../../services/employeeService'
+import { createEmployee, getEmployees, resetEmployeePassword, updateEmployee } from '../../services/employeeService'
 
 const router = useRouter()
 const employees = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isFormOpen = ref(false)
+const isResetOpen = ref(false)
+const isResetting = ref(false)
 const formMode = ref('create')
 const errorMessage = ref('')
 const successMessage = ref('')
 const saveErrorMessage = ref('')
+const resetErrorMessage = ref('')
+const resetEmployee = ref(null)
 const searchDraft = ref('')
 const filters = reactive({ keyword: '', status: '', roleCode: '', page: 0, size: 10 })
 const pageInfo = reactive({ totalElements: 0, totalPages: 0 })
 const form = reactive(createEmptyForm())
 const formErrors = reactive({ fullName: '', email: '', phoneNumber: '', password: '', roleCode: '', status: '' })
+const resetForm = reactive({ newPassword: '', confirmPassword: '' })
+const resetErrors = reactive({ newPassword: '', confirmPassword: '' })
 
 const columns = [
   { key: 'fullName', label: 'Họ tên' },
@@ -238,6 +244,86 @@ function applyBackendErrors(errors = {}) {
   })
 }
 
+function openResetPassword(employee) {
+  resetEmployee.value = employee
+  successMessage.value = ''
+  clearResetFeedback()
+  isResetOpen.value = true
+}
+
+function closeResetPassword() {
+  if (isResetting.value) return
+  isResetOpen.value = false
+  clearResetForm()
+}
+
+async function submitResetPassword() {
+  if (!validateResetForm() || !resetEmployee.value) return
+
+  isResetting.value = true
+  resetErrorMessage.value = ''
+
+  try {
+    const data = await resetEmployeePassword(resetEmployee.value.id, resetForm.newPassword)
+    successMessage.value = data?.message || 'Đặt lại mật khẩu thành công.'
+    isResetOpen.value = false
+    clearResetForm()
+  } catch (error) {
+    if (error.status === 401) {
+      isResetOpen.value = false
+      clearResetForm()
+      router.replace('/login')
+      return
+    }
+
+    resetErrorMessage.value = error.message
+    applyResetBackendErrors(error.errors)
+  } finally {
+    isResetting.value = false
+  }
+}
+
+function validateResetForm() {
+  clearResetFeedback()
+  let isValid = true
+
+  if (!resetForm.newPassword) {
+    resetErrors.newPassword = 'Vui lòng nhập mật khẩu mới.'
+    isValid = false
+  } else if (resetForm.newPassword.length < 8) {
+    resetErrors.newPassword = 'Mật khẩu mới tối thiểu 8 ký tự.'
+    isValid = false
+  }
+
+  if (!resetForm.confirmPassword) {
+    resetErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới.'
+    isValid = false
+  } else if (resetForm.confirmPassword !== resetForm.newPassword) {
+    resetErrors.confirmPassword = 'Mật khẩu xác nhận không khớp.'
+    isValid = false
+  }
+
+  return isValid
+}
+
+function clearResetFeedback() {
+  resetErrorMessage.value = ''
+  resetErrors.newPassword = ''
+  resetErrors.confirmPassword = ''
+}
+
+function clearResetForm() {
+  resetForm.newPassword = ''
+  resetForm.confirmPassword = ''
+  clearResetFeedback()
+  resetEmployee.value = null
+}
+
+function applyResetBackendErrors(errors = {}) {
+  resetErrors.newPassword = errors?.newPassword || errors?.password || ''
+  resetErrors.confirmPassword = errors?.confirmPassword || ''
+}
+
 function displayRole(employee) {
   return getRoleLabel(employee.roleCode, employee.roleName)
 }
@@ -310,7 +396,7 @@ function formatDate(value) {
         <div class="actions">
           <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">Sửa</button>
           <button class="btn btn-sm" type="button" disabled>Khóa/Mở khóa</button>
-          <button class="btn btn-sm" type="button" disabled>Reset mật khẩu</button>
+          <button class="btn btn-sm" type="button" :disabled="isLoading || isResetting" @click="openResetPassword(row)">Reset mật khẩu</button>
         </div>
       </template>
     </DataTable>
@@ -402,6 +488,49 @@ function formatDate(value) {
           <button class="btn btn-primary" type="submit" :disabled="isSaving">
             <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
             {{ isSaving ? 'Đang lưu' : 'Lưu' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div v-if="isResetOpen" class="modal-backdrop">
+    <div class="modal employee-modal">
+      <form class="employee-form" @submit.prevent="submitResetPassword">
+        <div class="modal-head between">
+          <div>
+            <h2 class="section-title">Reset mật khẩu</h2>
+            <p class="modal-desc">{{ resetEmployee?.fullName }} - {{ resetEmployee?.email }}</p>
+          </div>
+          <button class="btn btn-icon" type="button" :disabled="isResetting" aria-label="Đóng" @click="closeResetPassword">
+            <i class="mdi mdi-close"></i>
+          </button>
+        </div>
+
+        <div class="modal-body grid grid-2">
+          <div v-if="resetErrorMessage" class="employee-form-alert">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <span>{{ resetErrorMessage }}</span>
+          </div>
+
+          <label class="field">
+            <span>Mật khẩu mới</span>
+            <input v-model="resetForm.newPassword" class="input" type="password" placeholder="Tối thiểu 8 ký tự" :disabled="isResetting" autocomplete="new-password" />
+            <small v-if="resetErrors.newPassword" class="field-error">{{ resetErrors.newPassword }}</small>
+          </label>
+
+          <label class="field">
+            <span>Xác nhận mật khẩu mới</span>
+            <input v-model="resetForm.confirmPassword" class="input" type="password" placeholder="Nhập lại mật khẩu mới" :disabled="isResetting" autocomplete="new-password" />
+            <small v-if="resetErrors.confirmPassword" class="field-error">{{ resetErrors.confirmPassword }}</small>
+          </label>
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn" type="button" :disabled="isResetting" @click="closeResetPassword">Hủy</button>
+          <button class="btn btn-primary" type="submit" :disabled="isResetting">
+            <i v-if="isResetting" class="mdi mdi-loading mdi-spin"></i>
+            {{ isResetting ? 'Đang lưu' : 'Đặt lại mật khẩu' }}
           </button>
         </div>
       </form>

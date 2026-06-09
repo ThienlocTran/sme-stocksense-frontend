@@ -27,6 +27,18 @@ export async function login(email, password) {
   }
 }
 
+export async function changeOwnPassword(payload) {
+  try {
+    const { data } = await authClient.patch('/api/auth/change-password', payload, {
+      headers: getAuthorizationHeader(),
+    })
+
+    return data
+  } catch (error) {
+    throw normalizeAuthError(error, 'Không thể đổi mật khẩu.')
+  }
+}
+
 export function getAccessToken() {
   return localStorage.getItem(AUTH_STORAGE_KEYS.accessToken)
 }
@@ -74,6 +86,26 @@ function normalizeLoginError(error) {
     return {
       status: error.response.status,
       message: error.response.data.message || 'Đăng nhập không thành công.',
+      errors: error.response.data.errors || {},
+    }
+  }
+
+  return {
+    status: 0,
+    message: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.',
+    errors: {},
+  }
+}
+
+function normalizeAuthError(error, fallbackMessage) {
+  if (error.response?.status === 401) {
+    clearAuth()
+  }
+
+  if (error.response?.data) {
+    return {
+      status: error.response.status,
+      message: error.response.data.message || fallbackMessage,
       errors: error.response.data.errors || {},
     }
   }
