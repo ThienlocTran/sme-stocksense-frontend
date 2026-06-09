@@ -6,6 +6,7 @@ export const AUTH_STORAGE_KEYS = {
   accessToken: 'stocksense_access_token',
   tokenType: 'stocksense_token_type',
   expiresIn: 'stocksense_expires_in',
+  loginAt: 'stocksense_login_at',
   currentUser: 'stocksense_current_user',
 }
 
@@ -64,6 +65,7 @@ function storeAuth(response) {
   localStorage.setItem(AUTH_STORAGE_KEYS.accessToken, response.accessToken)
   localStorage.setItem(AUTH_STORAGE_KEYS.tokenType, response.tokenType)
   localStorage.setItem(AUTH_STORAGE_KEYS.expiresIn, String(response.expiresIn))
+  localStorage.setItem(AUTH_STORAGE_KEYS.loginAt, String(Date.now()))
   localStorage.setItem(AUTH_STORAGE_KEYS.currentUser, JSON.stringify(currentUser))
 }
 

@@ -17,9 +17,9 @@ async function submitLogin() {
   isSubmitting.value = true
 
   try {
-    await loginWithPassword(form.email.trim(), form.password)
+    const response = await loginWithPassword(form.email.trim(), form.password)
     successMessage.value = 'Đăng nhập thành công.'
-    router.push('/dashboard')
+    router.push(getPostLoginRoute(response.role))
   } catch (error) {
     generalError.value = error.message
     fieldErrors.email = error.errors?.email || ''
@@ -34,6 +34,16 @@ function clearMessages() {
   successMessage.value = ''
   fieldErrors.email = ''
   fieldErrors.password = ''
+}
+
+function getPostLoginRoute(role) {
+  const routesByRole = {
+    ADMIN: '/dashboard',
+    MANAGER: '/dashboard',
+    EMPLOYEE: '/dashboard',
+  }
+
+  return routesByRole[role] || '/dashboard'
 }
 </script>
 
