@@ -53,6 +53,20 @@ export async function updateEmployee(id, payload) {
   }
 }
 
+export async function resetEmployeePassword(employeeId, newPassword) {
+  try {
+    const { data } = await employeeClient.patch(
+      `/api/employees/${employeeId}/reset-password`,
+      { newPassword },
+      { headers: getAuthorizationHeader() },
+    )
+
+    return data
+  } catch (error) {
+    throw normalizeEmployeeError(error, 'Không thể đặt lại mật khẩu.')
+  }
+}
+
 function normalizeEmployeeError(error, fallbackMessage) {
   if (error.response?.status === 401) {
     clearAuth()
