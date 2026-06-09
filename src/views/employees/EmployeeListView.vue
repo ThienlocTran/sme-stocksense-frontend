@@ -4,6 +4,12 @@ import { useRouter } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchFilterBar from '../../components/SearchFilterBar.vue'
 import DataTable from '../../components/DataTable.vue'
+import {
+  employeeRoleOptions,
+  employeeStatusOptions,
+  getRoleLabel,
+  getStatusLabel,
+} from '../../constants/employeeOptions'
 import { createEmployee, getEmployees, updateEmployee } from '../../services/employeeService'
 
 const router = useRouter()
@@ -31,22 +37,8 @@ const columns = [
   { key: 'actions', label: 'Thao tác' },
 ]
 
-const statusOptions = [
-  { value: '', label: 'Tất cả trạng thái' },
-  { value: 'HOAT_DONG', label: 'Hoạt động' },
-  { value: 'TAM_KHOA', label: 'Tạm khóa' },
-  { value: 'NGUNG_HOAT_DONG', label: 'Ngừng hoạt động' },
-]
-
-const roleOptions = [
-  { value: '', label: 'Tất cả vai trò' },
-  { value: 'ADMIN', label: 'Quản trị viên' },
-  { value: 'MANAGER', label: 'Quản lý kho' },
-  { value: 'EMPLOYEE', label: 'Nhân viên kho' },
-]
-
-const formStatusOptions = statusOptions.filter(option => option.value)
-const formRoleOptions = roleOptions.filter(option => option.value)
+const statusOptions = [{ value: '', label: 'Tất cả trạng thái' }, ...employeeStatusOptions]
+const roleOptions = [{ value: '', label: 'Tất cả vai trò' }, ...employeeRoleOptions]
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const currentPage = computed(() => filters.page + 1)
@@ -117,7 +109,7 @@ function createEmptyForm() {
     email: '',
     phoneNumber: '',
     password: '',
-    roleCode: 'EMPLOYEE',
+    roleCode: '',
     status: 'HOAT_DONG',
   }
 }
@@ -247,12 +239,11 @@ function applyBackendErrors(errors = {}) {
 }
 
 function displayRole(employee) {
-  if (employee.roleName) return employee.roleName
-  return roleOptions.find(option => option.value === employee.roleCode)?.label || employee.roleCode || '-'
+  return getRoleLabel(employee.roleCode, employee.roleName)
 }
 
 function displayStatus(status) {
-  return statusOptions.find(option => option.value === status)?.label || status || '-'
+  return getStatusLabel(status)
 }
 
 function statusClass(status) {
@@ -391,7 +382,8 @@ function formatDate(value) {
           <label class="field">
             <span>Vai trò</span>
             <select v-model="form.roleCode" class="select" :disabled="isSaving">
-              <option v-for="option in formRoleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+              <option value="" disabled>Chọn vai trò</option>
+              <option v-for="option in employeeRoleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
             <small v-if="formErrors.roleCode" class="field-error">{{ formErrors.roleCode }}</small>
           </label>
@@ -399,7 +391,7 @@ function formatDate(value) {
           <label class="field">
             <span>Trạng thái</span>
             <select v-model="form.status" class="select" :disabled="isSaving">
-              <option v-for="option in formStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+              <option v-for="option in employeeStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
             <small v-if="formErrors.status" class="field-error">{{ formErrors.status }}</small>
           </label>
