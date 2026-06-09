@@ -13,6 +13,7 @@ import ApprovalsView from '../views/ApprovalsView.vue'
 import ImportExcelView from '../views/ImportExcelView.vue'
 import AlertsView from '../views/AlertsView.vue'
 import UsersView from '../views/UsersView.vue'
+import EmployeeListView from '../views/employees/EmployeeListView.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -33,6 +34,7 @@ const routes = [
   { path: '/approvals', component: ApprovalsView, meta: { title: 'Chờ duyệt' } },
   { path: '/import-excel', component: ImportExcelView, meta: { title: 'Import Excel' } },
   { path: '/alerts', component: AlertsView, meta: { title: 'Cảnh báo tồn kho' } },
+  { path: '/employees', component: EmployeeListView, meta: { title: 'Nhân viên' } },
   { path: '/users', component: UsersView, meta: { title: 'Nhân viên & phân quyền' } },
 ]
 
