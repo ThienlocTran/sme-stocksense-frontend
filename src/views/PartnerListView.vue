@@ -14,7 +14,7 @@
           prepend-icon="mdi-plus"
           rounded="xl"
           class="text-none font-semibold px-4 shadow-md bg-violet-600 border-none"
-          @click="showFeatureNotImplemented('Thêm mới đối tác')"
+          @click="openAddForm"
         >
           Thêm đối tác
         </v-btn>
@@ -232,7 +232,7 @@
                     density="comfortable"
                     variant="text"
                     color="primary"
-                    @click="showFeatureNotImplemented('Chỉnh sửa đối tác')"
+                    @click="openEditForm(partner)"
                   >
                     <i class="mdi mdi-pencil-outline text-lg"></i>
                   </v-btn>
@@ -241,7 +241,8 @@
                     density="comfortable"
                     variant="text"
                     :color="partner.trangThai === 'HOAT_DONG' ? 'error' : 'success'"
-                    @click="showFeatureNotImplemented(partner.trangThai === 'HOAT_DONG' ? 'Ngừng hoạt động đối tác' : 'Kích hoạt lại đối tác')"
+                    @click="togglePartnerStatus(partner)"
+                    :loading="statusUpdatingId === partner.id"
                   >
                     <i class="mdi" :class="partner.trangThai === 'HOAT_DONG' ? 'mdi-block-helper' : 'mdi-check-circle-outline'"></i>
                   </v-btn>
@@ -253,29 +254,27 @@
       </div>
     </div>
 
-    <!-- Feature Toast Dialog Notification -->
-    <v-dialog v-model="dialog.show" max-width="400">
-      <v-card class="rounded-2xl p-4">
-        <v-card-title class="flex items-center gap-2 text-slate-800 dark:text-white font-bold pb-2 border-b border-slate-100 dark:border-slate-800 text-base">
-          <i class="mdi mdi-information-outline text-violet-600 text-xl"></i>
-          <span>Thông báo tính năng</span>
-        </v-card-title>
-        <v-card-text class="pt-4 text-sm text-slate-600 dark:text-slate-300">
-          Tính năng <strong>"{{ dialog.feature }}"</strong> thuộc phạm vi của task tiếp theo (**T52 - Form Thêm/Sửa đối tác**) và chưa được triển khai ở task danh sách này.
-        </v-card-text>
-        <v-card-actions class="justify-end pt-2">
-          <v-btn
-            color="violet-600"
-            variant="flat"
-            rounded="xl"
-            class="text-none text-white font-semibold"
-            @click="dialog.show = false"
-          >
-            Đã hiểu
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Partner Form Dialog (Task T52) -->
+    <PartnerForm
+      v-model="isFormOpen"
+      :partner="selectedPartner"
+      :mockMode="isMockData"
+      @saved="handlePartnerSaved"
+    />
+
+    <!-- Toast Notification Success/Error -->
+    <v-snackbar
+      v-model="toast.show"
+      :color="toast.color"
+      timeout="3000"
+      rounded="xl"
+      elevation="4"
+    >
+      <div class="flex items-center gap-2">
+        <i class="mdi" :class="toast.color === 'success' ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"></i>
+        <span>{{ toast.message }}</span>
+      </div>
+    </v-snackbar>
   </div>
 </template>
 
@@ -283,6 +282,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import PartnerForm from '../components/PartnerForm.vue'
 
 const authStore = useAuthStore()
 
@@ -290,11 +290,20 @@ const authStore = useAuthStore()
 const partners = ref([])
 const loading = ref(false)
 const isMockData = ref(false)
+const isFormOpen = ref(false)
+const selectedPartner = ref(null)
+const statusUpdatingId = ref(null)
 
 const filters = reactive({
   keyword: '',
   loaiDoiTac: '',
   trangThai: ''
+})
+
+const toast = reactive({
+  show: false,
+  message: '',
+  color: 'success'
 })
 
 const dialog = reactive({
@@ -308,7 +317,7 @@ const canManage = computed(() => {
 })
 
 // MOCK DATA phục vụ fallback
-const mockPartners = [
+const mockPartners = ref([
   {
     id: 1,
     maDoiTac: 'NCC001',
@@ -364,7 +373,7 @@ const mockPartners = [
     diaChi: '789 Lạc Long Quân, Quận Tây Hồ, Hà Nội',
     trangThai: 'HOAT_DONG'
   }
-]
+])
 
 // Computed stats
 const stats = computed(() => {
@@ -445,7 +454,7 @@ const fetchPartners = async () => {
 
 // Xử lý lọc cục bộ cho Mock Data
 const getLocalFilteredMock = () => {
-  return mockPartners.filter(item => {
+  return mockPartners.value.filter(item => {
     // Filter keyword
     if (filters.keyword.trim()) {
       const kw = filters.keyword.toLowerCase().trim()
@@ -467,6 +476,87 @@ const getLocalFilteredMock = () => {
   })
 }
 
+// Open Form Add/Edit
+const openAddForm = () => {
+  selectedPartner.value = null
+  isFormOpen.value = true
+}
+
+const openEditForm = (partner) => {
+  selectedPartner.value = partner
+  isFormOpen.value = true
+}
+
+const showToast = (message, color = 'success') => {
+  toast.message = message
+  toast.color = color
+  toast.show = true
+}
+
+// Xử lý sau khi lưu thành công từ form
+const handlePartnerSaved = (savedPartner) => {
+  showToast(selectedPartner.value ? 'Cập nhật thông tin đối tác thành công!' : 'Thêm mới đối tác thành công!', 'success')
+  if (isMockData.value) {
+    if (selectedPartner.value) {
+      // Cập nhật phần tử trong danh sách mock
+      const idx = mockPartners.value.findIndex(p => p.id === savedPartner.id)
+      if (idx !== -1) {
+        mockPartners.value[idx] = savedPartner
+      }
+    } else {
+      // Thêm mới vào đầu danh sách mock
+      mockPartners.value.unshift(savedPartner)
+    }
+    partners.value = getLocalFilteredMock()
+  } else {
+    fetchPartners()
+  }
+}
+
+// Toggle trạng thái đối tác trực tiếp từ bảng
+const togglePartnerStatus = async (partner) => {
+  statusUpdatingId.value = partner.id
+  const newStatus = partner.trangThai === 'HOAT_DONG' ? 'NGUNG_HOAT_DONG' : 'HOAT_DONG'
+  
+  try {
+    if (isMockData.value) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      partner.trangThai = newStatus
+      showToast(newStatus === 'HOAT_DONG' ? 'Đã kích hoạt lại đối tác.' : 'Đã ngừng hoạt động đối tác.', 'success')
+      partners.value = getLocalFilteredMock()
+    } else {
+      const config = {}
+      if (authStore.token) {
+        config.headers = { Authorization: `Bearer ${authStore.token}` }
+      }
+      
+      const requestBody = {
+        tenDoiTac: partner.tenDoiTac,
+        loaiDoiTac: partner.loaiDoiTac,
+        nguoiLienHe: partner.nguoiLienHe,
+        soDienThoai: partner.soDienThoai,
+        email: partner.email,
+        diaChi: partner.diaChi,
+        trangThai: newStatus
+      }
+      
+      const response = await axios.put(`http://localhost:8080/api/partners/${partner.id}`, requestBody, config)
+      
+      // Cập nhật lại trong danh sách cục bộ
+      const idx = partners.value.findIndex(p => p.id === partner.id)
+      if (idx !== -1) {
+        partners.value[idx] = response.data
+      }
+      showToast(newStatus === 'HOAT_DONG' ? 'Đã kích hoạt lại đối tác.' : 'Đã ngừng hoạt động đối tác.', 'success')
+    }
+  } catch (error) {
+    console.error('Lỗi khi thay đổi trạng thái đối tác:', error)
+    showToast('Thao tác thất bại. Vui lòng kiểm tra lại quyền truy cập.', 'error')
+  } finally {
+    statusUpdatingId.value = null
+  }
+}
+
 // Reset filters
 const resetFilters = () => {
   filters.keyword = ''
@@ -482,12 +572,6 @@ const debouncedFetch = () => {
   timeoutId = setTimeout(() => {
     fetchPartners()
   }, 300)
-}
-
-// Toast modal trigger
-const showFeatureNotImplemented = (featureName) => {
-  dialog.feature = featureName
-  dialog.show = true
 }
 
 onMounted(() => {

@@ -102,22 +102,32 @@ sme-stocksense-frontend/
 
 ---
 
-## Module Đối Tác (Partners) - Frontend UI (Task T51)
+## Module Đối Tác (Partners) - Frontend UI (Task T51 & T52)
 
 Màn hình quản lý đối tác được phát triển tại route `/partners` với các tính năng sau:
 - **Trang chính**: `src/views/PartnerListView.vue`
+- **Form Thêm/Sửa đối tác (Task T52)**: `src/components/PartnerForm.vue`
 - **Định tuyến (Routing)**: Cấu hình tại `src/router/index.js` (Route: `/partners`)
 - **Quản lý trạng thái (State)**: Sử dụng Pinia Store `src/stores/auth.js` để lưu trữ mã token và vai trò người dùng phục vụ cho việc kiểm thử phân quyền UI.
-- **Tính năng giao diện**:
-  - Tìm kiếm động bằng ô nhập từ khóa (mã đối tác, tên, SĐT, v.v.).
-  - Bộ lọc động theo loại đối tác (`NHA_CUNG_CAP`, `KHACH_HANG`, `CA_HAI`) và trạng thái (`HOAT_DONG`, `NGUNG_HOAT_DONG`).
-  - Nút Xóa bộ lọc (`Reset Filters`).
-  - Hộp thoại (Dialog) thông báo khi thao tác thêm/sửa đối tác được click (vì các tính năng này thuộc Task T52 tiếp theo).
+- **Tính năng giao diện & Form (Task T52)**:
+  - Nút "Thêm đối tác" mở form đối tác trống.
+  - Nút "Chỉnh sửa" (biểu tượng bút chì) mở form đối tác điền sẵn thông tin cũ.
+  - Dropdown lựa chọn loại đối tác gồm 3 giá trị hợp lệ: `NHA_CUNG_CAP` (Nhà cung cấp), `KHACH_HANG` (Khách hàng), và `CA_HAI` (Cả hai) theo đúng quy định của Backend.
+  - Validate bắt buộc nhập **Tên đối tác** và **Loại đối tác**.
+  - Validate định dạng **Email** (chỉ kiểm tra nếu có nhập dữ liệu).
+  - Tự động hiển thị thông báo lỗi validate chi tiết dưới mỗi trường input nếu dữ liệu không hợp lệ.
+  - Lưu thành công sẽ kích hoạt hiển thị Toast thông báo và tự động tải lại danh sách đối tác.
+  - Chức năng tìm kiếm động và bộ lọc đối tác nâng cao (theo loại và trạng thái).
 - **Phân quyền giao diện (Security UI)**:
-  - Chỉ hiển thị nút "Thêm đối tác" và cột "Thao tác" (chỉnh sửa, khóa/mở khóa) cho vai trò `ADMIN` hoặc `MANAGER`.
-  - Tự động ẩn hoàn toàn các thành phần này đối với vai trò thủ kho (`EMPLOYEE`).
-  - Tích hợp công cụ chuyển đổi vai trò test trực tiếp trên top header để nhà phát triển và người kiểm thử dễ dàng xác thực giao diện.
+  - Chỉ hiển thị nút "Thêm đối tác" và các thao tác chỉnh sửa, đổi trạng thái cho vai trò `ADMIN` hoặc `MANAGER`.
+  - Ẩn hoàn toàn các thành phần thay đổi dữ liệu đối với vai trò thủ kho (`EMPLOYEE`) để chuyển sang chế độ chỉ xem thông tin.
+  - Hộp chọn nhanh vai trò kiểm thử trên Header giúp thay đổi phân quyền động dễ dàng.
 - **Tích hợp API & Cơ chế tự động fallback**:
-  - Khi khởi chạy, màn hình sẽ gọi API thật qua Axios: `GET http://localhost:8080/api/partners`.
-  - Nếu kết nối tới Backend thất bại (hoặc chưa đăng nhập/chưa có token), hệ thống sẽ hiển thị một banner thông báo màu vàng cảnh báo đang hoạt động ở chế độ mô phỏng, và tự động chuyển sang sử dụng bộ dữ liệu mock cục bộ (`mockPartners`) để đảm bảo trải nghiệm giao diện vẫn hoạt động mượt mà.
+  - Giao diện kết nối thực tế tới Backend:
+    - `GET http://localhost:8080/api/partners` (Lấy danh sách đối tác).
+    - `POST http://localhost:8080/api/partners` (Tạo mới đối tác).
+    - `PUT http://localhost:8080/api/partners/{id}` (Cập nhật đối tác / Đổi trạng thái).
+  - Tự động map lỗi validate trả về từ máy chủ (`400 Bad Request`) lên trực tiếp giao diện form input.
+  - Nếu kết nối tới Backend thất bại, hệ thống tự động fallback sử dụng dữ liệu mô phỏng (`mockPartners`) và thực hiện thêm/sửa/đổi trạng thái giả lập trên bộ nhớ cục bộ để đảm bảo trải nghiệm giao diện xuyên suốt.
+
 
