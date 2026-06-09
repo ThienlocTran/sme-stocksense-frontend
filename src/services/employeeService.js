@@ -25,11 +25,35 @@ export async function getEmployees({ page = 0, size = 10, keyword = '', status =
 
     return data
   } catch (error) {
-    throw normalizeEmployeeError(error)
+    throw normalizeEmployeeError(error, 'Không thể tải danh sách nhân viên.')
   }
 }
 
-function normalizeEmployeeError(error) {
+export async function createEmployee(payload) {
+  try {
+    const { data } = await employeeClient.post('/api/employees', payload, {
+      headers: getAuthorizationHeader(),
+    })
+
+    return data
+  } catch (error) {
+    throw normalizeEmployeeError(error, 'Không thể thêm nhân viên.')
+  }
+}
+
+export async function updateEmployee(id, payload) {
+  try {
+    const { data } = await employeeClient.put(`/api/employees/${id}`, payload, {
+      headers: getAuthorizationHeader(),
+    })
+
+    return data
+  } catch (error) {
+    throw normalizeEmployeeError(error, 'Không thể cập nhật nhân viên.')
+  }
+}
+
+function normalizeEmployeeError(error, fallbackMessage) {
   if (error.response?.status === 401) {
     clearAuth()
   }
@@ -37,7 +61,7 @@ function normalizeEmployeeError(error) {
   if (error.response?.data) {
     return {
       status: error.response.status,
-      message: error.response.data.message || 'Không thể tải danh sách nhân viên.',
+      message: error.response.data.message || fallbackMessage,
       errors: error.response.data.errors || {},
     }
   }

@@ -4,15 +4,22 @@ import { useRouter } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchFilterBar from '../../components/SearchFilterBar.vue'
 import DataTable from '../../components/DataTable.vue'
-import { getEmployees } from '../../services/employeeService'
+import { createEmployee, getEmployees, updateEmployee } from '../../services/employeeService'
 
 const router = useRouter()
 const employees = ref([])
 const isLoading = ref(false)
+const isSaving = ref(false)
+const isFormOpen = ref(false)
+const formMode = ref('create')
 const errorMessage = ref('')
+const successMessage = ref('')
+const saveErrorMessage = ref('')
 const searchDraft = ref('')
 const filters = reactive({ keyword: '', status: '', roleCode: '', page: 0, size: 10 })
 const pageInfo = reactive({ totalElements: 0, totalPages: 0 })
+const form = reactive(createEmptyForm())
+const formErrors = reactive({ fullName: '', email: '', phoneNumber: '', password: '', roleCode: '', status: '' })
 
 const columns = [
   { key: 'fullName', label: 'Họ tên' },
@@ -38,9 +45,15 @@ const roleOptions = [
   { value: 'EMPLOYEE', label: 'Nhân viên kho' },
 ]
 
+const formStatusOptions = statusOptions.filter(option => option.value)
+const formRoleOptions = roleOptions.filter(option => option.value)
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 const currentPage = computed(() => filters.page + 1)
 const canGoPrevious = computed(() => filters.page > 0 && !isLoading.value)
 const canGoNext = computed(() => filters.page + 1 < pageInfo.totalPages && !isLoading.value)
+const isEditMode = computed(() => formMode.value === 'edit')
+const formTitle = computed(() => (isEditMode.value ? 'Sửa nhân viên' : 'Thêm nhân viên'))
 const rangeText = computed(() => {
   if (pageInfo.totalElements === 0) return '0 nhân viên'
   const start = filters.page * filters.size + 1
@@ -97,6 +110,142 @@ function goNext() {
   fetchEmployees()
 }
 
+function createEmptyForm() {
+  return {
+    id: '',
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+    roleCode: 'EMPLOYEE',
+    status: 'HOAT_DONG',
+  }
+}
+
+function openCreateForm() {
+  formMode.value = 'create'
+  Object.assign(form, createEmptyForm())
+  successMessage.value = ''
+  clearFormFeedback()
+  isFormOpen.value = true
+}
+
+function openEditForm(employee) {
+  formMode.value = 'edit'
+  Object.assign(form, {
+    id: employee.id,
+    fullName: employee.fullName || '',
+    email: employee.email || '',
+    phoneNumber: employee.phoneNumber || '',
+    password: '',
+    roleCode: employee.roleCode || 'EMPLOYEE',
+    status: employee.status || 'HOAT_DONG',
+  })
+  successMessage.value = ''
+  clearFormFeedback()
+  isFormOpen.value = true
+}
+
+function closeForm() {
+  if (isSaving.value) return
+  isFormOpen.value = false
+}
+
+async function submitEmployeeForm() {
+  if (!validateForm()) return
+
+  isSaving.value = true
+  saveErrorMessage.value = ''
+
+  const payload = {
+    fullName: form.fullName.trim(),
+    email: form.email.trim(),
+    phoneNumber: form.phoneNumber.trim() || null,
+    roleCode: form.roleCode,
+    status: form.status,
+  }
+
+  if (!isEditMode.value) {
+    payload.password = form.password
+  }
+
+  try {
+    if (isEditMode.value) {
+      await updateEmployee(form.id, payload)
+      successMessage.value = 'Cập nhật nhân viên thành công.'
+    } else {
+      await createEmployee(payload)
+      successMessage.value = 'Thêm nhân viên thành công.'
+    }
+
+    isFormOpen.value = false
+    await fetchEmployees()
+  } catch (error) {
+    if (error.status === 401) {
+      router.replace('/login')
+      return
+    }
+
+    saveErrorMessage.value = error.message
+    applyBackendErrors(error.errors)
+  } finally {
+    isSaving.value = false
+  }
+}
+
+function validateForm() {
+  clearFormFeedback()
+  let isValid = true
+
+  if (!form.fullName.trim()) {
+    formErrors.fullName = 'Vui lòng nhập họ tên.'
+    isValid = false
+  }
+
+  if (!form.email.trim()) {
+    formErrors.email = 'Vui lòng nhập email.'
+    isValid = false
+  } else if (!emailPattern.test(form.email.trim())) {
+    formErrors.email = 'Email không hợp lệ.'
+    isValid = false
+  }
+
+  if (!isEditMode.value) {
+    if (!form.password) {
+      formErrors.password = 'Vui lòng nhập mật khẩu.'
+      isValid = false
+    } else if (form.password.length < 8) {
+      formErrors.password = 'Mật khẩu tối thiểu 8 ký tự.'
+      isValid = false
+    }
+  }
+
+  if (!form.roleCode) {
+    formErrors.roleCode = 'Vui lòng chọn vai trò.'
+    isValid = false
+  }
+
+  if (!form.status) {
+    formErrors.status = 'Vui lòng chọn trạng thái.'
+    isValid = false
+  }
+
+  return isValid
+}
+
+function clearFormFeedback() {
+  saveErrorMessage.value = ''
+  Object.keys(formErrors).forEach(key => {
+    formErrors[key] = ''
+  })
+}
+
+function applyBackendErrors(errors = {}) {
+  Object.keys(formErrors).forEach(key => {
+    formErrors[key] = errors?.[key] || ''
+  })
+}
+
 function displayRole(employee) {
   if (employee.roleName) return employee.roleName
   return roleOptions.find(option => option.value === employee.roleCode)?.label || employee.roleCode || '-'
@@ -123,7 +272,12 @@ function formatDate(value) {
 </script>
 
 <template>
-  <PageHeader title="Nhân viên" description="Theo dõi danh sách nhân viên theo vai trò, trạng thái và từ khóa tìm kiếm." />
+  <PageHeader title="Nhân viên" description="Theo dõi danh sách nhân viên theo vai trò, trạng thái và từ khóa tìm kiếm.">
+    <button class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
+      <i class="mdi mdi-account-plus-outline"></i>
+      Thêm nhân viên
+    </button>
+  </PageHeader>
 
   <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo họ tên hoặc email">
     <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
@@ -137,6 +291,11 @@ function formatDate(value) {
       <option v-for="option in roleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
     </select>
   </SearchFilterBar>
+
+  <div v-if="successMessage" class="employee-success card card-pad">
+    <i class="mdi mdi-check-circle-outline"></i>
+    <span>{{ successMessage }}</span>
+  </div>
 
   <div v-if="errorMessage" class="employee-alert card card-pad">
     <i class="mdi mdi-alert-circle-outline"></i>
@@ -156,9 +315,9 @@ function formatDate(value) {
         <span class="employee-status" :class="statusClass(value)">{{ displayStatus(value) }}</span>
       </template>
       <template #createdAt="{ value }">{{ formatDate(value) }}</template>
-      <template #actions>
+      <template #actions="{ row }">
         <div class="actions">
-          <button class="btn btn-sm" type="button" disabled>Sửa</button>
+          <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">Sửa</button>
           <button class="btn btn-sm" type="button" disabled>Khóa/Mở khóa</button>
           <button class="btn btn-sm" type="button" disabled>Reset mật khẩu</button>
         </div>
@@ -185,10 +344,83 @@ function formatDate(value) {
       </button>
     </div>
   </div>
+
+  <div v-if="isFormOpen" class="modal-backdrop">
+    <div class="modal employee-modal">
+      <form class="employee-form" @submit.prevent="submitEmployeeForm">
+        <div class="modal-head between">
+          <div>
+            <h2 class="section-title">{{ formTitle }}</h2>
+            <p class="modal-desc">{{ isEditMode ? 'Cập nhật thông tin nhân viên.' : 'Tạo nhân viên mới với vai trò và trạng thái ban đầu.' }}</p>
+          </div>
+          <button class="btn btn-icon" type="button" :disabled="isSaving" aria-label="Đóng" @click="closeForm">
+            <i class="mdi mdi-close"></i>
+          </button>
+        </div>
+
+        <div class="modal-body grid grid-2">
+          <div v-if="saveErrorMessage" class="employee-form-alert">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <span>{{ saveErrorMessage }}</span>
+          </div>
+
+          <label class="field">
+            <span>Họ tên</span>
+            <input v-model="form.fullName" class="input" type="text" placeholder="Nhập họ tên" :disabled="isSaving" />
+            <small v-if="formErrors.fullName" class="field-error">{{ formErrors.fullName }}</small>
+          </label>
+
+          <label class="field">
+            <span>Email</span>
+            <input v-model="form.email" class="input" type="email" placeholder="Nhập email" :disabled="isSaving" />
+            <small v-if="formErrors.email" class="field-error">{{ formErrors.email }}</small>
+          </label>
+
+          <label class="field">
+            <span>Số điện thoại</span>
+            <input v-model="form.phoneNumber" class="input" type="tel" placeholder="Nhập số điện thoại" :disabled="isSaving" />
+            <small v-if="formErrors.phoneNumber" class="field-error">{{ formErrors.phoneNumber }}</small>
+          </label>
+
+          <label v-if="!isEditMode" class="field">
+            <span>Mật khẩu</span>
+            <input v-model="form.password" class="input" type="password" placeholder="Tối thiểu 8 ký tự" :disabled="isSaving" autocomplete="new-password" />
+            <small v-if="formErrors.password" class="field-error">{{ formErrors.password }}</small>
+          </label>
+
+          <label class="field">
+            <span>Vai trò</span>
+            <select v-model="form.roleCode" class="select" :disabled="isSaving">
+              <option v-for="option in formRoleOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+            <small v-if="formErrors.roleCode" class="field-error">{{ formErrors.roleCode }}</small>
+          </label>
+
+          <label class="field">
+            <span>Trạng thái</span>
+            <select v-model="form.status" class="select" :disabled="isSaving">
+              <option v-for="option in formStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+            <small v-if="formErrors.status" class="field-error">{{ formErrors.status }}</small>
+          </label>
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn" type="button" :disabled="isSaving" @click="closeForm">Hủy</button>
+          <button class="btn btn-primary" type="submit" :disabled="isSaving">
+            <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
+            {{ isSaving ? 'Đang lưu' : 'Lưu' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.employee-alert { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+.employee-alert, .employee-success { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.employee-alert { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+.employee-success { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
 .employee-table-shell { position: relative; }
 .employee-loading { min-height: 220px; display: grid; place-items: center; gap: 10px; color: var(--muted); font-weight: 700; }
 .mdi-spin { animation: spin 0.8s linear infinite; }
@@ -200,6 +432,12 @@ function formatDate(value) {
 .pagination-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .page-size { width: 130px; min-height: 34px; }
 .page-indicator { min-width: 112px; text-align: center; color: var(--muted); font-weight: 700; }
+.employee-modal { width: min(760px, 100%); }
+.employee-form { margin: 0; }
+.modal-desc { margin: 4px 0 0; color: var(--muted); }
+.employee-form-alert { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; font-weight: 600; }
+.field > span { color: #374151; font-weight: 600; }
+.field-error { color: var(--danger); font-weight: 600; line-height: 18px; }
 .btn:disabled, .select:disabled { opacity: 0.6; cursor: not-allowed; }
 
 @keyframes spin {
@@ -209,5 +447,7 @@ function formatDate(value) {
 @media (max-width: 720px) {
   .employee-pagination, .pagination-actions { align-items: stretch; flex-direction: column; width: 100%; }
   .page-size, .pagination-actions .btn, .page-indicator { width: 100%; }
+  .modal-foot { flex-direction: column-reverse; }
+  .modal-foot .btn { width: 100%; }
 }
 </style>
