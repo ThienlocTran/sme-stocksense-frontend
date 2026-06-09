@@ -102,11 +102,24 @@ sme-stocksense-frontend/
 
 ### 1. Thông tin màn hình & Route
 - **Route**: `/warehouses`
-- **Màn hình**: [WarehousesView.vue](file:///d:/DATN_FE/src/views/WarehousesView.vue) - Hiển thị danh sách kho hàng.
-- **Service API**: [warehouseService.js](file:///d:/DATN_FE/src/services/warehouseService.js) - Gọi API `GET /api/warehouses` đến backend.
+- **Màn hình**: [WarehousesView.vue](file:///d:/DATN_FE/src/views/WarehousesView.vue) - Hiển thị danh sách kho hàng và tích hợp Modal Form Thêm/Sửa kho hàng.
+- **Service API**: [warehouseService.js](file:///d:/DATN_FE/src/services/warehouseService.js) - Xử lý gọi API đến backend:
+  - `getWarehouses()`: `GET /api/warehouses` - Tải danh sách kho hàng.
+  - `createWarehouse()`: `POST /api/warehouses` - Tạo kho hàng mới (yêu cầu mã kho, tên kho, địa chỉ, trạng thái).
+  - `updateWarehouse()`: `PUT /api/warehouses/{id}` - Cập nhật thông tin kho (tên kho, địa chỉ, trạng thái).
 - **Tùy chọn trạng thái**: [warehouseOptions.js](file:///d:/DATN_FE/src/constants/warehouseOptions.js) - Định nghĩa hằng số và nhãn cho trạng thái kho hàng.
 
-### 2. Phân quyền truy cập (Security UI)
+### 2. Biểu mẫu Thêm/Sửa Kho Hàng (Forms & Validation)
+- **Thêm kho hàng mới**:
+  - Mã kho (`maKho`): Bắt buộc nhập, không trùng lặp, độ dài tối đa 50 ký tự.
+  - Tên kho (`tenKho`): Bắt buộc nhập, độ dài tối đa 150 ký tự.
+  - Địa chỉ (`diaChi`): Tùy chọn, tối đa 255 ký tự.
+  - Trạng thái (`trangThai`): Mặc định là `HOAT_DONG`.
+- **Chỉnh sửa kho hàng**:
+  - **Khóa chỉnh sửa Mã kho (`maKho`)** để giữ tính toàn vẹn của dữ liệu và lịch sử các giao dịch nhập xuất tồn kho đã phát sinh.
+  - Cho phép cập nhật: Tên kho (bắt buộc), Địa chỉ, Trạng thái (bắt buộc).
+
+### 3. Phân quyền truy cập (Security UI)
 - **Xem danh sách**: Admin/IT, Quản lý kho, Nhân viên kho đều được xem.
 - **Thao tác quản trị** (Thêm kho, Sửa, Ngừng hoạt động): Chỉ có **Admin/IT** và **Quản lý kho** được phép thực hiện (nút thao tác sẽ bị vô hiệu hóa đối với Nhân viên kho).
 
