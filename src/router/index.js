@@ -5,6 +5,7 @@ import ProductsView from '../views/ProductsView.vue'
 import WarehousesView from '../views/WarehousesView.vue'
 import InventoryView from '../views/InventoryView.vue'
 import InventoryTransactionsView from '../views/InventoryTransactionsView.vue'
+import LoginView from '../views/LoginView.vue'
 import StockDocumentsView from '../views/StockDocumentsView.vue'
 import StockDocumentCreateView from '../views/StockDocumentCreateView.vue'
 import StockDocumentDetailView from '../views/StockDocumentDetailView.vue'
@@ -15,6 +16,7 @@ import UsersView from '../views/UsersView.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
+  { path: '/login', component: LoginView, meta: { title: 'Đăng nhập', layout: 'auth' } },
   { path: '/dashboard', component: DashboardView, meta: { title: 'Tổng quan' } },
   { path: '/products', component: ProductsView, meta: { title: 'Sản phẩm' } },
   { path: '/warehouses', component: WarehousesView, meta: { title: 'Kho hàng' } },
