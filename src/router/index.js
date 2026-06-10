@@ -14,12 +14,14 @@ import ImportExcelView from '../views/ImportExcelView.vue'
 import AlertsView from '../views/AlertsView.vue'
 import UsersView from '../views/UsersView.vue'
 import EmployeeListView from '../views/employees/EmployeeListView.vue'
+import CategoryListView from '../views/categories/CategoryListView.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
   { path: '/login', component: LoginView, meta: { title: 'Đăng nhập', layout: 'auth' } },
   { path: '/dashboard', component: DashboardView, meta: { title: 'Tổng quan' } },
   { path: '/products', component: ProductsView, meta: { title: 'Sản phẩm' } },
+  { path: '/categories', component: CategoryListView, meta: { title: 'Danh mục' } },
   { path: '/warehouses', component: WarehousesView, meta: { title: 'Kho hàng' } },
   { path: '/inventory', component: InventoryView, meta: { title: 'Tồn kho' } },
   { path: '/inventory-transactions', component: InventoryTransactionsView, meta: { title: 'Lịch sử giao dịch' } },
