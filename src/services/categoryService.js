@@ -28,6 +28,30 @@ export async function getCategories({ page = 0, size = 10, keyword = '', status 
   }
 }
 
+export async function createCategory(payload) {
+  try {
+    const { data } = await categoryClient.post('/api/categories', payload, {
+      headers: getAuthorizationHeader(),
+    })
+
+    return data
+  } catch (error) {
+    throw normalizeCategoryError(error, 'Không thể thêm danh mục.')
+  }
+}
+
+export async function updateCategory(id, payload) {
+  try {
+    const { data } = await categoryClient.put(`/api/categories/${id}`, payload, {
+      headers: getAuthorizationHeader(),
+    })
+
+    return data
+  } catch (error) {
+    throw normalizeCategoryError(error, 'Không thể cập nhật danh mục.')
+  }
+}
+
 function normalizeCategoryError(error, fallbackMessage) {
   if (error.response?.status === 401) {
     clearAuth()
