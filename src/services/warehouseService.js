@@ -31,6 +31,40 @@ export async function getWarehouses({ keyword = '', status = '' } = {}) {
   }
 }
 
+/**
+ * Tạo mới kho hàng (API T41).
+ * Nghiệp vụ:
+ * - Mã kho (maKho) và Tên kho (tenKho) bắt buộc nhập.
+ * - Mã kho không được trùng nhau trong hệ thống.
+ */
+export async function createWarehouse(payload) {
+  try {
+    const { data } = await warehouseClient.post('/api/warehouses', payload, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeWarehouseError(error, 'Không thể thêm kho hàng mới.')
+  }
+}
+
+/**
+ * Cập nhật thông tin kho hàng (API T42).
+ * Nghiệp vụ:
+ * - Không cho phép chỉnh sửa mã kho hàng (maKho) khi cập nhật để giữ tính nhất quán dữ liệu.
+ * - Tên kho (tenKho) và Trạng thái (trangThai) bắt buộc nhập.
+ */
+export async function updateWarehouse(id, payload) {
+  try {
+    const { data } = await warehouseClient.put(`/api/warehouses/${id}`, payload, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeWarehouseError(error, 'Không thể cập nhật thông tin kho hàng.')
+  }
+}
+
 function normalizeWarehouseError(error, fallbackMessage) {
   if (error.response?.status === 401) {
     clearAuth()
