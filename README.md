@@ -93,9 +93,25 @@ sme-stocksense-frontend/
 | `npm run build` | Build ung dung cho production |
 | `npm run preview` | Chay preview tu ban build production |
 
-## Ghi chu phat trien
-
 - Dat cac component dung chung trong `src/components`.
 - Dat hinh anh, icon va asset lien quan trong `src/assets` hoac `public`.
 - Su dung Axios cho cac request den backend.
 - Su dung Pinia neu can quan ly state dung chung giua nhieu man hinh.
+
+## Module Kho Hàng (Warehouses)
+
+### 1. Thông tin màn hình & Route
+- **Route**: `/warehouses`
+- **Màn hình**: [WarehousesView.vue](file:///d:/DATN_FE/src/views/WarehousesView.vue) - Hiển thị danh sách kho hàng.
+- **Service API**: [warehouseService.js](file:///d:/DATN_FE/src/services/warehouseService.js) - Gọi API `GET /api/warehouses` đến backend.
+- **Tùy chọn trạng thái**: [warehouseOptions.js](file:///d:/DATN_FE/src/constants/warehouseOptions.js) - Định nghĩa hằng số và nhãn cho trạng thái kho hàng.
+
+### 2. Phân quyền truy cập (Security UI)
+- **Xem danh sách**: Admin/IT, Quản lý kho, Nhân viên kho đều được xem.
+- **Thao tác quản trị** (Thêm kho, Sửa, Ngừng hoạt động): Chỉ có **Admin/IT** và **Quản lý kho** được phép thực hiện (nút thao tác sẽ bị vô hiệu hóa đối với Nhân viên kho).
+
+### 3. Quy tắc nghiệp vụ (Business Rules)
+- **Không xóa vật lý kho**: Bảo toàn dữ liệu lịch sử nhập/xuất/tồn kho. Thay vào đó, đổi trạng thái sang `NGUNG_HOAT_DONG`.
+- **Mã kho không cho trùng**: Mỗi kho hàng phải có một mã định danh duy nhất.
+- **Không cho sửa mã kho**: Để tránh ảnh hưởng đến tính toàn vẹn của dữ liệu chứng từ nhập/xuất/tồn kho đã phát sinh.
+
