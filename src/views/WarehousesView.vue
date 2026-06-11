@@ -1,6 +1,6 @@
 <script setup>
 /**
- * Màn hình danh sách kho hàng (T44 & T45).
+ * Màn hình danh sách kho hàng (T44, T45 & T46).
  *
  * Nghiệp vụ và Thiết kế:
  * 1. Không xóa vật lý kho để bảo toàn dữ liệu lịch sử nhập/xuất/tồn kho. Thay vào đó, dùng trạng thái HOAT_DONG/NGUNG_HOAT_DONG.
@@ -8,11 +8,16 @@
  * 3. Phân quyền thao tác:
  *    - Admin/IT và Quản lý kho có quyền thực hiện các thao tác quản trị (Thêm/Sửa/Ngừng hoạt động).
  *    - Nhân viên thủ kho chỉ có quyền xem danh sách.
+ * 4. Tìm kiếm & Lọc (T46):
+ *    - Tìm kiếm theo mã kho, tên kho hoặc địa chỉ qua keyword.
+ *    - Lọc trạng thái hoạt động: Tất cả, Đang hoạt động, Ngừng hoạt động.
+ *    - Hỗ trợ nút xóa bộ lọc (clear filter) để đưa danh sách về mặc định.
  */
 
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
+import SearchFilterBar from '../components/SearchFilterBar.vue'
 import DataTable from '../components/DataTable.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useInventoryStore } from '../data/useInventoryStore'
@@ -32,10 +37,28 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const saveErrorMessage = ref('')
 
+// Trạng thái tìm kiếm và bộ lọc kho hàng
+const searchDraft = ref('')
+const filters = reactive({
+  keyword: '',
+  status: '',
+})
+
+// Các tùy chọn trạng thái phục vụ dropdown bộ lọc
+const statusOptions = [
+  { value: '', label: 'Tất cả trạng thái' },
+  ...warehouseStatusOptions,
+]
+
 // Phân quyền thao tác quản trị: Admin / IT và Quản lý kho được phép thực hiện
 const canManage = computed(() => store.isAdmin || store.isManager)
 const isEditMode = computed(() => formMode.value === 'edit')
 const formTitle = computed(() => isEditMode.value ? 'Sửa kho hàng' : 'Thêm kho hàng')
+
+// Xác định xem bộ lọc có đang hoạt động hay không
+const hasActiveFilters = computed(() => {
+  return filters.keyword !== '' || filters.status !== ''
+})
 
 const columns = [
   { key: 'maKho', label: 'Mã kho' },
@@ -62,7 +85,10 @@ async function fetchWarehouses() {
   errorMessage.value = ''
 
   try {
-    const data = await getWarehouses()
+    const data = await getWarehouses({
+      keyword: filters.keyword,
+      status: filters.status,
+    })
     warehouses.value = data || []
   } catch (error) {
     warehouses.value = []
@@ -73,6 +99,22 @@ async function fetchWarehouses() {
   } finally {
     isLoading.value = false
   }
+}
+
+function applySearch() {
+  filters.keyword = searchDraft.value.trim()
+  fetchWarehouses()
+}
+
+function applyFilter() {
+  fetchWarehouses()
+}
+
+function clearFilters() {
+  searchDraft.value = ''
+  filters.keyword = ''
+  filters.status = ''
+  fetchWarehouses()
 }
 
 function createEmptyForm() {
@@ -223,6 +265,28 @@ function displayStatus(status) {
       Thêm kho
     </button>
   </PageHeader>
+
+  <!-- Bộ lọc và Tìm kiếm kho hàng -->
+  <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo mã hoặc tên kho">
+    <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
+      <i class="mdi mdi-magnify"></i>
+      Tìm kiếm
+    </button>
+    <select v-model="filters.status" class="select" :disabled="isLoading" @change="applyFilter">
+      <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+        {{ option.label }}
+      </option>
+    </select>
+    <button 
+      v-if="hasActiveFilters" 
+      class="btn" 
+      type="button" 
+      :disabled="isLoading" 
+      @click="clearFilters"
+    >
+      Xóa bộ lọc
+    </button>
+  </SearchFilterBar>
 
   <div v-if="successMessage" class="warehouse-success card card-pad">
     <i class="mdi mdi-check-circle-outline"></i>

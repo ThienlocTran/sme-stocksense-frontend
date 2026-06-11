@@ -119,12 +119,23 @@ sme-stocksense-frontend/
   - **Khóa chỉnh sửa Mã kho (`maKho`)** để giữ tính toàn vẹn của dữ liệu và lịch sử các giao dịch nhập xuất tồn kho đã phát sinh.
   - Cho phép cập nhật: Tên kho (bắt buộc), Địa chỉ, Trạng thái (bắt buộc).
 
-### 3. Phân quyền truy cập (Security UI)
+### 3. Tìm kiếm & Lọc kho hàng (Search & Filters)
+- **Tìm kiếm theo từ khóa**: Nhập mã kho hoặc tên kho vào ô tìm kiếm và bấm nút **"Tìm kiếm"**.
+  - Gọi API backend với tham số query: `GET /api/warehouses?keyword={keyword}`.
+- **Lọc theo trạng thái**: Chọn trạng thái lọc mong muốn trong dropdown:
+  - *Tất cả trạng thái* (không truyền tham số status).
+  - *Đang hoạt động* (truyền tham số `status=HOAT_DONG`).
+  - *Ngừng hoạt động* (truyền tham số `status=NGUNG_HOAT_DONG`).
+  - Gọi API backend với tham số query: `GET /api/warehouses?status={status}`.
+- **Xóa bộ lọc (Clear Filter)**: Khi có bộ lọc đang hoạt động, nút **"Xóa bộ lọc"** xuất hiện. Bấm nút này sẽ reset từ khóa tìm kiếm và trạng thái về trống, sau đó tải lại danh sách đầy đủ.
+
+### 4. Phân quyền truy cập (Security UI)
 - **Xem danh sách**: Admin/IT, Quản lý kho, Nhân viên kho đều được xem.
 - **Thao tác quản trị** (Thêm kho, Sửa, Ngừng hoạt động): Chỉ có **Admin/IT** và **Quản lý kho** được phép thực hiện (nút thao tác sẽ bị vô hiệu hóa đối với Nhân viên kho).
 
-### 3. Quy tắc nghiệp vụ (Business Rules)
+### 5. Quy tắc nghiệp vụ (Business Rules)
 - **Không xóa vật lý kho**: Bảo toàn dữ liệu lịch sử nhập/xuất/tồn kho. Thay vào đó, đổi trạng thái sang `NGUNG_HOAT_DONG`.
 - **Mã kho không cho trùng**: Mỗi kho hàng phải có một mã định danh duy nhất.
 - **Không cho sửa mã kho**: Để tránh ảnh hưởng đến tính toàn vẹn của dữ liệu chứng từ nhập/xuất/tồn kho đã phát sinh.
+
 
