@@ -6,6 +6,7 @@ const store = useInventoryStore()
 const items = [
   ['Tổng quan', '/dashboard', 'mdi-view-dashboard-outline'],
   ['Sản phẩm', '/products', 'mdi-package-variant-closed'],
+  ['Danh mục', '/categories', 'mdi-shape-outline'],
   ['Kho hàng', '/warehouses', 'mdi-warehouse'],
   ['Tồn kho', '/inventory', 'mdi-clipboard-list-outline'],
   ['Lịch sử giao dịch', '/inventory-transactions', 'mdi-history'],

@@ -93,8 +93,6 @@ sme-stocksense-frontend/
 | `npm run build` | Build ung dung cho production |
 | `npm run preview` | Chay preview tu ban build production |
 
-## Ghi chu phat trien
-
 - Dat cac component dung chung trong `src/components`.
 - Dat hinh anh, icon va asset lien quan trong `src/assets` hoac `public`.
 - Su dung Axios cho cac request den backend.

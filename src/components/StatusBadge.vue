@@ -13,5 +13,5 @@ defineProps({ status: { type: String, required: true } })
 .status-đã-duyệt { background: #dbeafe; color: #1d4ed8; }
 .status-từ-chối, .status-thiếu-hàng, .status-cao, .status-khẩn-cấp { background: #fee2e2; color: #b91c1c; }
 .status-hoàn-thành, .status-đang-hoạt-động, .status-đủ-hàng, .status-thấp, .status-đang-xử-lý, .status-đang-bán { background: #dcfce7; color: #15803d; }
-.status-tạm-ngưng { background: #e2e8f0; color: #334155; }
+.status-tạm-ngưng, .status-ngừng-hoạt-động { background: #e2e8f0; color: #334155; }
 </style>
