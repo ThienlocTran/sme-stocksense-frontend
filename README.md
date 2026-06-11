@@ -98,44 +98,24 @@ sme-stocksense-frontend/
 - Su dung Axios cho cac request den backend.
 - Su dung Pinia neu can quan ly state dung chung giua nhieu man hinh.
 
-## Module Kho Hàng (Warehouses)
+---
 
-### 1. Thông tin màn hình & Route
-- **Route**: `/warehouses`
-- **Màn hình**: [WarehousesView.vue](file:///d:/DATN_FE/src/views/WarehousesView.vue) - Hiển thị danh sách kho hàng và tích hợp Modal Form Thêm/Sửa kho hàng.
-- **Service API**: [warehouseService.js](file:///d:/DATN_FE/src/services/warehouseService.js) - Xử lý gọi API đến backend:
-  - `getWarehouses()`: `GET /api/warehouses` - Tải danh sách kho hàng.
-  - `createWarehouse()`: `POST /api/warehouses` - Tạo kho hàng mới (yêu cầu mã kho, tên kho, địa chỉ, trạng thái).
-  - `updateWarehouse()`: `PUT /api/warehouses/{id}` - Cập nhật thông tin kho (tên kho, địa chỉ, trạng thái).
-- **Tùy chọn trạng thái**: [warehouseOptions.js](file:///d:/DATN_FE/src/constants/warehouseOptions.js) - Định nghĩa hằng số và nhãn cho trạng thái kho hàng.
+## Module Đối Tác (Partners) - Frontend UI (Task T51)
 
-### 2. Biểu mẫu Thêm/Sửa Kho Hàng (Forms & Validation)
-- **Thêm kho hàng mới**:
-  - Mã kho (`maKho`): Bắt buộc nhập, không trùng lặp, độ dài tối đa 50 ký tự.
-  - Tên kho (`tenKho`): Bắt buộc nhập, độ dài tối đa 150 ký tự.
-  - Địa chỉ (`diaChi`): Tùy chọn, tối đa 255 ký tự.
-  - Trạng thái (`trangThai`): Mặc định là `HOAT_DONG`.
-- **Chỉnh sửa kho hàng**:
-  - **Khóa chỉnh sửa Mã kho (`maKho`)** để giữ tính toàn vẹn của dữ liệu và lịch sử các giao dịch nhập xuất tồn kho đã phát sinh.
-  - Cho phép cập nhật: Tên kho (bắt buộc), Địa chỉ, Trạng thái (bắt buộc).
-
-### 3. Tìm kiếm & Lọc kho hàng (Search & Filters)
-- **Tìm kiếm theo từ khóa**: Nhập mã kho hoặc tên kho vào ô tìm kiếm và bấm nút **"Tìm kiếm"**.
-  - Gọi API backend với tham số query: `GET /api/warehouses?keyword={keyword}`.
-- **Lọc theo trạng thái**: Chọn trạng thái lọc mong muốn trong dropdown:
-  - *Tất cả trạng thái* (không truyền tham số status).
-  - *Đang hoạt động* (truyền tham số `status=HOAT_DONG`).
-  - *Ngừng hoạt động* (truyền tham số `status=NGUNG_HOAT_DONG`).
-  - Gọi API backend với tham số query: `GET /api/warehouses?status={status}`.
-- **Xóa bộ lọc (Clear Filter)**: Khi có bộ lọc đang hoạt động, nút **"Xóa bộ lọc"** xuất hiện. Bấm nút này sẽ reset từ khóa tìm kiếm và trạng thái về trống, sau đó tải lại danh sách đầy đủ.
-
-### 4. Phân quyền truy cập (Security UI)
-- **Xem danh sách**: Admin/IT, Quản lý kho, Nhân viên kho đều được xem.
-- **Thao tác quản trị** (Thêm kho, Sửa, Ngừng hoạt động): Chỉ có **Admin/IT** và **Quản lý kho** được phép thực hiện (nút thao tác sẽ bị vô hiệu hóa đối với Nhân viên kho).
-
-### 5. Quy tắc nghiệp vụ (Business Rules)
-- **Không xóa vật lý kho**: Bảo toàn dữ liệu lịch sử nhập/xuất/tồn kho. Thay vào đó, đổi trạng thái sang `NGUNG_HOAT_DONG`.
-- **Mã kho không cho trùng**: Mỗi kho hàng phải có một mã định danh duy nhất.
-- **Không cho sửa mã kho**: Để tránh ảnh hưởng đến tính toàn vẹn của dữ liệu chứng từ nhập/xuất/tồn kho đã phát sinh.
-
+Màn hình quản lý đối tác được phát triển tại route `/partners` với các tính năng sau:
+- **Trang chính**: `src/views/PartnerListView.vue`
+- **Định tuyến (Routing)**: Cấu hình tại `src/router/index.js` (Route: `/partners`)
+- **Quản lý trạng thái (State)**: Sử dụng Pinia Store `src/stores/auth.js` để lưu trữ mã token và vai trò người dùng phục vụ cho việc kiểm thử phân quyền UI.
+- **Tính năng giao diện**:
+  - Tìm kiếm động bằng ô nhập từ khóa (mã đối tác, tên, SĐT, v.v.).
+  - Bộ lọc động theo loại đối tác (`NHA_CUNG_CAP`, `KHACH_HANG`, `CA_HAI`) và trạng thái (`HOAT_DONG`, `NGUNG_HOAT_DONG`).
+  - Nút Xóa bộ lọc (`Reset Filters`).
+  - Hộp thoại (Dialog) thông báo khi thao tác thêm/sửa đối tác được click (vì các tính năng này thuộc Task T52 tiếp theo).
+- **Phân quyền giao diện (Security UI)**:
+  - Chỉ hiển thị nút "Thêm đối tác" và cột "Thao tác" (chỉnh sửa, khóa/mở khóa) cho vai trò `ADMIN` hoặc `MANAGER`.
+  - Tự động ẩn hoàn toàn các thành phần này đối với vai trò thủ kho (`EMPLOYEE`).
+  - Tích hợp công cụ chuyển đổi vai trò test trực tiếp trên top header để nhà phát triển và người kiểm thử dễ dàng xác thực giao diện.
+- **Tích hợp API & Cơ chế tự động fallback**:
+  - Khi khởi chạy, màn hình sẽ gọi API thật qua Axios: `GET http://localhost:8080/api/partners`.
+  - Nếu kết nối tới Backend thất bại (hoặc chưa đăng nhập/chưa có token), hệ thống sẽ hiển thị một banner thông báo màu vàng cảnh báo đang hoạt động ở chế độ mô phỏng, và tự động chuyển sang sử dụng bộ dữ liệu mock cục bộ (`mockPartners`) để đảm bảo trải nghiệm giao diện vẫn hoạt động mượt mà.
 

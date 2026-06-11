@@ -1,4 +1,22 @@
 import { createRouter, createWebHistory } from 'vue-router'
+
+import DashboardView from '../views/DashboardView.vue'
+import PartnerListView from '../views/PartnerListView.vue'
+
+const routes = [
+  {
+    path: '/',
+    name: 'dashboard',
+    component: DashboardView,
+    meta: { title: 'Tổng quan' }
+  },
+  {
+    path: '/partners',
+    name: 'partners',
+    component: PartnerListView,
+    meta: { title: 'Quản lý đối tác' }
+  }
+
 import { useInventoryStore } from '../data/useInventoryStore'
 import DashboardView from '../views/DashboardView.vue'
 import ProductsView from '../views/ProductsView.vue'
@@ -38,6 +56,7 @@ const routes = [
   { path: '/alerts', component: AlertsView, meta: { title: 'Cảnh báo tồn kho' } },
   { path: '/employees', component: EmployeeListView, meta: { title: 'Nhân viên' } },
   { path: '/users', component: UsersView, meta: { title: 'Nhân viên & phân quyền' } },
+
 ]
 
 const router = createRouter({
