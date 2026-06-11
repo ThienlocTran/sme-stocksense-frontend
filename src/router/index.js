@@ -61,6 +61,9 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),
+
+  routes
+
   routes,
 })
 
@@ -70,6 +73,7 @@ router.beforeEach(to => {
   if (to.path === '/approvals' && !(store.isAdmin || store.isManager)) return '/dashboard'
   if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(to.path) && !(store.isAdmin || store.isStaff)) return '/dashboard'
   return true
+
 })
 
 export default router
