@@ -94,16 +94,33 @@ function goNext() {
   fetchCategories()
 }
 
-async function disableSelectedCategory(category) {
-  if (!category?.id || category.status === 'NGUNG_HOAT_DONG' || disablingId.value) return
+function getStatusToggleLabel(category) {
+  return category.status === 'NGUNG_HOAT_DONG' ? 'Hoạt động' : 'Ngừng hoạt động'
+}
+
+async function toggleCategoryStatus(category) {
+  if (!category?.id || disablingId.value) return
+
+  const nextStatus = category.status === 'NGUNG_HOAT_DONG' ? 'HOAT_DONG' : 'NGUNG_HOAT_DONG'
 
   disablingId.value = category.id
   errorMessage.value = ''
   successMessage.value = ''
 
   try {
-    await disableCategory(category.id)
-    successMessage.value = 'Ngừng hoạt động danh mục thành công.'
+    if (nextStatus === 'NGUNG_HOAT_DONG') {
+      await disableCategory(category.id)
+    } else {
+      await updateCategory(category.id, {
+        code: category.code,
+        name: category.name,
+        description: category.description || null,
+        status: nextStatus,
+      })
+    }
+    successMessage.value = nextStatus === 'NGUNG_HOAT_DONG'
+      ? 'Ngừng hoạt động danh mục thành công.'
+      : 'Kích hoạt danh mục thành công.'
     await fetchCategories()
   } catch (error) {
     if (error.status === 401) {
@@ -284,7 +301,7 @@ function formatDate(value) {
       <template #actions="{ row }">
         <div class="actions">
           <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">Sửa</button>
-          <button class="btn btn-sm" type="button" :disabled="isLoading || disablingId || row.status === 'NGUNG_HOAT_DONG'" @click="disableSelectedCategory(row)">Ngừng hoạt động</button>
+          <button class="btn btn-sm" type="button" :disabled="isLoading || disablingId" @click="toggleCategoryStatus(row)">{{ getStatusToggleLabel(row) }}</button>
         </div>
       </template>
     </DataTable>
