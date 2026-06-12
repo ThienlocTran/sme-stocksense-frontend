@@ -1,25 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
-import DashboardView from '../views/DashboardView.vue'
-import PartnerListView from '../views/PartnerListView.vue'
-
-const routes = [
-  {
-    path: '/',
-    name: 'dashboard',
-    component: DashboardView,
-    meta: { title: 'Tổng quan' }
-  },
-  {
-    path: '/partners',
-    name: 'partners',
-    component: PartnerListView,
-    meta: { title: 'Quản lý đối tác' }
-  }
-
 import { useInventoryStore } from '../data/useInventoryStore'
 import DashboardView from '../views/DashboardView.vue'
 import ProductsView from '../views/ProductsView.vue'
+import PartnerListView from '../views/PartnerListView.vue'
 import WarehousesView from '../views/WarehousesView.vue'
 import InventoryView from '../views/InventoryView.vue'
 import InventoryTransactionsView from '../views/InventoryTransactionsView.vue'
@@ -39,6 +22,7 @@ const routes = [
   { path: '/login', component: LoginView, meta: { title: 'Đăng nhập', layout: 'auth' } },
   { path: '/dashboard', component: DashboardView, meta: { title: 'Tổng quan' } },
   { path: '/products', component: ProductsView, meta: { title: 'Sản phẩm' } },
+  { path: '/partners', component: PartnerListView, meta: { title: 'Quản lý đối tác' } },
   { path: '/categories', component: CategoryListView, meta: { title: 'Danh mục' } },
   { path: '/warehouses', component: WarehousesView, meta: { title: 'Kho hàng' } },
   { path: '/inventory', component: InventoryView, meta: { title: 'Tồn kho' } },
@@ -61,9 +45,6 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),
-
-  routes
-
   routes,
 })
 
