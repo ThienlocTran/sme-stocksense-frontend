@@ -67,6 +67,30 @@ export async function resetEmployeePassword(employeeId, newPassword) {
   }
 }
 
+export async function lockEmployee(employeeId) {
+  try {
+    const { data } = await employeeClient.patch(`/api/employees/${employeeId}/lock`, null, {
+      headers: getAuthorizationHeader(),
+    })
+
+    return data
+  } catch (error) {
+    throw normalizeEmployeeError(error, 'Không thể khóa nhân viên.')
+  }
+}
+
+export async function unlockEmployee(employeeId) {
+  try {
+    const { data } = await employeeClient.patch(`/api/employees/${employeeId}/unlock`, null, {
+      headers: getAuthorizationHeader(),
+    })
+
+    return data
+  } catch (error) {
+    throw normalizeEmployeeError(error, 'Không thể mở khóa nhân viên.')
+  }
+}
+
 function normalizeEmployeeError(error, fallbackMessage) {
   if (error.response?.status === 401) {
     clearAuth()

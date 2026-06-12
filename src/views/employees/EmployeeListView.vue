@@ -10,7 +10,7 @@ import {
   getRoleLabel,
   getStatusLabel,
 } from '../../constants/employeeOptions'
-import { createEmployee, getEmployees, resetEmployeePassword, updateEmployee } from '../../services/employeeService'
+import { createEmployee, getEmployees, lockEmployee, resetEmployeePassword, unlockEmployee, updateEmployee } from '../../services/employeeService'
 
 const router = useRouter()
 const employees = ref([])
@@ -122,20 +122,18 @@ function isStatusToggleDisabled(employee) {
 async function toggleEmployeeStatus(employee) {
   if (!employee?.id || statusUpdatingId.value || isStatusToggleDisabled(employee)) return
 
-  const nextStatus = employee.status === 'HOAT_DONG' ? 'TAM_KHOA' : 'HOAT_DONG'
+  const shouldLock = employee.status === 'HOAT_DONG'
   statusUpdatingId.value = employee.id
   errorMessage.value = ''
   successMessage.value = ''
 
   try {
-    await updateEmployee(employee.id, {
-      fullName: employee.fullName,
-      email: employee.email,
-      phoneNumber: employee.phoneNumber || null,
-      roleCode: employee.roleCode || 'EMPLOYEE',
-      status: nextStatus,
-    })
-    successMessage.value = nextStatus === 'TAM_KHOA' ? 'Khóa nhân viên thành công.' : 'Mở khóa nhân viên thành công.'
+    if (shouldLock) {
+      await lockEmployee(employee.id)
+    } else {
+      await unlockEmployee(employee.id)
+    }
+    successMessage.value = shouldLock ? 'Khóa nhân viên thành công.' : 'Mở khóa nhân viên thành công.'
     await fetchEmployees()
   } catch (error) {
     if (error.status === 401) {

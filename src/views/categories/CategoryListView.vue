@@ -5,12 +5,13 @@ import DataTable from '../../components/DataTable.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchFilterBar from '../../components/SearchFilterBar.vue'
 import { categoryStatusOptions, getCategoryStatusLabel } from '../../constants/categoryOptions'
-import { createCategory, getCategories, updateCategory } from '../../services/categoryService'
+import { createCategory, disableCategory, getCategories, updateCategory } from '../../services/categoryService'
 
 const router = useRouter()
 const categories = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
+const disablingId = ref(null)
 const isFormOpen = ref(false)
 const formMode = ref('create')
 const errorMessage = ref('')
@@ -91,6 +92,29 @@ function goNext() {
   if (!canGoNext.value) return
   filters.page += 1
   fetchCategories()
+}
+
+async function disableSelectedCategory(category) {
+  if (!category?.id || category.status === 'NGUNG_HOAT_DONG' || disablingId.value) return
+
+  disablingId.value = category.id
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    await disableCategory(category.id)
+    successMessage.value = 'Ngừng hoạt động danh mục thành công.'
+    await fetchCategories()
+  } catch (error) {
+    if (error.status === 401) {
+      router.replace('/login')
+      return
+    }
+
+    errorMessage.value = error.message
+  } finally {
+    disablingId.value = null
+  }
 }
 
 function createEmptyForm() {
@@ -260,7 +284,7 @@ function formatDate(value) {
       <template #actions="{ row }">
         <div class="actions">
           <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">Sửa</button>
-          <button class="btn btn-sm" type="button" disabled>Ngừng hoạt động</button>
+          <button class="btn btn-sm" type="button" :disabled="isLoading || disablingId || row.status === 'NGUNG_HOAT_DONG'" @click="disableSelectedCategory(row)">Ngừng hoạt động</button>
         </div>
       </template>
     </DataTable>

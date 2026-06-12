@@ -52,6 +52,18 @@ export async function updateCategory(id, payload) {
   }
 }
 
+export async function disableCategory(id) {
+  try {
+    const { data } = await categoryClient.patch(`/api/categories/${id}/disable`, null, {
+      headers: getAuthorizationHeader(),
+    })
+
+    return data
+  } catch (error) {
+    throw normalizeCategoryError(error, 'Không thể ngừng hoạt động danh mục.')
+  }
+}
+
 function normalizeCategoryError(error, fallbackMessage) {
   if (error.response?.status === 401) {
     clearAuth()
