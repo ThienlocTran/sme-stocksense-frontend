@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { getCurrentRoleLabel } from '../services/authService'
 
 const now = '30/05/2026'
 
@@ -8,7 +9,7 @@ export const warehouses = ['Kho trung tâm', 'Kho bán lẻ', 'Kho nguyên liệ
 
 export const useInventoryStore = defineStore('inventory', {
   state: () => ({
-    currentRole: localStorage.getItem('stocksense-demo-role') || 'Quản lý kho',
+    currentRole: getCurrentRoleLabel(),
     users: [
       { id: 'NV001', name: 'Nguyễn Minh An', email: 'an.nguyen@stocksense.vn', phone: '0901 234 567', role: 'Admin / IT', status: 'Đang hoạt động', createdAt: '12/04/2026', note: 'Phụ trách hệ thống' },
       { id: 'NV002', name: 'Trần Thu Hà', email: 'ha.tran@stocksense.vn', phone: '0902 555 888', role: 'Quản lý kho', status: 'Đang hoạt động', createdAt: '15/04/2026', note: 'Duyệt phiếu kho' },
@@ -130,7 +131,9 @@ export const useInventoryStore = defineStore('inventory', {
   actions: {
     setRole(role) {
       this.currentRole = role
-      localStorage.setItem('stocksense-demo-role', role)
+    },
+    syncRoleFromAuth() {
+      this.currentRole = getCurrentRoleLabel()
     },
     findDocument(id) {
       return this.documents.find(item => item.id === id)

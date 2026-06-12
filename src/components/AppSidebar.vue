@@ -15,7 +15,7 @@ const items = [
   ['Chờ duyệt', '/approvals', 'mdi-check-decagram-outline', 'approval'],
   ['Import Excel', '/import-excel', 'mdi-file-excel-outline'],
   ['Cảnh báo tồn kho', '/alerts', 'mdi-alert-outline'],
-  ['Nhân viên', '/employees', 'mdi-account-group-outline'],
+  ['Nhân viên', '/employees', 'mdi-account-group-outline', 'admin'],
   ['Nhân viên & phân quyền', '/users', 'mdi-account-cog-outline', 'admin'],
 ]
 const visibleItems = computed(() => items.filter(item => {

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useInventoryStore } from '../data/useInventoryStore'
+import { getCurrentRoleCode, isAuthenticated } from '../services/authService'
 import DashboardView from '../views/DashboardView.vue'
 import ProductsView from '../views/ProductsView.vue'
 import PartnerListView from '../views/PartnerListView.vue'
@@ -50,11 +51,26 @@ const router = createRouter({
 
 router.beforeEach(to => {
   const store = useInventoryStore()
-  if (to.path === '/users' && !store.isAdmin) return '/dashboard'
-  if (to.path === '/approvals' && !(store.isAdmin || store.isManager)) return '/dashboard'
-  if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(to.path) && !(store.isAdmin || store.isStaff)) return '/dashboard'
-  return true
+  const isAuthRoute = to.meta.layout === 'auth'
+  const authenticated = isAuthenticated()
 
+  if (!isAuthRoute && !authenticated) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  if (isAuthRoute && authenticated) return '/dashboard'
+
+  store.syncRoleFromAuth()
+
+  if (!canAccessRoute(to.path, getCurrentRoleCode())) return '/dashboard'
+  return true
 })
+
+function canAccessRoute(path, role) {
+  if (path === '/employees' || path === '/users') return role === 'ADMIN'
+  if (path === '/approvals') return role === 'ADMIN' || role === 'MANAGER'
+  if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE'
+  return true
+}
 
 export default router

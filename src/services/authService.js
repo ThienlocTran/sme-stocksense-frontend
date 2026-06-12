@@ -10,6 +10,18 @@ export const AUTH_STORAGE_KEYS = {
   currentUser: 'stocksense_current_user',
 }
 
+export const AUTH_ROLE_LABELS = {
+  ADMIN: 'Admin / IT',
+  MANAGER: 'Quản lý kho',
+  EMPLOYEE: 'Nhân viên kho',
+}
+
+const AUTH_ROLE_CODES = {
+  'Admin / IT': 'ADMIN',
+  'Quản lý kho': 'MANAGER',
+  'Nhân viên kho': 'EMPLOYEE',
+}
+
 const authClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -43,6 +55,24 @@ export function getAccessToken() {
   return localStorage.getItem(AUTH_STORAGE_KEYS.accessToken)
 }
 
+export function isAuthenticated() {
+  const accessToken = getAccessToken()
+  const currentUser = getCurrentUser()
+  if (!accessToken || !currentUser) {
+    if (accessToken || currentUser) clearAuth()
+    return false
+  }
+
+  const expiresIn = Number(localStorage.getItem(AUTH_STORAGE_KEYS.expiresIn))
+  const loginAt = Number(localStorage.getItem(AUTH_STORAGE_KEYS.loginAt))
+  if (expiresIn > 0 && loginAt > 0 && Date.now() > loginAt + expiresIn * 1000) {
+    clearAuth()
+    return false
+  }
+
+  return true
+}
+
 export function getCurrentUser() {
   const storedUser = localStorage.getItem(AUTH_STORAGE_KEYS.currentUser)
   if (!storedUser) return null
@@ -61,8 +91,29 @@ export function getAuthorizationHeader() {
   return accessToken ? { Authorization: `${tokenType} ${accessToken}` } : {}
 }
 
+export function getCurrentRoleCode() {
+  return normalizeRole(getCurrentUser()?.role)
+}
+
+export function getCurrentRoleLabel() {
+  const roleCode = getCurrentRoleCode()
+  return AUTH_ROLE_LABELS[roleCode] || roleCode || ''
+}
+
+export function formatRole(role) {
+  const roleCode = normalizeRole(role)
+  return AUTH_ROLE_LABELS[roleCode] || role || ''
+}
+
 export function clearAuth() {
   Object.values(AUTH_STORAGE_KEYS).forEach(key => localStorage.removeItem(key))
+  localStorage.removeItem('stocksense-demo-role')
+  localStorage.removeItem('user_role')
+  localStorage.removeItem('token')
+}
+
+function normalizeRole(role) {
+  return AUTH_ROLE_CODES[role] || role || ''
 }
 
 function storeAuth(response) {

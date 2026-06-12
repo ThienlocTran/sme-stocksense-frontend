@@ -19,6 +19,7 @@ const isSaving = ref(false)
 const isFormOpen = ref(false)
 const isResetOpen = ref(false)
 const isResetting = ref(false)
+const statusUpdatingId = ref(null)
 const formMode = ref('create')
 const errorMessage = ref('')
 const successMessage = ref('')
@@ -106,6 +107,46 @@ function goNext() {
   if (!canGoNext.value) return
   filters.page += 1
   fetchEmployees()
+}
+
+function getToggleStatusLabel(employee) {
+  if (employee.status === 'HOAT_DONG') return 'Khóa'
+  if (employee.status === 'TAM_KHOA') return 'Mở khóa'
+  return 'Ngừng'
+}
+
+function isStatusToggleDisabled(employee) {
+  return employee.status === 'NGUNG_HOAT_DONG'
+}
+
+async function toggleEmployeeStatus(employee) {
+  if (!employee?.id || statusUpdatingId.value || isStatusToggleDisabled(employee)) return
+
+  const nextStatus = employee.status === 'HOAT_DONG' ? 'TAM_KHOA' : 'HOAT_DONG'
+  statusUpdatingId.value = employee.id
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    await updateEmployee(employee.id, {
+      fullName: employee.fullName,
+      email: employee.email,
+      phoneNumber: employee.phoneNumber || null,
+      roleCode: employee.roleCode || 'EMPLOYEE',
+      status: nextStatus,
+    })
+    successMessage.value = nextStatus === 'TAM_KHOA' ? 'Khóa nhân viên thành công.' : 'Mở khóa nhân viên thành công.'
+    await fetchEmployees()
+  } catch (error) {
+    if (error.status === 401) {
+      router.replace('/login')
+      return
+    }
+
+    errorMessage.value = error.message
+  } finally {
+    statusUpdatingId.value = null
+  }
 }
 
 function createEmptyForm() {
@@ -208,6 +249,11 @@ function validateForm() {
     isValid = false
   }
 
+  if (isDuplicatePhoneNumber()) {
+    formErrors.phoneNumber = 'Số điện thoại đã tồn tại.'
+    isValid = false
+  }
+
   if (!isEditMode.value) {
     if (!form.password) {
       formErrors.password = 'Vui lòng nhập mật khẩu.'
@@ -229,6 +275,15 @@ function validateForm() {
   }
 
   return isValid
+}
+
+function isDuplicatePhoneNumber() {
+  const phoneNumber = form.phoneNumber.trim()
+  if (!phoneNumber) return false
+
+  return employees.value.some(employee => (
+    employee.phoneNumber?.trim() === phoneNumber && String(employee.id) !== String(form.id)
+  ))
 }
 
 function clearFormFeedback() {
@@ -393,9 +448,9 @@ function formatDate(value) {
       </template>
       <template #createdAt="{ value }">{{ formatDate(value) }}</template>
       <template #actions="{ row }">
-        <div class="actions">
+        <div class="actions employee-actions">
           <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">Sửa</button>
-          <button class="btn btn-sm" type="button" disabled>Khóa/Mở khóa</button>
+          <button class="btn btn-sm" type="button" :disabled="isLoading || statusUpdatingId || isStatusToggleDisabled(row)" @click="toggleEmployeeStatus(row)">{{ getToggleStatusLabel(row) }}</button>
           <button class="btn btn-sm" type="button" :disabled="isLoading || isResetting" @click="openResetPassword(row)">Reset mật khẩu</button>
         </div>
       </template>
@@ -543,6 +598,7 @@ function formatDate(value) {
 .employee-alert { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
 .employee-success { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
 .employee-table-shell { position: relative; }
+.employee-actions { flex-wrap: nowrap; }
 .employee-loading { min-height: 220px; display: grid; place-items: center; gap: 10px; color: var(--muted); font-weight: 700; }
 .mdi-spin { animation: spin 0.8s linear infinite; }
 .employee-status { display: inline-flex; align-items: center; min-height: 26px; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 800; white-space: nowrap; background: #e2e8f0; color: #334155; }

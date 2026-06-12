@@ -1,14 +1,13 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useRouter } from 'vue-router'
-import { useInventoryStore, roles } from '../data/useInventoryStore'
-import { changeOwnPassword, clearAuth, getCurrentUser } from '../services/authService'
+import { changeOwnPassword, clearAuth, formatRole, getCurrentUser } from '../services/authService'
 
 const route = useRoute()
 const router = useRouter()
-const store = useInventoryStore()
 const currentUser = computed(() => getCurrentUser())
+const currentUserRole = computed(() => formatRole(currentUser.value?.role))
 const isLoggingOut = computed(() => route.path === '/login')
 const isPasswordModalOpen = ref(false)
 const isChangingPassword = ref(false)
@@ -16,10 +15,6 @@ const passwordErrorMessage = ref('')
 const passwordSuccessMessage = ref('')
 const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const passwordErrors = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
-const selectedRole = computed({
-  get: () => store.currentRole,
-  set: value => store.setRole(value),
-})
 
 function logout() {
   if (isLoggingOut.value) return
@@ -121,12 +116,6 @@ function applyPasswordBackendErrors(errors = {}) {
   passwordErrors.newPassword = errors?.newPassword || errors?.password || ''
   passwordErrors.confirmPassword = errors?.confirmPassword || ''
 }
-
-watch(() => store.currentRole, () => {
-  if (route.path === '/users' && !store.isAdmin) router.replace('/dashboard')
-  if (route.path === '/approvals' && !(store.isAdmin || store.isManager)) router.replace('/dashboard')
-  if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(route.path) && !(store.isAdmin || store.isStaff)) router.replace('/dashboard')
-})
 </script>
 
 <template>
@@ -142,14 +131,8 @@ watch(() => store.currentRole, () => {
       </div>
       <div v-if="currentUser" class="user-chip">
         <strong>{{ currentUser.fullName }}</strong>
-        <span>{{ currentUser.role }}</span>
+        <span>{{ currentUserRole }}</span>
       </div>
-      <label class="role-picker">
-        <span>Vai trò demo</span>
-        <select v-model="selectedRole" class="select">
-          <option v-for="role in roles" :key="role">{{ role }}</option>
-        </select>
-      </label>
       <button v-if="currentUser" class="btn btn-sm" type="button" :disabled="isLoggingOut" @click="openPasswordModal">
         <i class="mdi mdi-lock-reset"></i>
         Đổi mật khẩu
@@ -220,8 +203,6 @@ watch(() => store.currentRole, () => {
 .user-chip { min-width: 150px; }
 .user-chip strong { font-size: 14px; line-height: 18px; }
 .user-chip span { display: block; line-height: 18px; }
-.role-picker { display: flex; align-items: center; gap: 8px; }
-.role-picker .select { width: 180px; min-height: 36px; padding-block: 7px; }
 .password-modal { width: min(520px, 100%); }
 .password-form { margin: 0; }
 .modal-desc { margin: 4px 0 0; color: var(--muted); }
@@ -237,7 +218,7 @@ watch(() => store.currentRole, () => {
 @media (max-width: 720px) {
   .topbar, .topbar-actions { align-items: flex-start; height: auto; flex-direction: column; }
   .topbar { padding: 12px 16px; }
-  .topbar-actions, .topbar-actions .btn, .role-picker, .role-picker .select, .password-success { width: 100%; }
+  .topbar-actions, .topbar-actions .btn, .password-success { width: 100%; }
   .modal-foot { flex-direction: column-reverse; }
   .modal-foot .btn { width: 100%; }
 }

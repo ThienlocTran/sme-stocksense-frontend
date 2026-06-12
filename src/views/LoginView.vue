@@ -1,14 +1,18 @@
 <script setup>
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { login as loginWithPassword } from '../services/authService'
+import { useAuthStore } from '../stores/auth'
 
+const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const form = reactive({ email: '', password: '' })
 const fieldErrors = reactive({ email: '', password: '' })
 const generalError = ref('')
 const successMessage = ref('')
 const isSubmitting = ref(false)
+const showPassword = ref(false)
 
 async function submitLogin() {
   if (isSubmitting.value) return
@@ -18,6 +22,7 @@ async function submitLogin() {
 
   try {
     const response = await loginWithPassword(form.email.trim(), form.password)
+    authStore.syncFromStorage()
     successMessage.value = 'Đăng nhập thành công.'
     router.push(getPostLoginRoute(response.role))
   } catch (error) {
@@ -37,6 +42,10 @@ function clearMessages() {
 }
 
 function getPostLoginRoute(role) {
+  if (typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//')) {
+    return route.query.redirect
+  }
+
   const routesByRole = {
     ADMIN: '/dashboard',
     MANAGER: '/dashboard',
@@ -78,15 +87,27 @@ function getPostLoginRoute(role) {
 
         <label class="field">
           <span>Mật khẩu</span>
-          <input
-            v-model="form.password"
-            class="input"
-            :class="{ invalid: fieldErrors.password }"
-            type="password"
-            autocomplete="current-password"
-            placeholder="Nhập mật khẩu"
-            :disabled="isSubmitting"
-          />
+          <div class="password-input-wrap">
+            <input
+              v-model="form.password"
+              class="input password-input"
+              :class="{ invalid: fieldErrors.password }"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="Nhập mật khẩu"
+              :disabled="isSubmitting"
+            />
+            <button
+              class="password-toggle"
+              type="button"
+              :disabled="isSubmitting"
+              :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+              :title="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+              @click="showPassword = !showPassword"
+            >
+              <i class="mdi" :class="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"></i>
+            </button>
+          </div>
           <small v-if="fieldErrors.password" class="field-error">{{ fieldErrors.password }}</small>
         </label>
 
@@ -113,6 +134,12 @@ function getPostLoginRoute(role) {
 .error-alert { color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; }
 .success-alert { color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; }
 .field-error { color: var(--danger); font-weight: 600; line-height: 18px; }
+.password-input-wrap { position: relative; }
+.password-input { padding-right: 46px; }
+.password-toggle { position: absolute; top: 50%; right: 8px; width: 34px; height: 34px; display: grid; place-items: center; transform: translateY(-50%); border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.password-toggle:hover { background: #f1f5f9; color: var(--text); }
+.password-toggle:disabled { cursor: not-allowed; opacity: 0.55; }
+.password-toggle i { font-size: 20px; line-height: 1; }
 .input.invalid { border-color: var(--danger); }
 .input:disabled { background: #f8fafc; color: var(--muted); }
 .mdi-spin { animation: spin 0.8s linear infinite; }
