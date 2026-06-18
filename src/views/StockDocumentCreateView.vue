@@ -21,6 +21,18 @@ const warehouses = ref([])
 const suppliers = ref([])
 const products = ref([])
 
+const loadingState = reactive({
+  warehouses: false,
+  suppliers: false,
+  products: false,
+})
+
+const errorState = reactive({
+  warehouses: '',
+  suppliers: '',
+  products: '',
+})
+
 const form = reactive({
   warehouseId: null,
   supplierId: null,
@@ -54,22 +66,53 @@ onMounted(async () => {
 async function loadDropdowns() {
   isLoading.value = true
   errorMessage.value = ''
+  errorState.warehouses = ''
+  errorState.suppliers = ''
+  errorState.products = ''
 
-  try {
-    const [whData, suppData, prodData] = await Promise.all([
-      getWarehouses(),
-      getSuppliers(),
-      getProducts(),
-    ])
+  const results = await Promise.allSettled([
+    getWarehouses(),
+    getSuppliers(),
+    getProducts(),
+  ])
 
-    warehouses.value = whData
-    suppliers.value = suppData
-    products.value = prodData
-  } catch (error) {
-    errorMessage.value = error.message
-    if (error.status === 401) router.replace('/login')
-  } finally {
-    isLoading.value = false
+  const [whResult, suppResult, prodResult] = results
+
+  if (whResult.status === 'fulfilled') {
+    warehouses.value = whResult.value
+    if (whResult.value.length === 0) {
+      errorState.warehouses = 'Không có kho nào đang hoạt động.'
+    }
+  } else {
+    errorState.warehouses = whResult.reason?.message || 'Không thể tải danh sách kho.'
+    if (whResult.reason?.status === 401) router.replace('/login')
+  }
+
+  if (suppResult.status === 'fulfilled') {
+    suppliers.value = suppResult.value
+    if (suppResult.value.length === 0) {
+      errorState.suppliers = 'Không có nhà cung cấp nào đang hoạt động.'
+    }
+  } else {
+    errorState.suppliers = suppResult.reason?.message || 'Không thể tải danh sách nhà cung cấp.'
+    if (suppResult.reason?.status === 401) router.replace('/login')
+  }
+
+  if (prodResult.status === 'fulfilled') {
+    products.value = prodResult.value
+    if (prodResult.value.length === 0) {
+      errorState.products = 'Không có sản phẩm nào đang hoạt động.'
+    }
+  } else {
+    errorState.products = prodResult.reason?.message || 'Không thể tải danh sách sản phẩm.'
+    if (prodResult.reason?.status === 401) router.replace('/login')
+  }
+
+  isLoading.value = false
+
+  const hasAnyError = errorState.warehouses || errorState.suppliers || errorState.products
+  if (hasAnyError && warehouses.value.length === 0 && suppliers.value.length === 0 && products.value.length === 0) {
+    errorMessage.value = 'Không thể tải dữ liệu nền. Vui lòng thử lại sau.'
   }
 }
 
@@ -265,15 +308,16 @@ function formatCurrency(value) {
             <select
               v-model="form.warehouseId"
               class="import-receipt-form__select"
-              :class="{ 'import-receipt-form__select--error': formErrors.warehouseId }"
-              :disabled="isSaving"
+              :class="{ 'import-receipt-form__select--error': formErrors.warehouseId || errorState.warehouses }"
+              :disabled="isSaving || warehouses.length === 0"
             >
-              <option :value="null" disabled>Chọn kho</option>
+              <option :value="null" disabled>{{ warehouses.length === 0 ? 'Không có kho' : 'Chọn kho' }}</option>
               <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
                 {{ warehouse.tenKho }}
               </option>
             </select>
             <span v-if="formErrors.warehouseId" class="import-receipt-form__error">{{ formErrors.warehouseId }}</span>
+            <span v-else-if="errorState.warehouses" class="import-receipt-form__error">{{ errorState.warehouses }}</span>
           </div>
 
           <div class="import-receipt-form__field">
@@ -281,15 +325,16 @@ function formatCurrency(value) {
             <select
               v-model="form.supplierId"
               class="import-receipt-form__select"
-              :class="{ 'import-receipt-form__select--error': formErrors.supplierId }"
-              :disabled="isSaving"
+              :class="{ 'import-receipt-form__select--error': formErrors.supplierId || errorState.suppliers }"
+              :disabled="isSaving || suppliers.length === 0"
             >
-              <option :value="null" disabled>Chọn nhà cung cấp</option>
+              <option :value="null" disabled>{{ suppliers.length === 0 ? 'Không có nhà cung cấp' : 'Chọn nhà cung cấp' }}</option>
               <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
                 {{ supplier.tenDoiTac }}
               </option>
             </select>
             <span v-if="formErrors.supplierId" class="import-receipt-form__error">{{ formErrors.supplierId }}</span>
+            <span v-else-if="errorState.suppliers" class="import-receipt-form__error">{{ errorState.suppliers }}</span>
           </div>
 
           <div class="import-receipt-form__field" style="grid-column: 1 / -1">
@@ -315,15 +360,16 @@ function formatCurrency(value) {
             <select
               v-model="itemDraft.productId"
               class="import-receipt-form__select"
-              :class="{ 'import-receipt-form__select--error': itemErrors.productId }"
-              :disabled="isSaving"
+              :class="{ 'import-receipt-form__select--error': itemErrors.productId || errorState.products }"
+              :disabled="isSaving || products.length === 0"
             >
-              <option :value="null" disabled>Chọn sản phẩm</option>
+              <option :value="null" disabled>{{ products.length === 0 ? 'Không có sản phẩm' : 'Chọn sản phẩm' }}</option>
               <option v-for="product in products" :key="product.id" :value="product.id">
                 {{ product.name }} ({{ product.code || product.sku }})
               </option>
             </select>
             <span v-if="itemErrors.productId" class="import-receipt-form__error">{{ itemErrors.productId }}</span>
+            <span v-else-if="errorState.products" class="import-receipt-form__error">{{ errorState.products }}</span>
           </div>
 
           <div class="import-receipt-form__field">
