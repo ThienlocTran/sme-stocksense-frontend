@@ -197,15 +197,12 @@ const props = defineProps({
   partner: {
     type: Object,
     default: null
-  },
-  mockMode: {
-    type: Boolean,
-    default: false
   }
 })
 
 const emit = defineEmits(['update:modelValue', 'saved'])
 const authStore = useAuthStore()
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8083'
 
 // State
 const isOpen = computed({
@@ -312,34 +309,20 @@ const submitForm = async () => {
   errorMessage.value = ''
 
   try {
-    if (props.mockMode) {
-      // Giả lập lưu thành công khi hoạt động ở mock mode
-      await new Promise(resolve => setTimeout(resolve, 800))
-      const savedObj = {
-        ...form.value,
-        id: isEdit.value ? props.partner.id : Date.now(),
-        maDoiTac: isEdit.value ? props.partner.maDoiTac : 'DT-' + Math.random().toString(36).substring(2, 8).toUpperCase()
-      }
-      emit('saved', savedObj)
-      closeForm()
-    } else {
-      // Gọi API thật
-      const config = {}
-      if (authStore.token) {
-        config.headers = { Authorization: `Bearer ${authStore.token}` }
-      }
-
-      let response
-      if (isEdit.value) {
-        response = await axios.put(`http://localhost:8080/api/partners/${props.partner.id}`, form.value, config)
-      } else {
-        // Create request có maDoiTac tự sinh, ta không cần truyền maDoiTac nếu form không nhập (để backend sinh)
-        response = await axios.post('http://localhost:8080/api/partners', form.value, config)
-      }
-
-      emit('saved', response.data)
-      closeForm()
+    const config = {}
+    if (authStore.token) {
+      config.headers = { Authorization: `Bearer ${authStore.token}` }
     }
+
+    let response
+    if (isEdit.value) {
+      response = await axios.put(`${API_BASE_URL}/api/partners/${props.partner.id}`, form.value, config)
+    } else {
+      response = await axios.post(`${API_BASE_URL}/api/partners`, form.value, config)
+    }
+
+    emit('saved', response.data)
+    closeForm()
   } catch (error) {
     console.error('Lỗi khi lưu đối tác:', error)
     if (error.response) {
@@ -362,17 +345,7 @@ const submitForm = async () => {
         errorMessage.value = 'Đã xảy ra lỗi không xác định từ phía máy chủ.'
       }
     } else {
-      errorMessage.value = 'Không thể kết nối đến máy chủ. Đang tự động lưu giả lập cục bộ...'
-      // Tự động chuyển đổi lưu giả lập nếu máy chủ sập giữa chừng
-      setTimeout(() => {
-        const savedObj = {
-          ...form.value,
-          id: isEdit.value ? props.partner.id : Date.now(),
-          maDoiTac: isEdit.value ? props.partner.maDoiTac : 'DT-' + Math.random().toString(36).substring(2, 8).toUpperCase()
-        }
-        emit('saved', savedObj)
-        closeForm()
-      }, 1000)
+      errorMessage.value = 'Không thể kết nối đến máy chủ. Vui lòng thử lại.'
     }
   } finally {
     submitting.value = false

@@ -21,21 +21,6 @@
       </div>
     </div>
 
-    <!-- Alert / Toast Banner for Mock Status -->
-    <div 
-      v-if="isMockData"
-      class="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-2xl p-4 flex items-start gap-3 transition-all duration-300"
-    >
-      <i class="mdi mdi-alert-circle text-amber-500 text-xl mt-0.5"></i>
-      <div>
-        <h4 class="font-semibold text-amber-800 dark:text-amber-400 text-sm m-0">Chế độ dữ liệu mô phỏng (Mock Data)</h4>
-        <p class="text-xs text-amber-700 dark:text-amber-500 mt-1">
-          Hệ thống đang hiển thị dữ liệu mô phỏng do chưa kết nối được tới Backend API (http://localhost:8080). 
-          Bộ lọc và tìm kiếm vẫn hoạt động giả lập cục bộ bình thường.
-        </p>
-      </div>
-    </div>
-
     <!-- Stats Summary Widgets -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center gap-4">
@@ -258,7 +243,6 @@
     <PartnerForm
       v-model="isFormOpen"
       :partner="selectedPartner"
-      :mockMode="isMockData"
       @saved="handlePartnerSaved"
     />
 
@@ -285,11 +269,11 @@ import { useAuthStore } from '../stores/auth'
 import PartnerForm from '../components/PartnerForm.vue'
 
 const authStore = useAuthStore()
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8083'
 
 // State
 const partners = ref([])
 const loading = ref(false)
-const isMockData = ref(false)
 const isFormOpen = ref(false)
 const selectedPartner = ref(null)
 const statusUpdatingId = ref(null)
@@ -316,73 +300,13 @@ const canManage = computed(() => {
   return authStore.currentRole === 'ADMIN' || authStore.currentRole === 'MANAGER'
 })
 
-// MOCK DATA phục vụ fallback
-const mockPartners = ref([
-  {
-    id: 1,
-    maDoiTac: 'NCC001',
-    tenDoiTac: 'Công ty Cổ phần Vận tải & Logistics ABC',
-    loaiDoiTac: 'NHA_CUNG_CAP',
-    nguoiLienHe: 'Nguyễn Văn Hùng',
-    soDienThoai: '0987654321',
-    email: 'hung.nguyen@abc-logistics.com',
-    diaChi: '123 Lê Lợi, Quận 1, TP. HCM',
-    trangThai: 'HOAT_DONG'
-  },
-  {
-    id: 2,
-    maDoiTac: 'KH002',
-    tenDoiTac: 'Đại lý Bán lẻ Minh Minh',
-    loaiDoiTac: 'KHACH_HANG',
-    nguoiLienHe: 'Trần Thị Minh',
-    soDienThoai: '0912345678',
-    email: 'minh.tran@minhminh.vn',
-    diaChi: '456 Nguyễn Huệ, Quận 3, TP. HCM',
-    trangThai: 'HOAT_DONG'
-  },
-  {
-    id: 3,
-    maDoiTac: 'CH003',
-    tenDoiTac: 'Hợp tác xã Nông nghiệp Xanh',
-    loaiDoiTac: 'CA_HAI',
-    nguoiLienHe: 'Lê Hoàng Nam',
-    soDienThoai: '0905112233',
-    email: 'nam.le@nongnghiepxanh.org',
-    diaChi: 'Đường 30/4, Quận Hải Châu, Đà Nẵng',
-    trangThai: 'NGUNG_HOAT_DONG'
-  },
-  {
-    id: 4,
-    maDoiTac: 'NCC004',
-    tenDoiTac: 'Công ty TNHH Nhập khẩu Việt Trung',
-    loaiDoiTac: 'NHA_CUNG_CAP',
-    nguoiLienHe: 'Chu Quốc Bảo',
-    soDienThoai: '0944889900',
-    email: 'bao.chu@viettrungimex.com',
-    diaChi: 'Cửa khẩu Hữu Nghị, Lạng Sơn',
-    trangThai: 'HOAT_DONG'
-  },
-  {
-    id: 5,
-    maDoiTac: 'KH005',
-    tenDoiTac: 'Siêu thị MartOne Việt Nam',
-    loaiDoiTac: 'KHACH_HANG',
-    nguoiLienHe: 'Phạm Minh Anh',
-    soDienThoai: '0966554433',
-    email: 'minhanh@martone.com.vn',
-    diaChi: '789 Lạc Long Quân, Quận Tây Hồ, Hà Nội',
-    trangThai: 'HOAT_DONG'
-  }
-])
-
 // Computed stats
 const stats = computed(() => {
-  const currentList = isMockData.value ? getLocalFilteredMock() : partners.value
   return {
-    total: currentList.length,
-    providers: currentList.filter(p => p.loaiDoiTac === 'NHA_CUNG_CAP').length,
-    customers: currentList.filter(p => p.loaiDoiTac === 'KHACH_HANG').length,
-    both: currentList.filter(p => p.loaiDoiTac === 'CA_HAI').length
+    total: partners.value.length,
+    providers: partners.value.filter(p => p.loaiDoiTac === 'NHA_CUNG_CAP').length,
+    customers: partners.value.filter(p => p.loaiDoiTac === 'KHACH_HANG').length,
+    both: partners.value.filter(p => p.loaiDoiTac === 'CA_HAI').length
   }
 })
 
@@ -423,57 +347,29 @@ const getTypeIcon = (type) => {
   }
 }
 
-// CALL API HOẶC LOCAL FALLBACK
+// CALL API
 const fetchPartners = async () => {
   loading.value = true
   try {
-    // Gọi API thật từ backend
     const params = {}
     if (filters.keyword.trim()) params.keyword = filters.keyword.trim()
     if (filters.loaiDoiTac) params.loaiDoiTac = filters.loaiDoiTac
     if (filters.trangThai) params.trangThai = filters.trangThai
 
-    // Định cấu hình headers nếu có token
     const config = { params }
     if (authStore.token) {
       config.headers = { Authorization: `Bearer ${authStore.token}` }
     }
 
-    const response = await axios.get('http://localhost:8080/api/partners', config)
+    const response = await axios.get(`${API_BASE_URL}/api/partners`, config)
     partners.value = response.data
-    isMockData.value = false
   } catch (error) {
-    console.warn('Backend API connection failed, falling back to local mock data.', error)
-    // Nếu gọi API thật lỗi, kích hoạt Mock mode và tự lọc cục bộ
-    isMockData.value = true
-    partners.value = getLocalFilteredMock()
+    console.error('Không thể tải danh sách đối tác:', error)
+    partners.value = []
+    showToast('Không thể kết nối đến máy chủ. Vui lòng thử lại.', 'error')
   } finally {
     loading.value = false
   }
-}
-
-// Xử lý lọc cục bộ cho Mock Data
-const getLocalFilteredMock = () => {
-  return mockPartners.value.filter(item => {
-    // Filter keyword
-    if (filters.keyword.trim()) {
-      const kw = filters.keyword.toLowerCase().trim()
-      const matchName = item.tenDoiTac.toLowerCase().includes(kw)
-      const matchCode = item.maDoiTac.toLowerCase().includes(kw)
-      const matchPhone = item.soDienThoai && item.soDienThoai.includes(kw)
-      const matchContact = item.nguoiLienHe && item.nguoiLienHe.toLowerCase().includes(kw)
-      if (!matchName && !matchCode && !matchPhone && !matchContact) return false
-    }
-    // Filter type
-    if (filters.loaiDoiTac && item.loaiDoiTac !== filters.loaiDoiTac) {
-      return false
-    }
-    // Filter status
-    if (filters.trangThai && item.trangThai !== filters.trangThai) {
-      return false
-    }
-    return true
-  })
 }
 
 // Open Form Add/Edit
@@ -496,21 +392,7 @@ const showToast = (message, color = 'success') => {
 // Xử lý sau khi lưu thành công từ form
 const handlePartnerSaved = (savedPartner) => {
   showToast(selectedPartner.value ? 'Cập nhật thông tin đối tác thành công!' : 'Thêm mới đối tác thành công!', 'success')
-  if (isMockData.value) {
-    if (selectedPartner.value) {
-      // Cập nhật phần tử trong danh sách mock
-      const idx = mockPartners.value.findIndex(p => p.id === savedPartner.id)
-      if (idx !== -1) {
-        mockPartners.value[idx] = savedPartner
-      }
-    } else {
-      // Thêm mới vào đầu danh sách mock
-      mockPartners.value.unshift(savedPartner)
-    }
-    partners.value = getLocalFilteredMock()
-  } else {
-    fetchPartners()
-  }
+  fetchPartners()
 }
 
 // Toggle trạng thái đối tác trực tiếp từ bảng
@@ -519,36 +401,28 @@ const togglePartnerStatus = async (partner) => {
   const newStatus = partner.trangThai === 'HOAT_DONG' ? 'NGUNG_HOAT_DONG' : 'HOAT_DONG'
   
   try {
-    if (isMockData.value) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      partner.trangThai = newStatus
-      showToast(newStatus === 'HOAT_DONG' ? 'Đã kích hoạt lại đối tác.' : 'Đã ngừng hoạt động đối tác.', 'success')
-      partners.value = getLocalFilteredMock()
-    } else {
-      const config = {}
-      if (authStore.token) {
-        config.headers = { Authorization: `Bearer ${authStore.token}` }
-      }
-      
-      const requestBody = {
-        tenDoiTac: partner.tenDoiTac,
-        loaiDoiTac: partner.loaiDoiTac,
-        nguoiLienHe: partner.nguoiLienHe,
-        soDienThoai: partner.soDienThoai,
-        email: partner.email,
-        diaChi: partner.diaChi,
-        trangThai: newStatus
-      }
-      
-      const response = await axios.put(`http://localhost:8080/api/partners/${partner.id}`, requestBody, config)
-      
-      // Cập nhật lại trong danh sách cục bộ
-      const idx = partners.value.findIndex(p => p.id === partner.id)
-      if (idx !== -1) {
-        partners.value[idx] = response.data
-      }
-      showToast(newStatus === 'HOAT_DONG' ? 'Đã kích hoạt lại đối tác.' : 'Đã ngừng hoạt động đối tác.', 'success')
+    const config = {}
+    if (authStore.token) {
+      config.headers = { Authorization: `Bearer ${authStore.token}` }
     }
+
+    const requestBody = {
+      tenDoiTac: partner.tenDoiTac,
+      loaiDoiTac: partner.loaiDoiTac,
+      nguoiLienHe: partner.nguoiLienHe,
+      soDienThoai: partner.soDienThoai,
+      email: partner.email,
+      diaChi: partner.diaChi,
+      trangThai: newStatus
+    }
+
+    const response = await axios.put(`${API_BASE_URL}/api/partners/${partner.id}`, requestBody, config)
+
+    const idx = partners.value.findIndex(p => p.id === partner.id)
+    if (idx !== -1) {
+      partners.value[idx] = response.data
+    }
+    showToast(newStatus === 'HOAT_DONG' ? 'Đã kích hoạt lại đối tác.' : 'Đã ngừng hoạt động đối tác.', 'success')
   } catch (error) {
     console.error('Lỗi khi thay đổi trạng thái đối tác:', error)
     showToast('Thao tác thất bại. Vui lòng kiểm tra lại quyền truy cập.', 'error')
