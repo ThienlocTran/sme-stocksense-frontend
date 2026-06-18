@@ -1,8 +1,7 @@
 <script setup>
 import { computed } from 'vue'
-import { useInventoryStore } from '../data/useInventoryStore'
+import { getCurrentRoleCode } from '../services/authService'
 
-const store = useInventoryStore()
 const items = [
   ['Tổng quan', '/dashboard', 'mdi-view-dashboard-outline'],
   ['Sản phẩm', '/products', 'mdi-package-variant-closed'],
@@ -19,8 +18,9 @@ const items = [
   ['Nhân viên & phân quyền', '/users', 'mdi-account-cog-outline', 'admin'],
 ]
 const visibleItems = computed(() => items.filter(item => {
-  if (item[3] === 'admin') return store.isAdmin
-  if (item[3] === 'approval') return store.isAdmin || store.isManager
+  const role = getCurrentRoleCode()
+  if (item[3] === 'admin') return role === 'ADMIN'
+  if (item[3] === 'approval') return role === 'ADMIN' || role === 'MANAGER'
   return true
 }))
 </script>

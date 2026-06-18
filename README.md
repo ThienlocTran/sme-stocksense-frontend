@@ -120,12 +120,12 @@ Màn hình quản lý đối tác được phát triển tại route `/partners`
   - Chỉ hiển thị nút "Thêm đối tác" và các thao tác chỉnh sửa, đổi trạng thái cho vai trò `ADMIN` hoặc `MANAGER`.
   - Ẩn hoàn toàn các thành phần thay đổi dữ liệu đối với vai trò thủ kho (`EMPLOYEE`) để chuyển sang chế độ chỉ xem thông tin.
   - Hộp chọn nhanh vai trò kiểm thử trên Header giúp thay đổi phân quyền động dễ dàng.
-- **Tích hợp API & Cơ chế tự động fallback**:
+- **Tích hợp API**:
   - Giao diện kết nối thực tế tới Backend:
     - `GET http://localhost:8080/api/partners` (Lấy danh sách đối tác).
     - `POST http://localhost:8080/api/partners` (Tạo mới đối tác).
     - `PUT http://localhost:8080/api/partners/{id}` (Cập nhật đối tác / Đổi trạng thái).
   - Tự động map lỗi validate trả về từ máy chủ (`400 Bad Request`) lên trực tiếp giao diện form input.
-  - Nếu kết nối tới Backend thất bại, hệ thống tự động fallback sử dụng dữ liệu mô phỏng (`mockPartners`) và thực hiện thêm/sửa/đổi trạng thái giả lập trên bộ nhớ cục bộ để đảm bảo trải nghiệm giao diện xuyên suốt.
+  - Nếu kết nối tới Backend thất bại, giao diện hiển thị lỗi API; không dùng dữ liệu mô phỏng trong luồng production.
 
 

@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useInventoryStore } from '../data/useInventoryStore'
 import { getCurrentRoleCode, isAuthenticated } from '../services/authService'
 import DashboardView from '../views/DashboardView.vue'
 import ProductsView from '../views/ProductsView.vue'
@@ -50,7 +49,6 @@ const router = createRouter({
 })
 
 router.beforeEach(to => {
-  const store = useInventoryStore()
   const isAuthRoute = to.meta.layout === 'auth'
   const authenticated = isAuthenticated()
 
@@ -59,8 +57,6 @@ router.beforeEach(to => {
   }
 
   if (isAuthRoute && authenticated) return '/dashboard'
-
-  store.syncRoleFromAuth()
 
   if (!canAccessRoute(to.path, getCurrentRoleCode())) return '/dashboard'
   return true

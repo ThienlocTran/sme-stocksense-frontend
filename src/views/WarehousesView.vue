@@ -20,12 +20,11 @@ import PageHeader from '../components/PageHeader.vue'
 import SearchFilterBar from '../components/SearchFilterBar.vue'
 import DataTable from '../components/DataTable.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { useInventoryStore } from '../data/useInventoryStore'
+import { getCurrentRoleCode } from '../services/authService'
 import { getWarehouses, createWarehouse, updateWarehouse } from '../services/warehouseService'
 import { getWarehouseStatusLabel, warehouseStatusOptions } from '../constants/warehouseOptions'
 
 const router = useRouter()
-const store = useInventoryStore()
 
 const warehouses = ref([])
 const isLoading = ref(false)
@@ -51,7 +50,7 @@ const statusOptions = [
 ]
 
 // Phân quyền thao tác quản trị: Admin / IT và Quản lý kho được phép thực hiện
-const canManage = computed(() => store.isAdmin || store.isManager)
+const canManage = computed(() => ['ADMIN', 'MANAGER'].includes(getCurrentRoleCode()))
 const isEditMode = computed(() => formMode.value === 'edit')
 const formTitle = computed(() => isEditMode.value ? 'Sửa kho hàng' : 'Thêm kho hàng')
 
