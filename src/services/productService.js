@@ -76,7 +76,7 @@ export async function getProductCategories() {
   try {
     const { data } = await productClient.get('/api/categories', {
       headers: getAuthorizationHeader(),
-      params: { page: 0, size: 200, status: 'HOAT_DONG' },
+      params: { page: 0, size: 100, status: 'HOAT_DONG' },
     })
     return data.content || []
   } catch (error) {
