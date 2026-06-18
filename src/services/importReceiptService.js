@@ -26,6 +26,63 @@ export async function getMyImportReceipts({ page = 0, size = 10, status = '' } =
   }
 }
 
+export async function createImportReceipt(payload) {
+  try {
+    const { data } = await importReceiptClient.post('/api/import-receipts', payload, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tạo phiếu nhập.')
+  }
+}
+
+export async function saveDraft(receiptId, payload) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/draft`, payload, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể lưu phiếu nhập.')
+  }
+}
+
+export async function getWarehouses() {
+  try {
+    const { data } = await importReceiptClient.get('/api/warehouses', {
+      headers: getAuthorizationHeader(),
+      params: { status: 'HOAT_DONG' },
+    })
+    return data || []
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tải danh sách kho.')
+  }
+}
+
+export async function getSuppliers() {
+  try {
+    const { data } = await importReceiptClient.get('/api/partners/dropdown/suppliers', {
+      headers: getAuthorizationHeader(),
+    })
+    return data || []
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tải danh sách nhà cung cấp.')
+  }
+}
+
+export async function getProducts() {
+  try {
+    const { data } = await importReceiptClient.get('/api/products', {
+      headers: getAuthorizationHeader(),
+      params: { page: 0, size: 1000, trangThai: 'HOAT_DONG' },
+    })
+    return data.content || []
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tải danh sách sản phẩm.')
+  }
+}
+
 function normalizeImportReceiptError(error, fallbackMessage) {
   if (error.response?.status === 401) {
     clearAuth()
