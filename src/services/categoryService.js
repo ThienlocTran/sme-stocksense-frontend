@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { clearAuth, getAuthorizationHeader } from './authService'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8083'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 const categoryClient = axios.create({
   baseURL: API_BASE_URL,

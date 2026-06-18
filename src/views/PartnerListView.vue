@@ -269,7 +269,7 @@ import { useAuthStore } from '../stores/auth'
 import PartnerForm from '../components/PartnerForm.vue'
 
 const authStore = useAuthStore()
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8083'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 // State
 const partners = ref([])
