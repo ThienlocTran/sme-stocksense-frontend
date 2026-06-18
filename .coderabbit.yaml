@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: vi-VN
+focus: high
+tone_instructions: "Ngắn gọn, dễ hiểu cho developer junior. Chỉ nêu lỗi có tác động thực tế; bỏ qua formatting vụn vặt."
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  changed_files_summary: true
+  sequence_diagrams: false
+  poem: false
+  in_progress_fortune: false
+  review_details: false
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    base_branches:
+      - dev
+      - main
+      - release/.*
+    ignore_usernames:
+      - dependabot[bot]
+      - renovate[bot]
+      - github-actions[bot]
+  path_filters:
+    - "!node_modules/**"
+    - "!dist/**"
+    - "!coverage/**"
+    - "!*.map"
+    - "!**/*.map"
+    - "!**/generated/**"
+    - "!**/generated-sources/**"
+    - "!**/__generated__/**"
+    - "!.idea/**"
+    - "!.vscode/**"
+    - "!**/*.iml"
+    - "!.settings/**"
+    - "!.classpath"
+    - "!.project"
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        Review bằng tiếng Việt. Ưu tiên lỗi ảnh hưởng thật: correctness, auth, role gating, async flow, state consistency, API error handling và dữ liệu nhạy cảm.
+        Không comment style/format/import nếu không gây lỗi chức năng. Không đề xuất đổi lớn khi patch nhỏ đủ xử lý.
+        Bối cảnh StockSense: role ADMIN/MANAGER/EMPLOYEE; UI phải phản ánh đúng quyền; nhân viên tạo phiếu; manager duyệt; chỉ phiếu hoàn thành mới làm thay đổi tồn kho; không suy diễn bán hàng luôn phải kiểm kho real-time.
+    - path: "src/services/**"
+      instructions: |
+        Kiểm tra loading/timeout/network error/HTTP error, Promise hoặc await bị bỏ quên, response mapping và null handling.
+        Kiểm tra token và thông tin nhạy cảm; không log token hoặc dữ liệu người dùng. Phát hiện API call trùng hoặc retry không kiểm soát.
+    - path: "src/router/**"
+      instructions: |
+        Kiểm tra route guard, redirect loop, truy cập route trái phép và phân quyền ADMIN/MANAGER/EMPLOYEE.
+        Nhắc rõ frontend guard chỉ hỗ trợ UX, không thay thế authorization ở backend.
+    - path: "src/stores/**"
+      instructions: |
+        Kiểm tra stale state, reset state khi logout/đổi user, mutation ngoài ý muốn và dữ liệu không đồng bộ với localStorage/API.
+        Với auth store, chú ý token handling, user/role state sau refresh và logout sạch.
+    - path: "src/data/**"
+      instructions: |
+        Đây là store/mock-state hiện có của app. Kiểm tra stale state, mutation ngoài ý muốn, quyền theo role và nghiệp vụ phiếu kho.
+        Không để logic làm thay đổi tồn kho trước khi phiếu hoàn thành.
+    - path: "src/components/**"
+      instructions: |
+        Kiểm tra loading, empty state, error state, form validation, cleanup timer/listener/watcher và key trong danh sách.
+        Phát hiện logic nghiệp vụ đặt sai trong component hoặc component tự quyết quyền thay vì dùng state/router/service thống nhất.
+    - path: "src/views/**"
+      instructions: |
+        Kiểm tra loading, empty state, error state, form validation, cleanup timer/listener/watcher và key trong danh sách.
+        Kiểm tra UI theo role ADMIN/MANAGER/EMPLOYEE, luồng tạo/duyệt phiếu và không cập nhật tồn kho khi phiếu chưa hoàn thành.
+        Không soi formatting nhỏ nếu không ảnh hưởng chức năng.
+    - path: "src/App.vue"
+      instructions: |
+        Kiểm tra layout auth/main, hiển thị theo route meta, trạng thái đăng nhập và rò rỉ dữ liệu người dùng.
+    - path: "src/main.js"
+      instructions: |
+        Kiểm tra thứ tự khởi tạo Vue plugin, Pinia, router, Vuetify và lỗi cấu hình làm app không mount đúng.
+    - path: "src/constants/**"
+      instructions: |
+        Kiểm tra enum/option label-value đồng bộ với backend, đặc biệt role ADMIN/MANAGER/EMPLOYEE và status nghiệp vụ.
+
+chat:
+  art: false
+
+knowledge_base:
+  web_search:
+    enabled: true
