@@ -274,7 +274,6 @@ function formatCurrency(value) {
     <template #status="{ value }"><StatusBadge :status="value" /></template>
     <template #actions="{ row }">
       <div class="actions">
-        <button class="btn btn-sm" type="button" @click="openEditForm(row)">Xem</button>
         <button v-if="canManage" class="btn btn-sm" type="button" @click="openEditForm(row)">Sửa</button>
         <button v-if="canManage" class="btn btn-sm" type="button" @click="toggleStatus(row)">{{ row.status === 'HOAT_DONG' ? 'Ngừng' : 'Kích hoạt' }}</button>
       </div>
