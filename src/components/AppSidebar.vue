@@ -5,6 +5,7 @@ import { getCurrentRoleCode } from '../services/authService'
 const items = [
   ['Tổng quan', '/dashboard', 'mdi-view-dashboard-outline'],
   ['Sản phẩm', '/products', 'mdi-package-variant-closed'],
+  ['Nhà cung cấp', '/partners', 'mdi-truck-delivery-outline', 'manage'],
   ['Danh mục', '/categories', 'mdi-shape-outline'],
   ['Kho hàng', '/warehouses', 'mdi-warehouse'],
   ['Tồn kho', '/inventory', 'mdi-clipboard-list-outline'],
@@ -20,6 +21,7 @@ const items = [
 const visibleItems = computed(() => items.filter(item => {
   const role = getCurrentRoleCode()
   if (item[3] === 'admin') return role === 'ADMIN'
+  if (item[3] === 'manage') return role === 'ADMIN' || role === 'MANAGER'
   if (item[3] === 'approval') return role === 'ADMIN' || role === 'MANAGER'
   return true
 }))
