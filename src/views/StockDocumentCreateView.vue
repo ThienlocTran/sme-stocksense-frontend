@@ -57,6 +57,16 @@ const pageTitle = computed(() => {
   return isEditMode.value ? 'Sửa phiếu nhập kho' : 'Tạo phiếu nhập kho'
 })
 
+const detailCount = computed(() => items.value.length)
+
+const totalQuantity = computed(() => {
+  return items.value.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+})
+
+const totalAmountPreview = computed(() => {
+  return items.value.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0)
+})
+
 onMounted(async () => {
   if (props.type === 'in' && isCreateMode.value) {
     await loadDropdowns()
@@ -206,11 +216,6 @@ function removeItem(index) {
 async function handleSaveDraft() {
   if (!validateForm()) {
     errorMessage.value = 'Vui lòng kiểm tra lại thông tin phiếu nhập.'
-    return
-  }
-
-  if (items.value.length === 0) {
-    errorMessage.value = 'Vui lòng thêm ít nhất một sản phẩm vào phiếu nhập.'
     return
   }
 
@@ -423,11 +428,12 @@ function formatCurrency(value) {
       </section>
 
       <section v-if="items.length > 0" class="import-receipt-form__section">
-        <h3 class="import-receipt-form__section-title">Danh sách sản phẩm ({{ items.length }})</h3>
+        <h3 class="import-receipt-form__section-title">Danh sách sản phẩm ({{ detailCount }} dòng)</h3>
 
         <table class="import-receipt-form__items-table">
           <thead>
             <tr>
+              <th style="width: 50px; text-align: center">STT</th>
               <th>Mã SP</th>
               <th>Tên sản phẩm</th>
               <th style="text-align: right">Số lượng</th>
@@ -439,6 +445,7 @@ function formatCurrency(value) {
           </thead>
           <tbody>
             <tr v-for="(item, index) in items" :key="index">
+              <td style="text-align: center">{{ index + 1 }}</td>
               <td>{{ item.productCode }}</td>
               <td>{{ item.productName }}</td>
               <td style="text-align: right">{{ item.quantity }}</td>
@@ -452,12 +459,32 @@ function formatCurrency(value) {
               </td>
             </tr>
           </tbody>
+          <tfoot>
+            <tr class="import-receipt-form__summary-row">
+              <td colspan="3" style="text-align: right; font-weight: 600">Tổng cộng:</td>
+              <td style="text-align: right; font-weight: 700">{{ totalQuantity }}</td>
+              <td colspan="1"></td>
+              <td style="text-align: right; font-weight: 700; font-size: 16px" class="import-receipt-form__summary-total">
+                {{ formatCurrency(totalAmountPreview) }}
+              </td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
         </table>
+      </section>
+
+      <section v-else class="import-receipt-form__section">
+        <h3 class="import-receipt-form__section-title">Danh sách sản phẩm (0 dòng)</h3>
+        <div class="import-receipt-form__empty">
+          <i class="mdi mdi-package-variant-closed" style="font-size: 48px; color: #cbd5e1"></i>
+          <p>Chưa có sản phẩm nào được thêm vào phiếu nhập.</p>
+          <p class="muted">Thêm sản phẩm từ phần bên trên để bắt đầu.</p>
+        </div>
       </section>
 
       <div class="import-receipt-form__actions">
         <button class="btn btn-ghost" type="button" :disabled="isSaving" @click="goBack">Hủy</button>
-        <button class="btn btn-primary" type="submit" :disabled="isSaving || items.length === 0">
+        <button class="btn btn-primary" type="submit" :disabled="isSaving">
           <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
           <i v-else class="mdi mdi-content-save-outline"></i>
           {{ isSaving ? 'Đang lưu...' : 'Lưu phiếu nhập' }}
