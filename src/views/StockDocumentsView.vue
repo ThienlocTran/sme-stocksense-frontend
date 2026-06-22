@@ -124,7 +124,6 @@ async function handleSubmit(receipt) {
 
   try {
     await submitForApproval(receipt.id)
-    actionMessage.value = 'Gửi duyệt phiếu nhập thành công.'
     await fetchReceipts()
     actionMessage.value = 'Gửi duyệt phiếu nhập thành công.'
   } catch (error) {
@@ -147,7 +146,6 @@ async function handleCancel(receipt) {
 
   try {
     await cancelDraft(receipt.id)
-    actionMessage.value = 'Hủy phiếu nhập thành công.'
     await fetchReceipts()
     actionMessage.value = 'Hủy phiếu nhập thành công.'
   } catch (error) {

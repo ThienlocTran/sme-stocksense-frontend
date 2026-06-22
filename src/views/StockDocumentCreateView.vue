@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
@@ -174,8 +174,7 @@ async function loadReceiptDetail() {
     errorMessage.value = error.message || 'Không thể tải thông tin phiếu nhập.'
     if (error.status === 401) router.replace('/login')
   } finally {
-    isHydrating.value = false
-    isDirty.value = false
+    await markHydrationComplete()
     isLoading.value = false
   }
 }
@@ -211,11 +210,16 @@ function buildDraftPayload() {
   }
 }
 
-function applySavedReceipt(receipt) {
+async function markHydrationComplete() {
+  await nextTick()
+  isDirty.value = false
+  isHydrating.value = false
+}
+
+async function applySavedReceipt(receipt) {
   isHydrating.value = true
   hydrateReceipt(receipt)
-  isHydrating.value = false
-  isDirty.value = false
+  await markHydrationComplete()
 }
 
 function validateForm() {
@@ -335,7 +339,7 @@ async function handleSaveDraft() {
       savedReceipt = await saveDraft(receiptId.value, draftPayload)
     }
 
-    applySavedReceipt(savedReceipt)
+    await applySavedReceipt(savedReceipt)
     successMessage.value = receiptStatus.value === 'TU_CHOI'
       ? 'Lưu thay đổi phiếu nhập thành công.'
       : 'Lưu nháp phiếu nhập thành công.'
@@ -380,7 +384,7 @@ async function handleSubmitForApproval() {
 
   try {
     const receipt = await submitForApproval(receiptId.value)
-    applySavedReceipt(receipt)
+    await applySavedReceipt(receipt)
     successMessage.value = 'Gửi duyệt phiếu nhập thành công.'
     setTimeout(() => {
       router.push('/stock-in')
@@ -406,7 +410,7 @@ async function handleCancelDraft() {
 
   try {
     const receipt = await cancelDraft(receiptId.value)
-    applySavedReceipt(receipt)
+    await applySavedReceipt(receipt)
     successMessage.value = 'Hủy phiếu nhập thành công.'
     setTimeout(() => {
       router.push('/stock-in')
