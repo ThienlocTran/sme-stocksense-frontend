@@ -48,6 +48,50 @@ export async function saveDraft(receiptId, payload) {
   }
 }
 
+export async function updateEditable(receiptId, payload) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}`, payload, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'KhÃ´ng thá»ƒ lÆ°u thay Ä‘á»•i phiáº¿u nháº­p.')
+  }
+}
+
+export async function submitForApproval(receiptId) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/submit`, null, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'KhÃ´ng thá»ƒ gá»­i duyá»‡t phiáº¿u nháº­p.')
+  }
+}
+
+export async function cancelDraft(receiptId) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/cancel`, null, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'KhÃ´ng thá»ƒ há»§y phiáº¿u nháº­p.')
+  }
+}
+
+export async function getDetail(receiptId) {
+  try {
+    const { data } = await importReceiptClient.get(`/api/import-receipts/${receiptId}`, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'KhÃ´ng thá»ƒ táº£i thÃ´ng tin phiáº¿u nháº­p.')
+  }
+}
+
 export async function getWarehouses() {
   try {
     const { data } = await importReceiptClient.get('/api/warehouses', {
@@ -89,9 +133,10 @@ function normalizeImportReceiptError(error, fallbackMessage) {
   }
 
   if (error.response?.data) {
+    const status = error.response.status
     return {
-      status: error.response.status,
-      message: error.response.data.message || fallbackMessage,
+      status,
+      message: friendlyImportReceiptErrorMessage(status, fallbackMessage),
       errors: error.response.data.errors || {},
     }
   }
@@ -101,4 +146,13 @@ function normalizeImportReceiptError(error, fallbackMessage) {
     message: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.',
     errors: {},
   }
+}
+
+function friendlyImportReceiptErrorMessage(status, fallbackMessage) {
+  if (status === 401) return 'Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.'
+  if (status === 403) return 'Báº¡n khÃ´ng cÃ³ quyá»n thá»±c hiá»‡n thao tÃ¡c nÃ y.'
+  if (status === 404) return 'Phiáº¿u nháº­p khÃ´ng tá»“n táº¡i.'
+  if (status === 409) return 'Tráº¡ng thÃ¡i phiáº¿u khÃ´ng cÃ²n há»£p lá»‡ hoáº·c dá»¯ liá»‡u chÆ°a Ä‘á»§ Ä‘iá»u kiá»‡n.'
+  if (status === 400) return 'Vui lÃ²ng kiá»ƒm tra láº¡i dá»¯ liá»‡u.'
+  return fallbackMessage || 'Thao tÃ¡c tháº¥t báº¡i, vui lÃ²ng thá»­ láº¡i.'
 }

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
 import DataTable from '../components/DataTable.vue'
-import { getMyImportReceipts } from '../services/importReceiptService'
+import { cancelDraft, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
 
 const props = defineProps({ type: { type: String, default: 'in' } })
 
@@ -13,6 +13,8 @@ const receipts = ref([])
 const isLoading = ref(false)
 const errorMessage = ref('')
 const actionMessage = ref('')
+const actionErrorMessage = ref('')
+const actionState = reactive({ receiptId: null, action: '' })
 const page = ref(0)
 const size = ref(10)
 const totalPages = ref(0)
@@ -57,6 +59,7 @@ async function fetchReceipts() {
   isLoading.value = true
   errorMessage.value = ''
   actionMessage.value = ''
+  actionErrorMessage.value = ''
   try {
     const data = await getMyImportReceipts({
       page: page.value,
@@ -110,8 +113,58 @@ function goDetail(receipt) {
   router.push(`/stock-in/${receipt.id}`)
 }
 
-function showPendingAction(action) {
-  actionMessage.value = `${action} sẽ được tích hợp ở task T89.`
+async function handleSubmit(receipt) {
+  if (!canSubmitImportReceipt(receipt.status)) return
+  if (!window.confirm('Gửi duyệt phiếu nhập này?')) return
+
+  actionState.receiptId = receipt.id
+  actionState.action = 'submit'
+  actionMessage.value = ''
+  actionErrorMessage.value = ''
+
+  try {
+    await submitForApproval(receipt.id)
+    actionMessage.value = 'Gửi duyệt phiếu nhập thành công.'
+    await fetchReceipts()
+    actionMessage.value = 'Gửi duyệt phiếu nhập thành công.'
+  } catch (error) {
+    actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
+    if (error.status === 401) router.replace('/login')
+  } finally {
+    actionState.receiptId = null
+    actionState.action = ''
+  }
+}
+
+async function handleCancel(receipt) {
+  if (!canCancelImportReceipt(receipt.status)) return
+  if (!window.confirm('Hủy phiếu nhập này?')) return
+
+  actionState.receiptId = receipt.id
+  actionState.action = 'cancel'
+  actionMessage.value = ''
+  actionErrorMessage.value = ''
+
+  try {
+    await cancelDraft(receipt.id)
+    actionMessage.value = 'Hủy phiếu nhập thành công.'
+    await fetchReceipts()
+    actionMessage.value = 'Hủy phiếu nhập thành công.'
+  } catch (error) {
+    actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
+    if (error.status === 401) router.replace('/login')
+  } finally {
+    actionState.receiptId = null
+    actionState.action = ''
+  }
+}
+
+function isActionRunning(receipt, action) {
+  return actionState.receiptId === receipt.id && actionState.action === action
+}
+
+function isAnyActionRunning(receipt) {
+  return actionState.receiptId === receipt.id
 }
 
 function statusLabel(status) {
@@ -166,6 +219,7 @@ function formatCurrency(value) {
     </div>
 
     <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
+    <p v-if="actionErrorMessage" class="form-alert form-alert-error">{{ actionErrorMessage }}</p>
     <p v-if="actionMessage" class="form-alert form-alert-info">{{ actionMessage }}</p>
     <p v-if="isLoading" class="muted loading-line">Đang tải danh sách phiếu nhập...</p>
 
@@ -177,9 +231,13 @@ function formatCurrency(value) {
       <template #totalAmount="{ value }">{{ formatCurrency(value) }}</template>
       <template #actions="{ row }">
         <div class="actions">
-          <button v-if="canEditImportReceipt(row.status)" class="btn btn-sm" type="button" @click="goEdit(row)">Sửa</button>
-          <button v-if="canSubmitImportReceipt(row.status)" class="btn btn-sm" type="button" @click="showPendingAction('Gửi duyệt')">Gửi duyệt</button>
-          <button v-if="canCancelImportReceipt(row.status)" class="btn btn-sm" type="button" @click="showPendingAction('Hủy phiếu')">Hủy</button>
+          <button v-if="canEditImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="goEdit(row)">Sửa</button>
+          <button v-if="canSubmitImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="handleSubmit(row)">
+            {{ isActionRunning(row, 'submit') ? 'Đang gửi...' : 'Gửi duyệt' }}
+          </button>
+          <button v-if="canCancelImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="handleCancel(row)">
+            {{ isActionRunning(row, 'cancel') ? 'Đang hủy...' : 'Hủy' }}
+          </button>
           <button v-if="!hasWorkflowAction(row.status)" class="btn btn-sm" type="button" @click="goDetail(row)">Xem</button>
         </div>
       </template>
