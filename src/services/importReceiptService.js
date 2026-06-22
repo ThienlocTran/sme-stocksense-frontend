@@ -48,6 +48,50 @@ export async function saveDraft(receiptId, payload) {
   }
 }
 
+export async function updateEditable(receiptId, payload) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}`, payload, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể lưu thay đổi phiếu nhập.')
+  }
+}
+
+export async function submitForApproval(receiptId) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/submit`, null, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể gửi duyệt phiếu nhập.')
+  }
+}
+
+export async function cancelDraft(receiptId) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/cancel`, null, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể hủy phiếu nhập.')
+  }
+}
+
+export async function getDetail(receiptId) {
+  try {
+    const { data } = await importReceiptClient.get(`/api/import-receipts/${receiptId}`, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tải thông tin phiếu nhập.')
+  }
+}
+
 export async function getWarehouses() {
   try {
     const { data } = await importReceiptClient.get('/api/warehouses', {
@@ -89,9 +133,10 @@ function normalizeImportReceiptError(error, fallbackMessage) {
   }
 
   if (error.response?.data) {
+    const status = error.response.status
     return {
-      status: error.response.status,
-      message: error.response.data.message || fallbackMessage,
+      status,
+      message: friendlyImportReceiptErrorMessage(status, fallbackMessage),
       errors: error.response.data.errors || {},
     }
   }
@@ -101,4 +146,13 @@ function normalizeImportReceiptError(error, fallbackMessage) {
     message: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.',
     errors: {},
   }
+}
+
+function friendlyImportReceiptErrorMessage(status, fallbackMessage) {
+  if (status === 401) return 'Vui lòng đăng nhập lại.'
+  if (status === 403) return 'Bạn không có quyền thực hiện thao tác này.'
+  if (status === 404) return 'Phiếu nhập không tồn tại.'
+  if (status === 409) return 'Trạng thái phiếu không còn hợp lệ hoặc dữ liệu chưa đủ điều kiện.'
+  if (status === 400) return 'Vui lòng kiểm tra lại dữ liệu.'
+  return fallbackMessage || 'Thao tác thất bại, vui lòng thử lại.'
 }
