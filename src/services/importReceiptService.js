@@ -55,7 +55,7 @@ export async function updateEditable(receiptId, payload) {
     })
     return data
   } catch (error) {
-    throw normalizeImportReceiptError(error, 'KhÃ´ng thá»ƒ lÆ°u thay Ä‘á»•i phiáº¿u nháº­p.')
+    throw normalizeImportReceiptError(error, 'Không thể lưu thay đổi phiếu nhập.')
   }
 }
 
@@ -66,7 +66,7 @@ export async function submitForApproval(receiptId) {
     })
     return data
   } catch (error) {
-    throw normalizeImportReceiptError(error, 'KhÃ´ng thá»ƒ gá»­i duyá»‡t phiáº¿u nháº­p.')
+    throw normalizeImportReceiptError(error, 'Không thể gửi duyệt phiếu nhập.')
   }
 }
 
@@ -77,7 +77,7 @@ export async function cancelDraft(receiptId) {
     })
     return data
   } catch (error) {
-    throw normalizeImportReceiptError(error, 'KhÃ´ng thá»ƒ há»§y phiáº¿u nháº­p.')
+    throw normalizeImportReceiptError(error, 'Không thể hủy phiếu nhập.')
   }
 }
 
@@ -88,7 +88,7 @@ export async function getDetail(receiptId) {
     })
     return data
   } catch (error) {
-    throw normalizeImportReceiptError(error, 'KhÃ´ng thá»ƒ táº£i thÃ´ng tin phiáº¿u nháº­p.')
+    throw normalizeImportReceiptError(error, 'Không thể tải thông tin phiếu nhập.')
   }
 }
 
@@ -149,10 +149,10 @@ function normalizeImportReceiptError(error, fallbackMessage) {
 }
 
 function friendlyImportReceiptErrorMessage(status, fallbackMessage) {
-  if (status === 401) return 'Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.'
-  if (status === 403) return 'Báº¡n khÃ´ng cÃ³ quyá»n thá»±c hiá»‡n thao tÃ¡c nÃ y.'
-  if (status === 404) return 'Phiáº¿u nháº­p khÃ´ng tá»“n táº¡i.'
-  if (status === 409) return 'Tráº¡ng thÃ¡i phiáº¿u khÃ´ng cÃ²n há»£p lá»‡ hoáº·c dá»¯ liá»‡u chÆ°a Ä‘á»§ Ä‘iá»u kiá»‡n.'
-  if (status === 400) return 'Vui lÃ²ng kiá»ƒm tra láº¡i dá»¯ liá»‡u.'
-  return fallbackMessage || 'Thao tÃ¡c tháº¥t báº¡i, vui lÃ²ng thá»­ láº¡i.'
+  if (status === 401) return 'Vui lòng đăng nhập lại.'
+  if (status === 403) return 'Bạn không có quyền thực hiện thao tác này.'
+  if (status === 404) return 'Phiếu nhập không tồn tại.'
+  if (status === 409) return 'Trạng thái phiếu không còn hợp lệ hoặc dữ liệu chưa đủ điều kiện.'
+  if (status === 400) return 'Vui lòng kiểm tra lại dữ liệu.'
+  return fallbackMessage || 'Thao tác thất bại, vui lòng thử lại.'
 }
