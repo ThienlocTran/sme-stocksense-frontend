@@ -189,6 +189,41 @@
   border: 1px solid #bfdbfe;
 }
 
+.import-receipt-form__rejection-alert {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.import-receipt-form__rejection-alert i {
+  margin-top: 2px;
+  font-size: 20px;
+}
+
+.import-receipt-form__rejection-title {
+  margin: 0 0 6px;
+  font-weight: 800;
+}
+
+.import-receipt-form__rejection-reason {
+  margin: 0;
+  line-height: 20px;
+}
+
+.import-receipt-list__rejection-reason {
+  max-width: 260px;
+  margin: 6px 0 0;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
 @media (max-width: 768px) {
   .import-receipt-form__grid--2,
   .import-receipt-form__grid--3,

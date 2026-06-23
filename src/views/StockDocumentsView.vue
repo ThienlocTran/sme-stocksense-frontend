@@ -173,6 +173,16 @@ function statusClass(status) {
   return `status-${String(status || 'unknown').toLowerCase().replaceAll('_', '-')}`
 }
 
+function hasRejectionReason(receipt) {
+  return Boolean(String(receipt?.rejectionReason || '').trim())
+}
+
+function rejectionReasonText(receipt) {
+  return hasRejectionReason(receipt)
+    ? `Lý do từ chối: ${String(receipt.rejectionReason).trim()}`
+    : 'Chưa có lý do từ chối.'
+}
+
 function canEditImportReceipt(status) {
   return status === 'NHAP' || status === 'TU_CHOI'
 }
@@ -225,7 +235,12 @@ function formatCurrency(value) {
       <template #warehouseName="{ value }">{{ value || '-' }}</template>
       <template #supplierName="{ value }">{{ value || '-' }}</template>
       <template #createdAt="{ value }">{{ formatDate(value) }}</template>
-      <template #status="{ value }"><span class="badge" :class="statusClass(value)">{{ statusLabel(value) }}</span></template>
+      <template #status="{ row, value }">
+        <span class="badge" :class="statusClass(value)">{{ statusLabel(value) }}</span>
+        <p v-if="value === 'TU_CHOI'" class="import-receipt-list__rejection-reason">
+          {{ rejectionReasonText(row) }}
+        </p>
+      </template>
       <template #totalAmount="{ value }">{{ formatCurrency(value) }}</template>
       <template #actions="{ row }">
         <div class="actions">
@@ -258,6 +273,8 @@ function formatCurrency(value) {
 </template>
 
 <style scoped>
+@import '../assets/styles/import-receipt-form.css';
+
 .loading-line { margin: 8px 0 14px; }
 .form-alert { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; line-height: 20px; }
 .form-alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
