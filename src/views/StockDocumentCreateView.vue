@@ -30,6 +30,7 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const receiptId = ref(props.id || '')
 const receiptStatus = ref('NHAP')
+const rejectionReason = ref('')
 const isDirty = ref(false)
 const isHydrating = ref(false)
 
@@ -82,6 +83,9 @@ const hasValidItems = computed(() => items.value.length > 0 && items.value.every
 const canSubmit = computed(() => receiptId.value && receiptStatus.value === 'NHAP' && hasValidItems.value)
 const canCancel = computed(() => receiptId.value && receiptStatus.value === 'NHAP')
 const canSave = computed(() => isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI')
+const isRejectedImportReceipt = computed(() => isEditMode.value && receiptStatus.value === 'TU_CHOI')
+const normalizedRejectionReason = computed(() => String(rejectionReason.value || '').trim())
+const rejectionReasonMessage = computed(() => normalizedRejectionReason.value || 'Chưa có lý do từ chối.')
 
 const totalQuantity = computed(() => {
   return items.value.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
@@ -182,6 +186,9 @@ async function loadReceiptDetail() {
 function hydrateReceipt(receipt) {
   receiptId.value = receipt.id || receiptId.value
   receiptStatus.value = receipt.status || 'NHAP'
+  if (Object.prototype.hasOwnProperty.call(receipt, 'rejectionReason')) {
+    rejectionReason.value = receipt.rejectionReason || ''
+  }
   form.warehouseId = receipt.warehouseId || null
   form.supplierId = receipt.supplierId || null
   form.note = receipt.note || ''
@@ -461,6 +468,18 @@ function formatCurrency(value) {
     </div>
 
     <form v-if="!isLoading" class="import-receipt-form" @submit.prevent="handleSaveDraft">
+      <div v-if="isRejectedImportReceipt" class="import-receipt-form__rejection-alert">
+        <i class="mdi mdi-alert-outline"></i>
+        <div>
+          <p class="import-receipt-form__rejection-title">Phiếu nhập đã bị từ chối.</p>
+          <p class="import-receipt-form__rejection-reason">
+            <template v-if="normalizedRejectionReason">Lý do: {{ rejectionReasonMessage }}</template>
+            <template v-else>{{ rejectionReasonMessage }}</template>
+          </p>
+          <p class="import-receipt-form__rejection-reason">Vui lòng chỉnh sửa thông tin và lưu lại.</p>
+        </div>
+      </div>
+
       <section class="import-receipt-form__section">
         <h3 class="import-receipt-form__section-title">Thông tin chung</h3>
 
