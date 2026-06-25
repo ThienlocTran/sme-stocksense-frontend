@@ -10,7 +10,7 @@ const inventoryClient = axios.create({
   },
 })
 
-export async function getInventory({ page = 0, size = 20, keyword = '', warehouseId = '', stockStatus = '', warehouseStatus = '', productStatus = '' } = {}) {
+export async function getInventory({ page = 0, size = 20, keyword = '', warehouseId = '', productId = '', stockStatus = '', warehouseStatus = '', productStatus = '' } = {}) {
   try {
     const { data } = await inventoryClient.get('/api/inventory', {
       headers: getAuthorizationHeader(),
@@ -19,6 +19,7 @@ export async function getInventory({ page = 0, size = 20, keyword = '', warehous
         size,
         keyword: keyword || undefined,
         warehouseId: warehouseId || undefined,
+        productId: productId || undefined,
         status: stockStatus || undefined,
         warehouseStatus: warehouseStatus || undefined,
         productStatus: productStatus || undefined,
@@ -27,6 +28,26 @@ export async function getInventory({ page = 0, size = 20, keyword = '', warehous
     return data
   } catch (error) {
     throw normalizeInventoryError(error, 'Không thể tải danh sách tồn kho.')
+  }
+}
+
+export async function getLowStockInventory({ page = 0, size = 20, keyword = '', warehouseId = '', productId = '', warehouseStatus = '', productStatus = '' } = {}) {
+  try {
+    const { data } = await inventoryClient.get('/api/inventory/low-stock', {
+      headers: getAuthorizationHeader(),
+      params: {
+        page,
+        size,
+        keyword: keyword || undefined,
+        warehouseId: warehouseId || undefined,
+        productId: productId || undefined,
+        warehouseStatus: warehouseStatus || undefined,
+        productStatus: productStatus || undefined,
+      },
+    })
+    return data
+  } catch (error) {
+    throw normalizeInventoryError(error, 'Không thể tải danh sách tồn kho thấp.')
   }
 }
 
