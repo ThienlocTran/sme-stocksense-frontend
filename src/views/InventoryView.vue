@@ -7,10 +7,14 @@ import SearchFilterBar from "../components/SearchFilterBar.vue";
 import EmptyState from "../components/EmptyState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import { getInventory } from "../services/inventoryService";
+import { getWarehouses } from "../services/warehouseService";
+import { getWarehouseStatusLabel } from "../constants/warehouseOptions";
 
 const router = useRouter();
 const inventoryItems = ref([]);
+const warehouses = ref([]);
 const isLoading = ref(false);
+const isLoadingDropdowns = ref(false);
 const errorMessage = ref("");
 const searchDraft = ref("");
 const page = ref(0);
@@ -23,6 +27,21 @@ const filters = reactive({
   warehouseStatus: "",
   productStatus: "",
 });
+
+const inventoryStatusOptions = [
+  { value: "OUT_OF_STOCK", label: "Thiếu hàng" },
+  { value: "LOW_STOCK", label: "Sắp hết" },
+  { value: "NORMAL", label: "Đủ hàng" },
+  { value: "OVER_STOCK", label: "Thừa hàng" },
+];
+
+function getInventoryStatusLabel(status) {
+  return (
+    inventoryStatusOptions.find((option) => option.value === status)?.label ||
+    status ||
+    "-"
+  );
+}
 
 const columns = [
   { key: "productCode", label: "Mã SP" },
@@ -40,14 +59,41 @@ const columns = [
 
 const hasPreviousPage = computed(() => page.value > 0);
 const hasNextPage = computed(() => page.value + 1 < totalPages.value);
+const hasActiveFilters = computed(() => {
+  return (
+    searchDraft.value.trim() !== "" ||
+    filters.warehouseId !== "" ||
+    filters.stockStatus !== "" ||
+    filters.warehouseStatus !== "" ||
+    filters.productStatus !== ""
+  );
+});
 
-onMounted(fetchInventory);
+onMounted(async () => {
+  await loadDropdowns();
+  fetchInventory();
+});
+
+async function loadDropdowns() {
+  isLoadingDropdowns.value = true;
+  errorMessage.value = "";
+  try {
+    const warehouseData = await getWarehouses({ status: "HOAT_DONG" });
+
+    warehouses.value = warehouseData || [];
+  } catch (error) {
+    errorMessage.value = error.message;
+    if (error.status === 401) router.replace("/login");
+  } finally {
+    isLoadingDropdowns.value = false;
+  }
+}
 
 async function fetchInventory() {
   isLoading.value = true;
   errorMessage.value = "";
   try {
-    const data = await getInventory({
+    const params = {
       page: page.value,
       size: size.value,
       keyword: searchDraft.value.trim(),
@@ -55,7 +101,12 @@ async function fetchInventory() {
       stockStatus: filters.stockStatus,
       warehouseStatus: filters.warehouseStatus,
       productStatus: filters.productStatus,
-    });
+    };
+
+    console.log("stockStatus=", filters.stockStatus, "params=", params);
+
+    const data = await getInventory(params);
+
     inventoryItems.value = data.content || [];
     totalPages.value = data.totalPages || 0;
     totalElements.value = data.totalElements || 0;
@@ -73,6 +124,11 @@ function applySearch() {
   fetchInventory();
 }
 
+function applyFilter() {
+  page.value = 0;
+  fetchInventory();
+}
+
 function clearFilters() {
   searchDraft.value = "";
   filters.warehouseId = "";
@@ -81,6 +137,16 @@ function clearFilters() {
   filters.productStatus = "";
   page.value = 0;
   fetchInventory();
+}
+
+function formatInventoryStatus(status) {
+  return getInventoryStatusLabel(status);
+}
+
+function displayWarehouseName(row) {
+  return row.warehouseCode
+    ? `${row.warehouseCode} - ${row.warehouse}`
+    : row.warehouse || "-";
 }
 
 function previousPage() {
@@ -111,35 +177,77 @@ function formatDate(value) {
     v-model="searchDraft"
     placeholder="Tìm theo mã sản phẩm, tên sản phẩm, mã vạch"
   >
-    <input
+    <button
+      class="btn btn-primary"
+      type="button"
+      :disabled="isLoading"
+      @click="applySearch"
+    >
+      <i class="mdi mdi-magnify"></i>
+      Tìm kiếm
+    </button>
+    <select
       v-model="filters.warehouseId"
-      class="input"
-      type="number"
-      min="1"
-      placeholder="ID kho"
-    />
-    <select v-model="filters.stockStatus" class="select">
-      <option value="">Tất cả trạng thái tồn</option>
-      <option value="OUT_OF_STOCK">Hết hàng</option>
-      <option value="LOW_STOCK">Sắp hết</option>
-      <option value="NORMAL">Bình thường</option>
-      <option value="OVER_STOCK">Thừa hàng</option>
+      class="select"
+      :disabled="isLoadingDropdowns || isLoading"
+      @change="applyFilter"
+    >
+      <option value="">Tất cả kho</option>
+      <option
+        v-for="warehouse in warehouses"
+        :key="warehouse.id"
+        :value="warehouse.id"
+      >
+        {{
+          warehouse.maKho
+            ? `${warehouse.maKho} - ${warehouse.tenKho}`
+            : warehouse.tenKho
+        }}
+      </option>
     </select>
-    <select v-model="filters.warehouseStatus" class="select">
+    <select
+      v-model="filters.stockStatus"
+      class="select"
+      :disabled="isLoading"
+      @change="applyFilter"
+    >
+      <option value="">Tất cả trạng thái tồn</option>
+      <option
+        v-for="option in inventoryStatusOptions"
+        :key="option.value"
+        :value="option.value"
+      >
+        {{ option.label }}
+      </option>
+    </select>
+    <select
+      v-model="filters.warehouseStatus"
+      class="select"
+      :disabled="isLoading"
+      @change="applyFilter"
+    >
       <option value="">Tất cả trạng thái kho</option>
       <option value="HOAT_DONG">Đang hoạt động</option>
       <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
     </select>
-    <select v-model="filters.productStatus" class="select">
+    <select
+      v-model="filters.productStatus"
+      class="select"
+      :disabled="isLoading"
+      @change="applyFilter"
+    >
       <option value="">Tất cả trạng thái SP</option>
       <option value="HOAT_DONG">Đang hoạt động</option>
       <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
     </select>
-    <button class="btn" type="button" @click="applySearch">
-      <i class="mdi mdi-magnify"></i> Tìm
-    </button>
-    <button class="btn btn-ghost" type="button" @click="clearFilters">
-      Xóa lọc
+    <button
+      v-if="hasActiveFilters"
+      class="btn"
+      type="button"
+      :disabled="isLoading"
+      @click="clearFilters"
+    >
+      Xóa bộ lọc
     </button>
   </SearchFilterBar>
 
@@ -157,12 +265,15 @@ function formatDate(value) {
     :rows="inventoryItems"
     empty-text="Không có dữ liệu tồn kho phù hợp"
   >
-    <template #status="{ value }"><StatusBadge :status="value" /></template>
+    <template #warehouse="{ row }">{{ displayWarehouseName(row) }}</template>
+    <template #status="{ value }"
+      ><StatusBadge :status="formatInventoryStatus(value)"
+    /></template>
     <template #warehouseStatus="{ value }"
-      ><StatusBadge :status="value"
+      ><StatusBadge :status="getWarehouseStatusLabel(value)"
     /></template>
     <template #productStatus="{ value }"
-      ><StatusBadge :status="value"
+      ><StatusBadge :status="formatInventoryStatus(value)"
     /></template>
     <template #lastUpdatedAt="{ value }">{{ formatDate(value) }}</template>
   </DataTable>
