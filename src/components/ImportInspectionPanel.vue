@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useAuthStore } from '../stores/auth'
 import {
   getDetail,
   confirmArrival,
@@ -25,6 +26,12 @@ const inspectItems = ref([])
 
 // State cho biên bản chênh lệch
 const discrepancyNote = ref('')
+
+const authStore = useAuthStore()
+const canProcessReceipt = computed(() => {
+  const role = authStore.currentRole
+  return role === 'ADMIN' || role === 'MANAGER' || role === 'EMPLOYEE'
+})
 
 // Computed properties
 const hasDiscrepancy = computed(() => {
@@ -61,11 +68,15 @@ const statusLabel = computed(() => {
 
 const physicalStatusOptions = ['Tốt', 'Hư hỏng', 'Thiếu', 'Khác']
 
+let currentRequestId = 0
+
 async function loadData() {
+  const requestId = ++currentRequestId
   loading.value = true
   error.value = ''
   try {
     const data = await getDetail(props.receiptId)
+    if (requestId !== currentRequestId) return
     receipt.value = data
     inspectItems.value = []
     discrepancyNote.value = ''
@@ -112,7 +123,13 @@ async function handleComplete() {
   error.value = ''
   successMessage.value = ''
   try {
+    if (inspectItems.value.length === 0) {
+      error.value = 'Không có sản phẩm nào để kiểm tra.'
+      return
+    }
+
     const invalidItem = inspectItems.value.find(item => {
+      if (item.actualReceivedQuantity === '' || item.actualReceivedQuantity == null) return true
       const qty = Number(item.actualReceivedQuantity)
       return !Number.isFinite(qty) || qty < 0
     })
@@ -211,7 +228,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
           </v-col>
         </v-row>
       </v-card-text>
-      <v-card-actions v-if="receipt.status === 'CHO_HANG_VE'" class="bg-grey-lighten-4 pa-4 border-top">
+      <v-card-actions v-if="receipt.status === 'CHO_HANG_VE' && canProcessReceipt" class="bg-grey-lighten-4 pa-4 border-top">
         <v-spacer></v-spacer>
         <v-btn color="primary" variant="flat" :loading="submitting" @click="handleArrival">
           <v-icon start>mdi-truck-check</v-icon>
@@ -221,13 +238,13 @@ watch(() => props.receiptId, loadData, { immediate: true })
     </v-card>
 
     <!-- Kiểm hàng thực tế (khi status = CHO_KIEM_HANG) -->
-    <v-card v-if="receipt.status === 'CHO_KIEM_HANG'" class="mb-6 rounded-lg elevation-1 border-primary" border>
+    <v-card v-if="receipt.status === 'CHO_KIEM_HANG' && canProcessReceipt" class="mb-6 rounded-lg elevation-1 border-primary" border>
       <v-card-title class="bg-primary text-white d-flex align-center py-3">
         <v-icon start>mdi-clipboard-check</v-icon>
         Bước 2: Kiểm Hàng Thực Tế
       </v-card-title>
       <v-card-text class="pt-4">
-        <v-table hover>
+        <v-table hover v-if="inspectItems.length > 0">
           <thead>
             <tr>
               <th class="text-left">Sản phẩm</th>
@@ -279,11 +296,14 @@ watch(() => props.receiptId, loadData, { immediate: true })
             </tr>
           </tbody>
         </v-table>
+        <v-alert v-else type="info" variant="tonal" class="mt-2">
+          Không có sản phẩm nào để kiểm tra.
+        </v-alert>
       </v-card-text>
     </v-card>
 
     <!-- Biên bản chênh lệch (nếu có lệch) -->
-    <v-card v-if="receipt.status === 'CHO_KIEM_HANG' && hasDiscrepancy" class="mb-6 rounded-lg elevation-1 border-error" border>
+    <v-card v-if="receipt.status === 'CHO_KIEM_HANG' && hasDiscrepancy && canProcessReceipt" class="mb-6 rounded-lg elevation-1 border-error" border>
       <v-card-title class="bg-error text-white d-flex align-center py-3">
         <v-icon start>mdi-alert</v-icon>
         Biên Bản Chênh Lệch
@@ -331,12 +351,13 @@ watch(() => props.receiptId, loadData, { immediate: true })
     </v-card>
 
     <!-- Nút Action Cuối (CHO_KIEM_HANG) -->
-    <div v-if="receipt.status === 'CHO_KIEM_HANG'" class="d-flex justify-end mb-6">
+    <div v-if="receipt.status === 'CHO_KIEM_HANG' && canProcessReceipt" class="d-flex justify-end mb-6">
       <v-btn
         color="primary"
         size="large"
         variant="flat"
         :loading="submitting"
+        :disabled="inspectItems.length === 0"
         @click="handleComplete"
       >
         <v-icon start>mdi-check-circle</v-icon>
@@ -345,7 +366,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
     </div>
 
     <!-- Chỉ xem danh sách sản phẩm nếu không ở trạng thái cần action -->
-    <v-card v-if="receipt.status !== 'CHO_KIEM_HANG'" class="mb-6 rounded-lg elevation-1" border>
+    <v-card v-if="receipt.status !== 'CHO_KIEM_HANG' || !canProcessReceipt" class="mb-6 rounded-lg elevation-1" border>
       <v-card-title class="font-weight-bold bg-grey-lighten-4 py-3">
         Danh sách sản phẩm
       </v-card-title>
