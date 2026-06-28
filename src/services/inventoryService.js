@@ -31,6 +31,26 @@ export async function getInventory({ page = 0, size = 20, keyword = '', warehous
   }
 }
 
+export async function getInventoryTransactions({ page = 0, size = 20, keyword = '', transactionType = '', warehouseId = '', from = '', to = '' } = {}) {
+  try {
+    const { data } = await inventoryClient.get('/api/inventory/transactions', {
+      headers: getAuthorizationHeader(),
+      params: {
+        page,
+        size,
+        keyword: keyword || undefined,
+        transactionType: transactionType || undefined,
+        warehouseId: warehouseId || undefined,
+        from: from || undefined,
+        to: to || undefined,
+      },
+    })
+    return data
+  } catch (error) {
+    throw normalizeInventoryError(error, 'Không thể tải lịch sử giao dịch kho.')
+  }
+}
+
 export async function getLowStockInventory({ page = 0, size = 20, keyword = '', warehouseId = '', productId = '', warehouseStatus = '', productStatus = '' } = {}) {
   try {
     const { data } = await inventoryClient.get('/api/inventory/low-stock', {
