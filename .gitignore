@@ -35,3 +35,11 @@ dist-ssr/
 # OS files
 .DS_Store
 Thumbs.db
+
+# AI Agents Workspace
+.agents/
+/feature_list.*
+/init.*
+/progress.md
+/session-handoff.md
+/skills-lock.json
