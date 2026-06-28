@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   getDetail,
   confirmArrival,
@@ -67,6 +67,8 @@ async function loadData() {
   try {
     const data = await getDetail(props.receiptId)
     receipt.value = data
+    inspectItems.value = []
+    discrepancyNote.value = ''
     // Khởi tạo form kiểm hàng
     if (data.items && data.items.length > 0) {
       inspectItems.value = data.items.map(item => ({
@@ -110,11 +112,21 @@ async function handleComplete() {
   error.value = ''
   successMessage.value = ''
   try {
+    const invalidItem = inspectItems.value.find(item => {
+      const qty = Number(item.actualReceivedQuantity)
+      return !Number.isFinite(qty) || qty < 0
+    })
+
+    if (invalidItem) {
+      error.value = `Số lượng thực nhận của "${invalidItem.productName}" không hợp lệ.`
+      return
+    }
+
     // 1. Chuẩn bị payload inspect
     const inspectPayload = {
       items: inspectItems.value.map(item => ({
         productId: item.productId,
-        actualReceivedQuantity: Number(item.actualReceivedQuantity) || 0,
+        actualReceivedQuantity: Number(item.actualReceivedQuantity),
         physicalStatus: item.physicalStatus,
         expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString() : null
       }))
@@ -155,9 +167,7 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleString('vi-VN')
 }
 
-onMounted(() => {
-  loadData()
-})
+watch(() => props.receiptId, loadData, { immediate: true })
 </script>
 
 <template>
@@ -363,5 +373,15 @@ onMounted(() => {
         </v-table>
       </v-card-text>
     </v-card>
+  </div>
+
+  <div v-else class="d-flex flex-column align-center my-8">
+    <v-alert v-if="error" type="error" variant="tonal" class="mb-4" max-width="600">
+      {{ error }}
+    </v-alert>
+    <v-btn color="primary" @click="loadData">
+      <v-icon start>mdi-reload</v-icon>
+      Tải lại
+    </v-btn>
   </div>
 </template>
