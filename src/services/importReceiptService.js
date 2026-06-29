@@ -145,6 +145,52 @@ export async function rejectImportReceipt(receiptId, reason) {
   }
 }
 
+// ===== Các chức năng xử lý hàng về & kiểm hàng từ dev =====
+
+export async function confirmArrival(receiptId) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/arrival`, null, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể xác nhận hàng về.')
+  }
+}
+
+export async function inspectReceipt(receiptId, payload) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/inspect`, payload, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể lưu kết quả kiểm hàng.')
+  }
+}
+
+export async function createDiscrepancyReport(receiptId, payload) {
+  try {
+    const { data } = await importReceiptClient.post(`/api/import-receipts/${receiptId}/discrepancy-report`, payload, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể lập biên bản chênh lệch.')
+  }
+}
+
+export async function completeImport(receiptId, payload) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/hoan-tat`, payload, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể hoàn tất phiếu nhập.')
+  }
+}
+
 export async function getWarehouses() {
   try {
     const { data } = await importReceiptClient.get('/api/warehouses', {
