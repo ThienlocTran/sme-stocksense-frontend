@@ -92,6 +92,61 @@ export async function getDetail(receiptId) {
   }
 }
 
+// ===== Luồng duyệt phiếu nhập (T91-T94) =====
+
+export async function getPendingApprovals({ page = 0, size = 10, status = '' } = {}) {
+  try {
+    const { data } = await importReceiptClient.get('/api/import-receipts/pending-approval', {
+      headers: getAuthorizationHeader(),
+      params: {
+        page,
+        size,
+        status: status || undefined,
+      },
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tải danh sách phiếu chờ duyệt.')
+  }
+}
+
+export async function getApprovalDetail(receiptId) {
+  try {
+    const { data } = await importReceiptClient.get(`/api/import-receipts/${receiptId}/approval-detail`, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tải chi tiết phiếu chờ duyệt.')
+  }
+}
+
+export async function approveImportReceipt(receiptId) {
+  try {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/approve`, null, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể duyệt phiếu nhập.')
+  }
+}
+
+export async function rejectImportReceipt(receiptId, reason) {
+  try {
+    const { data } = await importReceiptClient.put(
+      `/api/import-receipts/${receiptId}/reject`,
+      { reason },
+      { headers: getAuthorizationHeader() },
+    )
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể từ chối phiếu nhập.')
+  }
+}
+
+// ===== Các chức năng xử lý hàng về & kiểm hàng từ dev =====
+
 export async function confirmArrival(receiptId) {
   try {
     const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/arrival`, null, {
