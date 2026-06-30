@@ -58,14 +58,16 @@ router.beforeEach(to => {
 
   if (isAuthRoute && authenticated) return '/dashboard'
 
-  if (!canAccessRoute(to.path, getCurrentRoleCode())) return '/dashboard'
+  if (!canAccessRoute(to.path, getCurrentRoleCode())) {
+    return getCurrentRoleCode() === 'MANAGER' ? '/approvals' : '/dashboard'
+  }
   return true
 })
 
 function canAccessRoute(path, role) {
   if (path === '/employees' || path === '/users') return role === 'ADMIN'
   if (path === '/approvals') return role === 'ADMIN' || role === 'MANAGER'
-  if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE'
+  if (/^\/stock-(in|out)(\/(create|[^/]+\/edit))?$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE'
   return true
 }
 

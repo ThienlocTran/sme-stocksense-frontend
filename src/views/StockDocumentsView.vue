@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
 import DataTable from '../components/DataTable.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { cancelDraft, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
 
 const props = defineProps({ type: { type: String, default: 'in' } })
@@ -20,6 +21,27 @@ const size = ref(10)
 const totalPages = ref(0)
 const totalElements = ref(0)
 const filters = reactive({ status: '' })
+
+const confirmState = reactive({
+  open: false,
+  title: 'Xác nhận',
+  message: '',
+  danger: false,
+  onConfirm: null,
+})
+
+function triggerConfirm(title, message, danger, onConfirm) {
+  confirmState.title = title
+  confirmState.message = message
+  confirmState.danger = danger
+  confirmState.onConfirm = onConfirm
+  confirmState.open = true
+}
+
+function executeConfirm() {
+  confirmState.open = false
+  if (confirmState.onConfirm) confirmState.onConfirm()
+}
 
 const hasPreviousPage = computed(() => page.value > 0)
 const hasNextPage = computed(() => page.value + 1 < totalPages.value)
@@ -115,46 +137,56 @@ function goDetail(receipt) {
 
 async function handleSubmit(receipt) {
   if (!canSubmitImportReceipt(receipt.status)) return
-  if (!window.confirm('Gửi duyệt phiếu nhập này?')) return
+  triggerConfirm(
+    'Gửi duyệt phiếu',
+    `Bạn có chắc chắn muốn gửi duyệt phiếu nhập ${receipt.code}?`,
+    false,
+    async () => {
+      actionState.receiptId = receipt.id
+      actionState.action = 'submit'
+      actionMessage.value = ''
+      actionErrorMessage.value = ''
 
-  actionState.receiptId = receipt.id
-  actionState.action = 'submit'
-  actionMessage.value = ''
-  actionErrorMessage.value = ''
-
-  try {
-    await submitForApproval(receipt.id)
-    await fetchReceipts()
-    actionMessage.value = 'Gửi duyệt phiếu nhập thành công.'
-  } catch (error) {
-    actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
-    if (error.status === 401) router.replace('/login')
-  } finally {
-    actionState.receiptId = null
-    actionState.action = ''
-  }
+      try {
+        await submitForApproval(receipt.id)
+        await fetchReceipts()
+        actionMessage.value = 'Gửi duyệt phiếu nhập thành công.'
+      } catch (error) {
+        actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
+        if (error.status === 401) router.replace('/login')
+      } finally {
+        actionState.receiptId = null
+        actionState.action = ''
+      }
+    }
+  )
 }
 
 async function handleCancel(receipt) {
   if (!canCancelImportReceipt(receipt.status)) return
-  if (!window.confirm('Hủy phiếu nhập này?')) return
+  triggerConfirm(
+    'Hủy phiếu nhập',
+    `Bạn có chắc chắn muốn hủy phiếu nhập ${receipt.code}?`,
+    true,
+    async () => {
+      actionState.receiptId = receipt.id
+      actionState.action = 'cancel'
+      actionMessage.value = ''
+      actionErrorMessage.value = ''
 
-  actionState.receiptId = receipt.id
-  actionState.action = 'cancel'
-  actionMessage.value = ''
-  actionErrorMessage.value = ''
-
-  try {
-    await cancelDraft(receipt.id)
-    await fetchReceipts()
-    actionMessage.value = 'Hủy phiếu nhập thành công.'
-  } catch (error) {
-    actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
-    if (error.status === 401) router.replace('/login')
-  } finally {
-    actionState.receiptId = null
-    actionState.action = ''
-  }
+      try {
+        await cancelDraft(receipt.id)
+        await fetchReceipts()
+        actionMessage.value = 'Hủy phiếu nhập thành công.'
+      } catch (error) {
+        actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
+        if (error.status === 401) router.replace('/login')
+      } finally {
+        actionState.receiptId = null
+        actionState.action = ''
+      }
+    }
+  )
 }
 
 function isActionRunning(receipt, action) {
@@ -249,6 +281,15 @@ function formatCurrency(value) {
         <button class="btn btn-sm" type="button" :disabled="!hasNextPage" @click="nextPage">Sau</button>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      :danger="confirmState.danger"
+      @cancel="confirmState.open = false"
+      @confirm="executeConfirm"
+    />
   </template>
 
   <template v-else>
@@ -262,7 +303,8 @@ function formatCurrency(value) {
 .form-alert { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; line-height: 20px; }
 .form-alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .form-alert-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions { display: flex; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
+.actions .btn { padding: 4px 8px; font-size: 12px; min-height: 28px; }
 .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
 .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 800; white-space: nowrap; background: #f1f5f9; color: #475569; }
 .status-nhap, .status-huy { background: #f1f5f9; color: #475569; }

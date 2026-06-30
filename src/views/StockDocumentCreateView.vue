@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import {
   cancelDraft,
   createImportReceipt,
@@ -32,6 +33,27 @@ const receiptId = ref(props.id || '')
 const receiptStatus = ref('NHAP')
 const isDirty = ref(false)
 const isHydrating = ref(false)
+
+const confirmState = reactive({
+  open: false,
+  title: 'Xác nhận',
+  message: '',
+  danger: false,
+  onConfirm: null,
+})
+
+function triggerConfirm(title, message, danger, onConfirm) {
+  confirmState.title = title
+  confirmState.message = message
+  confirmState.danger = danger
+  confirmState.onConfirm = onConfirm
+  confirmState.open = true
+}
+
+function executeConfirm() {
+  confirmState.open = false
+  if (confirmState.onConfirm) confirmState.onConfirm()
+}
 
 const warehouses = ref([])
 const suppliers = ref([])
@@ -376,54 +398,64 @@ async function handleSubmitForApproval() {
     errorMessage.value = 'Vui lòng lưu nháp trước khi gửi duyệt.'
     return
   }
-  if (!window.confirm('Gửi duyệt phiếu nhập này?')) return
+  triggerConfirm(
+    'Gửi duyệt phiếu',
+    'Bạn có chắc chắn muốn gửi duyệt phiếu nhập này?',
+    false,
+    async () => {
+      isSubmitting.value = true
+      errorMessage.value = ''
+      successMessage.value = ''
 
-  isSubmitting.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  try {
-    const receipt = await submitForApproval(receiptId.value)
-    await applySavedReceipt(receipt)
-    successMessage.value = 'Gửi duyệt phiếu nhập thành công.'
-    setTimeout(() => {
-      router.push('/stock-in')
-    }, 1200)
-  } catch (error) {
-    if (error.status === 401) {
-      router.replace('/login')
-      return
+      try {
+        const receipt = await submitForApproval(receiptId.value)
+        await applySavedReceipt(receipt)
+        successMessage.value = 'Gửi duyệt phiếu nhập thành công.'
+        setTimeout(() => {
+          router.push('/stock-in')
+        }, 1200)
+      } catch (error) {
+        if (error.status === 401) {
+          router.replace('/login')
+          return
+        }
+        errorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
+      } finally {
+        isSubmitting.value = false
+      }
     }
-    errorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
-  } finally {
-    isSubmitting.value = false
-  }
+  )
 }
 
 async function handleCancelDraft() {
   if (!canCancel.value) return
-  if (!window.confirm('Hủy phiếu nhập này?')) return
+  triggerConfirm(
+    'Hủy phiếu nhập',
+    'Bạn có chắc chắn muốn hủy phiếu nhập này?',
+    true,
+    async () => {
+      isCancelling.value = true
+      errorMessage.value = ''
+      successMessage.value = ''
 
-  isCancelling.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  try {
-    const receipt = await cancelDraft(receiptId.value)
-    await applySavedReceipt(receipt)
-    successMessage.value = 'Hủy phiếu nhập thành công.'
-    setTimeout(() => {
-      router.push('/stock-in')
-    }, 1200)
-  } catch (error) {
-    if (error.status === 401) {
-      router.replace('/login')
-      return
+      try {
+        const receipt = await cancelDraft(receiptId.value)
+        await applySavedReceipt(receipt)
+        successMessage.value = 'Hủy phiếu nhập thành công.'
+        setTimeout(() => {
+          router.push('/stock-in')
+        }, 1200)
+      } catch (error) {
+        if (error.status === 401) {
+          router.replace('/login')
+          return
+        }
+        errorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
+      } finally {
+        isCancelling.value = false
+      }
     }
-    errorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
-  } finally {
-    isCancelling.value = false
-  }
+  )
 }
 
 function goBack() {
@@ -663,6 +695,15 @@ function formatCurrency(value) {
   <template v-else>
     <FeaturePending title="Chức năng phiếu xuất kho đang được phát triển" />
   </template>
+
+  <ConfirmDialog
+    :open="confirmState.open"
+    :title="confirmState.title"
+    :message="confirmState.message"
+    :danger="confirmState.danger"
+    @cancel="confirmState.open = false"
+    @confirm="executeConfirm"
+  />
 </template>
 
 <style scoped>
