@@ -145,6 +145,17 @@ export async function rejectImportReceipt(receiptId, reason) {
   }
 }
 
+export async function getImportReceiptHistory(receiptId) {
+  try {
+    const { data } = await importReceiptClient.get(`/api/import-receipts/${receiptId}/history`, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tải lịch sử duyệt.')
+  }
+}
+
 // ===== Các chức năng xử lý hàng về & kiểm hàng từ dev =====
 
 export async function confirmArrival(receiptId) {

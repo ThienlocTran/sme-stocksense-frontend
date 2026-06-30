@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import DataTable from '../components/DataTable.vue'
+import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
 import {
   approveImportReceipt,
   getApprovalDetail,
@@ -32,6 +33,9 @@ const detailState = reactive({ open: false, loading: false, error: '', receipt: 
 
 // Modal từ chối (T98)
 const rejectState = reactive({ open: false, receiptId: null, reason: '', error: '', submitting: false })
+
+// Modal Lịch sử duyệt
+const historyState = reactive({ open: false, receiptId: null, receiptCode: '' })
 
 const REJECT_REASON_MAX = 500
 
@@ -213,6 +217,18 @@ function isAnyActionRunning(receipt) {
   return actionState.receiptId === receipt.id
 }
 
+function openHistory(receipt) {
+  historyState.receiptId = receipt.id
+  historyState.receiptCode = receipt.code
+  historyState.open = true
+}
+
+function closeHistory() {
+  historyState.open = false
+  historyState.receiptId = null
+  historyState.receiptCode = ''
+}
+
 function statusLabel(status) {
   return statusLabels[status] || status || '-'
 }
@@ -264,6 +280,7 @@ function formatCurrency(value) {
     <template #actions="{ row }">
       <div class="actions">
         <button class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="openDetail(row)">Xem</button>
+        <button class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="openHistory(row)">Lịch sử</button>
         <button class="btn btn-sm btn-primary" type="button" :disabled="isAnyActionRunning(row)" @click="handleApprove(row)">
           {{ isActionRunning(row, 'approve') ? 'Đang duyệt...' : approveLabel(row.status) }}
         </button>
@@ -374,6 +391,14 @@ function formatCurrency(value) {
       </div>
     </div>
   </div>
+
+  <!-- Modal Lịch sử duyệt -->
+  <ImportReceiptHistoryModal
+    v-if="historyState.open"
+    :receipt-id="historyState.receiptId"
+    :receipt-code="historyState.receiptCode"
+    @close="closeHistory"
+  />
 </template>
 
 <style scoped>

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
 import DataTable from '../components/DataTable.vue'
+import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
 import { cancelDraft, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
 
 const props = defineProps({ type: { type: String, default: 'in' } })
@@ -15,6 +16,22 @@ const errorMessage = ref('')
 const actionMessage = ref('')
 const actionErrorMessage = ref('')
 const actionState = reactive({ receiptId: null, action: '' })
+
+// Modal Lịch sử duyệt
+const historyState = reactive({ open: false, receiptId: null, receiptCode: '' })
+
+function openHistory(receipt) {
+  historyState.receiptId = receipt.id
+  historyState.receiptCode = receipt.code
+  historyState.open = true
+}
+
+function closeHistory() {
+  historyState.open = false
+  historyState.receiptId = null
+  historyState.receiptCode = ''
+}
+
 const page = ref(0)
 const size = ref(10)
 const totalPages = ref(0)
@@ -252,6 +269,7 @@ function formatCurrency(value) {
             {{ isActionRunning(row, 'cancel') ? 'Đang hủy...' : 'Hủy' }}
           </button>
           <button v-if="!hasWorkflowAction(row.status)" class="btn btn-sm" type="button" @click="goDetail(row)">Xem</button>
+          <button class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="openHistory(row)">Lịch sử</button>
         </div>
       </template>
     </DataTable>
@@ -264,6 +282,14 @@ function formatCurrency(value) {
         <button class="btn btn-sm" type="button" :disabled="!hasNextPage" @click="nextPage">Sau</button>
       </div>
     </div>
+
+    <!-- Modal Lịch sử duyệt -->
+    <ImportReceiptHistoryModal
+      v-if="historyState.open"
+      :receipt-id="historyState.receiptId"
+      :receipt-code="historyState.receiptCode"
+      @close="closeHistory"
+    />
   </template>
 
   <template v-else>
