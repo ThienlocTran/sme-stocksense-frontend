@@ -369,7 +369,7 @@ async function handleSaveDraft() {
     if (isCreateMode.value) {
       setTimeout(() => {
         router.push('/stock-in')
-      }, 1500)
+      }, 900)
     }
   } catch (error) {
     if (error.status === 401) {
@@ -413,7 +413,7 @@ async function handleSubmitForApproval() {
         successMessage.value = 'Gửi duyệt phiếu nhập thành công.'
         setTimeout(() => {
           router.push('/stock-in')
-        }, 1200)
+        }, 900)
       } catch (error) {
         if (error.status === 401) {
           router.replace('/login')
@@ -444,7 +444,7 @@ async function handleCancelDraft() {
         successMessage.value = 'Hủy phiếu nhập thành công.'
         setTimeout(() => {
           router.push('/stock-in')
-        }, 1200)
+        }, 900)
       } catch (error) {
         if (error.status === 401) {
           router.replace('/login')
@@ -487,9 +487,21 @@ function formatCurrency(value) {
       <span>{{ successMessage }}</span>
     </div>
 
-    <div v-if="isLoading" class="import-receipt-form__alert import-receipt-form__alert--info">
-      <i class="mdi mdi-loading mdi-spin"></i>
-      <span>Đang tải dữ liệu...</span>
+    <div v-if="isLoading" class="import-receipt-form__skeleton">
+      <div class="skeleton-card">
+        <div class="skeleton-header"></div>
+        <div class="skeleton-body">
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line"></div>
+        </div>
+      </div>
+      <div class="skeleton-card">
+        <div class="skeleton-header"></div>
+        <div class="skeleton-body">
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+      </div>
     </div>
 
     <form v-if="!isLoading" class="import-receipt-form" @submit.prevent="handleSaveDraft">
