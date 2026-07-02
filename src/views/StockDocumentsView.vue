@@ -55,8 +55,8 @@ const columns = [
 
 const statusOptions = [
   { value: 'NHAP', label: 'Nháp' },
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ duyệt cấp 1' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt cấp 2' },
+  { value: 'CHO_DUYET_CAP_1', label: 'Chờ quản lý duyệt' },
+  { value: 'CHO_DUYET_CAP_2', label: 'Chờ quản lý duyệt' },
   { value: 'CHO_HANG_VE', label: 'Chờ hàng về' },
   { value: 'CHO_KIEM_HANG', label: 'Chờ kiểm hàng' },
   { value: 'HOAN_THANH', label: 'Hoàn thành' },
@@ -234,7 +234,11 @@ function canEditImportReceipt(status) {
 }
 
 function canSubmitImportReceipt(status) {
-  return status === 'NHAP'
+  return status === 'NHAP' || status === 'TU_CHOI'
+}
+
+function submitLabel(status) {
+  return status === 'TU_CHOI' ? 'Gửi duyệt lại' : 'Gửi duyệt'
 }
 
 function canCancelImportReceipt(status) {
@@ -306,7 +310,7 @@ function confirmText() {
         <div class="actions">
           <button v-if="canEditImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="goEdit(row)">Sửa</button>
           <button v-if="canSubmitImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="handleSubmit(row)">
-            {{ isActionRunning(row, 'submit') ? 'Đang gửi...' : 'Gửi duyệt' }}
+            {{ isActionRunning(row, 'submit') ? 'Đang gửi...' : submitLabel(row.status) }}
           </button>
           <button v-if="canCancelImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="handleCancel(row)">
             {{ isActionRunning(row, 'cancel') ? 'Đang hủy...' : 'Hủy' }}

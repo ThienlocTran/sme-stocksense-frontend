@@ -53,8 +53,8 @@ const columns = [
 ]
 
 const statusOptions = [
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ duyệt cấp 1' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt cấp 2' },
+  { value: 'CHO_DUYET_CAP_1', label: 'Chờ quản lý duyệt' },
+  { value: 'CHO_DUYET_CAP_2', label: 'Chờ quản lý duyệt' },
 ]
 
 const statusLabels = Object.fromEntries(statusOptions.map(s => [s.value, s.label]))
@@ -132,7 +132,7 @@ function closeDetail() {
   detailState.error = ''
 }
 
-// ===== T97: Duyệt phiếu nhập theo cấp =====
+// ===== T97: Duyệt phiếu nhập =====
 async function handleApprove(receipt) {
   if (!isPendingApproval(receipt.status)) return
   approveConfirmState.open = true
@@ -220,9 +220,8 @@ function isPendingApproval(status) {
 }
 
 function approveLabel(status) {
-  if (status === 'CHO_DUYET_CAP_1') return 'Duyệt cấp 1'
-  if (status === 'CHO_DUYET_CAP_2') return 'Duyệt cấp 2'
-  return 'Duyệt'
+  if (isPendingApproval(status)) return 'Duyệt phiếu'
+  return 'Duyệt phiếu'
 }
 
 function isActionRunning(receipt, action) {
@@ -269,11 +268,11 @@ function formatCurrency(value) {
 </script>
 
 <template>
-  <PageHeader title="Phiếu nhập chờ duyệt" description="Quản lý duyệt/từ chối phiếu nhập kho theo cấp." />
+  <PageHeader title="Phiếu nhập chờ duyệt" description="Quản lý duyệt/từ chối phiếu nhập kho." />
 
   <div class="filter-bar card card-pad">
     <select v-model="filters.status" class="select" @change="applyFilter">
-      <option value="">Tất cả cấp chờ duyệt</option>
+      <option value="">Tất cả phiếu chờ duyệt</option>
       <option v-for="status in statusOptions" :key="status.value" :value="status.value">{{ status.label }}</option>
     </select>
     <button class="btn btn-ghost" type="button" @click="clearFilters">Xóa lọc</button>
@@ -300,7 +299,7 @@ function formatCurrency(value) {
         <button class="btn btn-sm btn-primary" type="button" :disabled="isAnyActionRunning(row)" @click="handleApprove(row)">
           {{ isActionRunning(row, 'approve') ? 'Đang duyệt...' : approveLabel(row.status) }}
         </button>
-        <button class="btn btn-sm btn-danger" type="button" :disabled="isAnyActionRunning(row)" @click="openRejectModal(row)">Từ chối</button>
+        <button class="btn btn-sm btn-danger" type="button" :disabled="isAnyActionRunning(row)" @click="openRejectModal(row)">Từ chối phiếu</button>
       </div>
     </template>
   </DataTable>
@@ -370,7 +369,7 @@ function formatCurrency(value) {
         </template>
       </div>
       <div v-if="detailState.receipt && isPendingApproval(detailState.receipt.status)" class="modal-foot">
-        <button class="btn btn-danger" type="button" @click="openRejectModal(detailState.receipt)">Từ chối</button>
+        <button class="btn btn-danger" type="button" @click="openRejectModal(detailState.receipt)">Từ chối phiếu</button>
         <button class="btn btn-primary" type="button" @click="handleApprove(detailState.receipt)">{{ approveLabel(detailState.receipt.status) }}</button>
       </div>
     </div>

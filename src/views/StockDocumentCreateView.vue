@@ -82,7 +82,7 @@ const detailCount = computed(() => items.value.length)
 const hasValidItems = computed(() => items.value.length > 0 && items.value.every(item => {
   return item.productId && Number(item.quantity) > 0 && Number(item.unitPrice) >= 0
 }))
-const canSubmit = computed(() => receiptId.value && receiptStatus.value === 'NHAP' && hasValidItems.value)
+const canSubmit = computed(() => receiptId.value && (receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI') && hasValidItems.value)
 const canCancel = computed(() => receiptId.value && receiptStatus.value === 'NHAP')
 const canSave = computed(() => isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI')
 const isRejectedImportReceipt = computed(() => isEditMode.value && receiptStatus.value === 'TU_CHOI')
@@ -350,7 +350,7 @@ async function handleSaveDraft() {
 
     await applySavedReceipt(savedReceipt)
     successMessage.value = receiptStatus.value === 'TU_CHOI'
-      ? 'Lưu thay đổi phiếu nhập thành công.'
+      ? 'Đã lưu thay đổi. Bạn có thể gửi duyệt lại phiếu này.'
       : 'Lưu nháp phiếu nhập thành công.'
 
     if (isCreateMode.value) {
@@ -387,6 +387,10 @@ function handleSubmitForApproval() {
   }
   confirmState.open = true
   confirmState.action = 'submit'
+}
+
+function submitButtonLabel() {
+  return receiptStatus.value === 'TU_CHOI' ? 'Gửi duyệt lại' : 'Gửi duyệt'
 }
 
 function handleCancelDraft() {
@@ -506,8 +510,8 @@ function confirmText() {
     </div>
 
     <form v-if="!isLoading" class="import-receipt-form" @submit.prevent="handleSaveDraft">
-      <div v-if="isRejectedImportReceipt" class="import-receipt-form__rejection-alert">
-        <i class="mdi mdi-alert-outline"></i>
+      <div v-if="isRejectedImportReceipt" class="import-receipt-form__alert import-receipt-form__alert--info">
+        <i class="mdi mdi-information-outline"></i>
         <div>
           <p class="import-receipt-form__rejection-title">Phiếu nhập đã bị từ chối.</p>
           <p class="import-receipt-form__rejection-reason">
@@ -706,7 +710,7 @@ function confirmText() {
         <button v-if="canSubmit" class="btn btn-ghost" type="button" :disabled="isProcessing" @click="handleSubmitForApproval">
           <i v-if="isSubmitting" class="mdi mdi-loading mdi-spin"></i>
           <i v-else class="mdi mdi-send-outline"></i>
-          {{ isSubmitting ? 'Đang gửi...' : 'Gửi duyệt' }}
+          {{ isSubmitting ? 'Đang gửi...' : submitButtonLabel() }}
         </button>
         <button v-if="canSave" class="btn btn-primary" type="submit" :disabled="isProcessing">
           <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
