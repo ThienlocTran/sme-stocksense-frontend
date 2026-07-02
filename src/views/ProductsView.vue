@@ -7,7 +7,7 @@ import EmptyState from '../components/EmptyState.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchFilterBar from '../components/SearchFilterBar.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { getCurrentRoleCode } from '../services/authService'
+import { canManageProducts } from '../services/permissionService'
 import {
   createProduct,
   getProduct,
@@ -39,7 +39,7 @@ const totalPages = ref(0)
 const totalElements = ref(0)
 const filters = reactive({ keyword: '', categoryId: '', status: '' })
 
-const canManage = computed(() => ['ADMIN', 'MANAGER'].includes(getCurrentRoleCode()))
+const canManage = computed(() => canManageProducts())
 const isEditMode = computed(() => formMode.value === 'edit')
 const formTitle = computed(() => isEditMode.value ? 'Sửa sản phẩm' : 'Thêm sản phẩm')
 const hasPreviousPage = computed(() => page.value > 0)
@@ -50,7 +50,8 @@ const confirmMessage = computed(() => pendingProduct.value
   ? `Bạn muốn ${pendingProduct.value.status === 'HOAT_DONG' ? 'ngừng hoạt động' : 'kích hoạt'} "${pendingProduct.value.name}"?`
   : '')
 
-const columns = [
+const columns = computed(() => {
+  const baseColumns = [
   { key: 'code', label: 'Mã SP', class: 'cell-compact' },
   { key: 'sku', label: 'SKU', class: 'cell-compact' },
   { key: 'name', label: 'Tên sản phẩm' },
@@ -60,8 +61,11 @@ const columns = [
   { key: 'minStock', label: 'Ngưỡng tối thiểu', class: 'cell-compact' },
   { key: 'price', label: 'Đơn giá', class: 'cell-nowrap' },
   { key: 'status', label: 'Trạng thái', class: 'cell-nowrap' },
-  { key: 'actions', label: 'Thao tác', class: 'cell-nowrap' },
-]
+  ]
+  return canManage.value
+    ? [...baseColumns, { key: 'actions', label: 'Thao tác', class: 'cell-nowrap' }]
+    : baseColumns
+})
 
 const form = reactive(emptyForm())
 const formErrors = reactive({
@@ -143,6 +147,7 @@ function emptyForm() {
 }
 
 function openCreateForm() {
+  if (!canManage.value) return
   formMode.value = 'create'
   Object.assign(form, emptyForm())
   successMessage.value = ''
@@ -151,6 +156,7 @@ function openCreateForm() {
 }
 
 async function openEditForm(product) {
+  if (!canManage.value) return
   formMode.value = 'edit'
   successMessage.value = ''
   clearFormFeedback()
@@ -218,6 +224,7 @@ function toPayload() {
 }
 
 async function submitForm() {
+  if (!canManage.value) return
   if (!validateForm()) return
   isSaving.value = true
   try {
@@ -282,6 +289,11 @@ function formatCurrency(value) {
     </button>
   </PageHeader>
 
+  <div v-if="!canManage" class="readonly-note card card-pad">
+    <i class="mdi mdi-eye-outline"></i>
+    <span>Bạn đang xem ở chế độ chỉ xem.</span>
+  </div>
+
   <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo mã, SKU hoặc tên sản phẩm" @keyup.enter="applySearch">
     <select v-model="filters.categoryId" class="select" :disabled="isLoading" @change="applyFilter">
       <option value="">Tất cả danh mục</option>
@@ -319,7 +331,7 @@ function formatCurrency(value) {
   >
     <template #price="{ value }">{{ formatCurrency(value) }}</template>
     <template #status="{ value }"><StatusBadge :status="displayStatus(value)" /></template>
-    <template #actions="{ row }">
+    <template v-if="canManage" #actions="{ row }">
       <div class="actions">
         <button v-if="canManage" class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">
           <i class="mdi mdi-pencil-outline"></i>
@@ -406,6 +418,7 @@ function formatCurrency(value) {
 .form-alert { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; line-height: 20px; }
 .form-alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .form-alert-success { background: #ecfdf5; color: #047857; border: 1px solid #bbf7d0; }
+.readonly-note { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: #075985; background: #f0f9ff; border-color: #bae6fd; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .pagination-bar { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pagination-actions { display: flex; align-items: center; gap: 10px; }

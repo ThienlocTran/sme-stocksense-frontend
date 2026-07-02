@@ -7,6 +7,7 @@ import PageHeader from '../../components/PageHeader.vue'
 import SearchFilterBar from '../../components/SearchFilterBar.vue'
 import { categoryStatusOptions, getCategoryStatusLabel } from '../../constants/categoryOptions'
 import { createCategory, disableCategory, getCategories, updateCategory } from '../../services/categoryService'
+import { canManageCategories } from '../../services/permissionService'
 
 const router = useRouter()
 const categories = ref([])
@@ -25,14 +26,19 @@ const pageInfo = reactive({ totalElements: 0, totalPages: 0 })
 const form = reactive(createEmptyForm())
 const formErrors = reactive({ code: '', name: '', description: '', status: '' })
 
-const columns = [
+const canManage = computed(() => canManageCategories())
+const columns = computed(() => {
+  const baseColumns = [
   { key: 'code', label: 'Mã danh mục', class: 'cell-compact' },
   { key: 'name', label: 'Tên danh mục' },
   { key: 'description', label: 'Mô tả' },
   { key: 'status', label: 'Trạng thái', class: 'cell-nowrap' },
   { key: 'createdAt', label: 'Ngày tạo', class: 'cell-nowrap' },
-  { key: 'actions', label: 'Thao tác', class: 'cell-nowrap' },
-]
+  ]
+  return canManage.value
+    ? [...baseColumns, { key: 'actions', label: 'Thao tác', class: 'cell-nowrap' }]
+    : baseColumns
+})
 
 const statusOptions = [{ value: '', label: 'Tất cả trạng thái' }, ...categoryStatusOptions]
 const currentPage = computed(() => filters.page + 1)
@@ -112,13 +118,13 @@ function getStatusToggleLabel(category) {
 }
 
 function requestCategoryStatus(category) {
-  if (!category?.id || disablingId.value) return
+  if (!canManage.value || !category?.id || disablingId.value) return
   pendingCategory.value = category
 }
 
 async function confirmCategoryStatus() {
   const category = pendingCategory.value
-  if (!category?.id || disablingId.value) return
+  if (!canManage.value || !category?.id || disablingId.value) return
 
   const nextStatus = category.status === 'NGUNG_HOAT_DONG' ? 'HOAT_DONG' : 'NGUNG_HOAT_DONG'
   disablingId.value = category.id
@@ -157,6 +163,7 @@ function createEmptyForm() {
 }
 
 function openCreateForm() {
+  if (!canManage.value) return
   formMode.value = 'create'
   Object.assign(form, createEmptyForm())
   successMessage.value = ''
@@ -165,6 +172,7 @@ function openCreateForm() {
 }
 
 function openEditForm(category) {
+  if (!canManage.value) return
   formMode.value = 'edit'
   Object.assign(form, {
     id: category.id,
@@ -184,6 +192,7 @@ function closeForm() {
 }
 
 async function submitCategoryForm() {
+  if (!canManage.value) return
   if (!validateForm()) return
 
   isSaving.value = true
@@ -267,11 +276,16 @@ function formatDate(value) {
 
 <template>
   <PageHeader title="Danh mục" description="Danh sách nhóm sản phẩm theo mã, tên và trạng thái.">
-    <button class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
+    <button v-if="canManage" class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
       <i class="mdi mdi-shape-plus-outline"></i>
       Thêm danh mục
     </button>
   </PageHeader>
+
+  <div v-if="!canManage" class="category-readonly card card-pad">
+    <i class="mdi mdi-eye-outline"></i>
+    <span>Bạn đang xem ở chế độ chỉ xem.</span>
+  </div>
 
   <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo mã hoặc tên danh mục" @keyup.enter="applySearch">
     <select v-model="filters.status" class="select" :disabled="isLoading" @change="applyFilter">
@@ -309,7 +323,7 @@ function formatDate(value) {
         <span class="category-status" :class="statusClass(value)">{{ getCategoryStatusLabel(value) }}</span>
       </template>
       <template #createdAt="{ value }">{{ formatDate(value) }}</template>
-      <template #actions="{ row }">
+      <template v-if="canManage" #actions="{ row }">
         <div class="actions">
           <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">
             <i class="mdi mdi-pencil-outline"></i>
@@ -417,6 +431,7 @@ function formatDate(value) {
 .category-alert, .category-success { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
 .category-alert { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
 .category-success { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+.category-readonly { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: #075985; background: #f0f9ff; border-color: #bae6fd; }
 .category-table-shell { position: relative; }
 .category-loading { min-height: 220px; display: grid; place-items: center; align-content: center; gap: 10px; color: var(--muted); font-weight: 700; }
 .mdi-spin { animation: spin 0.8s linear infinite; }

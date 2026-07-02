@@ -8,7 +8,7 @@ import PageHeader from '../components/PageHeader.vue'
 import SearchFilterBar from '../components/SearchFilterBar.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { getWarehouseStatusLabel, warehouseStatusOptions } from '../constants/warehouseOptions'
-import { getCurrentRoleCode } from '../services/authService'
+import { canManageWarehouses } from '../services/permissionService'
 import { createWarehouse, getWarehouses, updateWarehouse } from '../services/warehouseService'
 
 const router = useRouter()
@@ -26,7 +26,7 @@ const searchDraft = ref('')
 const filters = reactive({ keyword: '', status: '' })
 
 const statusOptions = [{ value: '', label: 'Tất cả trạng thái' }, ...warehouseStatusOptions]
-const canManage = computed(() => ['ADMIN', 'MANAGER'].includes(getCurrentRoleCode()))
+const canManage = computed(() => canManageWarehouses())
 const isEditMode = computed(() => formMode.value === 'edit')
 const formTitle = computed(() => isEditMode.value ? 'Sửa kho hàng' : 'Thêm kho hàng')
 const hasActiveFilters = computed(() => filters.keyword !== '' || filters.status !== '')
@@ -35,13 +35,17 @@ const confirmMessage = computed(() => pendingWarehouse.value
   ? `Bạn muốn ${pendingWarehouse.value.trangThai === 'HOAT_DONG' ? 'ngừng hoạt động' : 'kích hoạt'} "${pendingWarehouse.value.tenKho}"?`
   : '')
 
-const columns = [
+const columns = computed(() => {
+  const baseColumns = [
   { key: 'maKho', label: 'Mã kho', class: 'cell-compact' },
   { key: 'tenKho', label: 'Tên kho' },
   { key: 'diaChi', label: 'Địa chỉ' },
   { key: 'trangThai', label: 'Trạng thái', class: 'cell-nowrap' },
-  { key: 'actions', label: 'Thao tác', class: 'cell-nowrap' },
-]
+  ]
+  return canManage.value
+    ? [...baseColumns, { key: 'actions', label: 'Thao tác', class: 'cell-nowrap' }]
+    : baseColumns
+})
 
 const form = reactive(createEmptyForm())
 const formErrors = reactive({ maKho: '', tenKho: '', diaChi: '', trangThai: '' })
@@ -87,6 +91,7 @@ function createEmptyForm() {
 }
 
 function openCreateForm() {
+  if (!canManage.value) return
   formMode.value = 'create'
   Object.assign(form, createEmptyForm())
   successMessage.value = ''
@@ -95,6 +100,7 @@ function openCreateForm() {
 }
 
 function openEditForm(warehouse) {
+  if (!canManage.value) return
   formMode.value = 'edit'
   Object.assign(form, {
     id: warehouse.id,
@@ -162,6 +168,7 @@ function validateForm() {
 }
 
 async function submitWarehouseForm() {
+  if (!canManage.value) return
   if (!validateForm()) return
 
   isSaving.value = true
@@ -239,9 +246,10 @@ function displayStatus(status) {
 <template>
   <PageHeader title="Kho hàng" description="Quản lý danh sách kho ở mức cơ bản, chưa dùng sơ đồ kệ/vị trí.">
     <button
+      v-if="canManage"
       class="btn btn-primary"
       type="button"
-      :disabled="!canManage || isLoading || isSaving"
+      :disabled="isLoading || isSaving"
       @click="openCreateForm"
       title="Thêm kho hàng mới"
     >
@@ -249,6 +257,11 @@ function displayStatus(status) {
       Thêm kho
     </button>
   </PageHeader>
+
+  <div v-if="!canManage" class="warehouse-readonly card card-pad">
+    <i class="mdi mdi-eye-outline"></i>
+    <span>Bạn đang xem ở chế độ chỉ xem.</span>
+  </div>
 
   <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo mã hoặc tên kho" @keyup.enter="applySearch">
     <select v-model="filters.status" class="select" :disabled="isLoading" @change="applyFilter">
@@ -283,12 +296,12 @@ function displayStatus(status) {
     <DataTable v-else-if="warehouses.length > 0" :columns="columns" :rows="warehouses" min-width="900px">
       <template #diaChi="{ value }">{{ value || '-' }}</template>
       <template #trangThai="{ value }"><StatusBadge :status="displayStatus(value)" /></template>
-      <template #actions="{ row }">
+      <template v-if="canManage" #actions="{ row }">
         <div class="actions">
           <button
             class="btn btn-sm btn-primary"
             type="button"
-            :disabled="!canManage || isLoading || isSaving"
+            :disabled="isLoading || isSaving"
             @click="openEditForm(row)"
             title="Chỉnh sửa thông tin kho hàng"
           >
@@ -298,7 +311,7 @@ function displayStatus(status) {
           <button
             class="btn btn-sm"
             type="button"
-            :disabled="!canManage || isLoading || isSaving || togglingId"
+            :disabled="isLoading || isSaving || togglingId"
             title="Ngừng hoạt động hoặc kích hoạt kho hàng"
             @click="requestStatus(row)"
           >
@@ -392,6 +405,7 @@ function displayStatus(status) {
 .warehouse-alert, .warehouse-success { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
 .warehouse-alert { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
 .warehouse-success { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+.warehouse-readonly { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: #075985; background: #f0f9ff; border-color: #bae6fd; }
 .warehouse-table-shell { position: relative; }
 .warehouse-loading { min-height: 220px; display: grid; place-items: center; align-content: center; gap: 10px; color: var(--muted); font-weight: 700; }
 .mdi-spin { animation: spin 0.8s linear infinite; }
