@@ -86,7 +86,7 @@ export async function getDetail(receiptId) {
     const { data } = await importReceiptClient.get(`/api/import-receipts/${receiptId}`, {
       headers: getAuthorizationHeader(),
     })
-    return data
+    return normalizeImportReceiptDetail(data)
   } catch (error) {
     throw normalizeImportReceiptError(error, 'Không thể tải thông tin phiếu nhập.')
   }
@@ -158,14 +158,18 @@ export async function getImportReceiptHistory(receiptId) {
 
 // ===== Các chức năng xử lý hàng về & kiểm hàng từ dev =====
 
-export async function confirmArrival(receiptId) {
+export async function confirmArrival(receiptId, actualArrivalDate = toLocalDateTimeString()) {
   try {
-    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/arrival`, null, {
+    const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/arrival`, { actualArrivalDate }, {
       headers: getAuthorizationHeader(),
     })
-    return data
+    return normalizeImportReceiptDetail(data)
   } catch (error) {
-    throw normalizeImportReceiptError(error, 'Không thể xác nhận hàng về.')
+    const normalized = normalizeImportReceiptError(error, 'Không thể xác nhận hàng về.')
+    if (normalized.status === 400) {
+      normalized.message = 'Vui lòng kiểm tra ngày hàng về thực tế.'
+    }
+    throw normalized
   }
 }
 
@@ -174,7 +178,7 @@ export async function inspectReceipt(receiptId, payload) {
     const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/inspect`, payload, {
       headers: getAuthorizationHeader(),
     })
-    return data
+    return normalizeImportReceiptDetail(data)
   } catch (error) {
     throw normalizeImportReceiptError(error, 'Không thể lưu kết quả kiểm hàng.')
   }
@@ -196,7 +200,7 @@ export async function completeImport(receiptId, payload) {
     const { data } = await importReceiptClient.put(`/api/import-receipts/${receiptId}/hoan-tat`, payload, {
       headers: getAuthorizationHeader(),
     })
-    return data
+    return normalizeImportReceiptDetail(data)
   } catch (error) {
     throw normalizeImportReceiptError(error, 'Không thể hoàn tất phiếu nhập.')
   }
@@ -235,6 +239,22 @@ export async function getProducts() {
   } catch (error) {
     throw normalizeImportReceiptError(error, 'Không thể tải danh sách sản phẩm.')
   }
+}
+
+function normalizeImportReceiptDetail(receipt) {
+  if (!receipt || typeof receipt !== 'object') return receipt
+  const details = receipt.details ?? receipt.items ?? []
+  const items = receipt.items ?? receipt.details ?? []
+  return {
+    ...receipt,
+    details,
+    items,
+  }
+}
+
+function toLocalDateTimeString(date = new Date()) {
+  const pad = value => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
 function normalizeImportReceiptError(error, fallbackMessage) {

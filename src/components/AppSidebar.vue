@@ -10,8 +10,8 @@ const items = [
   ['Kho hàng', '/warehouses', 'mdi-warehouse'],
   ['Tồn kho', '/inventory', 'mdi-clipboard-list-outline'],
   ['Lịch sử giao dịch', '/inventory-transactions', 'mdi-history'],
-  ['Phiếu nhập kho', '/stock-in', 'mdi-tray-arrow-down'],
-  ['Phiếu xuất kho', '/stock-out', 'mdi-tray-arrow-up'],
+  ['Phiếu nhập kho', '/stock-in', 'mdi-tray-arrow-down', 'employee'],
+  ['Phiếu xuất kho', '/stock-out', 'mdi-tray-arrow-up', 'employee'],
   ['Chờ duyệt', '/approvals', 'mdi-check-decagram-outline', 'approval'],
   ['Import Excel', '/import-excel', 'mdi-file-excel-outline'],
   ['Cảnh báo tồn kho', '/alerts', 'mdi-alert-outline'],
@@ -23,6 +23,7 @@ const visibleItems = computed(() => items.filter(item => {
   if (item[3] === 'admin') return role === 'ADMIN'
   if (item[3] === 'manage') return role === 'ADMIN' || role === 'MANAGER'
   if (item[3] === 'approval') return role === 'ADMIN' || role === 'MANAGER'
+  if (item[3] === 'employee') return role === 'ADMIN' || role === 'EMPLOYEE'
   return true
 }))
 </script>

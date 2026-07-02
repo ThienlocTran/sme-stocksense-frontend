@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import DataTable from '../components/DataTable.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
 import {
   approveImportReceipt,
@@ -27,6 +28,7 @@ const filters = reactive({ status: '' })
 
 // Trạng thái thao tác đang chạy theo từng phiếu
 const actionState = reactive({ receiptId: null, action: '' })
+const approveConfirmState = reactive({ open: false, receipt: null })
 
 // Chi tiết phiếu (T96)
 const detailState = reactive({ open: false, loading: false, error: '', receipt: null })
@@ -133,7 +135,20 @@ function closeDetail() {
 // ===== T97: Duyệt phiếu nhập theo cấp =====
 async function handleApprove(receipt) {
   if (!isPendingApproval(receipt.status)) return
-  if (!window.confirm(`${approveLabel(receipt.status)} phiếu ${receipt.code}?`)) return
+  approveConfirmState.open = true
+  approveConfirmState.receipt = receipt
+}
+
+// ===== T98: Từ chối phiếu nhập (modal + validate lý do) =====
+function closeApproveConfirm() {
+  if (actionState.action === 'approve') return
+  approveConfirmState.open = false
+  approveConfirmState.receipt = null
+}
+
+async function confirmApprove() {
+  const receipt = approveConfirmState.receipt
+  if (!receipt || !isPendingApproval(receipt.status)) return
 
   actionState.receiptId = receipt.id
   actionState.action = 'approve'
@@ -141,6 +156,8 @@ async function handleApprove(receipt) {
   actionErrorMessage.value = ''
   try {
     await approveImportReceipt(receipt.id)
+    approveConfirmState.open = false
+    approveConfirmState.receipt = null
     closeDetail()
     await fetchPendingApprovals()
     actionMessage.value = `Đã duyệt phiếu ${receipt.code} thành công.`
@@ -153,7 +170,6 @@ async function handleApprove(receipt) {
   }
 }
 
-// ===== T98: Từ chối phiếu nhập (modal + validate lý do) =====
 function openRejectModal(receipt) {
   rejectState.open = true
   rejectState.receiptId = receipt.id
@@ -393,6 +409,15 @@ function formatCurrency(value) {
   </div>
 
   <!-- Modal Lịch sử duyệt -->
+  <ConfirmDialog
+    :open="approveConfirmState.open"
+    title="Xác nhận duyệt"
+    :message="approveConfirmState.receipt ? `${approveLabel(approveConfirmState.receipt.status)} phiếu ${approveConfirmState.receipt.code}?` : ''"
+    :confirm-text="approveConfirmState.receipt ? approveLabel(approveConfirmState.receipt.status) : 'Xác nhận'"
+    @cancel="closeApproveConfirm"
+    @confirm="confirmApprove"
+  />
+
   <ImportReceiptHistoryModal
     v-if="historyState.open"
     :receipt-id="historyState.receiptId"

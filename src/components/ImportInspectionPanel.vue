@@ -30,8 +30,10 @@ const discrepancyNote = ref('')
 const authStore = useAuthStore()
 const canProcessReceipt = computed(() => {
   const role = authStore.currentRole
-  return role === 'ADMIN' || role === 'MANAGER' || role === 'EMPLOYEE'
+  return role === 'ADMIN' || role === 'EMPLOYEE'
 })
+
+const receiptItems = computed(() => receipt.value?.items ?? receipt.value?.details ?? [])
 
 // Computed properties
 const hasDiscrepancy = computed(() => {
@@ -81,8 +83,9 @@ async function loadData() {
     inspectItems.value = []
     discrepancyNote.value = ''
     // Khởi tạo form kiểm hàng
-    if (data.items && data.items.length > 0) {
-      inspectItems.value = data.items.map(item => ({
+    const detailItems = data.items ?? data.details ?? []
+    if (detailItems.length > 0) {
+      inspectItems.value = detailItems.map(item => ({
         productId: item.productId,
         productCode: item.productCode,
         productName: item.productName,
@@ -381,7 +384,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in receipt.items" :key="item.productId">
+            <tr v-for="item in receiptItems" :key="item.productId">
               <td>
                 <div class="font-weight-bold">{{ item.productName }}</div>
                 <div class="text-caption text-grey">{{ item.productCode }}</div>
