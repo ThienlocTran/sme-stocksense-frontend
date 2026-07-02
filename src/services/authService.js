@@ -20,6 +20,7 @@ const AUTH_ROLE_CODES = {
   'Admin / IT': 'ADMIN',
   'Quản lý kho': 'MANAGER',
   'Nhân viên kho': 'EMPLOYEE',
+  'Quản trị viên': 'ADMIN',
 }
 
 const authClient = axios.create({
@@ -92,7 +93,7 @@ export function getAuthorizationHeader() {
 }
 
 export function getCurrentRoleCode() {
-  return normalizeRole(getCurrentUser()?.role)
+  return normalizeUserRole(getCurrentUser())
 }
 
 export function getCurrentRoleLabel() {
@@ -114,9 +115,25 @@ export function clearAuth() {
 
 export function normalizeRole(role) {
   if (!role) return ''
-  const mappedRole = AUTH_ROLE_CODES[role]
+  if (Array.isArray(role)) return role.map(normalizeRole).find(Boolean) || ''
+  if (typeof role === 'object') return normalizeUserRole(role)
+
+  const roleText = String(role).trim()
+  const mappedRole = AUTH_ROLE_CODES[roleText]
   if (mappedRole) return mappedRole
-  return String(role).trim().replace(/^ROLE_/i, '').toUpperCase()
+  return roleText.replace(/^ROLE_/i, '').toUpperCase()
+}
+
+export function normalizeUserRole(user) {
+  if (!user || typeof user !== 'object') return normalizeRole(user)
+
+  return [
+    user.roleCode,
+    user.role,
+    user.roleName,
+    user.authority,
+    user.authorities,
+  ].map(normalizeRole).find(Boolean) || ''
 }
 
 function storeAuth(response) {
@@ -125,6 +142,10 @@ function storeAuth(response) {
     fullName: response.fullName,
     email: response.email,
     role: response.role,
+    roleCode: response.roleCode,
+    roleName: response.roleName,
+    authority: response.authority,
+    authorities: response.authorities,
     status: response.status,
   }
 
