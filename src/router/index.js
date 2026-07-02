@@ -63,6 +63,7 @@ router.beforeEach(to => {
   return true
 })
 
+// Frontend route guard is for navigation UX only and does not replace backend API authorization.
 function resolveRouteAccess(path, role) {
   if (path === '/employees' || path === '/users') return role === 'ADMIN' ? true : '/dashboard'
   if (path === '/approvals') return role === 'ADMIN' || role === 'MANAGER' ? true : '/dashboard'

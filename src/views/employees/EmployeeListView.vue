@@ -10,6 +10,7 @@ import {
   getRoleLabel,
   getStatusLabel,
 } from '../../constants/employeeOptions'
+import { getCurrentRoleCode } from '../../services/authService'
 import { createEmployee, getEmployees, lockEmployee, resetEmployeePassword, unlockEmployee, updateEmployee } from '../../services/employeeService'
 
 const router = useRouter()
@@ -34,14 +35,13 @@ const formErrors = reactive({ fullName: '', email: '', phoneNumber: '', password
 const resetForm = reactive({ newPassword: '', confirmPassword: '' })
 const resetErrors = reactive({ newPassword: '', confirmPassword: '' })
 
-const columns = [
+const baseColumns = [
   { key: 'fullName', label: 'Họ tên' },
   { key: 'email', label: 'Email' },
   { key: 'phoneNumber', label: 'Số điện thoại' },
   { key: 'role', label: 'Vai trò' },
   { key: 'status', label: 'Trạng thái' },
   { key: 'createdAt', label: 'Ngày tạo' },
-  { key: 'actions', label: 'Thao tác' },
 ]
 
 const statusOptions = [{ value: '', label: 'Tất cả trạng thái' }, ...employeeStatusOptions]
@@ -52,6 +52,10 @@ const currentPage = computed(() => filters.page + 1)
 const canGoPrevious = computed(() => filters.page > 0 && !isLoading.value)
 const canGoNext = computed(() => filters.page + 1 < pageInfo.totalPages && !isLoading.value)
 const isEditMode = computed(() => formMode.value === 'edit')
+const canManageEmployees = computed(() => getCurrentRoleCode() === 'ADMIN')
+const columns = computed(() => (
+  canManageEmployees.value ? [...baseColumns, { key: 'actions', label: 'Thao tác' }] : baseColumns
+))
 const formTitle = computed(() => (isEditMode.value ? 'Sửa nhân viên' : 'Thêm nhân viên'))
 const rangeText = computed(() => {
   if (pageInfo.totalElements === 0) return '0 nhân viên'
@@ -120,7 +124,7 @@ function isStatusToggleDisabled(employee) {
 }
 
 async function toggleEmployeeStatus(employee) {
-  if (!employee?.id || statusUpdatingId.value || isStatusToggleDisabled(employee)) return
+  if (!canManageEmployees.value || !employee?.id || statusUpdatingId.value || isStatusToggleDisabled(employee)) return
 
   const shouldLock = employee.status === 'HOAT_DONG'
   statusUpdatingId.value = employee.id
@@ -160,6 +164,7 @@ function createEmptyForm() {
 }
 
 function openCreateForm() {
+  if (!canManageEmployees.value) return
   formMode.value = 'create'
   Object.assign(form, createEmptyForm())
   successMessage.value = ''
@@ -168,6 +173,7 @@ function openCreateForm() {
 }
 
 function openEditForm(employee) {
+  if (!canManageEmployees.value) return
   formMode.value = 'edit'
   Object.assign(form, {
     id: employee.id,
@@ -189,6 +195,7 @@ function closeForm() {
 }
 
 async function submitEmployeeForm() {
+  if (!canManageEmployees.value) return
   if (!validateForm()) return
 
   isSaving.value = true
@@ -298,6 +305,7 @@ function applyBackendErrors(errors = {}) {
 }
 
 function openResetPassword(employee) {
+  if (!canManageEmployees.value) return
   resetEmployee.value = employee
   successMessage.value = ''
   clearResetFeedback()
@@ -311,6 +319,7 @@ function closeResetPassword() {
 }
 
 async function submitResetPassword() {
+  if (!canManageEmployees.value) return
   if (!validateResetForm() || !resetEmployee.value) return
 
   isResetting.value = true
@@ -403,7 +412,7 @@ function formatDate(value) {
 
 <template>
   <PageHeader title="Nhân viên" description="Theo dõi danh sách nhân viên theo vai trò, trạng thái và từ khóa tìm kiếm.">
-    <button class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
+    <button v-if="canManageEmployees" class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
       <i class="mdi mdi-account-plus-outline"></i>
       Thêm nhân viên
     </button>

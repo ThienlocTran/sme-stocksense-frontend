@@ -325,7 +325,7 @@ function displayStatus(status) {
     <EmptyState
       v-else-if="!isLoading && !errorMessage"
       title="Không có kho hàng"
-      description="Thử thay đổi bộ lọc hoặc thêm kho mới."
+      :description="canManage ? 'Thử thay đổi bộ lọc hoặc thêm kho mới.' : 'Thử thay đổi bộ lọc để tìm kho phù hợp.'"
     />
   </div>
 

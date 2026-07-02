@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { canProcessImportReceipt } from '../services/permissionService'
 import {
   getDetail,
   confirmArrival,
@@ -33,8 +34,7 @@ const savedDiscrepancySignature = ref('')
 
 const authStore = useAuthStore()
 const canProcessReceipt = computed(() => {
-  const role = authStore.currentRole
-  return role === 'ADMIN' || role === 'EMPLOYEE'
+  return canProcessImportReceipt(authStore.currentRole)
 })
 
 const receiptItems = computed(() => receipt.value?.items ?? receipt.value?.details ?? [])
@@ -54,8 +54,8 @@ const currentDiscrepancySignature = computed(() => JSON.stringify({
     productId: item.productId,
     actualReceivedQuantity: Number(item.actualReceivedQuantity),
     physicalStatus: item.physicalStatus,
-    reason: item.reason,
-    action: item.action
+    reason: String(item.reason || '').trim(),
+    action: String(item.action || '').trim()
   }))
 }))
 
@@ -121,8 +121,10 @@ async function loadData() {
       }))
     }
   } catch (err) {
+    if (requestId !== currentRequestId) return
     error.value = err.message || 'Lỗi tải dữ liệu phiếu nhập'
   } finally {
+    if (requestId !== currentRequestId) return
     loading.value = false
   }
 }
@@ -148,10 +150,14 @@ function buildDiscrepancyPayload() {
     note: discrepancyNote.value,
     items: discrepancyItems.value.map(item => ({
       productId: item.productId,
-      reason: item.reason,
-      action: item.action
+      reason: String(item.reason || '').trim(),
+      action: String(item.action || '').trim()
     }))
   }
+}
+
+function findInvalidDiscrepancyItem() {
+  return discrepancyItems.value.find(item => !String(item.reason || '').trim() || !String(item.action || '').trim())
 }
 
 async function handleArrival() {
@@ -213,6 +219,11 @@ async function handleSaveDiscrepancyReport() {
   try {
     if (!hasDiscrepancy.value) {
       error.value = 'Không có chênh lệch để lập biên bản.'
+      return
+    }
+    const invalidItem = findInvalidDiscrepancyItem()
+    if (invalidItem) {
+      error.value = `Vui lòng nhập lý do và hướng xử lý cho "${invalidItem.productName}".`
       return
     }
     await inspectReceipt(props.receiptId, buildInspectPayload())

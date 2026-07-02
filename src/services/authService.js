@@ -113,7 +113,10 @@ export function clearAuth() {
 }
 
 function normalizeRole(role) {
-  return AUTH_ROLE_CODES[role] || role || ''
+  if (!role) return ''
+  const mappedRole = AUTH_ROLE_CODES[role]
+  if (mappedRole) return mappedRole
+  return String(role).trim().replace(/^ROLE_/i, '').toUpperCase()
 }
 
 function storeAuth(response) {

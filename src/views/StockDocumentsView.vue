@@ -19,6 +19,7 @@ const actionMessage = ref('')
 const actionErrorMessage = ref('')
 const actionState = reactive({ receiptId: null, action: '' })
 const confirmState = reactive({ open: false, action: '', receipt: null })
+let fetchReceiptsRequestId = 0
 
 // Modal Lịch sử duyệt
 const historyState = reactive({ open: false, receiptId: null, receiptCode: '' })
@@ -82,6 +83,7 @@ watch(() => props.type, type => {
 })
 
 async function fetchReceipts() {
+  const requestId = ++fetchReceiptsRequestId
   isLoading.value = true
   errorMessage.value = ''
   actionMessage.value = ''
@@ -95,14 +97,17 @@ async function fetchReceipts() {
       size: size.value,
       status: filters.status,
     })
+    if (requestId !== fetchReceiptsRequestId) return
     receipts.value = data.content || []
     totalPages.value = data.totalPages || 0
     totalElements.value = data.totalElements || 0
   } catch (error) {
+    if (requestId !== fetchReceiptsRequestId) return
     receipts.value = []
     errorMessage.value = error.message
     if (error.status === 401) router.replace('/login')
   } finally {
+    if (requestId !== fetchReceiptsRequestId) return
     isLoading.value = false
   }
 }
@@ -242,12 +247,12 @@ function rejectionReasonText(receipt) {
 }
 
 function canEditImportReceipt(status) {
-  if (currentRole.value === 'MANAGER') return false
+  if (!['ADMIN', 'EMPLOYEE'].includes(currentRole.value)) return false
   return status === 'NHAP' || status === 'TU_CHOI'
 }
 
 function canSubmitImportReceipt(status) {
-  if (currentRole.value === 'MANAGER') return false
+  if (!['ADMIN', 'EMPLOYEE'].includes(currentRole.value)) return false
   return status === 'NHAP' || status === 'TU_CHOI'
 }
 
@@ -256,7 +261,7 @@ function submitLabel(status) {
 }
 
 function canCancelImportReceipt(status) {
-  if (currentRole.value === 'MANAGER') return false
+  if (!['ADMIN', 'EMPLOYEE'].includes(currentRole.value)) return false
   return status === 'NHAP'
 }
 

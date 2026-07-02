@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
@@ -35,10 +35,22 @@ const rejectionReason = ref('')
 const isDirty = ref(false)
 const isHydrating = ref(false)
 const confirmState = reactive({ open: false, action: '' })
+let redirectTimer = null
 
 const warehouses = ref([])
 const suppliers = ref([])
 const products = ref([])
+
+function scheduleRedirectToList(delay) {
+  if (redirectTimer) clearTimeout(redirectTimer)
+  redirectTimer = setTimeout(() => {
+    router.push('/stock-in')
+  }, delay)
+}
+
+onBeforeUnmount(() => {
+  if (redirectTimer) clearTimeout(redirectTimer)
+})
 
 const loadingState = reactive({
   warehouses: false,
@@ -354,9 +366,7 @@ async function handleSaveDraft() {
       : 'Lưu nháp phiếu nhập thành công.'
 
     if (isCreateMode.value) {
-      setTimeout(() => {
-        router.push('/stock-in')
-      }, 1500)
+      scheduleRedirectToList(1500)
     }
   } catch (error) {
     if (error.status === 401) {
@@ -424,9 +434,7 @@ async function confirmSubmitForApproval() {
     const receipt = await submitForApproval(receiptId.value)
     await applySavedReceipt(receipt)
     successMessage.value = 'Gửi duyệt phiếu nhập thành công.'
-    setTimeout(() => {
-      router.push('/stock-in')
-    }, 1200)
+    scheduleRedirectToList(1200)
   } catch (error) {
     if (error.status === 401) {
       router.replace('/login')
@@ -447,9 +455,7 @@ async function confirmCancelDraft() {
     const receipt = await cancelDraft(receiptId.value)
     await applySavedReceipt(receipt)
     successMessage.value = 'Hủy phiếu nhập thành công.'
-    setTimeout(() => {
-      router.push('/stock-in')
-    }, 1200)
+    scheduleRedirectToList(1200)
   } catch (error) {
     if (error.status === 401) {
       router.replace('/login')

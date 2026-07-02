@@ -6,6 +6,7 @@ defineProps({
   placeholder: { type: String, default: "Tìm kiếm" },
 });
 defineEmits(["update:modelValue"]);
+defineOptions({ inheritAttrs: false });
 const attrs = useAttrs();
 </script>
 
