@@ -1,8 +1,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import PageHeader from '../components/PageHeader.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import DataTable from '../components/DataTable.vue'
+import EmptyState from '../components/EmptyState.vue'
+import PageHeader from '../components/PageHeader.vue'
 import SearchFilterBar from '../components/SearchFilterBar.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { getCurrentRoleCode } from '../services/authService'
@@ -22,6 +24,8 @@ const categories = ref([])
 const suppliers = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
+const togglingId = ref(null)
+const pendingProduct = ref(null)
 const isFormOpen = ref(false)
 const formMode = ref('create')
 const errorMessage = ref('')
@@ -40,18 +44,23 @@ const isEditMode = computed(() => formMode.value === 'edit')
 const formTitle = computed(() => isEditMode.value ? 'Sửa sản phẩm' : 'Thêm sản phẩm')
 const hasPreviousPage = computed(() => page.value > 0)
 const hasNextPage = computed(() => page.value + 1 < totalPages.value)
+const hasActiveFilters = computed(() => searchDraft.value.trim() !== '' || filters.categoryId !== '' || filters.status !== '')
+const confirmTitle = computed(() => pendingProduct.value?.status === 'HOAT_DONG' ? 'Ngừng hoạt động sản phẩm?' : 'Kích hoạt sản phẩm?')
+const confirmMessage = computed(() => pendingProduct.value
+  ? `Bạn muốn ${pendingProduct.value.status === 'HOAT_DONG' ? 'ngừng hoạt động' : 'kích hoạt'} "${pendingProduct.value.name}"?`
+  : '')
 
 const columns = [
-  { key: 'code', label: 'Mã SP' },
-  { key: 'sku', label: 'SKU' },
+  { key: 'code', label: 'Mã SP', class: 'cell-compact' },
+  { key: 'sku', label: 'SKU', class: 'cell-compact' },
   { key: 'name', label: 'Tên sản phẩm' },
   { key: 'categoryName', label: 'Danh mục' },
   { key: 'partnerName', label: 'Nhà cung cấp' },
-  { key: 'unit', label: 'Đơn vị' },
-  { key: 'minStock', label: 'Ngưỡng tối thiểu' },
-  { key: 'price', label: 'Đơn giá' },
-  { key: 'status', label: 'Trạng thái' },
-  { key: 'actions', label: 'Thao tác' },
+  { key: 'unit', label: 'Đơn vị', class: 'cell-compact' },
+  { key: 'minStock', label: 'Ngưỡng tối thiểu', class: 'cell-compact' },
+  { key: 'price', label: 'Đơn giá', class: 'cell-nowrap' },
+  { key: 'status', label: 'Trạng thái', class: 'cell-nowrap' },
+  { key: 'actions', label: 'Thao tác', class: 'cell-nowrap' },
 ]
 
 const form = reactive(emptyForm())
@@ -66,8 +75,8 @@ onMounted(async () => {
 async function loadDropdowns() {
   try {
     const [categoryData, supplierData] = await Promise.all([getProductCategories(), getProductSuppliers()])
-    categories.value = categoryData
-    suppliers.value = supplierData
+    categories.value = categoryData || []
+    suppliers.value = supplierData || []
   } catch (error) {
     errorMessage.value = error.message
     if (error.status === 401) router.replace('/login')
@@ -136,12 +145,14 @@ function emptyForm() {
 function openCreateForm() {
   formMode.value = 'create'
   Object.assign(form, emptyForm())
+  successMessage.value = ''
   clearFormFeedback()
   isFormOpen.value = true
 }
 
 async function openEditForm(product) {
   formMode.value = 'edit'
+  successMessage.value = ''
   clearFormFeedback()
   isFormOpen.value = true
   try {
@@ -228,17 +239,34 @@ async function submitForm() {
   }
 }
 
-async function toggleStatus(product) {
-  if (!canManage.value) return
+function requestStatus(product) {
+  if (!canManage.value || togglingId.value) return
+  pendingProduct.value = product
+}
+
+async function confirmStatus() {
+  const product = pendingProduct.value
+  if (!product || !canManage.value) return
+
   const nextStatus = product.status === 'HOAT_DONG' ? 'NGUNG_HOAT_DONG' : 'HOAT_DONG'
+  togglingId.value = product.id
+  errorMessage.value = ''
+  successMessage.value = ''
   try {
     await updateProductStatus(product.id, nextStatus)
-    successMessage.value = 'Cập nhật trạng thái sản phẩm thành công.'
+    successMessage.value = nextStatus === 'HOAT_DONG' ? 'Đã kích hoạt sản phẩm.' : 'Đã ngừng hoạt động sản phẩm.'
+    pendingProduct.value = null
     await fetchProducts()
   } catch (error) {
     errorMessage.value = error.message
     if (error.status === 401) router.replace('/login')
+  } finally {
+    togglingId.value = null
   }
+}
+
+function displayStatus(status) {
+  return status === 'HOAT_DONG' ? 'Đang hoạt động' : status === 'NGUNG_HOAT_DONG' ? 'Ngừng hoạt động' : status || '-'
 }
 
 function formatCurrency(value) {
@@ -248,44 +276,81 @@ function formatCurrency(value) {
 
 <template>
   <PageHeader title="Sản phẩm" description="Quản lý danh mục sản phẩm cơ bản cho tồn kho.">
-    <button v-if="canManage" class="btn btn-primary" type="button" @click="openCreateForm"><i class="mdi mdi-plus"></i>Thêm sản phẩm</button>
+    <button v-if="canManage" class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
+      <i class="mdi mdi-plus"></i>
+      Thêm sản phẩm
+    </button>
   </PageHeader>
 
   <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo mã, SKU hoặc tên sản phẩm" @keyup.enter="applySearch">
-    <select v-model="filters.categoryId" class="select" @change="applyFilter">
+    <select v-model="filters.categoryId" class="select" :disabled="isLoading" @change="applyFilter">
       <option value="">Tất cả danh mục</option>
       <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
     </select>
-    <select v-model="filters.status" class="select" @change="applyFilter">
+    <select v-model="filters.status" class="select" :disabled="isLoading" @change="applyFilter">
       <option value="">Tất cả trạng thái</option>
       <option value="HOAT_DONG">Đang hoạt động</option>
       <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
     </select>
-    <button class="btn" type="button" @click="applySearch"><i class="mdi mdi-magnify"></i>Tìm</button>
-    <button class="btn btn-ghost" type="button" @click="clearFilters">Xóa lọc</button>
+    <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
+      <i class="mdi mdi-magnify"></i>
+      Tìm kiếm
+    </button>
+    <button v-if="hasActiveFilters" class="btn btn-ghost" type="button" :disabled="isLoading" @click="clearFilters">
+      <i class="mdi mdi-filter-remove-outline"></i>
+      Xóa lọc
+    </button>
   </SearchFilterBar>
 
   <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
   <p v-if="successMessage" class="form-alert form-alert-success">{{ successMessage }}</p>
-  <p v-if="isLoading" class="muted loading-line">Đang tải sản phẩm...</p>
 
-  <DataTable :columns="columns" :rows="products" empty-text="Chưa có sản phẩm từ backend">
+  <div v-if="isLoading" class="loading-card card card-pad">
+    <i class="mdi mdi-loading mdi-spin"></i>
+    <span>Đang tải sản phẩm...</span>
+  </div>
+
+  <DataTable
+    v-else-if="products.length > 0"
+    :columns="columns"
+    :rows="products"
+    min-width="1180px"
+    empty-text="Chưa có sản phẩm từ backend"
+  >
     <template #price="{ value }">{{ formatCurrency(value) }}</template>
-    <template #status="{ value }"><StatusBadge :status="value" /></template>
+    <template #status="{ value }"><StatusBadge :status="displayStatus(value)" /></template>
     <template #actions="{ row }">
       <div class="actions">
-        <button v-if="canManage" class="btn btn-sm" type="button" @click="openEditForm(row)">Sửa</button>
-        <button v-if="canManage" class="btn btn-sm" type="button" @click="toggleStatus(row)">{{ row.status === 'HOAT_DONG' ? 'Ngừng' : 'Kích hoạt' }}</button>
+        <button v-if="canManage" class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">
+          <i class="mdi mdi-pencil-outline"></i>
+          Sửa
+        </button>
+        <button v-if="canManage" class="btn btn-sm" type="button" :disabled="isLoading || togglingId" @click="requestStatus(row)">
+          <i class="mdi" :class="row.status === 'HOAT_DONG' ? 'mdi-block-helper' : 'mdi-check-circle-outline'"></i>
+          {{ row.status === 'HOAT_DONG' ? 'Ngừng' : 'Kích hoạt' }}
+        </button>
       </div>
     </template>
   </DataTable>
 
+  <EmptyState
+    v-else-if="!isLoading && !errorMessage"
+    title="Không có sản phẩm"
+    description="Thử thay đổi bộ lọc hoặc thêm sản phẩm mới."
+  />
+
   <div class="pagination-bar card card-pad">
     <span class="muted">{{ totalElements }} sản phẩm</span>
     <div class="pagination-actions">
-      <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage" @click="previousPage">Trước</button>
+      <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage || isLoading" @click="previousPage">
+        <i class="mdi mdi-chevron-left"></i>
+        Trước
+      </button>
       <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
-      <button class="btn btn-sm" type="button" :disabled="!hasNextPage" @click="nextPage">Sau</button>
+      <button class="btn btn-sm" type="button" :disabled="!hasNextPage || isLoading" @click="nextPage">
+        Sau
+        <i class="mdi mdi-chevron-right"></i>
+      </button>
     </div>
   </div>
 
@@ -296,7 +361,7 @@ function formatCurrency(value) {
           <h2>{{ formTitle }}</h2>
           <p class="modal-desc">Dữ liệu được lưu qua API backend.</p>
         </div>
-        <button class="btn btn-icon" type="button" @click="closeForm"><i class="mdi mdi-close"></i></button>
+        <button class="btn btn-icon" type="button" :disabled="isSaving" aria-label="Đóng" @click="closeForm"><i class="mdi mdi-close"></i></button>
       </div>
 
       <p v-if="saveErrorMessage" class="form-alert form-alert-error">{{ saveErrorMessage }}</p>
@@ -316,22 +381,35 @@ function formatCurrency(value) {
 
       <div class="modal-foot">
         <button class="btn" type="button" :disabled="isSaving" @click="closeForm">Hủy</button>
-        <button class="btn btn-primary" type="submit" :disabled="isSaving">{{ isSaving ? 'Đang lưu...' : 'Lưu' }}</button>
+        <button class="btn btn-primary" type="submit" :disabled="isSaving">
+          <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
+          {{ isSaving ? 'Đang lưu' : 'Lưu' }}
+        </button>
       </div>
     </form>
   </div>
+
+  <ConfirmDialog
+    :open="!!pendingProduct"
+    :title="confirmTitle"
+    :message="confirmMessage"
+    :danger="pendingProduct?.status === 'HOAT_DONG'"
+    :loading="!!togglingId"
+    :confirm-text="pendingProduct?.status === 'HOAT_DONG' ? 'Ngừng hoạt động' : 'Kích hoạt'"
+    @cancel="pendingProduct = null"
+    @confirm="confirmStatus"
+  />
 </template>
 
 <style scoped>
-.loading-line { margin: 8px 0 14px; }
+.loading-card { min-height: 220px; display: grid; place-items: center; align-content: center; gap: 10px; color: var(--muted); font-weight: 700; }
 .form-alert { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; line-height: 20px; }
 .form-alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .form-alert-success { background: #ecfdf5; color: #047857; border: 1px solid #bbf7d0; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .pagination-bar { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pagination-actions { display: flex; align-items: center; gap: 10px; }
-.page-indicator { color: var(--muted); font-weight: 600; }
-.modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, .45); display: grid; place-items: center; padding: 20px; z-index: 50; }
+.page-indicator { color: var(--muted); font-weight: 600; white-space: nowrap; }
 .modal { width: min(760px, 100%); max-height: 92vh; overflow: auto; }
 .modal-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
 .modal-head h2 { margin: 0; font-size: 22px; }
@@ -340,6 +418,13 @@ function formatCurrency(value) {
 .form-grid label { display: grid; gap: 6px; font-weight: 700; }
 .field-error { min-height: 18px; color: var(--danger); font-weight: 600; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
-.btn:disabled, .select:disabled, .input:disabled { opacity: .6; cursor: not-allowed; }
-@media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } .pagination-bar, .pagination-actions { align-items: stretch; flex-direction: column; } }
+.btn:disabled, .select:disabled, .input:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.mdi-spin { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 720px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .pagination-bar, .pagination-actions { align-items: stretch; flex-direction: column; }
+  .modal-foot { flex-direction: column-reverse; }
+  .modal-foot .btn { width: 100%; }
+}
 </style>

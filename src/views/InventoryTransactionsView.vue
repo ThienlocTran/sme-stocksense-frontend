@@ -37,13 +37,13 @@ const transactionTypeOptions = [
 ];
 
 const columns = [
-  { key: "productCode", label: "Mã SP" },
+  { key: "productCode", label: "Mã SP", class: "cell-compact" },
   { key: "productName", label: "Tên sản phẩm" },
   { key: "warehouseName", label: "Kho" },
-  { key: "transactionType", label: "Loại giao dịch" },
-  { key: "delta", label: "Biến động" },
+  { key: "transactionType", label: "Loại giao dịch", class: "cell-nowrap" },
+  { key: "delta", label: "Biến động", class: "cell-compact" },
   { key: "createdByName", label: "Người thực hiện" },
-  { key: "createdAt", label: "Ngày tạo" },
+  { key: "createdAt", label: "Ngày tạo", class: "cell-nowrap" },
 ];
 
 const hasActiveFilters = computed(() => {
@@ -84,7 +84,7 @@ async function fetchTransactions() {
   errorMessage.value = "";
 
   try {
-    const params = {
+    const data = await getInventoryTransactions({
       page: page.value,
       size: size.value,
       keyword: searchDraft.value.trim() || undefined,
@@ -92,9 +92,8 @@ async function fetchTransactions() {
       warehouseId: filters.warehouseId || undefined,
       from: filters.from || undefined,
       to: filters.to || undefined,
-    };
+    });
 
-    const data = await getInventoryTransactions(params);
     transactions.value = data.content || [];
     totalPages.value = data.totalPages || 0;
     totalElements.value = data.totalElements || 0;
@@ -128,10 +127,7 @@ function clearFilters() {
 }
 
 function getTransactionTypeLabel(type) {
-  return (
-    transactionTypeOptions.find((option) => option.value === type)?.label ||
-    "Không xác định"
-  );
+  return transactionTypeOptions.find((option) => option.value === type)?.label || "Không xác định";
 }
 
 function getDelta(row) {
@@ -142,17 +138,16 @@ function getDelta(row) {
 }
 
 function formatDate(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
+  if (!value) return "-";
+  return new Date(value).toLocaleString("vi-VN", { hour12: false });
 }
 
 function displayWarehouseName(row) {
-  return row.warehouseName || row.warehouseCode || "-";
+  return row.warehouseCode ? `${row.warehouseCode} - ${row.warehouseName}` : row.warehouseName || "-";
+}
+
+function displayWarehouseOption(warehouse) {
+  return warehouse.maKho ? `${warehouse.maKho} - ${warehouse.tenKho}` : warehouse.tenKho;
 }
 
 function previousPage() {
@@ -179,92 +174,64 @@ function nextPage() {
     placeholder="Tìm theo mã SP, tên sản phẩm hoặc người thực hiện"
     @keyup.enter="applySearch"
   >
-    <select
-      v-model="filters.transactionType"
-      class="select filter-field filter-field-short"
-      :disabled="isLoading"
-      @change="applyFilter"
-    >
-      <option
-        v-for="option in transactionTypeOptions"
-        :key="option.value"
-        :value="option.value"
-      >
+    <select v-model="filters.transactionType" class="select" :disabled="isLoading" @change="applyFilter">
+      <option v-for="option in transactionTypeOptions" :key="option.value" :value="option.value">
         {{ option.label }}
       </option>
     </select>
 
-    <select
-      v-model="filters.warehouseId"
-      class="select filter-field filter-field-short"
-      :disabled="isLoadingDropdowns || isLoading"
-      @change="applyFilter"
-    >
-      <option value="">Tất cả kho</option>
-      <option
-        v-for="warehouse in warehouses"
-        :key="warehouse.id"
-        :value="warehouse.id"
-      >
-        {{
-          warehouse.code
-            ? `${warehouse.code} - ${warehouse.name}`
-            : warehouse.name
-        }}
+    <select v-model="filters.warehouseId" class="select" :disabled="isLoadingDropdowns || isLoading" @change="applyFilter">
+      <option value="">{{ isLoadingDropdowns ? "Đang tải kho..." : "Tất cả kho" }}</option>
+      <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
+        {{ displayWarehouseOption(warehouse) }}
       </option>
     </select>
 
     <input
       v-model="filters.from"
       type="datetime-local"
-      class="input datetime-input filter-field filter-field-date"
+      class="input"
       :disabled="isLoading"
       @change="applyFilter"
       aria-label="Từ ngày"
     />
 
-    <div class="filter-action-group">
-      <button
-        class="btn btn-primary"
-        type="button"
-        :disabled="isLoading"
-        @click="applySearch"
-      >
+    <input
+      v-model="filters.to"
+      type="datetime-local"
+      class="input"
+      :disabled="isLoading"
+      @change="applyFilter"
+      aria-label="Đến ngày"
+    />
+
+    <div class="filter-actions">
+      <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
         <i class="mdi mdi-magnify"></i>
         Tìm kiếm
       </button>
-      <button
-        v-if="hasActiveFilters"
-        class="btn"
-        type="button"
-        :disabled="isLoading"
-        @click="clearFilters"
-      >
-        Xóa bộ lọc
+      <button v-if="hasActiveFilters" class="btn btn-ghost" type="button" :disabled="isLoading" @click="clearFilters">
+        <i class="mdi mdi-filter-remove-outline"></i>
+        Xóa lọc
       </button>
     </div>
   </SearchFilterBar>
 
-  <p v-if="errorMessage" class="form-alert form-alert-error">
-    {{ errorMessage }}
-  </p>
+  <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
 
   <div v-if="isLoading" class="inventory-loading card card-pad">
-    Đang tải lịch sử giao dịch kho...
+    <i class="mdi mdi-loading mdi-spin"></i>
+    <span>Đang tải lịch sử giao dịch kho...</span>
   </div>
 
-  <DataTable
-    v-else-if="transactions.length > 0"
-    :columns="columns"
-    :rows="transactions"
-  >
+  <DataTable v-else-if="transactions.length > 0" :columns="columns" :rows="transactions" min-width="1080px">
     <template #transactionType="{ row }">
       <StatusBadge :status="getTransactionTypeLabel(row.transactionType)" />
     </template>
-    <template #delta="{ row }">{{ getDelta(row) }}</template>
-    <template #warehouseName="{ row }">{{
-      displayWarehouseName(row)
-    }}</template>
+    <template #delta="{ row }">
+      <span :class="Number(getDelta(row)) >= 0 ? 'delta-up' : 'delta-down'">{{ getDelta(row) }}</span>
+    </template>
+    <template #warehouseName="{ row }">{{ displayWarehouseName(row) }}</template>
     <template #createdAt="{ value }">{{ formatDate(value) }}</template>
   </DataTable>
 
@@ -277,94 +244,52 @@ function nextPage() {
   <div v-if="transactions.length > 0" class="pagination-bar card card-pad">
     <span class="muted">{{ totalElements }} bản ghi</span>
     <div class="pagination-actions">
-      <button
-        class="btn btn-sm"
-        type="button"
-        :disabled="!hasPreviousPage"
-        @click="previousPage"
-      >
+      <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage || isLoading" @click="previousPage">
+        <i class="mdi mdi-chevron-left"></i>
         Trước
       </button>
-      <span class="page-indicator"
-        >Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span
-      >
-      <button
-        class="btn btn-sm"
-        type="button"
-        :disabled="!hasNextPage"
-        @click="nextPage"
-      >
+      <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
+      <button class="btn btn-sm" type="button" :disabled="!hasNextPage || isLoading" @click="nextPage">
         Sau
+        <i class="mdi mdi-chevron-right"></i>
       </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.inventory-loading {
-  min-height: 120px;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-}
-
-.filter-bar :deep(.search-input) {
-  max-width: none;
-  flex: 1 1 360px;
-  min-width: 260px;
-}
-
-.datetime-input {
-  max-width: 220px;
-}
-
-.filter-field {
-  min-width: 180px;
-}
-
-.filter-field-short {
-  max-width: 220px;
-  min-width: 180px;
-}
-
-.filter-field-date {
-  max-width: 220px;
-  min-width: 180px;
-}
-
-.filter-action-group {
+.filter-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  align-items: center;
 }
 
-.filter-action-group .btn {
-  min-width: 98px;
+.filter-actions .btn {
+  min-width: 108px;
 }
 
-@media (max-width: 1100px) {
-  .filter-bar :deep(.search-input) {
-    flex: 1 1 280px;
-  }
+.inventory-loading {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: var(--muted);
+  font-weight: 700;
 }
 
-@media (max-width: 900px) {
-  .filter-bar :deep(.search-input) {
-    min-width: 0;
-    flex: 1 1 100%;
-  }
+.mdi-spin {
+  animation: spin 0.8s linear infinite;
+}
 
-  .filter-bar :deep(.select.filter-field-short),
-  .filter-bar :deep(.input.filter-field-date) {
-    flex: 1 1 45%;
-    max-width: none;
-  }
+.delta-up {
+  color: #15803d;
+  font-weight: 800;
+}
 
-  .filter-action-group {
-    width: 100%;
-    justify-content: flex-start;
-  }
+.delta-down {
+  color: #b91c1c;
+  font-weight: 800;
 }
 
 .pagination-bar {
@@ -384,6 +309,7 @@ function nextPage() {
 .page-indicator {
   font-weight: 600;
   color: var(--text);
+  white-space: nowrap;
 }
 
 :deep(.badge.status-nhập-kho) {
@@ -403,12 +329,22 @@ function nextPage() {
   color: #b45309;
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 900px) {
+  .filter-actions,
+  .filter-actions .btn {
+    width: 100%;
+  }
+
   .pagination-bar {
     flex-direction: column;
     align-items: stretch;
     text-align: center;
   }
+
   .pagination-actions {
     justify-content: center;
   }
