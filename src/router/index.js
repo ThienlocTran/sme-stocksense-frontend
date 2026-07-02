@@ -66,12 +66,9 @@ router.beforeEach(to => {
 function resolveRouteAccess(path, role) {
   if (path === '/employees' || path === '/users') return role === 'ADMIN' ? true : '/dashboard'
   if (path === '/approvals') return role === 'ADMIN' || role === 'MANAGER' ? true : '/dashboard'
-  if (/^\/stock-(in|out)(\/.*)?$/.test(path)) {
-    if (role === 'ADMIN' || role === 'EMPLOYEE') return true
-    if (role === 'MANAGER') return '/approvals'
-    return '/dashboard'
-  }
-  if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE' ? true : '/dashboard'
+  if (/^\/stock-in\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE' ? true : '/dashboard'
+  if (/^\/stock-in(\/[^/]+)?$/.test(path)) return role === 'ADMIN' || role === 'MANAGER' || role === 'EMPLOYEE' ? true : '/dashboard'
+  if (/^\/stock-out(\/.*)?$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE' ? true : '/dashboard'
   return true
 }
 

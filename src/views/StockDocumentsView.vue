@@ -6,7 +6,8 @@ import FeaturePending from '../components/FeaturePending.vue'
 import DataTable from '../components/DataTable.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
-import { cancelDraft, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
+import { getCurrentRoleCode } from '../services/authService'
+import { cancelDraft, getImportReceipts, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
 
 const props = defineProps({ type: { type: String, default: 'in' } })
 
@@ -42,6 +43,12 @@ const filters = reactive({ status: '' })
 
 const hasPreviousPage = computed(() => page.value > 0)
 const hasNextPage = computed(() => page.value + 1 < totalPages.value)
+const currentRole = computed(() => getCurrentRoleCode())
+const canCreateImportReceipt = computed(() => currentRole.value === 'ADMIN' || currentRole.value === 'EMPLOYEE')
+const pageTitle = computed(() => currentRole.value === 'EMPLOYEE' ? 'Phiếu nhập của tôi' : 'Phiếu nhập kho')
+const pageDescription = computed(() => currentRole.value === 'EMPLOYEE'
+  ? 'Danh sách phiếu nhập kho do nhân viên tạo từ API backend.'
+  : 'Danh sách phiếu nhập kho từ API backend.')
 
 const columns = [
   { key: 'code', label: 'Mã phiếu' },
@@ -80,7 +87,10 @@ async function fetchReceipts() {
   actionMessage.value = ''
   actionErrorMessage.value = ''
   try {
-    const data = await getMyImportReceipts({
+    const listReceipts = currentRole.value === 'MANAGER' || currentRole.value === 'ADMIN'
+      ? getImportReceipts
+      : getMyImportReceipts
+    const data = await listReceipts({
       page: page.value,
       size: size.value,
       status: filters.status,
@@ -121,10 +131,12 @@ function nextPage() {
 }
 
 function goCreate() {
+  if (!canCreateImportReceipt.value) return
   router.push('/stock-in/create')
 }
 
 function goEdit(receipt) {
+  if (!canEditImportReceipt(receipt.status)) return
   router.push(`/stock-in/${receipt.id}/edit`)
 }
 
@@ -230,10 +242,12 @@ function rejectionReasonText(receipt) {
 }
 
 function canEditImportReceipt(status) {
+  if (currentRole.value === 'MANAGER') return false
   return status === 'NHAP' || status === 'TU_CHOI'
 }
 
 function canSubmitImportReceipt(status) {
+  if (currentRole.value === 'MANAGER') return false
   return status === 'NHAP' || status === 'TU_CHOI'
 }
 
@@ -242,11 +256,16 @@ function submitLabel(status) {
 }
 
 function canCancelImportReceipt(status) {
+  if (currentRole.value === 'MANAGER') return false
   return status === 'NHAP'
 }
 
 function hasWorkflowAction(status) {
   return canEditImportReceipt(status) || canSubmitImportReceipt(status) || canCancelImportReceipt(status)
+}
+
+function canViewImportReceipt(status) {
+  return currentRole.value === 'MANAGER' || !hasWorkflowAction(status)
 }
 
 function formatDate(value) {
@@ -278,8 +297,8 @@ function confirmText() {
 
 <template>
   <template v-if="type === 'in'">
-    <PageHeader title="Phiếu nhập của tôi" description="Danh sách phiếu nhập kho do nhân viên tạo từ API backend.">
-      <button class="btn btn-primary" type="button" @click="goCreate"><i class="mdi mdi-plus"></i>Tạo phiếu</button>
+    <PageHeader :title="pageTitle" :description="pageDescription">
+      <button v-if="canCreateImportReceipt" class="btn btn-primary" type="button" @click="goCreate"><i class="mdi mdi-plus"></i>Tạo phiếu</button>
     </PageHeader>
 
     <div class="filter-bar card card-pad">
@@ -315,7 +334,7 @@ function confirmText() {
           <button v-if="canCancelImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="handleCancel(row)">
             {{ isActionRunning(row, 'cancel') ? 'Đang hủy...' : 'Hủy' }}
           </button>
-          <button v-if="!hasWorkflowAction(row.status)" class="btn btn-sm" type="button" @click="goDetail(row)">Xem</button>
+          <button v-if="canViewImportReceipt(row.status)" class="btn btn-sm" type="button" @click="goDetail(row)">Xem</button>
           <button class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="openHistory(row)">Lịch sử</button>
         </div>
       </template>

@@ -26,6 +26,22 @@ export async function getMyImportReceipts({ page = 0, size = 10, status = '' } =
   }
 }
 
+export async function getImportReceipts({ page = 0, size = 10, status = '' } = {}) {
+  try {
+    const { data } = await importReceiptClient.get('/api/import-receipts', {
+      headers: getAuthorizationHeader(),
+      params: {
+        page,
+        size,
+        status: status || undefined,
+      },
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tải danh sách phiếu nhập.')
+  }
+}
+
 export async function createImportReceipt(payload) {
   try {
     const { data } = await importReceiptClient.post('/api/import-receipts', payload, {
