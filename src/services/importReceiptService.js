@@ -264,9 +264,10 @@ function normalizeImportReceiptError(error, fallbackMessage) {
 
   if (error.response?.data) {
     const status = error.response.status
+    const serverMessage = error.response.data.message || error.response.data.error
     return {
       status,
-      message: friendlyImportReceiptErrorMessage(status, fallbackMessage),
+      message: serverMessage || friendlyImportReceiptErrorMessage(status, fallbackMessage),
       errors: error.response.data.errors || {},
     }
   }
