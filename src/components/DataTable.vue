@@ -69,6 +69,16 @@ defineProps({
   white-space: nowrap;
 }
 
+.data-table :deep(.cell-medium) {
+  min-width: 180px;
+  max-width: 260px;
+}
+
+.data-table :deep(.cell-long) {
+  min-width: 220px;
+  max-width: 340px;
+}
+
 @keyframes row-in {
   from { opacity: 0; transform: translateY(3px); }
   to { opacity: 1; transform: translateY(0); }

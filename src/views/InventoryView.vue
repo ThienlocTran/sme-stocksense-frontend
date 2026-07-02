@@ -37,9 +37,9 @@ const inventoryStatusOptions = [
 
 const columns = [
   { key: "productCode", label: "Mã SP", class: "cell-compact" },
-  { key: "productName", label: "Tên sản phẩm" },
+  { key: "productName", label: "Tên sản phẩm", class: "cell-long" },
   { key: "barcode", label: "Mã vạch", class: "cell-nowrap" },
-  { key: "warehouse", label: "Kho" },
+  { key: "warehouse", label: "Kho", class: "cell-medium" },
   { key: "currentQuantity", label: "Tồn hiện tại", class: "cell-compact" },
   { key: "minStock", label: "Ngưỡng tối thiểu", class: "cell-compact" },
   { key: "maxStock", label: "Ngưỡng tối đa", class: "cell-compact" },
@@ -135,7 +135,9 @@ function displayWarehouseName(row) {
 }
 
 function displayWarehouseOption(warehouse) {
-  return warehouse.maKho ? `${warehouse.maKho} - ${warehouse.tenKho}` : warehouse.tenKho;
+  const code = warehouse.maKho || warehouse.code;
+  const name = warehouse.tenKho || warehouse.name;
+  return code ? `${code} - ${name || "-"}` : name || "-";
 }
 
 function previousPage() {

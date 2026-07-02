@@ -38,11 +38,11 @@ const transactionTypeOptions = [
 
 const columns = [
   { key: "productCode", label: "Mã SP", class: "cell-compact" },
-  { key: "productName", label: "Tên sản phẩm" },
-  { key: "warehouseName", label: "Kho" },
+  { key: "productName", label: "Tên sản phẩm", class: "cell-long" },
+  { key: "warehouseName", label: "Kho", class: "cell-medium" },
   { key: "transactionType", label: "Loại giao dịch", class: "cell-nowrap" },
   { key: "delta", label: "Biến động", class: "cell-compact" },
-  { key: "createdByName", label: "Người thực hiện" },
+  { key: "createdByName", label: "Người thực hiện", class: "cell-medium" },
   { key: "createdAt", label: "Ngày tạo", class: "cell-nowrap" },
 ];
 
@@ -147,7 +147,9 @@ function displayWarehouseName(row) {
 }
 
 function displayWarehouseOption(warehouse) {
-  return warehouse.maKho ? `${warehouse.maKho} - ${warehouse.tenKho}` : warehouse.tenKho;
+  const code = warehouse.maKho || warehouse.code;
+  const name = warehouse.tenKho || warehouse.name;
+  return code ? `${code} - ${name || "-"}` : name || "-";
 }
 
 function previousPage() {

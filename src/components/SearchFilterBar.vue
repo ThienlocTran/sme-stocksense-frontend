@@ -25,7 +25,7 @@ const attrs = useAttrs();
 <style scoped>
 .filter-bar {
   display: grid;
-  grid-template-columns: minmax(280px, 1.3fr) repeat(auto-fit, minmax(180px, 240px));
+  grid-template-columns: minmax(280px, 1.4fr) repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: end;
   margin-bottom: 16px;
@@ -38,6 +38,10 @@ const attrs = useAttrs();
 .filter-bar :deep(.select),
 .filter-bar :deep(.input) {
   max-width: none;
+}
+
+.filter-bar :deep(.btn) {
+  width: 100%;
 }
 
 @media (max-width: 720px) {
