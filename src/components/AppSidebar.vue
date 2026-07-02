@@ -1,5 +1,7 @@
 <script setup>
 import { computed } from 'vue'
+import { getCurrentRoleCode, normalizeRole } from '../services/authService'
+import { canManageEmployees } from '../services/permissionService'
 import { useAuthStore } from '../stores/auth'
 
 const items = [
@@ -19,9 +21,10 @@ const items = [
   ['Nhân viên & phân quyền', '/users', 'mdi-account-cog-outline', 'admin'],
 ]
 const authStore = useAuthStore()
+const currentRole = computed(() => normalizeRole(authStore.currentRole) || getCurrentRoleCode())
 const visibleItems = computed(() => items.filter(item => {
-  const role = authStore.currentRole
-  if (item[3] === 'admin') return role === 'ADMIN'
+  const role = currentRole.value
+  if (item[3] === 'admin') return canManageEmployees(role)
   if (item[3] === 'manage') return role === 'ADMIN' || role === 'MANAGER'
   if (item[3] === 'approval') return role === 'ADMIN' || role === 'MANAGER'
   if (item[3] === 'stock-in') return role === 'ADMIN' || role === 'MANAGER' || role === 'EMPLOYEE'

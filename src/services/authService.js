@@ -112,7 +112,7 @@ export function clearAuth() {
   localStorage.removeItem('token')
 }
 
-function normalizeRole(role) {
+export function normalizeRole(role) {
   if (!role) return ''
   const mappedRole = AUTH_ROLE_CODES[role]
   if (mappedRole) return mappedRole
