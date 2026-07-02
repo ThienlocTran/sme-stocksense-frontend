@@ -237,6 +237,32 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleString('vi-VN')
 }
 
+function hasActualReceivedQuantity(item) {
+  return item.actualReceivedQuantity !== null && item.actualReceivedQuantity !== undefined
+}
+
+function getDiscrepancyQuantity(item) {
+  if (!hasActualReceivedQuantity(item)) return null
+  return Number(item.actualReceivedQuantity) - Number(item.quantity ?? 0)
+}
+
+function formatDiscrepancy(item) {
+  const discrepancy = getDiscrepancyQuantity(item)
+  if (discrepancy === null) return '-'
+  if (discrepancy === 0) return '0'
+  return `${discrepancy > 0 ? '+' : ''}${discrepancy}`
+}
+
+function getPlannedLineTotal(item) {
+  if (item.lineTotal != null) return item.lineTotal
+  return Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0)
+}
+
+function getActualLineTotal(item) {
+  if (!hasActualReceivedQuantity(item)) return null
+  return Number(item.actualReceivedQuantity) * Number(item.unitPrice ?? 0)
+}
+
 watch(() => props.receiptId, loadData, { immediate: true })
 </script>
 
@@ -443,9 +469,12 @@ watch(() => props.receiptId, loadData, { immediate: true })
           <thead>
             <tr>
               <th class="text-left">Sản phẩm</th>
-              <th class="text-center">Số lượng</th>
+              <th class="text-center">SL trên phiếu</th>
+              <th class="text-center">SL thực nhận</th>
+              <th class="text-center">Chênh lệch</th>
               <th class="text-right">Đơn giá</th>
-              <th class="text-right">Thành tiền</th>
+              <th class="text-right">Thành tiền trên phiếu</th>
+              <th class="text-right">Giá trị thực nhận</th>
             </tr>
           </thead>
           <tbody>
@@ -455,8 +484,27 @@ watch(() => props.receiptId, loadData, { immediate: true })
                 <div class="text-caption text-grey">{{ item.productCode }}</div>
               </td>
               <td class="text-center font-weight-medium">{{ item.quantity }} {{ item.unitName || 'Cái' }}</td>
+              <td class="text-center font-weight-medium">
+                <span v-if="hasActualReceivedQuantity(item)">{{ item.actualReceivedQuantity }} {{ item.unitName || 'Cái' }}</span>
+                <span v-else>-</span>
+              </td>
+              <td class="text-center">
+                <v-chip
+                  v-if="getDiscrepancyQuantity(item) !== null && getDiscrepancyQuantity(item) !== 0"
+                  size="small"
+                  :color="getDiscrepancyQuantity(item) > 0 ? 'warning' : 'error'"
+                  variant="tonal"
+                >
+                  {{ formatDiscrepancy(item) }} {{ item.unitName || 'Cái' }}
+                </v-chip>
+                <span v-else>{{ formatDiscrepancy(item) }}</span>
+              </td>
               <td class="text-right">{{ formatCurrency(item.unitPrice) }}</td>
-              <td class="text-right font-weight-medium text-error">{{ formatCurrency(item.totalPrice) }}</td>
+              <td class="text-right font-weight-medium">{{ formatCurrency(getPlannedLineTotal(item)) }}</td>
+              <td class="text-right font-weight-medium text-error">
+                <span v-if="getActualLineTotal(item) !== null">{{ formatCurrency(getActualLineTotal(item)) }}</span>
+                <span v-else>-</span>
+              </td>
             </tr>
           </tbody>
         </v-table>
