@@ -15,7 +15,23 @@ defineProps({
 </template>
 
 <style scoped>
-.empty-state { min-height: 180px; display: grid; place-items: center; align-content: center; gap: 8px; color: var(--muted); text-align: center; }
-.empty-state i { font-size: 36px; color: #94a3b8; }
-.empty-state strong { color: var(--text); font-size: 16px; }
+.empty-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-state i {
+  font-size: 36px;
+  color: #94a3b8;
+}
+
+.empty-state strong {
+  color: var(--text);
+  font-size: 16px;
+}
 </style>
