@@ -1,16 +1,34 @@
 <script setup>
-defineProps({
+import { onBeforeUnmount, watch } from 'vue'
+
+const props = defineProps({
   open: { type: Boolean, default: false },
   title: { type: String, default: 'Xác nhận' },
   message: { type: String, default: '' },
   confirmText: { type: String, default: 'Xác nhận' },
   danger: { type: Boolean, default: false },
 })
-defineEmits(['cancel', 'confirm'])
+const emit = defineEmits(['cancel', 'confirm'])
+
+function handleKeydown(event) {
+  if (event.key === 'Escape') emit('cancel')
+}
+
+watch(() => props.open, (isOpen) => {
+  if (isOpen) {
+    window.addEventListener('keydown', handleKeydown)
+  } else {
+    window.removeEventListener('keydown', handleKeydown)
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
-  <div v-if="open" class="modal-backdrop">
+  <div v-if="open" class="modal-backdrop" @click.self="$emit('cancel')">
     <div class="modal small-modal">
       <div class="modal-head between">
         <h2 class="section-title">{{ title }}</h2>

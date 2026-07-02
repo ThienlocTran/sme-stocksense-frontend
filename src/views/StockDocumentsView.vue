@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
 import DataTable from '../components/DataTable.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
 import { cancelDraft, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
 
@@ -16,6 +17,7 @@ const errorMessage = ref('')
 const actionMessage = ref('')
 const actionErrorMessage = ref('')
 const actionState = reactive({ receiptId: null, action: '' })
+const confirmState = reactive({ open: false, action: '', receipt: null })
 
 // Modal Lịch sử duyệt
 const historyState = reactive({ open: false, receiptId: null, receiptCode: '' })
@@ -130,10 +132,40 @@ function goDetail(receipt) {
   router.push(`/stock-in/${receipt.id}`)
 }
 
-async function handleSubmit(receipt) {
+function handleSubmit(receipt) {
   if (!canSubmitImportReceipt(receipt.status)) return
-  if (!window.confirm('Gửi duyệt phiếu nhập này?')) return
+  confirmState.open = true
+  confirmState.action = 'submit'
+  confirmState.receipt = receipt
+}
 
+function handleCancel(receipt) {
+  if (!canCancelImportReceipt(receipt.status)) return
+  confirmState.open = true
+  confirmState.action = 'cancel'
+  confirmState.receipt = receipt
+}
+
+function closeConfirmDialog() {
+  confirmState.open = false
+  confirmState.action = ''
+  confirmState.receipt = null
+}
+
+async function confirmAction() {
+  const receipt = confirmState.receipt
+  const action = confirmState.action
+  if (!receipt) return
+  closeConfirmDialog()
+
+  if (action === 'submit') {
+    await confirmSubmit(receipt)
+  } else if (action === 'cancel') {
+    await confirmCancel(receipt)
+  }
+}
+
+async function confirmSubmit(receipt) {
   actionState.receiptId = receipt.id
   actionState.action = 'submit'
   actionMessage.value = ''
@@ -152,10 +184,7 @@ async function handleSubmit(receipt) {
   }
 }
 
-async function handleCancel(receipt) {
-  if (!canCancelImportReceipt(receipt.status)) return
-  if (!window.confirm('Hủy phiếu nhập này?')) return
-
+async function confirmCancel(receipt) {
   actionState.receiptId = receipt.id
   actionState.action = 'cancel'
   actionMessage.value = ''
@@ -227,6 +256,20 @@ function formatCurrency(value) {
   if (value === null || value === undefined) return '-'
   return Number(value || 0).toLocaleString('vi-VN') + ' đ'
 }
+
+function confirmTitle() {
+  return confirmState.action === 'cancel' ? 'Xác nhận hủy' : 'Xác nhận gửi duyệt'
+}
+
+function confirmMessage() {
+  return confirmState.action === 'cancel'
+    ? 'Hủy phiếu nhập này?'
+    : 'Gửi duyệt phiếu nhập này?'
+}
+
+function confirmText() {
+  return confirmState.action === 'cancel' ? 'Hủy phiếu' : 'Gửi duyệt'
+}
 </script>
 
 <template>
@@ -289,6 +332,16 @@ function formatCurrency(value) {
       :receipt-id="historyState.receiptId"
       :receipt-code="historyState.receiptCode"
       @close="closeHistory"
+    />
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmTitle()"
+      :message="confirmMessage()"
+      :confirm-text="confirmText()"
+      :danger="confirmState.action === 'cancel'"
+      @cancel="closeConfirmDialog"
+      @confirm="confirmAction"
     />
   </template>
 

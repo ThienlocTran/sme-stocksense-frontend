@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import {
   cancelDraft,
   createImportReceipt,
@@ -33,6 +34,7 @@ const receiptStatus = ref('NHAP')
 const rejectionReason = ref('')
 const isDirty = ref(false)
 const isHydrating = ref(false)
+const confirmState = reactive({ open: false, action: '' })
 
 const warehouses = ref([])
 const suppliers = ref([])
@@ -374,7 +376,7 @@ async function handleSaveDraft() {
   }
 }
 
-async function handleSubmitForApproval() {
+function handleSubmitForApproval() {
   if (!canSubmit.value) {
     errorMessage.value = 'Phiếu nhập cần có ít nhất một sản phẩm hợp lệ trước khi gửi duyệt.'
     return
@@ -383,8 +385,33 @@ async function handleSubmitForApproval() {
     errorMessage.value = 'Vui lòng lưu nháp trước khi gửi duyệt.'
     return
   }
-  if (!window.confirm('Gửi duyệt phiếu nhập này?')) return
+  confirmState.open = true
+  confirmState.action = 'submit'
+}
 
+function handleCancelDraft() {
+  if (!canCancel.value) return
+  confirmState.open = true
+  confirmState.action = 'cancel'
+}
+
+function closeConfirmDialog() {
+  confirmState.open = false
+  confirmState.action = ''
+}
+
+async function confirmDraftAction() {
+  const action = confirmState.action
+  closeConfirmDialog()
+
+  if (action === 'submit') {
+    await confirmSubmitForApproval()
+  } else if (action === 'cancel') {
+    await confirmCancelDraft()
+  }
+}
+
+async function confirmSubmitForApproval() {
   isSubmitting.value = true
   errorMessage.value = ''
   successMessage.value = ''
@@ -407,10 +434,7 @@ async function handleSubmitForApproval() {
   }
 }
 
-async function handleCancelDraft() {
-  if (!canCancel.value) return
-  if (!window.confirm('Hủy phiếu nhập này?')) return
-
+async function confirmCancelDraft() {
   isCancelling.value = true
   errorMessage.value = ''
   successMessage.value = ''
@@ -440,6 +464,20 @@ function goBack() {
 function formatCurrency(value) {
   if (value === null || value === undefined) return '0'
   return Number(value || 0).toLocaleString('vi-VN')
+}
+
+function confirmTitle() {
+  return confirmState.action === 'cancel' ? 'Xác nhận hủy' : 'Xác nhận gửi duyệt'
+}
+
+function confirmMessage() {
+  return confirmState.action === 'cancel'
+    ? 'Hủy phiếu nhập này?'
+    : 'Gửi duyệt phiếu nhập này?'
+}
+
+function confirmText() {
+  return confirmState.action === 'cancel' ? 'Hủy phiếu' : 'Gửi duyệt'
 }
 </script>
 
@@ -677,6 +715,16 @@ function formatCurrency(value) {
         </button>
       </div>
     </form>
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmTitle()"
+      :message="confirmMessage()"
+      :confirm-text="confirmText()"
+      :danger="confirmState.action === 'cancel'"
+      @cancel="closeConfirmDialog"
+      @confirm="confirmDraftAction"
+    />
   </template>
 
   <template v-else>
