@@ -16,7 +16,7 @@ const items = [
   ['Phiếu nhập kho', '/stock-in', 'mdi-tray-arrow-down', 'stock-in'],
   ['Phiếu xuất kho', '/stock-out', 'mdi-tray-arrow-up', 'employee'],
   ['Chờ duyệt', '/approvals', 'mdi-check-decagram-outline', 'approval'],
-  ['Import Excel', '/import-excel', 'mdi-file-excel-outline'],
+  ['Import Excel', '/import-excel', 'mdi-file-excel-outline', 'admin'],
   ['Cảnh báo tồn kho', '/alerts', 'mdi-alert-outline'],
 ]
 const authStore = useAuthStore()
