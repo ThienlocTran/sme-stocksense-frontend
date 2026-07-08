@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
@@ -56,43 +56,28 @@ const showApplyConfirm = ref(false)
 const step1Status = computed(() => 'completed')
 
 const step2Status = computed(() => {
-  if (selectedFile.value) {
-    if (importType.value === 'PRODUCT_WITH_OPENING_STOCK' && !selectedWarehouseId.value) {
-      return 'active'
-    }
-    return 'completed'
-  }
-  return 'active'
+  return selectedFile.value ? 'completed' : 'active'
 })
 
 const step3Status = computed(() => {
   if (applyResult.value || confirmResult.value || validationResult.value || importId.value) return 'completed'
-  if (selectedFile.value) {
-    if (importType.value === 'PRODUCT_WITH_OPENING_STOCK' && !selectedWarehouseId.value) {
-      return 'locked'
-    }
-    return 'active'
-  }
-  return 'locked'
+  return selectedFile.value ? 'active' : 'locked'
 })
 
 const step4Status = computed(() => {
   if (applyResult.value || confirmResult.value || (validationResult.value && validationResult.value.valid)) return 'completed'
   if (validationResult.value && !validationResult.value.valid) return 'failed'
-  if (importId.value) return 'active'
-  return 'locked'
+  return (importId.value && selectedFile.value) ? 'active' : 'locked'
 })
 
 const step5Status = computed(() => {
   if (applyResult.value || confirmResult.value) return 'completed'
-  if (validationResult.value && validationResult.value.valid) return 'active'
-  return 'locked'
+  return (validationResult.value && validationResult.value.valid && selectedFile.value) ? 'active' : 'locked'
 })
 
 const step6Status = computed(() => {
   if (applyResult.value) return 'completed'
-  if (confirmResult.value) return 'active'
-  return 'locked'
+  return (confirmResult.value && selectedFile.value) ? 'active' : 'locked'
 })
 
 // Fetch warehouse options
@@ -115,16 +100,21 @@ onMounted(() => {
 // File handlers
 function onFileChange(event) {
   const files = event.target.files
-  if (!files || files.length === 0) return
-
-  const file = files[0]
   fileError.value = ''
   globalError.value = ''
   globalSuccess.value = ''
 
+  if (!files || files.length === 0) {
+    selectedFile.value = null
+    if (fileInput.value) fileInput.value.value = ''
+    return
+  }
+
+  const file = files[0]
   if (!file.name.toLowerCase().endsWith('.xlsx')) {
     fileError.value = 'Chỉ chấp nhận file định dạng .xlsx'
     selectedFile.value = null
+    if (fileInput.value) fileInput.value.value = ''
     return
   }
 
@@ -140,8 +130,11 @@ function formatFileSize(bytes) {
 }
 
 // Watchers for resetting flow on configuration/file change
-watch(selectedFile, (newVal) => {
-  if (importId.value && newVal) {
+watch(selectedFile, (newVal, oldVal) => {
+  if (!newVal && fileInput.value) {
+    fileInput.value.value = ''
+  }
+  if (importId.value && newVal !== oldVal) {
     resetWorkflowState('File đã thay đổi, vui lòng validate lại từ đầu.')
   }
 })
@@ -171,12 +164,12 @@ async function handleDownloadTemplate() {
   globalError.value = ''
   globalSuccess.value = ''
   try {
-    const data = await downloadTemplate()
+    const { data, filename } = await downloadTemplate()
     const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', 'SME_StockSense_Import_Template_v1.xlsx')
+    link.setAttribute('download', filename || 'SME_StockSense_Import_Template_v1.xlsx')
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -194,10 +187,6 @@ async function handleDownloadTemplate() {
 async function handleCreateSession() {
   if (!selectedFile.value) {
     globalError.value = 'Vui lòng chọn file Excel trước.'
-    return
-  }
-  if (importType.value === 'PRODUCT_WITH_OPENING_STOCK' && !selectedWarehouseId.value) {
-    globalError.value = 'Vui lòng chọn kho hàng cho loại import sản phẩm kèm tồn đầu kỳ.'
     return
   }
 
@@ -225,7 +214,7 @@ async function handleCreateSession() {
 
 // Step 4: Validate and fetch errors
 async function handleValidateSession() {
-  if (!importId.value) return
+  if (!importId.value || !selectedFile.value) return
 
   isValidating.value = true
   globalError.value = ''
@@ -259,7 +248,7 @@ async function handleValidateSession() {
 
 // Fetch paginated errors
 async function fetchErrors(page = 0) {
-  if (!importId.value) return
+  if (!importId.value || !selectedFile.value) return
   isLoadingErrors.value = true
   try {
     const data = await getSessionErrors(importId.value, page, errorSize.value)
@@ -274,7 +263,7 @@ async function fetchErrors(page = 0) {
 
 // Step 5: Confirm import
 async function handleConfirmSession() {
-  if (!importId.value) return
+  if (!importId.value || !selectedFile.value) return
 
   isConfirming.value = true
   globalError.value = ''
@@ -295,7 +284,7 @@ async function handleConfirmSession() {
 // Step 6: Apply import
 async function handleApplySession() {
   showApplyConfirm.value = false
-  if (!importId.value) return
+  if (!importId.value || !selectedFile.value) return
 
   isApplying.value = true
   globalError.value = ''
@@ -410,11 +399,12 @@ function formatDate(dateStr) {
 
               <!-- Select Warehouse if Required -->
               <div v-if="importType === 'PRODUCT_WITH_OPENING_STOCK'" class="field">
-                <label>Kho nhận hàng đầu kỳ *</label>
+                <label>Kho nhận hàng đầu kỳ</label>
                 <select v-model="selectedWarehouseId" class="select" :disabled="isLoadingWarehouses || isCreatingSession || isValidating || isConfirming || isApplying || applyResult">
                   <option value="">-- Chọn kho hàng nhận tồn đầu kỳ --</option>
                   <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.tenKho }} ({{ w.maKho }})</option>
                 </select>
+                <small class="text-slate-400 mt-1 block">Có thể để trống nếu file tồn đầu kỳ đã có mã kho theo từng dòng.</small>
                 <small v-if="isLoadingWarehouses" class="text-slate-400">Đang tải danh sách kho hàng...</small>
               </div>
             </div>
@@ -468,7 +458,7 @@ function formatDate(dateStr) {
             </div>
 
             <div class="mt-3">
-              <button class="btn btn-primary" :disabled="step3Status !== 'active' || isCreatingSession" @click="handleCreateSession">
+              <button class="btn btn-primary" :disabled="step3Status !== 'active' || isCreatingSession || !selectedFile" @click="handleCreateSession">
                 <i v-if="isCreatingSession" class="mdi mdi-loading mdi-spin"></i>
                 Khởi tạo phiên import
               </button>
@@ -506,7 +496,7 @@ function formatDate(dateStr) {
 
             <!-- Action button -->
             <div class="mt-3">
-              <button class="btn btn-primary" :disabled="step4Status === 'locked' || isValidating" @click="handleValidateSession">
+              <button class="btn btn-primary" :disabled="step4Status === 'locked' || isValidating || !selectedFile || !importId" @click="handleValidateSession">
                 <i v-if="isValidating" class="mdi mdi-loading mdi-spin"></i>
                 Kiểm tra dữ liệu Excel
               </button>
@@ -579,7 +569,7 @@ function formatDate(dateStr) {
             </div>
 
             <div class="mt-3">
-              <button class="btn btn-primary" :disabled="step5Status !== 'active' || isConfirming" @click="handleConfirmSession">
+              <button class="btn btn-primary" :disabled="step5Status !== 'active' || isConfirming || !selectedFile || !importId" @click="handleConfirmSession">
                 <i v-if="isConfirming" class="mdi mdi-loading mdi-spin"></i>
                 Xác nhận phiên import
               </button>
@@ -612,7 +602,7 @@ function formatDate(dateStr) {
             </div>
 
             <div class="mt-4 flex gap-3">
-              <button class="btn btn-success" :disabled="step6Status !== 'active' || isApplying" @click="showApplyConfirm = true">
+              <button class="btn btn-success" :disabled="step6Status !== 'active' || isApplying || !selectedFile || !importId" @click="showApplyConfirm = true">
                 <i v-if="isApplying" class="mdi mdi-loading mdi-spin"></i>
                 Áp dụng import dữ liệu
               </button>

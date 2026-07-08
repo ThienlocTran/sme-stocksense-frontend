@@ -7,17 +7,31 @@ const excelImportClient = axios.create({
   baseURL: API_BASE_URL,
 })
 
-/**
- * Tải file mẫu Excel (blob)
- * GET /api/excel-imports/template
- */
 export async function downloadTemplate() {
   try {
     const response = await excelImportClient.get('/api/excel-imports/template', {
       headers: getAuthorizationHeader(),
       responseType: 'blob',
     })
-    return response.data
+
+    let filename = null
+    const contentDisposition = response.headers['content-disposition'] || response.headers['Content-Disposition']
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename\*?=(?:UTF-8'')?([^;'\n\r]+)/i)
+      if (filenameMatch && filenameMatch[1]) {
+        filename = decodeURIComponent(filenameMatch[1].replace(/['"]/g, ''))
+      } else {
+        const fallbackMatch = contentDisposition.match(/filename="?([^;'\n\r"]+)"?/i)
+        if (fallbackMatch && fallbackMatch[1]) {
+          filename = fallbackMatch[1]
+        }
+      }
+    }
+
+    return {
+      data: response.data,
+      filename
+    }
   } catch (error) {
     throw normalizeExcelImportError(error, 'Không thể tải file mẫu Excel.')
   }
