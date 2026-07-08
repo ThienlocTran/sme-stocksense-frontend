@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { normalizeRole } from '../services/authService'
-import { canManageEmployees } from '../services/permissionService'
+import { canImportExcel, canManageEmployees } from '../services/permissionService'
 import { useAuthStore } from '../stores/auth'
 
 const items = [
@@ -16,7 +16,7 @@ const items = [
   ['Phiếu nhập kho', '/stock-in', 'mdi-tray-arrow-down', 'stock-in'],
   ['Phiếu xuất kho', '/stock-out', 'mdi-tray-arrow-up', 'employee'],
   ['Chờ duyệt', '/approvals', 'mdi-check-decagram-outline', 'approval'],
-  ['Import Excel', '/import-excel', 'mdi-file-excel-outline'],
+  ['Import Excel', '/import-excel', 'mdi-file-excel-outline', 'import-excel'],
   ['Cảnh báo tồn kho', '/alerts', 'mdi-alert-outline'],
 ]
 const authStore = useAuthStore()
@@ -24,6 +24,7 @@ const currentRole = computed(() => normalizeRole(authStore.currentRole))
 const visibleItems = computed(() => items.filter(item => {
   const role = currentRole.value
   if (item[3] === 'admin') return canManageEmployees(role)
+  if (item[3] === 'import-excel') return canImportExcel(role)
   if (item[3] === 'manage') return role === 'ADMIN' || role === 'MANAGER'
   if (item[3] === 'approval') return role === 'ADMIN' || role === 'MANAGER'
   if (item[3] === 'stock-in') return role === 'ADMIN' || role === 'MANAGER' || role === 'EMPLOYEE'
