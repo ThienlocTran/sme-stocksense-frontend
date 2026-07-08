@@ -4,6 +4,7 @@ const MASTER_DATA_MANAGE_ROLES = ['ADMIN', 'MANAGER']
 const MASTER_DATA_VIEW_ROLES = ['ADMIN', 'MANAGER', 'EMPLOYEE']
 const IMPORT_RECEIPT_PROCESS_ROLES = ['ADMIN', 'EMPLOYEE']
 const EMPLOYEE_MANAGE_ROLES = ['ADMIN']
+const EXCEL_IMPORT_ROLES = ['ADMIN']
 
 function resolveRole(role) {
   return normalizeRole(role) || getCurrentRoleCode()
@@ -31,4 +32,8 @@ export function canProcessImportReceipt(role) {
 
 export function canManageEmployees(role) {
   return EMPLOYEE_MANAGE_ROLES.includes(resolveRole(role))
+}
+
+export function canImportExcel(role) {
+  return EXCEL_IMPORT_ROLES.includes(resolveRole(role))
 }

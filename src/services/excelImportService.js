@@ -51,10 +51,7 @@ export async function createImportSession(file, loaiImport, warehouseId) {
     }
 
     const { data } = await excelImportClient.post('/api/excel-imports', formData, {
-      headers: {
-        ...getAuthorizationHeader(),
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: getAuthorizationHeader(),
     })
     return data
   } catch (error) {
@@ -76,10 +73,7 @@ export async function validateImportSession(id, file, loaiImport, warehouseId) {
     }
 
     const { data } = await excelImportClient.post(`/api/excel-imports/${id}/validate-errors`, formData, {
-      headers: {
-        ...getAuthorizationHeader(),
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: getAuthorizationHeader(),
     })
     return data
   } catch (error) {
@@ -128,10 +122,7 @@ export async function applyImportSession(id, file) {
     formData.append('file', file)
 
     const { data } = await excelImportClient.post(`/api/excel-imports/${id}/apply`, formData, {
-      headers: {
-        ...getAuthorizationHeader(),
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: getAuthorizationHeader(),
     })
     return data
   } catch (error) {

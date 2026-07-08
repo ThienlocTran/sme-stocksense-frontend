@@ -106,7 +106,7 @@ function onFileChange(event) {
 
   if (!files || files.length === 0) {
     selectedFile.value = null
-    if (fileInput.value) fileInput.value.value = ''
+    event.target.value = ''
     return
   }
 
@@ -114,7 +114,7 @@ function onFileChange(event) {
   if (!file.name.toLowerCase().endsWith('.xlsx')) {
     fileError.value = 'Chỉ chấp nhận file định dạng .xlsx'
     selectedFile.value = null
-    if (fileInput.value) fileInput.value.value = ''
+    event.target.value = ''
     return
   }
 
@@ -255,7 +255,8 @@ async function fetchErrors(page = 0) {
     errorsResponse.value = data
     errorPage.value = page
   } catch (error) {
-    console.error('Lỗi khi tải danh sách lỗi phân trang:', error)
+    globalError.value = error.message || 'Không thể tải danh sách lỗi validation.'
+    if (error.status === 401) router.replace('/login')
   } finally {
     isLoadingErrors.value = false
   }
