@@ -20,6 +20,7 @@ const importType = ref('PRODUCT_ONLY') // PRODUCT_ONLY or PRODUCT_WITH_OPENING_S
 const warehouses = ref([])
 const selectedWarehouseId = ref('')
 const isLoadingWarehouses = ref(false)
+const warehouseError = ref('')
 
 // File picker states
 const fileInput = ref(null)
@@ -83,11 +84,13 @@ const step6Status = computed(() => {
 // Fetch warehouse options
 async function fetchWarehouseList() {
   isLoadingWarehouses.value = true
+  warehouseError.value = ''
   try {
     const list = await getWarehouses({ status: 'HOAT_DONG' })
     warehouses.value = list || []
+    warehouseError.value = ''
   } catch (error) {
-    console.error('Không thể tải danh sách kho hàng:', error)
+    warehouseError.value = error.message || 'Không thể tải danh sách kho hàng. Vui lòng thử lại.'
   } finally {
     isLoadingWarehouses.value = false
   }
@@ -407,6 +410,7 @@ function formatDate(dateStr) {
                 </select>
                 <small class="text-slate-400 mt-1 block">Có thể để trống nếu file tồn đầu kỳ đã có mã kho theo từng dòng.</small>
                 <small v-if="isLoadingWarehouses" class="text-slate-400">Đang tải danh sách kho hàng...</small>
+                <small v-if="warehouseError" class="text-red-600 font-semibold mt-1 block">{{ warehouseError }}</small>
               </div>
             </div>
 
