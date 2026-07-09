@@ -1,10 +1,13 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { getWarehouses } from '../services/warehouseService'
 import { getInventory } from '../services/inventoryService'
 import { createDraft, updateDraft, getExportReceiptDetails, submitForApproval } from '../services/exportReceiptService'
+
+// Timer ref để cleanup khi component unmount, tránh redirect bất ngờ
+let redirectTimer = null
 
 const props = defineProps({
   receiptId: {
@@ -108,6 +111,8 @@ async function loadReceiptDetails() {
     }))
   } catch (err) {
     errorMessage.value = err.message || 'Không thể tải chi tiết phiếu xuất.'
+    // Hết phiên đăng nhập -> redirect về login
+    if (err.status === 401) router.replace('/login')
   }
 }
 
@@ -262,13 +267,13 @@ async function saveReceipt() {
       actionMessage.value = 'Tạo phiếu xuất nháp thành công!'
     }
     
-    // Điều hướng liền mạch về trang danh sách
-    setTimeout(() => {
-      router.push('/stock-out')
-    }, 1000)
+    // Điều hướng liền mạch về trang danh sách (cleanup timer cũ trước)
+    if (redirectTimer) clearTimeout(redirectTimer)
+    redirectTimer = setTimeout(() => { router.push('/stock-out') }, 1000)
     
   } catch (err) {
     errorMessage.value = err.message || 'Có lỗi xảy ra khi lưu.'
+    if (err.status === 401) router.replace('/login')
   } finally {
     isSaving.value = false
   }
@@ -287,33 +292,48 @@ async function saveAndSubmit() {
 
     // Nếu tạo mới thì phải tạo nháp trước
     if (!isEditMode.value) {
-      const res = await createDraft(payload)
-      receiptIdToSubmit = res.id
-      // Submit luôn bằng response version (mặc định là 0 cho entity mới)
-      await submitForApproval(receiptIdToSubmit, { version: 0 })
+      const draftRes = await createDraft(payload)
+      receiptIdToSubmit = draftRes.id
+      try {
+        // Submit với version từ response của createDraft
+        await submitForApproval(receiptIdToSubmit, { version: draftRes.version ?? 0 })
+      } catch (submitErr) {
+        // Nháp đã tạo thành công nhưng submit thất bại:
+        // Điều hướng sang trang Sửa phiếu để user xử lý tiếp, tránh tạo thêm nháp trùng
+        errorMessage.value = (submitErr.message || 'Gửi duyệt thất bại.') + ' Phiếu nháp đã được lưu, bạn có thể gửi duyệt lại.'
+        if (submitErr.status === 401) router.replace('/login')
+        else router.replace(`/stock-out/${receiptIdToSubmit}/edit`)
+        return
+      }
     } else {
       // Sửa nháp trước rồi submit
-      const res = await updateDraft(props.receiptId, payload)
-      await submitForApproval(receiptIdToSubmit, { version: res.version })
+      const updateRes = await updateDraft(props.receiptId, payload)
+      await submitForApproval(receiptIdToSubmit, { version: updateRes.version })
     }
     
     actionMessage.value = 'Lưu và gửi duyệt thành công!'
     
-    // Điều hướng liền mạch về trang danh sách
-    setTimeout(() => {
-      router.push('/stock-out')
-    }, 1000)
+    // Điều hướng liền mạch về trang danh sách (cleanup timer cũ trước)
+    if (redirectTimer) clearTimeout(redirectTimer)
+    redirectTimer = setTimeout(() => { router.push('/stock-out') }, 1000)
     
   } catch (err) {
     errorMessage.value = err.message || 'Có lỗi xảy ra khi gửi duyệt.'
+    if (err.status === 401) router.replace('/login')
   } finally {
     isSubmitting.value = false
   }
 }
 
 function goBack() {
+  if (redirectTimer) clearTimeout(redirectTimer)
   router.push('/stock-out')
 }
+
+// Cleanup timer khi component bị destroy
+onUnmounted(() => {
+  if (redirectTimer) clearTimeout(redirectTimer)
+})
 </script>
 
 <template>

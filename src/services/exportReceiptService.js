@@ -8,6 +8,7 @@ const exportReceiptClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 15000, // Timeout 15 giây để tránh request treo vô hạn
 })
 
 // Lấy danh sách phiếu xuất của nhân viên đang đăng nhập (T119)

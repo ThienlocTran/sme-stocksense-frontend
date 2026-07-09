@@ -37,7 +37,7 @@ Màn hình sẽ có một thanh Filter Bar bao gồm:
 ### 2.5. Luồng Điều Hướng (UX/UI Navigation)
 - **Nút "Quay lại" (Back):** Bắt buộc có ở góc trên cùng (hoặc dạng Breadcrumb) trong các trang Tạo mới (T122), Sửa (T122), và Xem chi tiết (T120).
 - **Giữ trạng thái Filter:** Khi bấm "Quay lại" từ trang Chi tiết về trang Danh sách, hệ thống sẽ cố gắng giữ nguyên Bộ lọc và Phân trang hiện tại (nếu thiết kế cho phép, hoặc dùng Vue Router query params để lưu state).
-- **Điều hướng liền mạch:** Sau khi thực hiện hành động lớn thành công (Tạo phiếu mới, Gửi duyệt thành công), hệ thống tự động gọi router chuyển hướng (redirect) về lại màn hình Danh sách Phiếu xuất, kèm theo một Toast thông báo để báo hiệu luồng công việc đã hoàn tất.
+- **Điều hướng liền mạch:** Chỉ tự động redirect về màn hình Danh sách sau khi **tạo mới** hoặc **sửa phiếu thành công**. Với thao tác gửi duyệt/hủy ngay trên màn hình Danh sách, giữ nguyên trang và chỉ refresh dữ liệu tại chỗ.
 
 ## 3. Implementation Plan
 

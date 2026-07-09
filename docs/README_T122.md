@@ -13,11 +13,13 @@
 - Không yêu cầu bắt buộc chọn Khách hàng/Đối tác.
 
 ### 2.2. Logic Chọn Sản Phẩm & Validate Tồn Kho (Client-side)
-- **Select Sản phẩm:** Dropdown danh sách sản phẩm **chỉ hiển thị những sản phẩm đang có Tồn kho > 0** tại Kho xuất đã chọn. 
+- **Select Sản phẩm:**
+  - **Chế độ Tạo mới:** Dropdown chỉ hiển thị sản phẩm đang có Tồn kho > 0 tại Kho xuất đã chọn.
+  - **Chế độ Sửa phiếu nháp:** Phải giữ lại các dòng sản phẩm đã chọn trong phiếu, kể cả khi tồn kho của chúng đã về 0 (tránh mất dữ liệu người dùng). Chỉ lọc “> 0” khi thêm mới thêm dòng.
 - *(Cần gọi API lấy Inventory theo WarehouseId để biết số tồn kho hiện tại).*
-- **Validate Số lượng xuất:** 
-  - Khi user nhập số lượng xuất, hệ thống bắt buộc kiểm tra (Real-time).
-  - Nếu `Số lượng xuất > Số lượng tồn kho` -> Lập tức hiển thị viền đỏ và dòng cảnh báo lỗi bên dưới ô input. Vô hiệu hóa nút Lưu.
+- **Validate Số lượng xuất:**
+  - **Client-side (Real-time):** Khi user nhập số lượng xuất, hệ thống kiểm tra ngay lập tức. Nếu `Số lượng xuất > Số lượng tồn kho` -> Lập tức hiển thị viền đỏ và dòng cảnh báo lỗi bên dưới ô input. Vô hiệu hóa nút Lưu.
+  - **Server-side (Bắt buộc):** Client-side validate chưa đủ, tồn kho có thể thay đổi giữa lúc load form và lúc bấm Lưu. Backend **bắt buộc phải re-check tồn kho (hoặc sử dụng Optimistic Lock)** trước khi lưu/duyệt để đảm bảo toàn vẹn dữ liệu.
 
 ### 2.3. Logic Thay đổi Kho xuất (Warehouse Change)
 - Do mỗi kho có số lượng tồn kho khác nhau, việc đổi Kho xuất khi đang tạo/sửa phiếu sẽ làm sai lệch dữ liệu sản phẩm đã chọn.

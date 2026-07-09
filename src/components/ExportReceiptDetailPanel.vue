@@ -122,6 +122,8 @@ async function executeSubmit() {
     await loadReceiptDetails()
   } catch (err) {
     actionErrorMessage.value = err.message || 'Lỗi khi gửi duyệt.'
+    // Hết phiên -> redirect về login
+    if (err.status === 401) router.replace('/login')
   } finally {
     actionState.isProcessing = false
     actionState.currentAction = ''
@@ -142,6 +144,8 @@ async function executeCancel() {
     await loadReceiptDetails()
   } catch (err) {
     actionErrorMessage.value = err.message || 'Lỗi khi hủy phiếu.'
+    // Hết phiên -> redirect về login
+    if (err.status === 401) router.replace('/login')
   } finally {
     actionState.isProcessing = false
     actionState.currentAction = ''
