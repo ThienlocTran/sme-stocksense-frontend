@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import ExportReceiptForm from '../components/ExportReceiptForm.vue'
 import {
   cancelDraft,
   createImportReceipt,
@@ -738,7 +739,7 @@ function confirmText() {
   </template>
 
   <template v-else>
-    <FeaturePending title="Chức năng phiếu xuất kho đang được phát triển" />
+    <ExportReceiptForm :receipt-id="id" />
   </template>
 </template>
 
