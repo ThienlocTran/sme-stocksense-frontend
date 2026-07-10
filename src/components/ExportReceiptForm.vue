@@ -53,8 +53,8 @@ const confirmWarehouseChange = reactive({
 // Lấy danh sách kho
 async function loadWarehouses() {
   try {
-    const data = await getWarehouses({ status: 'ACTIVE' })
-    warehouses.value = data.content || []
+    const data = await getWarehouses({ status: 'HOAT_DONG' })
+    warehouses.value = Array.isArray(data) ? data : (data.content || [])
   } catch (err) {
     errorMessage.value = 'Không thể tải danh sách kho hàng.'
   }
@@ -68,9 +68,9 @@ async function loadAvailableProducts(warehouseId) {
   }
   try {
     // Gọi API inventory để biết chính xác kho này đang có sản phẩm gì và tồn bao nhiêu
-    const data = await getInventory({ warehouseId, size: 1000 })
+    const data = await getInventory({ warehouseId, size: 100 })
     // Lọc chỉ lấy những sản phẩm có tồn kho > 0
-    availableProducts.value = (data.content || []).filter(item => item.quantity > 0)
+    availableProducts.value = (data.content || []).filter(item => item.currentQuantity > 0)
   } catch (err) {
     errorMessage.value = 'Không thể tải danh sách tồn kho cho kho này.'
     availableProducts.value = []
@@ -168,7 +168,7 @@ function removeDetailRow(index) {
 
 function getProductStock(productId) {
   const p = availableProducts.value.find(item => item.productId === productId)
-  return p ? p.quantity : 0
+  return p ? p.currentQuantity : 0
 }
 
 function onProductSelect(row) {
@@ -337,13 +337,6 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- Nút Quay lại / Điều hướng -->
-  <div class="navigation-bar">
-    <button class="btn btn-ghost btn-back" @click="goBack">
-      <i class="mdi mdi-arrow-left"></i> Quay lại danh sách
-    </button>
-  </div>
-
   <div class="card card-pad form-container">
     <div v-if="isLoading" class="loading-state">
       Đang tải dữ liệu phiếu xuất...
