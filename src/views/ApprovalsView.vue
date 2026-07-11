@@ -55,8 +55,8 @@ const columns = [
 ]
 
 const statusOptions = [
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ quản lý duyệt' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ quản lý duyệt' },
+  { value: 'CHO_DUYET_CAP_1', label: 'Chờ duyệt cấp 1' },
+  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt cấp 2' },
 ]
 
 const statusLabels = Object.fromEntries(statusOptions.map(s => [s.value, s.label]))
