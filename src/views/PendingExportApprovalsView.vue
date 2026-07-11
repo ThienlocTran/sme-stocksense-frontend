@@ -49,13 +49,13 @@ async function fetchPendingApprovals() {
 }
 
 function previousPage() {
-  if (!hasPreviousPage.value) return
+  if (isLoading.value || !hasPreviousPage.value) return
   page.value -= 1
   fetchPendingApprovals()
 }
 
 function nextPage() {
-  if (!hasNextPage.value) return
+  if (isLoading.value || !hasNextPage.value) return
   page.value += 1
   fetchPendingApprovals()
 }
@@ -104,8 +104,8 @@ function formatDate(value) {
   <div v-if="!isLoading && rows.length" class="pagination-bar card card-pad">
     <span class="muted">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
     <div class="pagination-actions">
-      <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage" @click="previousPage">Trước</button>
-      <button class="btn btn-sm" type="button" :disabled="!hasNextPage" @click="nextPage">Sau</button>
+      <button class="btn btn-sm" type="button" :disabled="isLoading || !hasPreviousPage" @click="previousPage">Trước</button>
+      <button class="btn btn-sm" type="button" :disabled="isLoading || !hasNextPage" @click="nextPage">Sau</button>
     </div>
   </div>
 </template>

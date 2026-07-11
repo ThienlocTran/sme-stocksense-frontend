@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { clearAuth, getAuthorizationHeader } from './authService'
+import { clearAuth, getAuthorizationHeader, getCurrentRoleCode } from './authService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
@@ -12,6 +12,11 @@ const exportReceiptClient = axios.create({
 
 export async function getPendingExportApprovals({ page = 0, size = 10 } = {}) {
   try {
+    const currentRole = getCurrentRoleCode()
+    if (currentRole !== 'ADMIN' && currentRole !== 'MANAGER') {
+      throw { status: 403, message: 'Bạn không có quyền xem danh sách phiếu xuất chờ duyệt.', errors: {} }
+    }
+
     // TODO: Replace mock service with T143 API after merge.
     return await mockPendingExportApprovals(page, size)
   } catch (error) {
@@ -43,22 +48,17 @@ function mockPendingExportApprovals(page, size) {
 }
 
 function normalizeExportReceiptError(error, fallbackMessage) {
-  if (error.response?.status === 401) {
+  const status = error?.status ?? error?.response?.status ?? 0
+  const message = error?.message || error?.response?.data?.message || fallbackMessage
+  const errors = error?.errors || error?.response?.data?.errors || {}
+
+  if (status === 401) {
     clearAuth()
   }
 
-  if (error.response?.data) {
-    const status = error.response.status
-    return {
-      status,
-      message: fallbackMessage,
-      errors: error.response.data.errors || {},
-    }
-  }
-
   return {
-    status: 0,
-    message: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.',
-    errors: {},
+    status,
+    message: status === 0 ? 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.' : message,
+    errors,
   }
 }
