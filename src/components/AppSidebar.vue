@@ -1,6 +1,9 @@
 <script setup>
 import { computed } from "vue";
-import { getCurrentRoleCode } from "../services/authService";
+import { useAuthStore } from "../stores/auth";
+
+const authStore = useAuthStore();
+const currentRole = computed(() => authStore.currentRole);
 
 const items = [
   ["Tổng quan", "/dashboard", "mdi-view-dashboard-outline"],
@@ -26,7 +29,7 @@ const items = [
 ];
 const visibleItems = computed(() =>
   items.filter((item) => {
-    const role = getCurrentRoleCode();
+    const role = currentRole.value;
     if (item[3] === "admin") return role === "ADMIN";
     if (item[3] === "manage") return role === "ADMIN" || role === "MANAGER";
     if (item[3] === "approval") return role === "ADMIN" || role === "MANAGER";
