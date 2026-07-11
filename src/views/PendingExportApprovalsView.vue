@@ -59,13 +59,13 @@ async function fetchPendingApprovals() {
 }
 
 function previousPage() {
-  if (!hasPreviousPage.value) return;
+  if (isLoading.value || !hasPreviousPage.value) return;
   page.value -= 1;
   fetchPendingApprovals();
 }
 
 function nextPage() {
-  if (!hasNextPage.value) return;
+  if (isLoading.value || !hasNextPage.value) return;
   page.value += 1;
   fetchPendingApprovals();
 }
