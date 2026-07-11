@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { canProcessImportReceipt } from '../services/permissionService'
 import {
   getDetail,
   confirmArrival,
+  inspectReceipt,
   createDiscrepancyReport,
   completeImport
 } from '../services/importReceiptService'
@@ -18,6 +20,7 @@ const props = defineProps({
 const receipt = ref(null)
 const loading = ref(false)
 const submitting = ref(false)
+const savingDiscrepancy = ref(false)
 const error = ref('')
 const successMessage = ref('')
 
@@ -26,20 +29,38 @@ const inspectItems = ref([])
 
 // State cho biên bản chênh lệch
 const discrepancyNote = ref('')
+const discrepancyReportSaved = ref(false)
+const savedDiscrepancySignature = ref('')
 
 const authStore = useAuthStore()
 const canProcessReceipt = computed(() => {
-  const role = authStore.currentRole
-  return role === 'ADMIN' || role === 'MANAGER' || role === 'EMPLOYEE'
+  return canProcessImportReceipt(authStore.currentRole)
 })
+
+const receiptItems = computed(() => receipt.value?.items ?? receipt.value?.details ?? [])
 
 // Computed properties
 const hasDiscrepancy = computed(() => {
-  return inspectItems.value.some(item => item.actualReceivedQuantity !== item.expectedQuantity)
+  return inspectItems.value.some(item => item.actualReceivedQuantity !== item.expectedQuantity || hasPhysicalIssue(item.physicalStatus))
 })
 
 const discrepancyItems = computed(() => {
-  return inspectItems.value.filter(item => item.actualReceivedQuantity !== item.expectedQuantity)
+  return inspectItems.value.filter(item => item.actualReceivedQuantity !== item.expectedQuantity || hasPhysicalIssue(item.physicalStatus))
+})
+
+const currentDiscrepancySignature = computed(() => JSON.stringify({
+  note: discrepancyNote.value,
+  items: discrepancyItems.value.map(item => ({
+    productId: item.productId,
+    actualReceivedQuantity: Number(item.actualReceivedQuantity),
+    physicalStatus: item.physicalStatus,
+    reason: String(item.reason || '').trim(),
+    action: String(item.action || '').trim()
+  }))
+}))
+
+const isDiscrepancyReportCurrent = computed(() => {
+  return discrepancyReportSaved.value && savedDiscrepancySignature.value === currentDiscrepancySignature.value
 })
 
 const statusColor = computed(() => {
@@ -55,8 +76,8 @@ const statusLabel = computed(() => {
   if (!receipt.value) return ''
   const labels = {
     NHAP: 'Bản nháp',
-    CHO_DUYET_CAP_1: 'Chờ duyệt cấp 1',
-    CHO_DUYET_CAP_2: 'Chờ duyệt cấp 2',
+    CHO_DUYET_CAP_1: 'Chờ quản lý duyệt',
+    CHO_DUYET_CAP_2: 'Chờ quản lý duyệt',
     CHO_HANG_VE: 'Chờ hàng về',
     CHO_KIEM_HANG: 'Chờ kiểm hàng',
     HOAN_THANH: 'Hoàn thành',
@@ -80,9 +101,12 @@ async function loadData() {
     receipt.value = data
     inspectItems.value = []
     discrepancyNote.value = ''
+    discrepancyReportSaved.value = false
+    savedDiscrepancySignature.value = ''
     // Khởi tạo form kiểm hàng
-    if (data.items && data.items.length > 0) {
-      inspectItems.value = data.items.map(item => ({
+    const detailItems = data.items ?? data.details ?? []
+    if (detailItems.length > 0) {
+      inspectItems.value = detailItems.map(item => ({
         productId: item.productId,
         productCode: item.productCode,
         productName: item.productName,
@@ -97,10 +121,43 @@ async function loadData() {
       }))
     }
   } catch (err) {
+    if (requestId !== currentRequestId) return
     error.value = err.message || 'Lỗi tải dữ liệu phiếu nhập'
   } finally {
+    if (requestId !== currentRequestId) return
     loading.value = false
   }
+}
+
+function hasPhysicalIssue(status) {
+  if (!status) return false
+  return !['Tốt', 'Bình thường', 'Nguyên vẹn'].includes(status)
+}
+
+function buildInspectPayload() {
+  return {
+    items: inspectItems.value.map(item => ({
+      productId: item.productId,
+      actualReceivedQuantity: Number(item.actualReceivedQuantity),
+      physicalStatus: item.physicalStatus,
+      expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString() : null
+    }))
+  }
+}
+
+function buildDiscrepancyPayload() {
+  return {
+    note: discrepancyNote.value,
+    items: discrepancyItems.value.map(item => ({
+      productId: item.productId,
+      reason: String(item.reason || '').trim(),
+      action: String(item.action || '').trim()
+    }))
+  }
+}
+
+function findInvalidDiscrepancyItem() {
+  return discrepancyItems.value.find(item => !String(item.reason || '').trim() || !String(item.action || '').trim())
 }
 
 async function handleArrival() {
@@ -139,31 +196,12 @@ async function handleComplete() {
       return
     }
 
-    // 1. Chuẩn bị payload inspect
-    const inspectPayload = {
-      items: inspectItems.value.map(item => ({
-        productId: item.productId,
-        actualReceivedQuantity: Number(item.actualReceivedQuantity),
-        physicalStatus: item.physicalStatus,
-        expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString() : null
-      }))
+    if (hasDiscrepancy.value && !isDiscrepancyReportCurrent.value) {
+      error.value = 'Có chênh lệch số lượng/tình trạng hàng. Vui lòng lưu biên bản chênh lệch trước khi hoàn tất nhập kho.'
+      return
     }
 
-    // 2. Nếu có chênh lệch, tạo biên bản chênh lệch trước
-    if (hasDiscrepancy.value) {
-      const discrepancyPayload = {
-        note: discrepancyNote.value,
-        items: discrepancyItems.value.map(item => ({
-          productId: item.productId,
-          reason: item.reason,
-          action: item.action
-        }))
-      }
-      await createDiscrepancyReport(props.receiptId, discrepancyPayload)
-    }
-
-    // 3. Hoàn tất (ACID transaction)
-    await completeImport(props.receiptId, inspectPayload)
+    await completeImport(props.receiptId, buildInspectPayload())
     
     successMessage.value = 'Đã hoàn tất nhập kho thành công.'
     await loadData()
@@ -171,6 +209,32 @@ async function handleComplete() {
     error.value = err.message || 'Lỗi khi hoàn tất phiếu nhập'
   } finally {
     submitting.value = false
+  }
+}
+
+async function handleSaveDiscrepancyReport() {
+  savingDiscrepancy.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    if (!hasDiscrepancy.value) {
+      error.value = 'Không có chênh lệch để lập biên bản.'
+      return
+    }
+    const invalidItem = findInvalidDiscrepancyItem()
+    if (invalidItem) {
+      error.value = `Vui lòng nhập lý do và hướng xử lý cho "${invalidItem.productName}".`
+      return
+    }
+    await inspectReceipt(props.receiptId, buildInspectPayload())
+    await createDiscrepancyReport(props.receiptId, buildDiscrepancyPayload())
+    discrepancyReportSaved.value = true
+    savedDiscrepancySignature.value = currentDiscrepancySignature.value
+    successMessage.value = 'Đã lưu biên bản chênh lệch. Bạn có thể hoàn tất nhập kho theo số lượng thực nhận.'
+  } catch (err) {
+    error.value = err.message || 'Không thể lưu biên bản chênh lệch.'
+  } finally {
+    savingDiscrepancy.value = false
   }
 }
 
@@ -182,6 +246,32 @@ function formatCurrency(value) {
 function formatDate(dateStr) {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleString('vi-VN')
+}
+
+function hasActualReceivedQuantity(item) {
+  return item.actualReceivedQuantity !== null && item.actualReceivedQuantity !== undefined
+}
+
+function getDiscrepancyQuantity(item) {
+  if (!hasActualReceivedQuantity(item)) return null
+  return Number(item.actualReceivedQuantity) - Number(item.quantity ?? 0)
+}
+
+function formatDiscrepancy(item) {
+  const discrepancy = getDiscrepancyQuantity(item)
+  if (discrepancy === null) return '-'
+  if (discrepancy === 0) return '0'
+  return `${discrepancy > 0 ? '+' : ''}${discrepancy}`
+}
+
+function getPlannedLineTotal(item) {
+  if (item.lineTotal != null) return item.lineTotal
+  return Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0)
+}
+
+function getActualLineTotal(item) {
+  if (!hasActualReceivedQuantity(item)) return null
+  return Number(item.actualReceivedQuantity) * Number(item.unitPrice ?? 0)
 }
 
 watch(() => props.receiptId, loadData, { immediate: true })
@@ -255,7 +345,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in inspectItems" :key="item.productId" :class="{'bg-red-lighten-5': item.actualReceivedQuantity !== item.expectedQuantity}">
+            <tr v-for="item in inspectItems" :key="item.productId" :class="{'bg-red-lighten-5': item.actualReceivedQuantity !== item.expectedQuantity || hasPhysicalIssue(item.physicalStatus)}">
               <td>
                 <div class="font-weight-bold">{{ item.productName }}</div>
                 <div class="text-caption text-grey">{{ item.productCode }}</div>
@@ -310,7 +400,11 @@ watch(() => props.receiptId, loadData, { immediate: true })
       </v-card-title>
       <v-card-text class="pt-4">
         <v-alert type="warning" variant="tonal" class="mb-4">
-          Có chênh lệch giữa số lượng thực nhận và số lượng trên phiếu. Vui lòng ghi rõ lý do và hướng xử lý.
+          Có chênh lệch giữa số lượng thực nhận và số lượng trên phiếu. Vui lòng ghi lý do/hướng xử lý và lưu biên bản trước khi hoàn tất.
+        </v-alert>
+
+        <v-alert v-if="isDiscrepancyReportCurrent" type="success" variant="tonal" class="mb-4">
+          Đã lưu biên bản chênh lệch. Bạn có thể hoàn tất nhập kho theo số lượng thực nhận.
         </v-alert>
 
         <v-textarea
@@ -347,6 +441,17 @@ watch(() => props.receiptId, loadData, { immediate: true })
             </v-col>
           </v-row>
         </div>
+        <div class="d-flex justify-end">
+          <v-btn
+            color="error"
+            variant="flat"
+            :loading="savingDiscrepancy"
+            @click="handleSaveDiscrepancyReport"
+          >
+            <v-icon start>mdi-content-save-alert</v-icon>
+            Lưu biên bản chênh lệch
+          </v-btn>
+        </div>
       </v-card-text>
     </v-card>
 
@@ -357,7 +462,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
         size="large"
         variant="flat"
         :loading="submitting"
-        :disabled="inspectItems.length === 0"
+        :disabled="inspectItems.length === 0 || (hasDiscrepancy && !isDiscrepancyReportCurrent)"
         @click="handleComplete"
       >
         <v-icon start>mdi-check-circle</v-icon>
@@ -375,20 +480,42 @@ watch(() => props.receiptId, loadData, { immediate: true })
           <thead>
             <tr>
               <th class="text-left">Sản phẩm</th>
-              <th class="text-center">Số lượng</th>
+              <th class="text-center">SL trên phiếu</th>
+              <th class="text-center">SL thực nhận</th>
+              <th class="text-center">Chênh lệch</th>
               <th class="text-right">Đơn giá</th>
-              <th class="text-right">Thành tiền</th>
+              <th class="text-right">Thành tiền trên phiếu</th>
+              <th class="text-right">Giá trị thực nhận</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in receipt.items" :key="item.productId">
+            <tr v-for="item in receiptItems" :key="item.productId">
               <td>
                 <div class="font-weight-bold">{{ item.productName }}</div>
                 <div class="text-caption text-grey">{{ item.productCode }}</div>
               </td>
               <td class="text-center font-weight-medium">{{ item.quantity }} {{ item.unitName || 'Cái' }}</td>
+              <td class="text-center font-weight-medium">
+                <span v-if="hasActualReceivedQuantity(item)">{{ item.actualReceivedQuantity }} {{ item.unitName || 'Cái' }}</span>
+                <span v-else>-</span>
+              </td>
+              <td class="text-center">
+                <v-chip
+                  v-if="getDiscrepancyQuantity(item) !== null && getDiscrepancyQuantity(item) !== 0"
+                  size="small"
+                  :color="getDiscrepancyQuantity(item) > 0 ? 'warning' : 'error'"
+                  variant="tonal"
+                >
+                  {{ formatDiscrepancy(item) }} {{ item.unitName || 'Cái' }}
+                </v-chip>
+                <span v-else>{{ formatDiscrepancy(item) }}</span>
+              </td>
               <td class="text-right">{{ formatCurrency(item.unitPrice) }}</td>
-              <td class="text-right font-weight-medium text-error">{{ formatCurrency(item.totalPrice) }}</td>
+              <td class="text-right font-weight-medium">{{ formatCurrency(getPlannedLineTotal(item)) }}</td>
+              <td class="text-right font-weight-medium text-error">
+                <span v-if="getActualLineTotal(item) !== null">{{ formatCurrency(getActualLineTotal(item)) }}</span>
+                <span v-else>-</span>
+              </td>
             </tr>
           </tbody>
         </v-table>

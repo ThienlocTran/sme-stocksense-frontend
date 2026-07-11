@@ -1,7 +1,8 @@
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import {
   cancelDraft,
   createImportReceipt,
@@ -34,10 +35,23 @@ const receiptVersion = ref(0)
 const rejectionReason = ref('')
 const isDirty = ref(false)
 const isHydrating = ref(false)
+const confirmState = reactive({ open: false, action: '' })
+let redirectTimer = null
 
 const warehouses = ref([])
 const suppliers = ref([])
 const products = ref([])
+
+function scheduleRedirectToList(delay) {
+  if (redirectTimer) clearTimeout(redirectTimer)
+  redirectTimer = setTimeout(() => {
+    router.push(props.type === 'out' ? '/stock-out' : '/stock-in')
+  }, delay)
+}
+
+onBeforeUnmount(() => {
+  if (redirectTimer) clearTimeout(redirectTimer)
+})
 
 const loadingState = reactive({
   warehouses: false,
@@ -356,13 +370,11 @@ async function handleSaveDraft() {
 
     await applySavedReceipt(savedReceipt)
     successMessage.value = receiptStatus.value === 'TU_CHOI'
-      ? 'Lưu thay đổi phiếu nhập thành công.'
+      ? 'Đã lưu thay đổi. Bạn có thể gửi duyệt lại phiếu này.'
       : 'Lưu nháp phiếu nhập thành công.'
 
     if (isCreateMode.value) {
-      setTimeout(() => {
-        router.push(props.type === 'out' ? '/stock-out' : '/stock-in')
-      }, 1500)
+      scheduleRedirectToList(1500)
     }
   } catch (error) {
     if (error.status === 401) {
@@ -382,7 +394,7 @@ async function handleSaveDraft() {
   }
 }
 
-async function handleSubmitForApproval() {
+function handleSubmitForApproval() {
   if (!canSubmit.value) {
     errorMessage.value = 'Phiếu nhập cần có ít nhất một sản phẩm hợp lệ trước khi gửi duyệt.'
     return
@@ -391,8 +403,37 @@ async function handleSubmitForApproval() {
     errorMessage.value = 'Vui lòng lưu nháp trước khi gửi duyệt.'
     return
   }
-  if (!window.confirm('Gửi duyệt phiếu nhập này?')) return
+  confirmState.open = true
+  confirmState.action = 'submit'
+}
 
+function submitButtonLabel() {
+  return receiptStatus.value === 'TU_CHOI' ? 'Gửi duyệt lại' : 'Gửi duyệt'
+}
+
+function handleCancelDraft() {
+  if (!canCancel.value) return
+  confirmState.open = true
+  confirmState.action = 'cancel'
+}
+
+function closeConfirmDialog() {
+  confirmState.open = false
+  confirmState.action = ''
+}
+
+async function confirmDraftAction() {
+  const action = confirmState.action
+  closeConfirmDialog()
+
+  if (action === 'submit') {
+    await confirmSubmitForApproval()
+  } else if (action === 'cancel') {
+    await confirmCancelDraft()
+  }
+}
+
+async function confirmSubmitForApproval() {
   isSubmitting.value = true
   errorMessage.value = ''
   successMessage.value = ''
@@ -403,9 +444,7 @@ async function handleSubmitForApproval() {
       : await submitForApproval(receiptId.value)
     await applySavedReceipt(receipt)
     successMessage.value = 'Gửi duyệt phiếu nhập thành công.'
-    setTimeout(() => {
-      router.push(props.type === 'out' ? '/stock-out' : '/stock-in')
-    }, 1200)
+    scheduleRedirectToList(1200)
   } catch (error) {
     if (error.status === 401) {
       router.replace('/login')
@@ -417,10 +456,7 @@ async function handleSubmitForApproval() {
   }
 }
 
-async function handleCancelDraft() {
-  if (!canCancel.value) return
-  if (!window.confirm('Hủy phiếu nhập này?')) return
-
+async function confirmCancelDraft() {
   isCancelling.value = true
   errorMessage.value = ''
   successMessage.value = ''
@@ -429,9 +465,7 @@ async function handleCancelDraft() {
     const receipt = props.type === 'out' ? await cancelExportReceipt(receiptId.value) : await cancelDraft(receiptId.value)
     if (receipt) await applySavedReceipt(receipt)
     successMessage.value = 'Hủy phiếu nhập thành công.'
-    setTimeout(() => {
-      router.push(props.type === 'out' ? '/stock-out' : '/stock-in')
-    }, 1200)
+    scheduleRedirectToList(1200)
   } catch (error) {
     if (error.status === 401) {
       router.replace('/login')
@@ -450,6 +484,20 @@ function goBack() {
 function formatCurrency(value) {
   if (value === null || value === undefined) return '0'
   return Number(value || 0).toLocaleString('vi-VN')
+}
+
+function confirmTitle() {
+  return confirmState.action === 'cancel' ? 'Xác nhận hủy' : 'Xác nhận gửi duyệt'
+}
+
+function confirmMessage() {
+  return confirmState.action === 'cancel'
+    ? 'Hủy phiếu nhập này?'
+    : 'Gửi duyệt phiếu nhập này?'
+}
+
+function confirmText() {
+  return confirmState.action === 'cancel' ? 'Hủy phiếu' : 'Gửi duyệt'
 }
 </script>
 
@@ -478,8 +526,8 @@ function formatCurrency(value) {
     </div>
 
     <form v-if="!isLoading" class="import-receipt-form" @submit.prevent="handleSaveDraft">
-      <div v-if="isRejectedImportReceipt" class="import-receipt-form__rejection-alert">
-        <i class="mdi mdi-alert-outline"></i>
+      <div v-if="isRejectedImportReceipt" class="import-receipt-form__alert import-receipt-form__alert--info">
+        <i class="mdi mdi-information-outline"></i>
         <div>
           <p class="import-receipt-form__rejection-title">Phiếu nhập đã bị từ chối.</p>
           <p class="import-receipt-form__rejection-reason">
@@ -683,7 +731,7 @@ function formatCurrency(value) {
         <button v-if="canSubmit" class="btn btn-ghost" type="button" :disabled="isProcessing" @click="handleSubmitForApproval">
           <i v-if="isSubmitting" class="mdi mdi-loading mdi-spin"></i>
           <i v-else class="mdi mdi-send-outline"></i>
-          {{ isSubmitting ? 'Đang gửi...' : 'Gửi duyệt' }}
+          {{ isSubmitting ? 'Đang gửi...' : submitButtonLabel() }}
         </button>
         <button v-if="canSave" class="btn btn-primary" type="submit" :disabled="isProcessing">
           <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
@@ -692,6 +740,16 @@ function formatCurrency(value) {
         </button>
       </div>
     </form>
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmTitle()"
+      :message="confirmMessage()"
+      :confirm-text="confirmText()"
+      :danger="confirmState.action === 'cancel'"
+      @cancel="closeConfirmDialog"
+      @confirm="confirmDraftAction"
+    />
   </template>
 
 </template>

@@ -58,14 +58,18 @@ router.beforeEach(to => {
 
   if (isAuthRoute && authenticated) return '/dashboard'
 
-  if (!canAccessRoute(to.path, getCurrentRoleCode())) return '/dashboard'
+  const accessResult = resolveRouteAccess(to.path, getCurrentRoleCode())
+  if (accessResult !== true) return accessResult
   return true
 })
 
-function canAccessRoute(path, role) {
-  if (path === '/employees' || path === '/users') return role === 'ADMIN'
-  if (path === '/approvals') return role === 'ADMIN' || role === 'MANAGER'
-  if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE'
+// Frontend route guard is for navigation UX only and does not replace backend API authorization.
+function resolveRouteAccess(path, role) {
+  if (path === '/employees' || path === '/users' || path === '/import-excel') return role === 'ADMIN' ? true : '/dashboard'
+  if (path === '/approvals') return role === 'ADMIN' || role === 'MANAGER' ? true : '/dashboard'
+  if (/^\/stock-in\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE' ? true : '/dashboard'
+  if (/^\/stock-in(\/[^/]+)?$/.test(path)) return role === 'ADMIN' || role === 'MANAGER' || role === 'EMPLOYEE' ? true : '/dashboard'
+  if (/^\/stock-out(\/.*)?$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE' ? true : '/dashboard'
   return true
 }
 

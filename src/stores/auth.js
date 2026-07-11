@@ -1,18 +1,22 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { AUTH_STORAGE_KEYS, getAccessToken, getCurrentRoleCode } from '../services/authService'
+import { computed, ref } from 'vue'
+import { AUTH_STORAGE_KEYS, getAccessToken, getCurrentUser, normalizeRole, normalizeUserRole } from '../services/authService'
 
 export const useAuthStore = defineStore('auth', () => {
-  const currentRole = ref(getCurrentRoleCode())
+  const currentUser = ref(getCurrentUser())
   const token = ref(getAccessToken() || '')
+  const currentRole = computed(() => normalizeUserRole(currentUser.value))
 
   function syncFromStorage() {
-    currentRole.value = getCurrentRoleCode()
+    currentUser.value = getCurrentUser()
     token.value = getAccessToken() || ''
   }
 
   function setRole(role) {
-    currentRole.value = role
+    currentUser.value = {
+      ...(currentUser.value || {}),
+      role: normalizeRole(role),
+    }
   }
 
   function setToken(newToken) {
@@ -21,6 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
+    currentUser,
     currentRole,
     token,
     syncFromStorage,

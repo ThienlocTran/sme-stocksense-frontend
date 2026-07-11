@@ -1,17 +1,20 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import DataTable from '../../components/DataTable.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchFilterBar from '../../components/SearchFilterBar.vue'
 import { categoryStatusOptions, getCategoryStatusLabel } from '../../constants/categoryOptions'
 import { createCategory, disableCategory, getCategories, updateCategory } from '../../services/categoryService'
+import { canManageCategories } from '../../services/permissionService'
 
 const router = useRouter()
 const categories = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
 const disablingId = ref(null)
+const pendingCategory = ref(null)
 const isFormOpen = ref(false)
 const formMode = ref('create')
 const errorMessage = ref('')
@@ -23,14 +26,19 @@ const pageInfo = reactive({ totalElements: 0, totalPages: 0 })
 const form = reactive(createEmptyForm())
 const formErrors = reactive({ code: '', name: '', description: '', status: '' })
 
-const columns = [
-  { key: 'code', label: 'Mã danh mục' },
+const canManage = computed(() => canManageCategories())
+const columns = computed(() => {
+  const baseColumns = [
+  { key: 'code', label: 'Mã danh mục', class: 'cell-compact' },
   { key: 'name', label: 'Tên danh mục' },
   { key: 'description', label: 'Mô tả' },
-  { key: 'status', label: 'Trạng thái' },
-  { key: 'createdAt', label: 'Ngày tạo' },
-  { key: 'actions', label: 'Thao tác' },
-]
+  { key: 'status', label: 'Trạng thái', class: 'cell-nowrap' },
+  { key: 'createdAt', label: 'Ngày tạo', class: 'cell-nowrap' },
+  ]
+  return canManage.value
+    ? [...baseColumns, { key: 'actions', label: 'Thao tác', class: 'cell-nowrap' }]
+    : baseColumns
+})
 
 const statusOptions = [{ value: '', label: 'Tất cả trạng thái' }, ...categoryStatusOptions]
 const currentPage = computed(() => filters.page + 1)
@@ -38,6 +46,11 @@ const canGoPrevious = computed(() => filters.page > 0 && !isLoading.value)
 const canGoNext = computed(() => filters.page + 1 < pageInfo.totalPages && !isLoading.value)
 const isEditMode = computed(() => formMode.value === 'edit')
 const formTitle = computed(() => (isEditMode.value ? 'Sửa danh mục' : 'Thêm danh mục'))
+const hasActiveFilters = computed(() => searchDraft.value.trim() !== '' || filters.status !== '')
+const confirmTitle = computed(() => pendingCategory.value?.status === 'NGUNG_HOAT_DONG' ? 'Kích hoạt danh mục?' : 'Ngừng hoạt động danh mục?')
+const confirmMessage = computed(() => pendingCategory.value
+  ? `Bạn muốn ${getStatusToggleLabel(pendingCategory.value).toLowerCase()} "${pendingCategory.value.name}"?`
+  : '')
 const rangeText = computed(() => {
   if (pageInfo.totalElements === 0) return '0 danh mục'
   const start = filters.page * filters.size + 1
@@ -45,9 +58,7 @@ const rangeText = computed(() => {
   return `${start}-${end} / ${pageInfo.totalElements} danh mục`
 })
 
-onMounted(() => {
-  fetchCategories()
-})
+onMounted(fetchCategories)
 
 async function fetchCategories() {
   isLoading.value = true
@@ -82,6 +93,14 @@ function applyFilter() {
   fetchCategories()
 }
 
+function clearFilters() {
+  searchDraft.value = ''
+  filters.keyword = ''
+  filters.status = ''
+  filters.page = 0
+  fetchCategories()
+}
+
 function goPrevious() {
   if (!canGoPrevious.value) return
   filters.page -= 1
@@ -95,14 +114,19 @@ function goNext() {
 }
 
 function getStatusToggleLabel(category) {
-  return category.status === 'NGUNG_HOAT_DONG' ? 'Hoạt động' : 'Ngừng hoạt động'
+  return category.status === 'NGUNG_HOAT_DONG' ? 'Kích hoạt' : 'Ngừng hoạt động'
 }
 
-async function toggleCategoryStatus(category) {
-  if (!category?.id || disablingId.value) return
+function requestCategoryStatus(category) {
+  if (!canManage.value || !category?.id || disablingId.value) return
+  pendingCategory.value = category
+}
+
+async function confirmCategoryStatus() {
+  const category = pendingCategory.value
+  if (!canManage.value || !category?.id || disablingId.value) return
 
   const nextStatus = category.status === 'NGUNG_HOAT_DONG' ? 'HOAT_DONG' : 'NGUNG_HOAT_DONG'
-
   disablingId.value = category.id
   errorMessage.value = ''
   successMessage.value = ''
@@ -119,15 +143,15 @@ async function toggleCategoryStatus(category) {
       })
     }
     successMessage.value = nextStatus === 'NGUNG_HOAT_DONG'
-      ? 'Ngừng hoạt động danh mục thành công.'
-      : 'Kích hoạt danh mục thành công.'
+      ? 'Đã ngừng hoạt động danh mục.'
+      : 'Đã kích hoạt danh mục.'
+    pendingCategory.value = null
     await fetchCategories()
   } catch (error) {
     if (error.status === 401) {
       router.replace('/login')
       return
     }
-
     errorMessage.value = error.message
   } finally {
     disablingId.value = null
@@ -135,16 +159,11 @@ async function toggleCategoryStatus(category) {
 }
 
 function createEmptyForm() {
-  return {
-    id: '',
-    code: '',
-    name: '',
-    description: '',
-    status: 'HOAT_DONG',
-  }
+  return { id: '', code: '', name: '', description: '', status: 'HOAT_DONG' }
 }
 
 function openCreateForm() {
+  if (!canManage.value) return
   formMode.value = 'create'
   Object.assign(form, createEmptyForm())
   successMessage.value = ''
@@ -153,6 +172,7 @@ function openCreateForm() {
 }
 
 function openEditForm(category) {
+  if (!canManage.value) return
   formMode.value = 'edit'
   Object.assign(form, {
     id: category.id,
@@ -172,6 +192,7 @@ function closeForm() {
 }
 
 async function submitCategoryForm() {
+  if (!canManage.value) return
   if (!validateForm()) return
 
   isSaving.value = true
@@ -200,7 +221,6 @@ async function submitCategoryForm() {
       router.replace('/login')
       return
     }
-
     saveErrorMessage.value = error.message
     applyBackendErrors(error.errors)
   } finally {
@@ -211,22 +231,18 @@ async function submitCategoryForm() {
 function validateForm() {
   clearFormFeedback()
   let isValid = true
-
   if (!form.code.trim()) {
     formErrors.code = 'Vui lòng nhập mã danh mục.'
     isValid = false
   }
-
   if (!form.name.trim()) {
     formErrors.name = 'Vui lòng nhập tên danh mục.'
     isValid = false
   }
-
   if (!form.status) {
     formErrors.status = 'Vui lòng chọn trạng thái.'
     isValid = false
   }
-
   return isValid
 }
 
@@ -260,20 +276,29 @@ function formatDate(value) {
 
 <template>
   <PageHeader title="Danh mục" description="Danh sách nhóm sản phẩm theo mã, tên và trạng thái.">
-    <button class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
+    <button v-if="canManage" class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
       <i class="mdi mdi-shape-plus-outline"></i>
       Thêm danh mục
     </button>
   </PageHeader>
 
-  <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo mã hoặc tên danh mục">
+  <div v-if="!canManage" class="category-readonly card card-pad">
+    <i class="mdi mdi-eye-outline"></i>
+    <span>Bạn đang xem ở chế độ chỉ xem.</span>
+  </div>
+
+  <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo mã hoặc tên danh mục" @keyup.enter="applySearch">
+    <select v-model="filters.status" class="select" :disabled="isLoading" @change="applyFilter">
+      <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+    </select>
     <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
       <i class="mdi mdi-magnify"></i>
       Tìm kiếm
     </button>
-    <select v-model="filters.status" class="select" :disabled="isLoading" @change="applyFilter">
-      <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-    </select>
+    <button v-if="hasActiveFilters" class="btn btn-ghost" type="button" :disabled="isLoading" @click="clearFilters">
+      <i class="mdi mdi-filter-remove-outline"></i>
+      Xóa lọc
+    </button>
   </SearchFilterBar>
 
   <div v-if="successMessage" class="category-success card card-pad">
@@ -289,19 +314,25 @@ function formatDate(value) {
   <div class="category-table-shell">
     <div v-if="isLoading" class="category-loading card card-pad">
       <i class="mdi mdi-loading mdi-spin"></i>
-      Đang tải danh sách danh mục
+      <span>Đang tải danh sách danh mục...</span>
     </div>
 
-    <DataTable v-else :columns="columns" :rows="categories" empty-text="Không có danh mục phù hợp">
+    <DataTable v-else :columns="columns" :rows="categories" min-width="980px" empty-text="Không có danh mục phù hợp">
       <template #description="{ value }">{{ value || '-' }}</template>
       <template #status="{ value }">
         <span class="category-status" :class="statusClass(value)">{{ getCategoryStatusLabel(value) }}</span>
       </template>
       <template #createdAt="{ value }">{{ formatDate(value) }}</template>
-      <template #actions="{ row }">
+      <template v-if="canManage" #actions="{ row }">
         <div class="actions">
-          <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">Sửa</button>
-          <button class="btn btn-sm" type="button" :disabled="isLoading || disablingId" @click="toggleCategoryStatus(row)">{{ getStatusToggleLabel(row) }}</button>
+          <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">
+            <i class="mdi mdi-pencil-outline"></i>
+            Sửa
+          </button>
+          <button class="btn btn-sm" type="button" :disabled="isLoading || disablingId" @click="requestCategoryStatus(row)">
+            <i class="mdi" :class="row.status === 'NGUNG_HOAT_DONG' ? 'mdi-check-circle-outline' : 'mdi-block-helper'"></i>
+            {{ getStatusToggleLabel(row) }}
+          </button>
         </div>
       </template>
     </DataTable>
@@ -383,14 +414,26 @@ function formatDate(value) {
       </form>
     </div>
   </div>
+
+  <ConfirmDialog
+    :open="!!pendingCategory"
+    :title="confirmTitle"
+    :message="confirmMessage"
+    :danger="pendingCategory?.status !== 'NGUNG_HOAT_DONG'"
+    :loading="!!disablingId"
+    :confirm-text="pendingCategory?.status === 'NGUNG_HOAT_DONG' ? 'Kích hoạt' : 'Ngừng hoạt động'"
+    @cancel="pendingCategory = null"
+    @confirm="confirmCategoryStatus"
+  />
 </template>
 
 <style scoped>
 .category-alert, .category-success { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
 .category-alert { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
 .category-success { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+.category-readonly { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: #075985; background: #f0f9ff; border-color: #bae6fd; }
 .category-table-shell { position: relative; }
-.category-loading { min-height: 220px; display: grid; place-items: center; gap: 10px; color: var(--muted); font-weight: 700; }
+.category-loading { min-height: 220px; display: grid; place-items: center; align-content: center; gap: 10px; color: var(--muted); font-weight: 700; }
 .mdi-spin { animation: spin 0.8s linear infinite; }
 .category-status { display: inline-flex; align-items: center; min-height: 26px; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 800; white-space: nowrap; background: #e2e8f0; color: #334155; }
 .category-status-active { background: #dcfce7; color: #15803d; }
@@ -407,7 +450,7 @@ function formatDate(value) {
 .field-wide { grid-column: 1 / -1; }
 .textarea { resize: vertical; min-height: 86px; }
 .field-error { color: var(--danger); font-weight: 600; line-height: 18px; }
-.btn:disabled, .select:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn:disabled, .select:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
