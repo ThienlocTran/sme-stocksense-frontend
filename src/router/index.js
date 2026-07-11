@@ -11,6 +11,7 @@ import StockDocumentsView from '../views/StockDocumentsView.vue'
 import StockDocumentCreateView from '../views/StockDocumentCreateView.vue'
 import StockDocumentDetailView from '../views/StockDocumentDetailView.vue'
 import ApprovalsView from '../views/ApprovalsView.vue'
+import PendingExportApprovalsView from '../views/PendingExportApprovalsView.vue'
 import ImportExcelView from '../views/ImportExcelView.vue'
 import AlertsView from '../views/AlertsView.vue'
 import UsersView from '../views/UsersView.vue'
@@ -35,6 +36,7 @@ const routes = [
   { path: '/stock-out/create', component: StockDocumentCreateView, props: { type: 'out' }, meta: { title: 'Tạo phiếu xuất kho' } },
   { path: '/stock-out/:id/edit', component: StockDocumentCreateView, props: route => ({ id: route.params.id, type: 'out', mode: 'edit' }), meta: { title: 'Chỉnh sửa phiếu xuất kho' } },
   { path: '/stock-out/:id', component: StockDocumentDetailView, props: route => ({ id: route.params.id, type: 'out' }), meta: { title: 'Chi tiết phiếu xuất kho' } },
+  { path: '/pending-export-approvals', component: PendingExportApprovalsView, meta: { title: 'Phiếu xuất chờ duyệt' } },
   { path: '/approvals', component: ApprovalsView, meta: { title: 'Chờ duyệt' } },
   { path: '/import-excel', component: ImportExcelView, meta: { title: 'Import Excel' } },
   { path: '/alerts', component: AlertsView, meta: { title: 'Cảnh báo tồn kho' } },
@@ -64,7 +66,7 @@ router.beforeEach(to => {
 
 function canAccessRoute(path, role) {
   if (path === '/employees' || path === '/users') return role === 'ADMIN'
-  if (path === '/approvals') return role === 'ADMIN' || role === 'MANAGER'
+  if (path === '/approvals' || path === '/pending-export-approvals') return role === 'ADMIN' || role === 'MANAGER'
   if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE'
   return true
 }
