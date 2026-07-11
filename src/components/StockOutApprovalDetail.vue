@@ -1,7 +1,11 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useAuthStore } from "../stores/auth";
-import { approveExportReceipt, getPendingExportApprovalDetail } from "../services/stockOutApprovalService";
+import {
+  approveExportReceipt,
+  getPendingExportApprovalDetail,
+  rejectExportReceipt,
+} from "../services/stockOutApprovalService";
 import EmptyState from "./EmptyState.vue";
 
 const props = defineProps({
@@ -18,12 +22,23 @@ const error = ref("");
 const actionMessage = ref("");
 const actionError = ref("");
 const actionLoading = ref(false);
+const rejectState = ref({ open: false, reason: "", error: "", submitting: false });
+const REJECT_REASON_MAX = 500;
 
 const canManageApproval = computed(() =>
   ["ADMIN", "MANAGER"].includes(authStore.currentRole),
 );
 
 const canApprove = computed(() => {
+  return (
+    canManageApproval.value &&
+    !actionLoading.value &&
+    receipt.value &&
+    receipt.value.status === "CHO_DUYET"
+  );
+});
+
+const canReject = computed(() => {
   return (
     canManageApproval.value &&
     !actionLoading.value &&
@@ -78,6 +93,62 @@ async function handleApprove() {
     actionMessage.value = `Đã gửi duyệt thành công cho phiếu ${approvedReceipt?.code || props.receiptId}.`;
   } catch (err) {
     actionError.value = err.message || "Không thể duyệt phiếu xuất.";
+  } finally {
+    actionLoading.value = false;
+  }
+}
+
+function openRejectModal() {
+  rejectState.value = {
+    open: true,
+    reason: "",
+    error: "",
+    submitting: false,
+  };
+}
+
+function closeRejectModal() {
+  if (rejectState.value.submitting) return;
+
+  rejectState.value = {
+    open: false,
+    reason: "",
+    error: "",
+    submitting: false,
+  };
+}
+
+async function confirmReject() {
+  const reason = rejectState.value.reason.trim();
+  if (!reason) {
+    rejectState.value.error = "Vui lòng nhập lý do từ chối.";
+    return;
+  }
+
+  if (reason.length > REJECT_REASON_MAX) {
+    rejectState.value.error = `Lý do từ chối không được vượt quá ${REJECT_REASON_MAX} ký tự.`;
+    return;
+  }
+
+  rejectState.value.submitting = true;
+  rejectState.value.error = "";
+  actionMessage.value = "";
+  actionError.value = "";
+  actionLoading.value = true;
+
+  try {
+    await rejectExportReceipt(String(props.receiptId), reason);
+    await loadDetail();
+    rejectState.value = {
+      open: false,
+      reason: "",
+      error: "",
+      submitting: false,
+    };
+    actionMessage.value = `Đã từ chối phiếu ${receipt.value?.code || props.receiptId} thành công.`;
+  } catch (err) {
+    rejectState.value.submitting = false;
+    actionError.value = err.message || "Không thể từ chối phiếu xuất.";
   } finally {
     actionLoading.value = false;
   }
@@ -258,6 +329,11 @@ watch(() => props.receiptId, () => {
         {{ actionError }}
       </div>
 
+      <div v-if="receipt?.status === 'TU_CHOI' && receipt?.rejectionReason" class="rejection-card">
+        <div class="detail-label">Lý do từ chối</div>
+        <div class="detail-value">{{ receipt.rejectionReason }}</div>
+      </div>
+
       <div class="actions-row">
         <button
           class="btn btn-primary"
@@ -270,15 +346,49 @@ watch(() => props.receiptId, () => {
         <button
           class="btn btn-danger"
           type="button"
-          :disabled="true"
+          :disabled="!canReject"
+          @click="openRejectModal"
         >
-          Từ chối
+          {{ rejectState.submitting ? 'Đang gửi...' : 'Từ chối' }}
         </button>
       </div>
 
       <p v-if="!canManageApproval" class="muted mt-2">
         Bạn hiện không có quyền thực hiện hành động này.
       </p>
+    </div>
+  </div>
+
+  <div v-if="rejectState.open" class="modal-backdrop">
+    <div class="modal small-modal">
+      <div class="modal-head between">
+        <h3 class="section-title">Từ chối phiếu xuất</h3>
+        <button class="btn btn-icon" aria-label="Đóng" :disabled="rejectState.submitting" @click="closeRejectModal">
+          <i class="mdi mdi-close"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <label class="field-label" for="reject-reason">Lý do từ chối <span class="required">*</span></label>
+        <textarea
+          id="reject-reason"
+          v-model="rejectState.reason"
+          class="textarea"
+          rows="4"
+          :maxlength="REJECT_REASON_MAX"
+          placeholder="Nhập lý do từ chối để nhân viên biết nguyên nhân..."
+          @input="rejectState.error = ''"
+        ></textarea>
+        <div class="reason-meta">
+          <span v-if="rejectState.error" class="reason-error">{{ rejectState.error }}</span>
+          <span class="reason-count">{{ rejectState.reason.length }}/{{ REJECT_REASON_MAX }}</span>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" type="button" :disabled="rejectState.submitting" @click="closeRejectModal">Hủy</button>
+        <button class="btn btn-danger" type="button" :disabled="rejectState.submitting" @click="confirmReject">
+          {{ rejectState.submitting ? 'Đang gửi...' : 'Xác nhận từ chối' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -401,5 +511,55 @@ watch(() => props.receiptId, () => {
   .detail-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.rejection-card {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.small-modal {
+  width: min(460px, 100%);
+}
+
+.field-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.required {
+  color: var(--danger);
+}
+
+.textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+.reason-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  gap: 12px;
+}
+
+.reason-error {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.reason-count {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: auto;
 }
 </style>

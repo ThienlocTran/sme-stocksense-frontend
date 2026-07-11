@@ -49,6 +49,7 @@ function normalizeReceipt(receipt) {
     status: normalizeStatus(receipt.status),
     approvalLevel: receipt.approvalLevel,
     approvalLevelLabel: receipt.approvalLevelLabel || normalizeApprovalLevel(receipt.approvalLevel),
+    rejectionReason: receipt.rejectionReason || receipt.rejectReason || null,
     createdAt: receipt.createdAt,
     submittedAt: receipt.submittedAt,
     items: (receipt.items || []).map((item) => ({
@@ -129,5 +130,23 @@ export async function approveExportReceipt(id) {
     return normalizeReceipt(data)
   } catch (error) {
     throw normalizeError(error, 'Không thể duyệt phiếu xuất.')
+  }
+}
+
+export async function rejectExportReceipt(id, reason) {
+  const normalizedId = normalizeId(id)
+
+  try {
+    const { data } = await exportReceiptClient.put(
+      `/api/export-receipts/${normalizedId}/reject`,
+      { rejectReason: reason },
+      {
+        headers: getAuthorizationHeader(),
+      },
+    )
+
+    return normalizeReceipt(data)
+  } catch (error) {
+    throw normalizeError(error, 'Không thể từ chối phiếu xuất.')
   }
 }
