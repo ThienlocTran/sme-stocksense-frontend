@@ -4,8 +4,10 @@ import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
 import DataTable from '../components/DataTable.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
-import { cancelDraft, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
+import { getCurrentRoleCode } from '../services/authService'
+import { cancelDraft, getImportReceipts, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
 
 const props = defineProps({ type: { type: String, default: 'in' } })
 
@@ -16,6 +18,8 @@ const errorMessage = ref('')
 const actionMessage = ref('')
 const actionErrorMessage = ref('')
 const actionState = reactive({ receiptId: null, action: '' })
+const confirmState = reactive({ open: false, action: '', receipt: null })
+let fetchReceiptsRequestId = 0
 
 // Modal Lịch sử duyệt
 const historyState = reactive({ open: false, receiptId: null, receiptCode: '' })
@@ -40,6 +44,12 @@ const filters = reactive({ status: '' })
 
 const hasPreviousPage = computed(() => page.value > 0)
 const hasNextPage = computed(() => page.value + 1 < totalPages.value)
+const currentRole = computed(() => getCurrentRoleCode())
+const canCreateImportReceipt = computed(() => currentRole.value === 'ADMIN' || currentRole.value === 'EMPLOYEE')
+const pageTitle = computed(() => currentRole.value === 'EMPLOYEE' ? 'Phiếu nhập của tôi' : 'Phiếu nhập kho')
+const pageDescription = computed(() => currentRole.value === 'EMPLOYEE'
+  ? 'Danh sách phiếu nhập kho do nhân viên tạo từ API backend.'
+  : 'Danh sách phiếu nhập kho từ API backend.')
 
 const columns = [
   { key: 'code', label: 'Mã phiếu' },
@@ -53,8 +63,8 @@ const columns = [
 
 const statusOptions = [
   { value: 'NHAP', label: 'Nháp' },
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ duyệt cấp 1' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt cấp 2' },
+  { value: 'CHO_DUYET_CAP_1', label: 'Chờ quản lý duyệt' },
+  { value: 'CHO_DUYET_CAP_2', label: 'Chờ quản lý duyệt' },
   { value: 'CHO_HANG_VE', label: 'Chờ hàng về' },
   { value: 'CHO_KIEM_HANG', label: 'Chờ kiểm hàng' },
   { value: 'HOAN_THANH', label: 'Hoàn thành' },
@@ -73,24 +83,31 @@ watch(() => props.type, type => {
 })
 
 async function fetchReceipts() {
+  const requestId = ++fetchReceiptsRequestId
   isLoading.value = true
   errorMessage.value = ''
   actionMessage.value = ''
   actionErrorMessage.value = ''
   try {
-    const data = await getMyImportReceipts({
+    const listReceipts = currentRole.value === 'MANAGER' || currentRole.value === 'ADMIN'
+      ? getImportReceipts
+      : getMyImportReceipts
+    const data = await listReceipts({
       page: page.value,
       size: size.value,
       status: filters.status,
     })
+    if (requestId !== fetchReceiptsRequestId) return
     receipts.value = data.content || []
     totalPages.value = data.totalPages || 0
     totalElements.value = data.totalElements || 0
   } catch (error) {
+    if (requestId !== fetchReceiptsRequestId) return
     receipts.value = []
     errorMessage.value = error.message
     if (error.status === 401) router.replace('/login')
   } finally {
+    if (requestId !== fetchReceiptsRequestId) return
     isLoading.value = false
   }
 }
@@ -119,10 +136,12 @@ function nextPage() {
 }
 
 function goCreate() {
+  if (!canCreateImportReceipt.value) return
   router.push('/stock-in/create')
 }
 
 function goEdit(receipt) {
+  if (!canEditImportReceipt(receipt.status)) return
   router.push(`/stock-in/${receipt.id}/edit`)
 }
 
@@ -130,10 +149,40 @@ function goDetail(receipt) {
   router.push(`/stock-in/${receipt.id}`)
 }
 
-async function handleSubmit(receipt) {
+function handleSubmit(receipt) {
   if (!canSubmitImportReceipt(receipt.status)) return
-  if (!window.confirm('Gửi duyệt phiếu nhập này?')) return
+  confirmState.open = true
+  confirmState.action = 'submit'
+  confirmState.receipt = receipt
+}
 
+function handleCancel(receipt) {
+  if (!canCancelImportReceipt(receipt.status)) return
+  confirmState.open = true
+  confirmState.action = 'cancel'
+  confirmState.receipt = receipt
+}
+
+function closeConfirmDialog() {
+  confirmState.open = false
+  confirmState.action = ''
+  confirmState.receipt = null
+}
+
+async function confirmAction() {
+  const receipt = confirmState.receipt
+  const action = confirmState.action
+  if (!receipt) return
+  closeConfirmDialog()
+
+  if (action === 'submit') {
+    await confirmSubmit(receipt)
+  } else if (action === 'cancel') {
+    await confirmCancel(receipt)
+  }
+}
+
+async function confirmSubmit(receipt) {
   actionState.receiptId = receipt.id
   actionState.action = 'submit'
   actionMessage.value = ''
@@ -152,10 +201,7 @@ async function handleSubmit(receipt) {
   }
 }
 
-async function handleCancel(receipt) {
-  if (!canCancelImportReceipt(receipt.status)) return
-  if (!window.confirm('Hủy phiếu nhập này?')) return
-
+async function confirmCancel(receipt) {
   actionState.receiptId = receipt.id
   actionState.action = 'cancel'
   actionMessage.value = ''
@@ -201,19 +247,30 @@ function rejectionReasonText(receipt) {
 }
 
 function canEditImportReceipt(status) {
+  if (!['ADMIN', 'EMPLOYEE'].includes(currentRole.value)) return false
   return status === 'NHAP' || status === 'TU_CHOI'
 }
 
 function canSubmitImportReceipt(status) {
-  return status === 'NHAP'
+  if (!['ADMIN', 'EMPLOYEE'].includes(currentRole.value)) return false
+  return status === 'NHAP' || status === 'TU_CHOI'
+}
+
+function submitLabel(status) {
+  return status === 'TU_CHOI' ? 'Gửi duyệt lại' : 'Gửi duyệt'
 }
 
 function canCancelImportReceipt(status) {
+  if (!['ADMIN', 'EMPLOYEE'].includes(currentRole.value)) return false
   return status === 'NHAP'
 }
 
 function hasWorkflowAction(status) {
   return canEditImportReceipt(status) || canSubmitImportReceipt(status) || canCancelImportReceipt(status)
+}
+
+function canViewImportReceipt(status) {
+  return currentRole.value === 'MANAGER' || !hasWorkflowAction(status)
 }
 
 function formatDate(value) {
@@ -227,12 +284,26 @@ function formatCurrency(value) {
   if (value === null || value === undefined) return '-'
   return Number(value || 0).toLocaleString('vi-VN') + ' đ'
 }
+
+function confirmTitle() {
+  return confirmState.action === 'cancel' ? 'Xác nhận hủy' : 'Xác nhận gửi duyệt'
+}
+
+function confirmMessage() {
+  return confirmState.action === 'cancel'
+    ? 'Hủy phiếu nhập này?'
+    : 'Gửi duyệt phiếu nhập này?'
+}
+
+function confirmText() {
+  return confirmState.action === 'cancel' ? 'Hủy phiếu' : 'Gửi duyệt'
+}
 </script>
 
 <template>
   <template v-if="type === 'in'">
-    <PageHeader title="Phiếu nhập của tôi" description="Danh sách phiếu nhập kho do nhân viên tạo từ API backend.">
-      <button class="btn btn-primary" type="button" @click="goCreate"><i class="mdi mdi-plus"></i>Tạo phiếu</button>
+    <PageHeader :title="pageTitle" :description="pageDescription">
+      <button v-if="canCreateImportReceipt" class="btn btn-primary" type="button" @click="goCreate"><i class="mdi mdi-plus"></i>Tạo phiếu</button>
     </PageHeader>
 
     <div class="filter-bar card card-pad">
@@ -263,12 +334,12 @@ function formatCurrency(value) {
         <div class="actions">
           <button v-if="canEditImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="goEdit(row)">Sửa</button>
           <button v-if="canSubmitImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="handleSubmit(row)">
-            {{ isActionRunning(row, 'submit') ? 'Đang gửi...' : 'Gửi duyệt' }}
+            {{ isActionRunning(row, 'submit') ? 'Đang gửi...' : submitLabel(row.status) }}
           </button>
           <button v-if="canCancelImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="handleCancel(row)">
             {{ isActionRunning(row, 'cancel') ? 'Đang hủy...' : 'Hủy' }}
           </button>
-          <button v-if="!hasWorkflowAction(row.status)" class="btn btn-sm" type="button" @click="goDetail(row)">Xem</button>
+          <button v-if="canViewImportReceipt(row.status)" class="btn btn-sm" type="button" @click="goDetail(row)">Xem</button>
           <button class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="openHistory(row)">Lịch sử</button>
         </div>
       </template>
@@ -289,6 +360,16 @@ function formatCurrency(value) {
       :receipt-id="historyState.receiptId"
       :receipt-code="historyState.receiptCode"
       @close="closeHistory"
+    />
+
+    <ConfirmDialog
+      :open="confirmState.open"
+      :title="confirmTitle()"
+      :message="confirmMessage()"
+      :confirm-text="confirmText()"
+      :danger="confirmState.action === 'cancel'"
+      @cancel="closeConfirmDialog"
+      @confirm="confirmAction"
     />
   </template>
 

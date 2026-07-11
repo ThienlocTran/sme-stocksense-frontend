@@ -6,6 +6,7 @@ defineProps({
   placeholder: { type: String, default: "Tìm kiếm" },
 });
 defineEmits(["update:modelValue"]);
+defineOptions({ inheritAttrs: false });
 const attrs = useAttrs();
 </script>
 
@@ -24,29 +25,29 @@ const attrs = useAttrs();
 
 <style scoped>
 .filter-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(280px, 1.4fr) repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: end;
   margin-bottom: 16px;
 }
+
 .search-input {
-  min-width: 260px;
-  flex: 1;
+  min-width: 0;
 }
+
 .filter-bar :deep(.select),
 .filter-bar :deep(.input) {
-  max-width: 240px;
+  max-width: none;
 }
+
+.filter-bar :deep(.btn) {
+  width: 100%;
+}
+
 @media (max-width: 720px) {
-  .filter-bar,
-  .search-input {
-    width: 100%;
-    max-width: none;
-  }
-  .filter-bar :deep(.select),
-  .filter-bar :deep(.input) {
-    max-width: none;
+  .filter-bar {
+    grid-template-columns: 1fr;
   }
 }
 </style>

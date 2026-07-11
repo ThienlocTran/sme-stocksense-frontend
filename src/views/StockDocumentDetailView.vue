@@ -8,6 +8,17 @@ defineProps({
   type: { type: String, default: "in" },
   id: { type: String, default: "" },
 });
+import { computed } from 'vue'
+import PageHeader from '../components/PageHeader.vue'
+import FeaturePending from '../components/FeaturePending.vue'
+import ImportInspectionPanel from '../components/ImportInspectionPanel.vue'
+
+const props = defineProps({
+  type: { type: String, default: 'in' },
+  id: { type: String, default: '' }
+})
+
+const hasReceiptId = computed(() => String(props.id || '').trim().length > 0)
 </script>
 
 <template>
@@ -24,7 +35,10 @@ defineProps({
 
   <div class="mt-6">
     <template v-if="type === 'in'">
-      <ImportInspectionPanel :receiptId="id" />
+      <ImportInspectionPanel v-if="hasReceiptId" :receiptId="id" />
+      <div v-else class="card card-pad">
+        <p class="form-alert form-alert-error mb-0">Không tìm thấy mã phiếu nhập để tải chi tiết.</p>
+      </div>
     </template>
     <template v-else>
       <StockOutApprovalDetail :receiptId="id" />

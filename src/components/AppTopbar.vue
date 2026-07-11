@@ -2,12 +2,14 @@
 import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useRouter } from 'vue-router'
-import { changeOwnPassword, clearAuth, formatRole, getCurrentUser } from '../services/authService'
+import { changeOwnPassword, clearAuth, formatRole } from '../services/authService'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
-const currentUser = computed(() => getCurrentUser())
-const currentUserRole = computed(() => formatRole(currentUser.value?.role))
+const authStore = useAuthStore()
+const currentUser = computed(() => authStore.currentUser)
+const currentUserRole = computed(() => formatRole(authStore.currentRole))
 const isLoggingOut = computed(() => route.path === '/login')
 const isPasswordModalOpen = ref(false)
 const isChangingPassword = ref(false)
@@ -21,6 +23,7 @@ function logout() {
   passwordSuccessMessage.value = ''
   clearPasswordForm()
   clearAuth()
+  authStore.syncFromStorage()
   router.replace('/login')
 }
 

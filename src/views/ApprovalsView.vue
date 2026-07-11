@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import DataTable from '../components/DataTable.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
 import {
   approveImportReceipt,
@@ -27,6 +28,7 @@ const filters = reactive({ status: '' })
 
 // Trạng thái thao tác đang chạy theo từng phiếu
 const actionState = reactive({ receiptId: null, action: '' })
+const approveConfirmState = reactive({ open: false, receipt: null })
 
 // Chi tiết phiếu (T96)
 const detailState = reactive({ open: false, loading: false, error: '', receipt: null })
@@ -51,8 +53,8 @@ const columns = [
 ]
 
 const statusOptions = [
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ duyệt cấp 1' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt cấp 2' },
+  { value: 'CHO_DUYET_CAP_1', label: 'Chờ quản lý duyệt' },
+  { value: 'CHO_DUYET_CAP_2', label: 'Chờ quản lý duyệt' },
 ]
 
 const statusLabels = Object.fromEntries(statusOptions.map(s => [s.value, s.label]))
@@ -130,10 +132,23 @@ function closeDetail() {
   detailState.error = ''
 }
 
-// ===== T97: Duyệt phiếu nhập theo cấp =====
+// ===== T97: Duyệt phiếu nhập =====
 async function handleApprove(receipt) {
   if (!isPendingApproval(receipt.status)) return
-  if (!window.confirm(`${approveLabel(receipt.status)} phiếu ${receipt.code}?`)) return
+  approveConfirmState.open = true
+  approveConfirmState.receipt = receipt
+}
+
+// ===== T98: Từ chối phiếu nhập (modal + validate lý do) =====
+function closeApproveConfirm() {
+  if (actionState.action === 'approve') return
+  approveConfirmState.open = false
+  approveConfirmState.receipt = null
+}
+
+async function confirmApprove() {
+  const receipt = approveConfirmState.receipt
+  if (!receipt || !isPendingApproval(receipt.status)) return
 
   actionState.receiptId = receipt.id
   actionState.action = 'approve'
@@ -141,6 +156,8 @@ async function handleApprove(receipt) {
   actionErrorMessage.value = ''
   try {
     await approveImportReceipt(receipt.id)
+    approveConfirmState.open = false
+    approveConfirmState.receipt = null
     closeDetail()
     await fetchPendingApprovals()
     actionMessage.value = `Đã duyệt phiếu ${receipt.code} thành công.`
@@ -153,7 +170,6 @@ async function handleApprove(receipt) {
   }
 }
 
-// ===== T98: Từ chối phiếu nhập (modal + validate lý do) =====
 function openRejectModal(receipt) {
   rejectState.open = true
   rejectState.receiptId = receipt.id
@@ -204,9 +220,8 @@ function isPendingApproval(status) {
 }
 
 function approveLabel(status) {
-  if (status === 'CHO_DUYET_CAP_1') return 'Duyệt cấp 1'
-  if (status === 'CHO_DUYET_CAP_2') return 'Duyệt cấp 2'
-  return 'Duyệt'
+  if (isPendingApproval(status)) return 'Duyệt phiếu'
+  return 'Duyệt phiếu'
 }
 
 function isActionRunning(receipt, action) {
@@ -253,11 +268,11 @@ function formatCurrency(value) {
 </script>
 
 <template>
-  <PageHeader title="Phiếu nhập chờ duyệt" description="Quản lý duyệt/từ chối phiếu nhập kho theo cấp." />
+  <PageHeader title="Phiếu nhập chờ duyệt" description="Quản lý duyệt/từ chối phiếu nhập kho." />
 
   <div class="filter-bar card card-pad">
     <select v-model="filters.status" class="select" @change="applyFilter">
-      <option value="">Tất cả cấp chờ duyệt</option>
+      <option value="">Tất cả phiếu chờ duyệt</option>
       <option v-for="status in statusOptions" :key="status.value" :value="status.value">{{ status.label }}</option>
     </select>
     <button class="btn btn-ghost" type="button" @click="clearFilters">Xóa lọc</button>
@@ -284,7 +299,7 @@ function formatCurrency(value) {
         <button class="btn btn-sm btn-primary" type="button" :disabled="isAnyActionRunning(row)" @click="handleApprove(row)">
           {{ isActionRunning(row, 'approve') ? 'Đang duyệt...' : approveLabel(row.status) }}
         </button>
-        <button class="btn btn-sm btn-danger" type="button" :disabled="isAnyActionRunning(row)" @click="openRejectModal(row)">Từ chối</button>
+        <button class="btn btn-sm btn-danger" type="button" :disabled="isAnyActionRunning(row)" @click="openRejectModal(row)">Từ chối phiếu</button>
       </div>
     </template>
   </DataTable>
@@ -354,7 +369,7 @@ function formatCurrency(value) {
         </template>
       </div>
       <div v-if="detailState.receipt && isPendingApproval(detailState.receipt.status)" class="modal-foot">
-        <button class="btn btn-danger" type="button" @click="openRejectModal(detailState.receipt)">Từ chối</button>
+        <button class="btn btn-danger" type="button" @click="openRejectModal(detailState.receipt)">Từ chối phiếu</button>
         <button class="btn btn-primary" type="button" @click="handleApprove(detailState.receipt)">{{ approveLabel(detailState.receipt.status) }}</button>
       </div>
     </div>
@@ -393,6 +408,15 @@ function formatCurrency(value) {
   </div>
 
   <!-- Modal Lịch sử duyệt -->
+  <ConfirmDialog
+    :open="approveConfirmState.open"
+    title="Xác nhận duyệt"
+    :message="approveConfirmState.receipt ? `${approveLabel(approveConfirmState.receipt.status)} phiếu ${approveConfirmState.receipt.code}?` : ''"
+    :confirm-text="approveConfirmState.receipt ? approveLabel(approveConfirmState.receipt.status) : 'Xác nhận'"
+    @cancel="closeApproveConfirm"
+    @confirm="confirmApprove"
+  />
+
   <ImportReceiptHistoryModal
     v-if="historyState.open"
     :receipt-id="historyState.receiptId"

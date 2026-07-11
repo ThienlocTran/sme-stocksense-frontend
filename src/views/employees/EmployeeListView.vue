@@ -10,6 +10,7 @@ import {
   getRoleLabel,
   getStatusLabel,
 } from '../../constants/employeeOptions'
+import { getCurrentRoleCode } from '../../services/authService'
 import { createEmployee, getEmployees, lockEmployee, resetEmployeePassword, unlockEmployee, updateEmployee } from '../../services/employeeService'
 
 const router = useRouter()
@@ -34,14 +35,13 @@ const formErrors = reactive({ fullName: '', email: '', phoneNumber: '', password
 const resetForm = reactive({ newPassword: '', confirmPassword: '' })
 const resetErrors = reactive({ newPassword: '', confirmPassword: '' })
 
-const columns = [
-  { key: 'fullName', label: 'Họ tên' },
-  { key: 'email', label: 'Email' },
-  { key: 'phoneNumber', label: 'Số điện thoại' },
-  { key: 'role', label: 'Vai trò' },
-  { key: 'status', label: 'Trạng thái' },
-  { key: 'createdAt', label: 'Ngày tạo' },
-  { key: 'actions', label: 'Thao tác' },
+const baseColumns = [
+  { key: 'fullName', label: 'Họ tên', class: 'employee-name-column' },
+  { key: 'email', label: 'Email', class: 'employee-email-column' },
+  { key: 'phoneNumber', label: 'Số điện thoại', class: 'employee-phone-column' },
+  { key: 'role', label: 'Vai trò', class: 'employee-role-column' },
+  { key: 'status', label: 'Trạng thái', class: 'employee-status-column' },
+  { key: 'createdAt', label: 'Ngày tạo', class: 'employee-date-column' },
 ]
 
 const statusOptions = [{ value: '', label: 'Tất cả trạng thái' }, ...employeeStatusOptions]
@@ -52,6 +52,10 @@ const currentPage = computed(() => filters.page + 1)
 const canGoPrevious = computed(() => filters.page > 0 && !isLoading.value)
 const canGoNext = computed(() => filters.page + 1 < pageInfo.totalPages && !isLoading.value)
 const isEditMode = computed(() => formMode.value === 'edit')
+const canManageEmployees = computed(() => getCurrentRoleCode() === 'ADMIN')
+const columns = computed(() => (
+  canManageEmployees.value ? [...baseColumns, { key: 'actions', label: 'Thao tác', class: 'employee-actions-column' }] : baseColumns
+))
 const formTitle = computed(() => (isEditMode.value ? 'Sửa nhân viên' : 'Thêm nhân viên'))
 const rangeText = computed(() => {
   if (pageInfo.totalElements === 0) return '0 nhân viên'
@@ -120,7 +124,7 @@ function isStatusToggleDisabled(employee) {
 }
 
 async function toggleEmployeeStatus(employee) {
-  if (!employee?.id || statusUpdatingId.value || isStatusToggleDisabled(employee)) return
+  if (!canManageEmployees.value || !employee?.id || statusUpdatingId.value || isStatusToggleDisabled(employee)) return
 
   const shouldLock = employee.status === 'HOAT_DONG'
   statusUpdatingId.value = employee.id
@@ -160,6 +164,7 @@ function createEmptyForm() {
 }
 
 function openCreateForm() {
+  if (!canManageEmployees.value) return
   formMode.value = 'create'
   Object.assign(form, createEmptyForm())
   successMessage.value = ''
@@ -168,6 +173,7 @@ function openCreateForm() {
 }
 
 function openEditForm(employee) {
+  if (!canManageEmployees.value) return
   formMode.value = 'edit'
   Object.assign(form, {
     id: employee.id,
@@ -189,6 +195,7 @@ function closeForm() {
 }
 
 async function submitEmployeeForm() {
+  if (!canManageEmployees.value) return
   if (!validateForm()) return
 
   isSaving.value = true
@@ -298,6 +305,7 @@ function applyBackendErrors(errors = {}) {
 }
 
 function openResetPassword(employee) {
+  if (!canManageEmployees.value) return
   resetEmployee.value = employee
   successMessage.value = ''
   clearResetFeedback()
@@ -311,6 +319,7 @@ function closeResetPassword() {
 }
 
 async function submitResetPassword() {
+  if (!canManageEmployees.value) return
   if (!validateResetForm() || !resetEmployee.value) return
 
   isResetting.value = true
@@ -403,13 +412,13 @@ function formatDate(value) {
 
 <template>
   <PageHeader title="Nhân viên" description="Theo dõi danh sách nhân viên theo vai trò, trạng thái và từ khóa tìm kiếm.">
-    <button class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
+    <button v-if="canManageEmployees" class="btn btn-primary employee-create-btn" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
       <i class="mdi mdi-account-plus-outline"></i>
       Thêm nhân viên
     </button>
   </PageHeader>
 
-  <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo họ tên hoặc email">
+  <SearchFilterBar v-model="searchDraft" class="employee-filter-bar" placeholder="Tìm theo họ tên hoặc email">
     <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
       <i class="mdi mdi-magnify"></i>
       Tìm kiếm
@@ -438,7 +447,7 @@ function formatDate(value) {
       Đang tải danh sách nhân viên
     </div>
 
-    <DataTable v-else :columns="columns" :rows="employees" empty-text="Không có nhân viên phù hợp">
+    <DataTable v-else :columns="columns" :rows="employees" empty-text="Không có nhân viên phù hợp" min-width="1180px">
       <template #phoneNumber="{ value }">{{ value || '-' }}</template>
       <template #role="{ row }">{{ displayRole(row) }}</template>
       <template #status="{ value }">
@@ -592,11 +601,14 @@ function formatDate(value) {
 </template>
 
 <style scoped>
+.employee-create-btn { white-space: nowrap; }
+.employee-filter-bar { margin-bottom: 18px; }
 .employee-alert, .employee-success { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
 .employee-alert { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
 .employee-success { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
-.employee-table-shell { position: relative; }
-.employee-actions { flex-wrap: nowrap; }
+.employee-table-shell { position: relative; margin-top: 6px; }
+.employee-actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: nowrap; min-width: max-content; }
+.employee-actions .btn { min-height: 32px; padding-inline: 10px; white-space: nowrap; word-break: keep-all; }
 .employee-loading { min-height: 220px; display: grid; place-items: center; gap: 10px; color: var(--muted); font-weight: 700; }
 .mdi-spin { animation: spin 0.8s linear infinite; }
 .employee-status { display: inline-flex; align-items: center; min-height: 26px; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 800; white-space: nowrap; background: #e2e8f0; color: #334155; }
@@ -614,6 +626,14 @@ function formatDate(value) {
 .field > span { color: #374151; font-weight: 600; }
 .field-error { color: var(--danger); font-weight: 600; line-height: 18px; }
 .btn:disabled, .select:disabled { opacity: 0.6; cursor: not-allowed; }
+
+:deep(.employee-name-column) { min-width: 170px; }
+:deep(.employee-email-column) { min-width: 220px; }
+:deep(.employee-phone-column),
+:deep(.employee-role-column),
+:deep(.employee-status-column),
+:deep(.employee-date-column) { min-width: 132px; }
+:deep(.employee-actions-column) { min-width: 260px; text-align: right; white-space: nowrap; overflow-wrap: normal; }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
