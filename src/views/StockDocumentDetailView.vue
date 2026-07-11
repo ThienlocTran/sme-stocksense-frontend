@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import ImportInspectionPanel from '../components/ImportInspectionPanel.vue'
+import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
 import { getExportReceipt } from '../services/exportReceiptService'
 
 const props = defineProps({
@@ -13,6 +14,7 @@ const hasReceiptId = computed(() => String(props.id || '').trim().length > 0)
 const receipt = ref(null)
 const loading = ref(false)
 const error = ref('')
+const historyOpen = ref(false)
 onMounted(async () => {
   if (props.type !== 'out' || !hasReceiptId.value) return
   loading.value = true
@@ -25,7 +27,11 @@ const money = value => `${Number(value || 0).toLocaleString('vi-VN')} đ`
   <PageHeader
     :title="type === 'out' ? 'Chi tiết phiếu xuất kho' : 'Chi tiết phiếu nhập kho'"
     :description="type === 'out' ? 'Chi tiết chứng từ xuất kho.' : 'Chi tiết, xác nhận và kiểm hàng phiếu nhập kho.'"
-  />
+  >
+    <button class="btn btn-secondary" type="button" :disabled="!hasReceiptId" @click="historyOpen = true">
+      <i class="mdi mdi-history"></i>Lịch sử duyệt
+    </button>
+  </PageHeader>
 
   <div class="mt-6">
     <template v-if="type === 'in'">
@@ -46,4 +52,12 @@ const money = value => `${Number(value || 0).toLocaleString('vi-VN')} đ`
       </div>
     </template>
   </div>
+
+  <ImportReceiptHistoryModal
+    v-if="historyOpen"
+    :receipt-id="Number(id)"
+    :receipt-code="receipt?.code || ''"
+    :document-type="type"
+    @close="historyOpen = false"
+  />
 </template>
