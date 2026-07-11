@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader.vue'
 import ImportInspectionPanel from '../components/ImportInspectionPanel.vue'
 import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
 import { getExportReceipt } from '../services/exportReceiptService'
+import StockOutApprovalDetail from '../components/StockOutApprovalDetail.vue'
 
 const props = defineProps({
   type: { type: String, default: 'in' },
@@ -50,6 +51,7 @@ const money = value => `${Number(value || 0).toLocaleString('vi-VN')} đ`
           <tbody><tr v-for="item in receipt.items" :key="item.id"><td>{{ item.productCode }}</td><td>{{ item.productName }}</td><td>{{ item.quantity }}</td><td>{{ item.currentInventory }}</td><td>{{ money(item.unitPrice) }}</td><td>{{ money(item.lineTotal) }}</td></tr></tbody>
         </table>
       </div>
+      <StockOutApprovalDetail :receiptId="id" />
     </template>
   </div>
 
