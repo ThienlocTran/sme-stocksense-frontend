@@ -134,7 +134,7 @@ function statusLabel(status) {
     <DataTable
       :columns="columns"
       :rows="rows"
-      empty-text="Không có phiếu xuất nào đang chờ duyệt."
+      empty-text="Không có phiếu xuất nào đang chờ duyệt. Nhấp vào mã phiếu để mở chi tiết nhanh."
       @row-click="goToDetail"
     >
       <template #code="{ row }">
@@ -167,7 +167,7 @@ function statusLabel(status) {
         <button
           class="btn btn-sm"
           type="button"
-          :disabled="!hasPreviousPage"
+          :disabled="isLoading || !hasPreviousPage"
           @click="previousPage"
         >
           Trước
@@ -175,7 +175,7 @@ function statusLabel(status) {
         <button
           class="btn btn-sm"
           type="button"
-          :disabled="!hasNextPage"
+          :disabled="isLoading || !hasNextPage"
           @click="nextPage"
         >
           Sau
