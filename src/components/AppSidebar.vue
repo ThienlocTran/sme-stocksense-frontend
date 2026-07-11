@@ -12,6 +12,7 @@ const items = [
   ['Lịch sử giao dịch', '/inventory-transactions', 'mdi-history'],
   ['Phiếu nhập kho', '/stock-in', 'mdi-tray-arrow-down'],
   ['Phiếu xuất kho', '/stock-out', 'mdi-tray-arrow-up'],
+  ['Phiếu xuất chờ duyệt', '/export-approvals', 'mdi-file-clock-outline', 'approval'],
   ['Chờ duyệt', '/approvals', 'mdi-check-decagram-outline', 'approval'],
   ['Import Excel', '/import-excel', 'mdi-file-excel-outline'],
   ['Cảnh báo tồn kho', '/alerts', 'mdi-alert-outline'],
