@@ -2,7 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
-import FeaturePending from '../components/FeaturePending.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import {
   cancelDraft,
@@ -15,6 +14,7 @@ import {
   submitForApproval,
   updateEditable,
 } from '../services/importReceiptService'
+import { cancelExportReceipt, createExportReceipt, getExportReceipt, submitExportReceipt, updateExportReceipt } from '../services/exportReceiptService'
 
 const props = defineProps({
   type: { type: String, default: 'in' },
@@ -31,6 +31,7 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const receiptId = ref(props.id || '')
 const receiptStatus = ref('NHAP')
+const receiptVersion = ref(0)
 const rejectionReason = ref('')
 const isDirty = ref(false)
 const isHydrating = ref(false)
@@ -44,7 +45,7 @@ const products = ref([])
 function scheduleRedirectToList(delay) {
   if (redirectTimer) clearTimeout(redirectTimer)
   redirectTimer = setTimeout(() => {
-    router.push('/stock-in')
+    router.push(props.type === 'out' ? '/stock-out' : '/stock-in')
   }, delay)
 }
 
@@ -94,8 +95,8 @@ const detailCount = computed(() => items.value.length)
 const hasValidItems = computed(() => items.value.length > 0 && items.value.every(item => {
   return item.productId && Number(item.quantity) > 0 && Number(item.unitPrice) >= 0
 }))
-const canSubmit = computed(() => receiptId.value && (receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI') && hasValidItems.value)
-const canCancel = computed(() => receiptId.value && receiptStatus.value === 'NHAP')
+const canSubmit = computed(() => receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value) && hasValidItems.value)
+const canCancel = computed(() => receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value))
 const canSave = computed(() => isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI')
 const isRejectedImportReceipt = computed(() => isEditMode.value && receiptStatus.value === 'TU_CHOI')
 const normalizedRejectionReason = computed(() => String(rejectionReason.value || '').trim())
@@ -110,7 +111,6 @@ const totalAmountPreview = computed(() => {
 })
 
 onMounted(async () => {
-  if (props.type !== 'in') return
   await loadDropdowns()
   if (isEditMode.value) await loadReceiptDetail()
   isDirty.value = false
@@ -186,7 +186,7 @@ async function loadReceiptDetail() {
   isHydrating.value = true
 
   try {
-    const receipt = await getDetail(receiptId.value)
+    const receipt = props.type === 'out' ? await getExportReceipt(receiptId.value) : await getDetail(receiptId.value)
     hydrateReceipt(receipt)
   } catch (error) {
     errorMessage.value = error.message || 'Không thể tải thông tin phiếu nhập.'
@@ -200,13 +200,14 @@ async function loadReceiptDetail() {
 function hydrateReceipt(receipt) {
   receiptId.value = receipt.id || receiptId.value
   receiptStatus.value = receipt.status || 'NHAP'
+  receiptVersion.value = receipt.version ?? receiptVersion.value
   if (Object.prototype.hasOwnProperty.call(receipt, 'rejectionReason')) {
     rejectionReason.value = receipt.rejectionReason || ''
   }
   form.warehouseId = receipt.warehouseId || null
-  form.supplierId = receipt.supplierId || null
+  form.supplierId = receipt.supplierId || receipt.partnerId || null
   form.note = receipt.note || ''
-  items.value = (receipt.details || []).map(item => ({
+  items.value = (receipt.details || receipt.items || []).map(item => ({
     productId: item.productId,
     productCode: item.productCode,
     productName: item.productName,
@@ -214,15 +215,17 @@ function hydrateReceipt(receipt) {
     unitPrice: item.unitPrice,
     note: item.note || '',
     lineTotal: item.lineTotal ?? (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0),
+    availableStock: item.availableStock ?? item.currentInventory ?? null,
+    exceedsAvailableStock: item.exceedsAvailableStock ?? item.warning ?? false,
   }))
 }
 
 function buildDraftPayload() {
   return {
     warehouseId: form.warehouseId,
-    supplierId: form.supplierId,
+    ...(props.type === 'out' ? { partnerId: form.supplierId } : { supplierId: form.supplierId }),
     note: form.note.trim() || null,
-    items: items.value.map(item => ({
+    [props.type === 'out' ? 'details' : 'items']: items.value.map(item => ({
       productId: item.productId,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -255,7 +258,7 @@ function validateForm() {
     isValid = false
   }
 
-  if (!form.supplierId) {
+  if (props.type === 'in' && !form.supplierId) {
     formErrors.supplierId = 'Vui lòng chọn nhà cung cấp.'
     isValid = false
   }
@@ -346,7 +349,12 @@ async function handleSaveDraft() {
     const draftPayload = buildDraftPayload()
     let savedReceipt
 
-    if (!receiptId.value) {
+    if (props.type === 'out') {
+      savedReceipt = receiptId.value
+        ? await updateExportReceipt(receiptId.value, draftPayload)
+        : await createExportReceipt(draftPayload)
+      receiptId.value = savedReceipt.id
+    } else if (!receiptId.value) {
       const receipt = await createImportReceipt({
         warehouseId: form.warehouseId,
         supplierId: form.supplierId,
@@ -431,7 +439,9 @@ async function confirmSubmitForApproval() {
   successMessage.value = ''
 
   try {
-    const receipt = await submitForApproval(receiptId.value)
+    const receipt = props.type === 'out'
+      ? await submitExportReceipt(receiptId.value, receiptVersion.value)
+      : await submitForApproval(receiptId.value)
     await applySavedReceipt(receipt)
     successMessage.value = 'Gửi duyệt phiếu nhập thành công.'
     scheduleRedirectToList(1200)
@@ -452,8 +462,8 @@ async function confirmCancelDraft() {
   successMessage.value = ''
 
   try {
-    const receipt = await cancelDraft(receiptId.value)
-    await applySavedReceipt(receipt)
+    const receipt = props.type === 'out' ? await cancelExportReceipt(receiptId.value) : await cancelDraft(receiptId.value)
+    if (receipt) await applySavedReceipt(receipt)
     successMessage.value = 'Hủy phiếu nhập thành công.'
     scheduleRedirectToList(1200)
   } catch (error) {
@@ -468,7 +478,7 @@ async function confirmCancelDraft() {
 }
 
 function goBack() {
-  router.push('/stock-in')
+  router.push(props.type === 'out' ? '/stock-out' : '/stock-in')
 }
 
 function formatCurrency(value) {
@@ -492,14 +502,14 @@ function confirmText() {
 </script>
 
 <template>
-  <PageHeader :title="pageTitle" description="Nhập thông tin kho, nhà cung cấp và danh sách sản phẩm cần nhập kho.">
+  <PageHeader :title="pageTitle" :description="type === 'out' ? 'Nhập thông tin kho, đối tác và sản phẩm cần xuất.' : 'Nhập thông tin kho, nhà cung cấp và sản phẩm cần nhập.'">
     <button class="btn btn-ghost" type="button" @click="goBack">
       <i class="mdi mdi-arrow-left"></i>
       Quay lại
     </button>
   </PageHeader>
 
-  <template v-if="type === 'in' && (isCreateMode || isEditMode)">
+  <template v-if="isCreateMode || isEditMode">
     <div v-if="errorMessage" class="import-receipt-form__alert import-receipt-form__alert--error">
       <i class="mdi mdi-alert-circle-outline"></i>
       <span>{{ errorMessage }}</span>
@@ -533,7 +543,7 @@ function confirmText() {
 
         <div class="import-receipt-form__grid import-receipt-form__grid--2">
           <div class="import-receipt-form__field">
-            <label class="import-receipt-form__label import-receipt-form__label--required">Kho nhập</label>
+            <label class="import-receipt-form__label import-receipt-form__label--required">{{ type === 'out' ? 'Kho xuất' : 'Kho nhập' }}</label>
             <select
               v-model="form.warehouseId"
               class="import-receipt-form__select"
@@ -550,7 +560,7 @@ function confirmText() {
           </div>
 
           <div class="import-receipt-form__field">
-            <label class="import-receipt-form__label import-receipt-form__label--required">Nhà cung cấp</label>
+            <label class="import-receipt-form__label" :class="{ 'import-receipt-form__label--required': type === 'in' }">{{ type === 'out' ? 'Đối tác' : 'Nhà cung cấp' }}</label>
             <select
               v-model="form.supplierId"
               class="import-receipt-form__select"
@@ -661,6 +671,7 @@ function confirmText() {
               <th>Mã SP</th>
               <th>Tên sản phẩm</th>
               <th style="text-align: right">Số lượng</th>
+              <th v-if="type === 'out'" style="text-align: right">Tồn hiện tại</th>
               <th style="text-align: right">Đơn giá</th>
               <th style="text-align: right">Thành tiền</th>
               <th>Ghi chú</th>
@@ -673,6 +684,10 @@ function confirmText() {
               <td>{{ item.productCode }}</td>
               <td>{{ item.productName }}</td>
               <td style="text-align: right">{{ item.quantity }}</td>
+              <td v-if="type === 'out'" style="text-align: right">
+                {{ item.availableStock ?? '-' }}
+                <span v-if="item.exceedsAvailableStock" class="text-danger"> (vượt tồn)</span>
+              </td>
               <td style="text-align: right">{{ formatCurrency(item.unitPrice) }}</td>
               <td style="text-align: right; font-weight: 600">{{ formatCurrency(item.lineTotal) }}</td>
               <td>{{ item.note || '-' }}</td>
@@ -701,7 +716,7 @@ function confirmText() {
         <h3 class="import-receipt-form__section-title">Danh sách sản phẩm (0 dòng)</h3>
         <div class="import-receipt-form__empty">
           <i class="mdi mdi-package-variant-closed" style="font-size: 48px; color: #cbd5e1"></i>
-          <p>Chưa có sản phẩm nào được thêm vào phiếu nhập.</p>
+          <p>Chưa có sản phẩm nào được thêm vào {{ type === 'out' ? 'phiếu xuất' : 'phiếu nhập' }}.</p>
           <p class="muted">Thêm sản phẩm từ phần bên trên để bắt đầu.</p>
         </div>
       </section>
@@ -737,9 +752,6 @@ function confirmText() {
     />
   </template>
 
-  <template v-else>
-    <FeaturePending title="Chức năng phiếu xuất kho đang được phát triển" />
-  </template>
 </template>
 
 <style scoped>
