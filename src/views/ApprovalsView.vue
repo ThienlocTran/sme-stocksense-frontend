@@ -10,8 +10,10 @@ import {
   getPendingApprovals,
   rejectImportReceipt,
 } from '../services/importReceiptService'
+import { approveExportReceipt, getExportReceipt, getPendingExportReceipts, rejectExportReceipt } from '../services/exportReceiptService'
 
 const router = useRouter()
+const documentType = ref('in')
 
 const receipts = ref([])
 const isLoading = ref(false)
@@ -68,12 +70,12 @@ async function fetchPendingApprovals() {
   actionMessage.value = ''
   actionErrorMessage.value = ''
   try {
-    const data = await getPendingApprovals({
+    const data = await (documentType.value === 'out' ? getPendingExportReceipts : getPendingApprovals)({
       page: page.value,
       size: size.value,
       status: filters.status,
     })
-    receipts.value = data.content || []
+    receipts.value = (data.content || []).map(item => ({ ...item, supplierName: item.supplierName || item.partnerName }))
     totalPages.value = data.totalPages || 0
     totalElements.value = data.totalElements || 0
   } catch (error) {
@@ -115,7 +117,10 @@ async function openDetail(receipt) {
   detailState.error = ''
   detailState.receipt = null
   try {
-    detailState.receipt = await getApprovalDetail(receipt.id)
+    const detail = await (documentType.value === 'out' ? getExportReceipt : getApprovalDetail)(receipt.id)
+    detailState.receipt = documentType.value === 'out'
+      ? { ...detail, supplierName: detail.partnerName, details: detail.items }
+      : detail
   } catch (error) {
     detailState.error = error.message || 'Không thể tải chi tiết phiếu.'
     if (error.status === 401) router.replace('/login')
@@ -140,7 +145,7 @@ async function handleApprove(receipt) {
   actionMessage.value = ''
   actionErrorMessage.value = ''
   try {
-    await approveImportReceipt(receipt.id)
+    await (documentType.value === 'out' ? approveExportReceipt : approveImportReceipt)(receipt.id)
     closeDetail()
     await fetchPendingApprovals()
     actionMessage.value = `Đã duyệt phiếu ${receipt.code} thành công.`
@@ -186,12 +191,12 @@ async function confirmReject() {
   actionMessage.value = ''
   actionErrorMessage.value = ''
   try {
-    await rejectImportReceipt(rejectState.receiptId, reason)
+    await (documentType.value === 'out' ? rejectExportReceipt : rejectImportReceipt)(rejectState.receiptId, reason)
     rejectState.open = false
     rejectState.submitting = false
     closeDetail()
     await fetchPendingApprovals()
-    actionMessage.value = 'Đã từ chối phiếu nhập thành công.'
+    actionMessage.value = `Đã từ chối phiếu ${documentType.value === 'out' ? 'xuất' : 'nhập'} thành công.`
   } catch (error) {
     rejectState.submitting = false
     rejectState.error = error.message || 'Không thể từ chối phiếu nhập.'
@@ -253,9 +258,13 @@ function formatCurrency(value) {
 </script>
 
 <template>
-  <PageHeader title="Phiếu nhập chờ duyệt" description="Quản lý duyệt/từ chối phiếu nhập kho theo cấp." />
+  <PageHeader :title="`Phiếu ${documentType === 'out' ? 'xuất' : 'nhập'} chờ duyệt`" description="Quản lý duyệt hoặc từ chối phiếu kho theo cấp." />
 
   <div class="filter-bar card card-pad">
+    <select v-model="documentType" class="select" @change="page = 0; fetchPendingApprovals()">
+      <option value="in">Phiếu nhập</option><option value="out">Phiếu xuất</option>
+    </select>
+
     <select v-model="filters.status" class="select" @change="applyFilter">
       <option value="">Tất cả cấp chờ duyệt</option>
       <option v-for="status in statusOptions" :key="status.value" :value="status.value">{{ status.label }}</option>
@@ -302,7 +311,7 @@ function formatCurrency(value) {
   <div v-if="detailState.open" class="modal-backdrop">
     <div class="modal detail-modal">
       <div class="modal-head between">
-        <h2 class="section-title">Chi tiết phiếu nhập chờ duyệt</h2>
+        <h2 class="section-title">Chi tiết phiếu {{ documentType === 'out' ? 'xuất' : 'nhập' }} chờ duyệt</h2>
         <button class="btn btn-icon" aria-label="Đóng" @click="closeDetail"><i class="mdi mdi-close"></i></button>
       </div>
       <div class="modal-body">
@@ -364,7 +373,7 @@ function formatCurrency(value) {
   <div v-if="rejectState.open" class="modal-backdrop">
     <div class="modal small-modal">
       <div class="modal-head between">
-        <h2 class="section-title">Từ chối phiếu nhập</h2>
+        <h2 class="section-title">Từ chối phiếu {{ documentType === 'out' ? 'xuất' : 'nhập' }}</h2>
         <button class="btn btn-icon" aria-label="Đóng" :disabled="rejectState.submitting" @click="closeRejectModal"><i class="mdi mdi-close"></i></button>
       </div>
       <div class="modal-body">
@@ -397,6 +406,7 @@ function formatCurrency(value) {
     v-if="historyState.open"
     :receipt-id="historyState.receiptId"
     :receipt-code="historyState.receiptCode"
+    :document-type="documentType"
     @close="closeHistory"
   />
 </template>
