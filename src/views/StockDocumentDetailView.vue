@@ -2,6 +2,7 @@
 import PageHeader from '../components/PageHeader.vue'
 import FeaturePending from '../components/FeaturePending.vue'
 import ImportInspectionPanel from '../components/ImportInspectionPanel.vue'
+import StockOutApprovalDetail from '../components/StockOutApprovalDetail.vue'
 
 defineProps({
   type: { type: String, default: 'in' },
@@ -20,7 +21,7 @@ defineProps({
       <ImportInspectionPanel :receiptId="id" />
     </template>
     <template v-else>
-      <FeaturePending title="Chưa có màn hình chi tiết phiếu xuất kho" />
+      <StockOutApprovalDetail :receiptId="id" />
     </template>
   </div>
 </template>
