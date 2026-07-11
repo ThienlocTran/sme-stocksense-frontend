@@ -1,75 +1,79 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { useAuthStore } from '../stores/auth'
-import { getPendingExportApprovalDetail } from '../services/stockOutApprovalService'
-import EmptyState from './EmptyState.vue'
+import { computed, ref, watch } from "vue";
+import { useAuthStore } from "../stores/auth";
+import { getPendingExportApprovalDetail } from "../services/stockOutApprovalService";
+import EmptyState from "./EmptyState.vue";
 
 const props = defineProps({
   receiptId: {
     type: [String, Number],
     required: true,
   },
-})
+});
 
-const authStore = useAuthStore()
-const receipt = ref(null)
-const loading = ref(false)
-const error = ref('')
+const authStore = useAuthStore();
+const receipt = ref(null);
+const loading = ref(false);
+const error = ref("");
 
-const canManageApproval = computed(() => ['ADMIN', 'MANAGER'].includes(authStore.currentRole))
+const canManageApproval = computed(() =>
+  ["ADMIN", "MANAGER"].includes(authStore.currentRole),
+);
 
 const overstockItems = computed(() => {
   return (receipt.value?.items || []).filter((item) => {
-    const exportQuantity = Number(item.exportQuantity || 0)
-    const currentStock = Number(item.currentStock || 0)
-    return exportQuantity > currentStock
-  })
-})
+    const exportQuantity = Number(item.exportQuantity || 0);
+    const currentStock = Number(item.currentStock || 0);
+    return exportQuantity > currentStock;
+  });
+});
 
 async function loadDetail() {
   if (!props.receiptId) {
-    receipt.value = null
-    error.value = ''
-    return
+    receipt.value = null;
+    error.value = "";
+    return;
   }
 
-  loading.value = true
-  error.value = ''
-  receipt.value = null
+  loading.value = true;
+  error.value = "";
+  receipt.value = null;
 
   try {
-    receipt.value = await getPendingExportApprovalDetail(String(props.receiptId))
+    receipt.value = await getPendingExportApprovalDetail(
+      String(props.receiptId),
+    );
   } catch (err) {
-    error.value = err.message || 'Không thể tải chi tiết phiếu xuất.'
+    error.value = err.message || "Không thể tải chi tiết phiếu xuất.";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function formatDate(value) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function formatStatus(status) {
   const statusMap = {
-    CHO_DUYET: 'Chờ duyệt',
-    DA_DUYET: 'Đã duyệt',
-    TU_CHOI: 'Từ chối',
-    DA_HUY: 'Đã hủy',
-  }
-  return statusMap[status] || status || '-'
+    CHO_DUYET: "Chờ duyệt",
+    DA_DUYET: "Đã duyệt",
+    TU_CHOI: "Từ chối",
+    DA_HUY: "Đã hủy",
+  };
+  return statusMap[status] || status || "-";
 }
 
-watch(() => props.receiptId, loadDetail, { immediate: true })
+watch(() => props.receiptId, loadDetail, { immediate: true });
 </script>
 
 <template>
@@ -94,7 +98,9 @@ watch(() => props.receiptId, loadDetail, { immediate: true })
       <div class="between">
         <div>
           <h3 class="section-title">Thông tin chung</h3>
-          <p class="muted">Kiểm tra toàn bộ thông tin trước khi quyết định duyệt hoặc từ chối.</p>
+          <p class="muted">
+            Kiểm tra toàn bộ thông tin trước khi quyết định duyệt hoặc từ chối.
+          </p>
         </div>
         <span class="status-pill">{{ formatStatus(receipt.status) }}</span>
       </div>
@@ -102,11 +108,11 @@ watch(() => props.receiptId, loadDetail, { immediate: true })
       <div class="detail-grid">
         <div class="detail-item">
           <span class="detail-label">Mã phiếu</span>
-          <span class="detail-value">{{ receipt.code || '-' }}</span>
+          <span class="detail-value">{{ receipt.code || "-" }}</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Người tạo</span>
-          <span class="detail-value">{{ receipt.createdByName || '-' }}</span>
+          <span class="detail-value">{{ receipt.createdByName || "-" }}</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Ngày tạo</span>
@@ -114,15 +120,19 @@ watch(() => props.receiptId, loadDetail, { immediate: true })
         </div>
         <div class="detail-item">
           <span class="detail-label">Ngày gửi</span>
-          <span class="detail-value">{{ formatDate(receipt.submittedAt) }}</span>
+          <span class="detail-value">{{
+            formatDate(receipt.submittedAt)
+          }}</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Kho xuất</span>
-          <span class="detail-value">{{ receipt.warehouseName || '-' }}</span>
+          <span class="detail-value">{{ receipt.warehouseName || "-" }}</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Cấp duyệt</span>
-          <span class="detail-value">{{ receipt.approvalLevelLabel || '-' }}</span>
+          <span class="detail-value">{{
+            receipt.approvalLevelLabel || "-"
+          }}</span>
         </div>
       </div>
     </div>
@@ -131,7 +141,9 @@ watch(() => props.receiptId, loadDetail, { immediate: true })
       <div class="between">
         <div>
           <h3 class="section-title">Danh sách sản phẩm</h3>
-          <p class="muted">Hiển thị số lượng xuất và tồn hiện tại của từng sản phẩm.</p>
+          <p class="muted">
+            Hiển thị số lượng xuất và tồn hiện tại của từng sản phẩm.
+          </p>
         </div>
         <span v-if="overstockItems.length" class="warning-pill">
           <i class="mdi mdi-alert-outline"></i>
@@ -151,20 +163,34 @@ watch(() => props.receiptId, loadDetail, { immediate: true })
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in receipt.items" :key="item.productId || item.productCode" :class="{ 'warning-row': Number(item.exportQuantity || 0) > Number(item.currentStock || 0) }">
+            <tr
+              v-for="item in receipt.items"
+              :key="item.productId || item.productCode"
+              :class="{
+                'warning-row':
+                  Number(item.exportQuantity || 0) >
+                  Number(item.currentStock || 0),
+              }"
+            >
               <td>
-                <div class="product-code">{{ item.productCode || '-' }}</div>
+                <div class="product-code">{{ item.productCode || "-" }}</div>
               </td>
               <td>
-                <div class="product-name">{{ item.productName || '-' }}</div>
+                <div class="product-name">{{ item.productName || "-" }}</div>
               </td>
-              <td>{{ item.unitName || '-' }}</td>
+              <td>{{ item.unitName || "-" }}</td>
               <td class="quantity-cell">
-                <span>{{ item.exportQuantity ?? '-' }}</span>
+                <span>{{ item.exportQuantity ?? "-" }}</span>
               </td>
               <td class="quantity-cell">
-                <span>{{ item.currentStock ?? '-' }}</span>
-                <i v-if="Number(item.exportQuantity || 0) > Number(item.currentStock || 0)" class="mdi mdi-alert-circle-outline warning-icon"></i>
+                <span>{{ item.currentStock ?? "-" }}</span>
+                <i
+                  v-if="
+                    Number(item.exportQuantity || 0) >
+                    Number(item.currentStock || 0)
+                  "
+                  class="mdi mdi-alert-circle-outline warning-icon"
+                ></i>
               </td>
             </tr>
           </tbody>
@@ -176,16 +202,32 @@ watch(() => props.receiptId, loadDetail, { immediate: true })
       <div class="between">
         <div>
           <h3 class="section-title">Hành động</h3>
-          <p class="muted">Chỉ hiển thị nút duyệt và từ chối, chưa có xử lý nghiệp vụ.</p>
+          <p class="muted">
+            Chỉ hiển thị nút duyệt và từ chối, chưa có xử lý nghiệp vụ.
+          </p>
         </div>
       </div>
 
       <div class="actions-row">
-        <button class="btn btn-primary" type="button" :disabled="!canManageApproval">Duyệt</button>
-        <button class="btn btn-danger" type="button" :disabled="!canManageApproval">Từ chối</button>
+        <button
+          class="btn btn-primary"
+          type="button"
+          :disabled="!canManageApproval"
+        >
+          Duyệt
+        </button>
+        <button
+          class="btn btn-danger"
+          type="button"
+          :disabled="!canManageApproval"
+        >
+          Từ chối
+        </button>
       </div>
 
-      <p v-if="!canManageApproval" class="muted mt-2">Bạn hiện không có quyền thực hiện hành động này.</p>
+      <p v-if="!canManageApproval" class="muted mt-2">
+        Bạn hiện không có quyền thực hiện hành động này.
+      </p>
     </div>
   </div>
 </template>
