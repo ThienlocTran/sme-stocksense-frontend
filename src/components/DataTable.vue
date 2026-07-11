@@ -1,8 +1,9 @@
 <script setup>
-defineProps({
+const props = defineProps({
   columns: { type: Array, required: true },
   rows: { type: Array, required: true },
   emptyText: { type: String, default: "Chưa có dữ liệu" },
+  clickable: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["row-click"]);
@@ -27,8 +28,8 @@ const emit = defineEmits(["row-click"]);
         <tr
           v-for="(row, index) in rows"
           :key="row.id || row.sku || index"
-          class="clickable-row"
-          @click="emit('row-click', row)"
+          :class="props.clickable ? 'clickable-row' : ''"
+          @click="props.clickable ? emit('row-click', row) : undefined"
         >
           <td v-for="column in columns" :key="column.key">
             <slot :name="column.key" :row="row" :value="row[column.key]">

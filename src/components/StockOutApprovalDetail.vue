@@ -73,9 +73,9 @@ async function handleApprove() {
   actionError.value = "";
 
   try {
-    await approveExportReceipt(String(props.receiptId));
-    await loadDetail();
-    actionMessage.value = `Đã gửi duyệt thành công cho phiếu ${receipt.value?.code || props.receiptId}.`;
+    const approvedReceipt = await approveExportReceipt(String(props.receiptId));
+    receipt.value = approvedReceipt;
+    actionMessage.value = `Đã gửi duyệt thành công cho phiếu ${approvedReceipt?.code || props.receiptId}.`;
   } catch (err) {
     actionError.value = err.message || "Không thể duyệt phiếu xuất.";
   } finally {
