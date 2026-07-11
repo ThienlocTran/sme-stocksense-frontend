@@ -22,7 +22,7 @@ const items = [
     "mdi-file-clock-outline",
     "approval",
   ],
-  ["Import Excel", "/import-excel", "mdi-file-excel-outline"],
+  ["Import Excel", "/import-excel", "mdi-file-excel-outline", "admin"],
   ["Cảnh báo tồn kho", "/alerts", "mdi-alert-outline"],
   ["Nhân viên", "/employees", "mdi-account-group-outline", "admin"],
   ["Nhân viên & phân quyền", "/users", "mdi-account-cog-outline", "admin"],

@@ -137,15 +137,15 @@ async function confirmReject() {
   actionLoading.value = true;
 
   try {
-    await rejectExportReceipt(String(props.receiptId), reason);
-    await loadDetail();
+    const rejectedReceipt = await rejectExportReceipt(String(props.receiptId), reason);
+    receipt.value = rejectedReceipt;
     rejectState.value = {
       open: false,
       reason: "",
       error: "",
       submitting: false,
     };
-    actionMessage.value = `Đã từ chối phiếu ${receipt.value?.code || props.receiptId} thành công.`;
+    actionMessage.value = `Đã từ chối phiếu ${rejectedReceipt?.code || props.receiptId} thành công.`;
   } catch (err) {
     rejectState.value.submitting = false;
     actionError.value = err.message || "Không thể từ chối phiếu xuất.";
@@ -186,6 +186,12 @@ function approveButtonLabel() {
 watch(() => props.receiptId, () => {
   actionMessage.value = "";
   actionError.value = "";
+  rejectState.value = {
+    open: false,
+    reason: "",
+    error: "",
+    submitting: false,
+  };
   loadDetail();
 }, { immediate: true });
 </script>
