@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useAuthStore } from "../stores/auth";
-import { getPendingExportApprovalDetail } from "../services/stockOutApprovalService";
+import { approveExportReceipt, getPendingExportApprovalDetail } from "../services/stockOutApprovalService";
 import EmptyState from "./EmptyState.vue";
 
 const props = defineProps({
@@ -15,10 +15,22 @@ const authStore = useAuthStore();
 const receipt = ref(null);
 const loading = ref(false);
 const error = ref("");
+const actionMessage = ref("");
+const actionError = ref("");
+const actionLoading = ref(false);
 
 const canManageApproval = computed(() =>
   ["ADMIN", "MANAGER"].includes(authStore.currentRole),
 );
+
+const canApprove = computed(() => {
+  return (
+    canManageApproval.value &&
+    !actionLoading.value &&
+    receipt.value &&
+    receipt.value.status === "CHO_DUYET"
+  );
+});
 
 const overstockItems = computed(() => {
   return (receipt.value?.items || []).filter((item) => {
@@ -40,13 +52,34 @@ async function loadDetail() {
   receipt.value = null;
 
   try {
-    receipt.value = await getPendingExportApprovalDetail(
-      String(props.receiptId),
-    );
+    receipt.value = await getPendingExportApprovalDetail(String(props.receiptId));
   } catch (err) {
     error.value = err.message || "Không thể tải chi tiết phiếu xuất.";
   } finally {
     loading.value = false;
+  }
+}
+
+async function handleApprove() {
+  if (!canApprove.value) return;
+
+  const confirmed = window.confirm(
+    `Duyệt phiếu ${receipt.value?.code || props.receiptId} này?`,
+  );
+  if (!confirmed) return;
+
+  actionLoading.value = true;
+  actionMessage.value = "";
+  actionError.value = "";
+
+  try {
+    await approveExportReceipt(String(props.receiptId));
+    await loadDetail();
+    actionMessage.value = `Đã gửi duyệt thành công cho phiếu ${receipt.value?.code || props.receiptId}.`;
+  } catch (err) {
+    actionError.value = err.message || "Không thể duyệt phiếu xuất.";
+  } finally {
+    actionLoading.value = false;
   }
 }
 
@@ -73,7 +106,17 @@ function formatStatus(status) {
   return statusMap[status] || status || "-";
 }
 
-watch(() => props.receiptId, loadDetail, { immediate: true });
+function approveButtonLabel() {
+  if (actionLoading.value) return "Đang duyệt...";
+  if (receipt.value?.approvalLevelLabel) return `Duyệt ${receipt.value.approvalLevelLabel.toLowerCase()}`;
+  return "Duyệt";
+}
+
+watch(() => props.receiptId, () => {
+  actionMessage.value = "";
+  actionError.value = "";
+  loadDetail();
+}, { immediate: true });
 </script>
 
 <template>
@@ -203,23 +246,31 @@ watch(() => props.receiptId, loadDetail, { immediate: true });
         <div>
           <h3 class="section-title">Hành động</h3>
           <p class="muted">
-            Chỉ hiển thị nút duyệt và từ chối, chưa có xử lý nghiệp vụ.
+            Duyệt phiếu tại cấp hiện tại và cập nhật lại dữ liệu sau khi thành công.
           </p>
         </div>
+      </div>
+
+      <div v-if="actionMessage" class="action-success">
+        {{ actionMessage }}
+      </div>
+      <div v-if="actionError" class="action-error">
+        {{ actionError }}
       </div>
 
       <div class="actions-row">
         <button
           class="btn btn-primary"
           type="button"
-          :disabled="!canManageApproval"
+          :disabled="!canApprove"
+          @click="handleApprove"
         >
-          Duyệt
+          {{ approveButtonLabel() }}
         </button>
         <button
           class="btn btn-danger"
           type="button"
-          :disabled="!canManageApproval"
+          :disabled="true"
         >
           Từ chối
         </button>
