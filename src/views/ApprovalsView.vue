@@ -55,11 +55,13 @@ const columns = [
 ]
 
 const statusOptions = [
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ duyệt cấp 1' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt cấp 2' },
+  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt' },
 ]
 
-const statusLabels = Object.fromEntries(statusOptions.map(s => [s.value, s.label]))
+const statusLabels = {
+  CHO_DUYET_CAP_1: 'Chờ duyệt',
+  CHO_DUYET_CAP_2: 'Chờ duyệt',
+}
 
 const hasPreviousPage = computed(() => page.value > 0)
 const hasNextPage = computed(() => page.value + 1 < totalPages.value)
