@@ -62,8 +62,7 @@ const columns = computed(() => [
 
 const statusOptions = [
   { value: 'NHAP', label: 'Nháp' },
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ duyệt cấp 1' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt cấp 2' },
+  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt' },
   { value: 'CHO_HANG_VE', label: 'Chờ hàng về' },
   { value: 'CHO_KIEM_HANG', label: 'Chờ kiểm hàng' },
   { value: 'HOAN_THANH', label: 'Hoàn thành' },
@@ -71,7 +70,10 @@ const statusOptions = [
   { value: 'HUY', label: 'Hủy' },
 ]
 
-const statusLabels = Object.fromEntries(statusOptions.map(status => [status.value, status.label]))
+const statusLabels = {
+  ...Object.fromEntries(statusOptions.map(status => [status.value, status.label])),
+  CHO_DUYET_CAP_1: 'Chờ duyệt',
+}
 
 onMounted(fetchReceipts)
 

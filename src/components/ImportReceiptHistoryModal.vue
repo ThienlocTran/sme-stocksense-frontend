@@ -43,9 +43,9 @@ watch(
 )
 
 const ACTION_LABELS = {
-  GUI_DUYET: 'Nhân viên gửi duyệt',
-  DUYET_CAP_1: 'Duyệt cấp 1',
-  DUYET_CAP_2: 'Duyệt cấp 2',
+  GUI_DUYET: 'Người tạo gửi duyệt',
+  DUYET_CAP_1: 'Đã duyệt',
+  DUYET_CAP_2: 'Đã duyệt',
   TU_CHOI: 'Quản lý từ chối phiếu',
   HUY: 'Huỷ phiếu',
 }
