@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { useAuthStore } from "../stores/auth";
+import { canAccessRoute } from "../services/permissionService";
 
 const authStore = useAuthStore();
 const currentRole = computed(() => authStore.currentRole);
@@ -28,13 +29,7 @@ const items = [
   ["Nhân viên & phân quyền", "/users", "mdi-account-cog-outline", "admin"],
 ];
 const visibleItems = computed(() =>
-  items.filter((item) => {
-    const role = currentRole.value;
-    if (item[3] === "admin") return role === "ADMIN";
-    if (item[3] === "manage") return role === "ADMIN" || role === "MANAGER";
-    if (item[3] === "approval") return role === "ADMIN" || role === "MANAGER";
-    return true;
-  }),
+  items.filter((item) => canAccessRoute(item[1], currentRole.value)),
 );
 </script>
 

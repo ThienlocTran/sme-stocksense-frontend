@@ -19,6 +19,7 @@ const authStore = useAuthStore();
 const receipt = ref(null);
 const loading = ref(false);
 const error = ref("");
+let loadDetailRequestId = 0;
 const actionMessage = ref("");
 const actionError = ref("");
 const actionLoading = ref(false);
@@ -57,21 +58,29 @@ const overstockItems = computed(() => {
 
 async function loadDetail() {
   if (!props.receiptId) {
+    loadDetailRequestId += 1;
     receipt.value = null;
     error.value = "";
+    loading.value = false;
     return;
   }
 
+  const requestId = ++loadDetailRequestId;
   loading.value = true;
   error.value = "";
   receipt.value = null;
 
   try {
-    receipt.value = await getPendingExportApprovalDetail(String(props.receiptId));
+    const detail = await getPendingExportApprovalDetail(String(props.receiptId));
+    if (requestId !== loadDetailRequestId) return;
+    receipt.value = detail;
   } catch (err) {
+    if (requestId !== loadDetailRequestId) return;
     error.value = err.message || "Không thể tải chi tiết phiếu xuất.";
   } finally {
-    loading.value = false;
+    if (requestId === loadDetailRequestId) {
+      loading.value = false;
+    }
   }
 }
 

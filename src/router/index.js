@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getCurrentRoleCode, isAuthenticated } from '../services/authService'
+import { canAccessRoute } from '../services/permissionService'
 import DashboardView from '../views/DashboardView.vue'
 import ProductsView from '../views/ProductsView.vue'
 import PartnerListView from '../views/PartnerListView.vue'
@@ -63,14 +64,5 @@ router.beforeEach(to => {
   if (!canAccessRoute(to.path, getCurrentRoleCode())) return '/dashboard'
   return true
 })
-
-function canAccessRoute(path, role) {
-  if (path === '/employees' || path === '/users') return role === 'ADMIN'
-  if (path === '/partners') return role === 'ADMIN' || role === 'MANAGER'
-  if (path === '/approvals' || path === '/pending-export-approvals') return role === 'ADMIN' || role === 'MANAGER'
-  if (path === '/import-excel') return role === 'ADMIN'
-  if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE'
-  return true
-}
 
 export default router
