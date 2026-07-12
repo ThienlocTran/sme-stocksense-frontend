@@ -157,7 +157,7 @@ async function confirmReject() {
     actionMessage.value = `Đã từ chối phiếu ${rejectedReceipt?.code || props.receiptId} thành công.`;
   } catch (err) {
     rejectState.value.submitting = false;
-    actionError.value = err.message || "Không thể từ chối phiếu xuất.";
+    rejectState.value.error = err.message || "Không thể từ chối phiếu xuất.";
   } finally {
     actionLoading.value = false;
   }
