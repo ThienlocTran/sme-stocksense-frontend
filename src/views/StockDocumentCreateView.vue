@@ -443,7 +443,7 @@ async function confirmSubmitForApproval() {
       ? await submitExportReceipt(receiptId.value, receiptVersion.value)
       : await submitForApproval(receiptId.value)
     await applySavedReceipt(receipt)
-    successMessage.value = 'Gửi duyệt phiếu nhập thành công.'
+    successMessage.value = 'Gửi duyệt thành công.'
     scheduleRedirectToList(1200)
   } catch (error) {
     if (error.status === 401) {

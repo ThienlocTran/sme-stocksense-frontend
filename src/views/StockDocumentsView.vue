@@ -190,7 +190,7 @@ async function confirmSubmit(receipt) {
     if (isOut.value) await submitExportReceipt(receipt.id, receipt.version)
     else await submitForApproval(receipt.id)
     await fetchReceipts()
-    actionMessage.value = 'Gửi duyệt phiếu nhập thành công.'
+    actionMessage.value = 'Gửi duyệt thành công.'
   } catch (error) {
     actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
     if (error.status === 401) router.replace('/login')
