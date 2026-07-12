@@ -66,6 +66,7 @@ router.beforeEach(to => {
 
 function canAccessRoute(path, role) {
   if (path === '/employees' || path === '/users') return role === 'ADMIN'
+  if (path === '/partners') return role === 'ADMIN' || role === 'MANAGER'
   if (path === '/approvals' || path === '/pending-export-approvals') return role === 'ADMIN' || role === 'MANAGER'
   if (path === '/import-excel') return role === 'ADMIN'
   if (/^\/stock-(in|out)\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE'
