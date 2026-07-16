@@ -37,3 +37,33 @@ export function canManageEmployees(role) {
 export function canImportExcel(role) {
   return EXCEL_IMPORT_ROLES.includes(resolveRole(role))
 }
+
+export function canAccessRoute(path, role) {
+  const resolvedRole = resolveRole(role)
+
+  if (path === '/employees' || path === '/users' || path === '/import-excel') {
+    return resolvedRole === 'ADMIN'
+  }
+
+  if (path === '/partners') {
+    return ['ADMIN', 'MANAGER'].includes(resolvedRole)
+  }
+
+  if (path === '/approvals' || path === '/pending-export-approvals' || path === '/export-approvals') {
+    return ['ADMIN', 'MANAGER'].includes(resolvedRole)
+  }
+
+  if (/^\/stock-in\/[^/]+$/.test(path)) {
+    return ['ADMIN', 'EMPLOYEE'].includes(resolvedRole)
+  }
+
+  if (/^\/stock-out\/[^/]+$/.test(path)) {
+    return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
+  }
+
+  if (/^\/stock-(in|out)\/(?:create|[^/]+\/edit)$/.test(path)) {
+    return ['ADMIN', 'EMPLOYEE'].includes(resolvedRole)
+  }
+
+  return true
+}

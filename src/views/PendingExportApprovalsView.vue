@@ -71,6 +71,8 @@ function nextPage() {
 }
 
 async function openDetail(receipt) {
+  if (detailLoading.value) return;
+
   detailLoading.value = true;
   detailError.value = "";
   selectedReceipt.value = null;
@@ -134,6 +136,7 @@ function statusLabel(status) {
     <DataTable
       :columns="columns"
       :rows="rows"
+      :clickable="true"
       empty-text="Không có phiếu xuất nào đang chờ duyệt. Nhấp vào mã phiếu để mở chi tiết nhanh."
       @row-click="goToDetail"
     >

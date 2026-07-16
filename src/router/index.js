@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getCurrentRoleCode, isAuthenticated } from '../services/authService'
+import { canAccessRoute } from '../services/permissionService'
 import DashboardView from '../views/DashboardView.vue'
 import ProductsView from '../views/ProductsView.vue'
 import PartnerListView from '../views/PartnerListView.vue'
@@ -10,8 +11,8 @@ import LoginView from '../views/LoginView.vue'
 import StockDocumentsView from '../views/StockDocumentsView.vue'
 import StockDocumentCreateView from '../views/StockDocumentCreateView.vue'
 import StockDocumentDetailView from '../views/StockDocumentDetailView.vue'
-import PendingExportApprovalsView from '../views/PendingExportApprovalsView.vue'
 import ApprovalsView from '../views/ApprovalsView.vue'
+import PendingExportApprovalsView from '../views/PendingExportApprovalsView.vue'
 import ImportExcelView from '../views/ImportExcelView.vue'
 import AlertsView from '../views/AlertsView.vue'
 import UsersView from '../views/UsersView.vue'
@@ -43,6 +44,7 @@ const routes = [
   { path: '/alerts', component: AlertsView, meta: { title: 'Cảnh báo tồn kho' } },
   { path: '/employees', component: EmployeeListView, meta: { title: 'Nhân viên' } },
   { path: '/users', component: UsersView, meta: { title: 'Nhân viên & phân quyền' } },
+
 ]
 
 const router = createRouter({
@@ -60,19 +62,8 @@ router.beforeEach(to => {
 
   if (isAuthRoute && authenticated) return '/dashboard'
 
-  const accessResult = resolveRouteAccess(to.path, getCurrentRoleCode())
-  if (accessResult !== true) return accessResult
+  if (!canAccessRoute(to.path, getCurrentRoleCode())) return '/dashboard'
   return true
 })
-
-// Frontend route guard is for navigation UX only and does not replace backend API authorization.
-function resolveRouteAccess(path, role) {
-  if (path === '/employees' || path === '/users' || path === '/import-excel') return role === 'ADMIN' ? true : '/dashboard'
-  if (path === '/approvals' || path === '/export-approvals' || path === '/pending-export-approvals') return role === 'ADMIN' || role === 'MANAGER' ? true : '/dashboard'
-  if (/^\/stock-in\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE' ? true : '/dashboard'
-  if (/^\/stock-in(\/[^/]+)?$/.test(path)) return role === 'ADMIN' || role === 'MANAGER' || role === 'EMPLOYEE' ? true : '/dashboard'
-  if (/^\/stock-out(\/.*)?$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE' ? true : '/dashboard'
-  return true
-}
 
 export default router
