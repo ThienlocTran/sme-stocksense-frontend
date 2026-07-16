@@ -43,7 +43,6 @@ const routes = [
   { path: '/alerts', component: AlertsView, meta: { title: 'Cảnh báo tồn kho' } },
   { path: '/employees', component: EmployeeListView, meta: { title: 'Nhân viên' } },
   { path: '/users', component: UsersView, meta: { title: 'Nhân viên & phân quyền' } },
-
 ]
 
 const router = createRouter({
