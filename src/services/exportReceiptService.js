@@ -35,6 +35,7 @@ export const getExportReceipts = ({ page = 0, size = 10, status = '' } = {}) => 
 export const getPendingExportReceipts = ({ page = 0, size = 10, status = '' } = {}) => request({
   method: 'get', url: '/api/export-receipts/pending-approval', params: { page, size, status: status || undefined },
 }, 'Không thể tải phiếu xuất chờ duyệt.')
+export const getPendingExportApprovals = getPendingExportReceipts
 export const approveExportReceipt = id => request({ method: 'put', url: `/api/export-receipts/${id}/approve` }, 'Không thể duyệt phiếu xuất.')
 export const rejectExportReceipt = (id, reason) => request({
   method: 'put', url: `/api/export-receipts/${id}/reject`, data: { rejectReason: reason },
