@@ -37,6 +37,7 @@ const routes = [
   { path: '/stock-out/:id/edit', component: StockDocumentCreateView, props: route => ({ id: route.params.id, type: 'out', mode: 'edit' }), meta: { title: 'Chỉnh sửa phiếu xuất kho' } },
   { path: '/stock-out/:id', component: StockDocumentDetailView, props: route => ({ id: route.params.id, type: 'out' }), meta: { title: 'Chi tiết phiếu xuất kho' } },
   { path: '/export-approvals', component: PendingExportApprovalsView, meta: { title: 'Phiếu xuất chờ duyệt' } },
+  { path: '/pending-export-approvals', component: PendingExportApprovalsView, meta: { title: 'Phiếu xuất chờ duyệt' } },
   { path: '/approvals', component: ApprovalsView, meta: { title: 'Chờ duyệt' } },
   { path: '/import-excel', component: ImportExcelView, meta: { title: 'Import Excel' } },
   { path: '/alerts', component: AlertsView, meta: { title: 'Cảnh báo tồn kho' } },
@@ -68,7 +69,7 @@ router.beforeEach(to => {
 // Frontend route guard is for navigation UX only and does not replace backend API authorization.
 function resolveRouteAccess(path, role) {
   if (path === '/employees' || path === '/users' || path === '/import-excel') return role === 'ADMIN' ? true : '/dashboard'
-  if (path === '/approvals' || path === '/export-approvals') return role === 'ADMIN' || role === 'MANAGER' ? true : '/dashboard'
+  if (path === '/approvals' || path === '/export-approvals' || path === '/pending-export-approvals') return role === 'ADMIN' || role === 'MANAGER' ? true : '/dashboard'
   if (/^\/stock-in\/(create|[^/]+\/edit)$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE' ? true : '/dashboard'
   if (/^\/stock-in(\/[^/]+)?$/.test(path)) return role === 'ADMIN' || role === 'MANAGER' || role === 'EMPLOYEE' ? true : '/dashboard'
   if (/^\/stock-out(\/.*)?$/.test(path)) return role === 'ADMIN' || role === 'EMPLOYEE' ? true : '/dashboard'

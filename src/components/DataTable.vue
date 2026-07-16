@@ -2,6 +2,10 @@
 defineProps({
   columns: { type: Array, required: true },
   rows: { type: Array, required: true },
+  emptyText: { type: String, default: "Chưa có dữ liệu" },
+});
+
+const emit = defineEmits(["row-click"]);
   emptyText: { type: String, default: 'Chưa có dữ liệu' },
   minWidth: { type: String, default: '920px' },
 })
@@ -23,6 +27,13 @@ defineProps({
         <tr v-if="rows.length === 0">
           <td :colspan="columns.length" class="empty-cell">{{ emptyText }}</td>
         </tr>
+        <tr
+          v-for="(row, index) in rows"
+          :key="row.id || row.sku || index"
+          class="clickable-row"
+          @click="emit('row-click', row)"
+        >
+          <td v-for="column in columns" :key="column.key">
         <tr v-for="(row, index) in rows" :key="row.id || row.sku || index">
           <td v-for="column in columns" :key="column.key" :class="column.class">
             <slot :name="column.key" :row="row" :value="row[column.key]">
@@ -41,6 +52,11 @@ defineProps({
   color: var(--muted);
   padding: 32px;
 }
+.clickable-row {
+  cursor: pointer;
+}
+.clickable-row:hover td {
+  background: #f8fbff;
 
 .table-wrap {
   overscroll-behavior-x: contain;
