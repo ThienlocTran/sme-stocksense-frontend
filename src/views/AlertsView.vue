@@ -15,12 +15,16 @@ const warehouses = ref([]);
 const isLoading = ref(false);
 const isLoadingDropdowns = ref(false);
 const errorMessage = ref("");
+const dropdownErrorMessage = ref("");
 const searchDraft = ref("");
+const searchKeyword = ref("");
 const page = ref(0);
 const size = ref(20);
 const totalPages = ref(0);
 const totalElements = ref(0);
 const filters = reactive({ warehouseId: "", warehouseStatus: "" });
+const fetchRequestId = ref(0);
+const latestRequestId = ref(0);
 
 const columns = [
   { key: "productCode", label: "Mã SP", class: "cell-compact" },
@@ -37,33 +41,46 @@ const hasPreviousPage = computed(() => page.value > 0);
 const hasNextPage = computed(() => page.value + 1 < totalPages.value);
 const hasActiveFilters = computed(() => {
   return (
-    searchDraft.value.trim() !== "" ||
+    searchKeyword.value.trim() !== "" ||
     filters.warehouseId !== "" ||
     filters.warehouseStatus !== ""
   );
 });
 
 onMounted(async () => {
-  await loadDropdowns();
-  fetchAlerts();
+  const loaded = await loadDropdowns(filters.warehouseStatus);
+  if (loaded) {
+    fetchAlerts();
+  }
 });
 
-async function loadDropdowns() {
+async function loadDropdowns(status = "") {
   isLoadingDropdowns.value = true;
-  errorMessage.value = "";
+  dropdownErrorMessage.value = "";
 
   try {
-    warehouses.value = await getWarehouses({ status: "HOAT_DONG" });
+    warehouses.value = await getWarehouses({ status: status || undefined });
+    return true;
   } catch (error) {
     warehouses.value = [];
-    errorMessage.value = error.message;
-    if (error.status === 401) router.replace("/login");
+    dropdownErrorMessage.value = error.message;
+    if (error.status === 401) {
+      router.replace("/login");
+    }
+    return false;
   } finally {
     isLoadingDropdowns.value = false;
   }
 }
 
 async function fetchAlerts() {
+  if (dropdownErrorMessage.value) {
+    return;
+  }
+
+  const requestId = ++fetchRequestId.value;
+  latestRequestId.value = requestId;
+
   isLoading.value = true;
   errorMessage.value = "";
 
@@ -71,39 +88,70 @@ async function fetchAlerts() {
     const data = await getLowStockInventory({
       page: page.value,
       size: size.value,
-      keyword: searchDraft.value.trim(),
+      keyword: searchKeyword.value.trim(),
       warehouseId: filters.warehouseId,
       warehouseStatus: filters.warehouseStatus,
     });
+
+    if (requestId !== latestRequestId.value) {
+      return;
+    }
 
     alerts.value = data.content || [];
     totalPages.value = data.totalPages || 0;
     totalElements.value = data.totalElements || 0;
   } catch (error) {
+    if (requestId !== latestRequestId.value) {
+      return;
+    }
+
     alerts.value = [];
     errorMessage.value = error.message;
-    if (error.status === 401) router.replace("/login");
+    if (error.status === 401) {
+      router.replace("/login");
+    }
   } finally {
-    isLoading.value = false;
+    if (requestId === latestRequestId.value) {
+      isLoading.value = false;
+    }
   }
 }
 
-function applySearch() {
+async function applySearch() {
   page.value = 0;
-  fetchAlerts();
+  searchKeyword.value = searchDraft.value.trim();
+  await fetchAlerts();
 }
 
-function applyFilter() {
+async function applyFilter() {
   page.value = 0;
-  fetchAlerts();
+  const loaded = await loadDropdowns(filters.warehouseStatus);
+
+  if (!loaded) {
+    return;
+  }
+
+  if (
+    filters.warehouseId &&
+    !warehouses.value.some((warehouse) => warehouse.id === filters.warehouseId)
+  ) {
+    filters.warehouseId = "";
+  }
+
+  await fetchAlerts();
 }
 
-function clearFilters() {
+async function clearFilters() {
   searchDraft.value = "";
+  searchKeyword.value = "";
   filters.warehouseId = "";
   filters.warehouseStatus = "";
   page.value = 0;
-  fetchAlerts();
+
+  const loaded = await loadDropdowns();
+  if (loaded) {
+    await fetchAlerts();
+  }
 }
 
 function displayWarehouseName(row) {
@@ -218,7 +266,10 @@ function nextPage() {
     </div>
   </SearchFilterBar>
 
-  <p v-if="errorMessage" class="form-alert form-alert-error">
+  <p v-if="dropdownErrorMessage" class="form-alert form-alert-error">
+    {{ dropdownErrorMessage }}
+  </p>
+  <p v-else-if="errorMessage" class="form-alert form-alert-error">
     {{ errorMessage }}
   </p>
 
