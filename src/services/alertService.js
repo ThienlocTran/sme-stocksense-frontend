@@ -54,11 +54,11 @@ function normalizeAlertError(error, fallbackMessage) {
     clearAuth()
   }
 
-  if (error.response?.data) {
+  if (error.response) {
     return {
       status: error.response.status,
-      message: error.response.data.message || fallbackMessage,
-      errors: error.response.data.errors || {},
+      message: error.response.data?.message || fallbackMessage,
+      errors: error.response.data?.errors || {},
     }
   }
 

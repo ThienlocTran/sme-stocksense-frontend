@@ -209,7 +209,7 @@ function isActionDisabled(alert) {
       <button
         class="btn btn-secondary"
         type="button"
-        :disabled="isLoading"
+        :disabled="isLoading || actionState.loading"
         @click="searchAlerts"
       >
         Tìm
@@ -217,7 +217,7 @@ function isActionDisabled(alert) {
       <button
         class="btn btn-light"
         type="button"
-        :disabled="isLoading"
+        :disabled="isLoading || actionState.loading"
         @click="clearSearch"
       >
         Xóa
@@ -268,7 +268,7 @@ function isActionDisabled(alert) {
     <button
       class="btn btn-light"
       type="button"
-      :disabled="!hasPreviousPage || isLoading"
+      :disabled="!hasPreviousPage || isLoading || actionState.loading"
       @click="
         page -= 1;
         fetchAlerts();
@@ -283,7 +283,7 @@ function isActionDisabled(alert) {
     <button
       class="btn btn-light"
       type="button"
-      :disabled="!hasNextPage || isLoading"
+      :disabled="!hasNextPage || isLoading || actionState.loading"
       @click="
         page += 1;
         fetchAlerts();
