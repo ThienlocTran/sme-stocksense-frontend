@@ -206,10 +206,20 @@ function isActionDisabled(alert) {
       v-model="searchDraft"
       placeholder="Tìm mã, tên sản phẩm hoặc kho"
     >
-      <button class="btn btn-secondary" type="button" @click="searchAlerts">
+      <button
+        class="btn btn-secondary"
+        type="button"
+        :disabled="isLoading"
+        @click="searchAlerts"
+      >
         Tìm
       </button>
-      <button class="btn btn-light" type="button" @click="clearSearch">
+      <button
+        class="btn btn-light"
+        type="button"
+        :disabled="isLoading"
+        @click="clearSearch"
+      >
         Xóa
       </button>
     </SearchFilterBar>
@@ -258,7 +268,7 @@ function isActionDisabled(alert) {
     <button
       class="btn btn-light"
       type="button"
-      :disabled="!hasPreviousPage"
+      :disabled="!hasPreviousPage || isLoading"
       @click="
         page -= 1;
         fetchAlerts();
@@ -273,7 +283,7 @@ function isActionDisabled(alert) {
     <button
       class="btn btn-light"
       type="button"
-      :disabled="!hasNextPage"
+      :disabled="!hasNextPage || isLoading"
       @click="
         page += 1;
         fetchAlerts();
