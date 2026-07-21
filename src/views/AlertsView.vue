@@ -25,6 +25,8 @@ const totalElements = ref(0);
 const filters = reactive({ warehouseId: "", warehouseStatus: "" });
 const fetchRequestId = ref(0);
 const latestRequestId = ref(0);
+const dropdownRequestId = ref(0);
+const latestDropdownRequestId = ref(0);
 
 const columns = [
   { key: "productCode", label: "Mã SP", class: "cell-compact" },
@@ -55,13 +57,25 @@ onMounted(async () => {
 });
 
 async function loadDropdowns(status = "") {
+  const requestId = ++dropdownRequestId.value;
+  latestDropdownRequestId.value = requestId;
+
   isLoadingDropdowns.value = true;
   dropdownErrorMessage.value = "";
 
   try {
-    warehouses.value = await getWarehouses({ status: status || undefined });
+    const data = await getWarehouses({ status: status || undefined });
+    if (requestId !== latestDropdownRequestId.value) {
+      return false;
+    }
+
+    warehouses.value = data;
     return true;
   } catch (error) {
+    if (requestId !== latestDropdownRequestId.value) {
+      return false;
+    }
+
     warehouses.value = [];
     dropdownErrorMessage.value = error.message;
     if (error.status === 401) {
@@ -69,7 +83,9 @@ async function loadDropdowns(status = "") {
     }
     return false;
   } finally {
-    isLoadingDropdowns.value = false;
+    if (requestId === latestDropdownRequestId.value) {
+      isLoadingDropdowns.value = false;
+    }
   }
 }
 
@@ -235,7 +251,7 @@ function nextPage() {
     <select
       v-model="filters.warehouseStatus"
       class="select"
-      :disabled="isLoading"
+      :disabled="isLoading || isLoadingDropdowns"
       @change="applyFilter"
     >
       <option value="">Tất cả trạng thái kho</option>
@@ -293,7 +309,12 @@ function nextPage() {
   </DataTable>
 
   <EmptyState
-    v-else-if="!isLoading && !isLoadingDropdowns && !errorMessage"
+    v-else-if="
+      !isLoading &&
+      !isLoadingDropdowns &&
+      !dropdownErrorMessage &&
+      !errorMessage
+    "
     title="Không có cảnh báo tồn kho"
     description="Không tìm thấy sản phẩm có tồn kho dưới ngưỡng."
     icon="mdi-check-circle-outline"
