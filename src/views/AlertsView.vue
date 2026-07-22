@@ -36,8 +36,10 @@ const hasActiveFilters = computed(
 );
 
 onMounted(async () => {
-  await loadDropdowns();
-  fetchSuggestions();
+  const dropdownLoaded = await loadDropdowns();
+  if (dropdownLoaded) {
+    await fetchSuggestions();
+  }
 });
 
 async function loadDropdowns() {
@@ -48,15 +50,23 @@ async function loadDropdowns() {
     warehouses.value = Array.isArray(warehouseData)
       ? warehouseData
       : warehouseData?.content || [];
+    return true;
   } catch (error) {
-    errorMessage.value = error.message;
-    if (error.status === 401) router.replace("/login");
+    const message = error?.message || "Không thể tải danh sách kho.";
+    errorMessage.value = message;
+    if (error?.status === 401) {
+      router.replace("/login");
+      return false;
+    }
+    return false;
   } finally {
     isLoadingDropdowns.value = false;
   }
 }
 
 async function fetchSuggestions() {
+  if (isLoading.value) return;
+
   isLoading.value = true;
   errorMessage.value = "";
   try {
@@ -72,8 +82,10 @@ async function fetchSuggestions() {
     totalElements.value = data.totalElements || 0;
   } catch (error) {
     suggestions.value = [];
-    errorMessage.value = error.message;
-    if (error.status === 401) router.replace("/login");
+    errorMessage.value = error?.message || "Không thể tải dữ liệu.";
+    if (error?.status === 401) {
+      router.replace("/login");
+    }
   } finally {
     isLoading.value = false;
   }
