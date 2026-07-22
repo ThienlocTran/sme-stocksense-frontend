@@ -1,130 +1,211 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import EmptyState from '../components/EmptyState.vue'
-import PageHeader from '../components/PageHeader.vue'
-import { getInventory, getLowStockInventory } from '../services/inventoryService'
-import { getProducts } from '../services/productService'
-import { canAccessRoute } from '../services/permissionService'
-import { getWarehouses } from '../services/warehouseService'
+import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import EmptyState from "../components/EmptyState.vue";
+import PageHeader from "../components/PageHeader.vue";
+import { getPendingExportReceipts } from "../services/exportReceiptService";
+import {
+  getInventory,
+  getLowStockInventory,
+} from "../services/inventoryService";
+import { getPendingApprovals } from "../services/importReceiptService";
+import { getProducts } from "../services/productService";
+import { canAccessRoute } from "../services/permissionService";
+import { getWarehouses } from "../services/warehouseService";
 
-const router = useRouter()
+const router = useRouter();
 
-const isLoading = ref(true)
-const errorMessage = ref('')
-const summary = ref({ products: 0, warehouses: 0, stock: 0, warnings: 0 })
-const pendingItems = ref([])
-const pendingFailed = ref(false)
-const lowStockItems = ref([])
-const lowStockFailed = ref(false)
+const isLoading = ref(true);
+const errorMessage = ref("");
+const summary = ref({ products: 0, warehouses: 0, stock: 0, warnings: 0 });
+const pendingItems = ref([]);
+const pendingFailed = ref(false);
+const lowStockItems = ref([]);
+const lowStockFailed = ref(false);
 
-const canSeeApprovals = computed(() => canAccessRoute('/approvals'))
-const hasDashboardData = computed(() => Object.values(summary.value).some((value) => Number(value) > 0))
+const canSeeApprovals = computed(() => canAccessRoute("/approvals"));
+const hasDashboardData = computed(() =>
+  Object.values(summary.value).some((value) => Number(value) > 0),
+);
 
 const visibleQuickAccess = computed(() => [
   {
-    title: 'Sản phẩm',
-    description: 'Quản lý mặt hàng và tồn kho',
-    icon: 'mdi-package-variant-closed',
-    route: '/products',
+    title: "Sản phẩm",
+    description: "Quản lý mặt hàng và tồn kho",
+    icon: "mdi-package-variant-closed",
+    route: "/products",
   },
   {
-    title: 'Kho hàng',
-    description: 'Theo dõi các kho đang hoạt động',
-    icon: 'mdi-warehouse',
-    route: '/warehouses',
+    title: "Kho hàng",
+    description: "Theo dõi các kho đang hoạt động",
+    icon: "mdi-warehouse",
+    route: "/warehouses",
   },
   {
-    title: 'Nhập/Xuất',
-    description: 'Xem luồng giao dịch kho',
-    icon: 'mdi-truck',
-    route: '/stock-documents',
+    title: "Nhập/Xuất",
+    description: "Xem luồng giao dịch kho",
+    icon: "mdi-truck",
+    route: "/stock-documents",
   },
   {
-    title: 'Cảnh báo',
-    description: 'Xem sản phẩm sắp hết hàng',
-    icon: 'mdi-alert-circle-outline',
-    route: '/inventory',
+    title: "Cảnh báo",
+    description: "Xem sản phẩm sắp hết hàng",
+    icon: "mdi-alert-circle-outline",
+    route: "/inventory",
   },
-])
+]);
 
 onMounted(() => {
-  loadDashboardData()
-})
+  loadDashboardData();
+});
 
 async function loadDashboardData() {
-  isLoading.value = true
-  errorMessage.value = ''
-  pendingFailed.value = false
-  lowStockFailed.value = false
+  isLoading.value = true;
+  errorMessage.value = "";
+  pendingItems.value = [];
+  pendingFailed.value = false;
+  lowStockItems.value = [];
+  lowStockFailed.value = false;
 
   try {
-    const [productsResponse, warehouseData, stockTotals, lowStockResponse] = await Promise.all([
-      loadProductCount(),
-      loadWarehouseCount(),
-      loadStockTotal(),
-      loadLowStockCount(),
-    ])
+    const [productsResponse, warehouseData, stockTotals, lowStockResponse] =
+      await Promise.all([
+        loadProductCount(),
+        loadWarehouseCount(),
+        loadStockTotal(),
+        loadLowStockCount(),
+      ]);
 
     summary.value = {
       products: productsResponse,
       warehouses: warehouseData,
       stock: stockTotals,
       warnings: lowStockResponse,
-    }
-
-    pendingItems.value = []
-    lowStockItems.value = []
+    };
   } catch (error) {
-    errorMessage.value = error?.message || 'Không thể tải dữ liệu tổng quan.'
+    errorMessage.value = error?.message || "Không thể tải dữ liệu tổng quan.";
     if (error?.status === 401) {
-      router.replace('/login')
+      router.replace("/login");
     }
-  } finally {
-    isLoading.value = false
   }
+
+  try {
+    const pendingData = await loadPendingApprovals();
+    pendingItems.value = pendingData.items;
+    pendingFailed.value = pendingData.failed;
+  } catch (error) {
+    pendingItems.value = [];
+    pendingFailed.value = true;
+  }
+
+  try {
+    const lowStockData = await loadLowStockItems();
+    lowStockItems.value = lowStockData.items;
+    lowStockFailed.value = lowStockData.failed;
+  } catch (error) {
+    lowStockItems.value = [];
+    lowStockFailed.value = true;
+  }
+
+  isLoading.value = false;
 }
 
 async function loadProductCount() {
-  const data = await getProducts({ page: 0, size: 1 })
-  return Number(data?.totalElements || 0)
+  const data = await getProducts({ page: 0, size: 1 });
+  return Number(data?.totalElements || 0);
 }
 
 async function loadWarehouseCount() {
-  const data = await getWarehouses({})
-  return Array.isArray(data) ? data.length : 0
+  const data = await getWarehouses({});
+  return Array.isArray(data) ? data.length : 0;
 }
 
 async function loadStockTotal() {
-  let total = 0
-  let page = 0
+  let total = 0;
+  let page = 0;
 
   while (true) {
-    const data = await getInventory({ page, size: 100 })
-    const items = Array.isArray(data?.content) ? data.content : []
-    total += items.reduce((sum, item) => sum + Number(item?.currentQuantity || 0), 0)
+    const data = await getInventory({ page, size: 100 });
+    const items = Array.isArray(data?.content) ? data.content : [];
+    total += items.reduce(
+      (sum, item) => sum + Number(item?.currentQuantity || 0),
+      0,
+    );
 
-    if ((page + 1) >= (data?.totalPages || 1)) {
-      break
+    if (page + 1 >= (data?.totalPages || 1)) {
+      break;
     }
 
-    page += 1
+    page += 1;
   }
 
-  return total
+  return total;
 }
 
 async function loadLowStockCount() {
-  const data = await getLowStockInventory({ page: 0, size: 1 })
-  return Number(data?.totalElements || 0)
+  const data = await getLowStockInventory({ page: 0, size: 1 });
+  return Number(data?.totalElements || 0);
+}
+
+async function loadPendingApprovals() {
+  try {
+    const [importData, exportData] = await Promise.all([
+      getPendingApprovals({ page: 0, size: 5 }),
+      getPendingExportReceipts({ page: 0, size: 5 }),
+    ]);
+
+    const items = [
+      ...(Array.isArray(importData?.content) ? importData.content : []).map(
+        (item) => ({
+          id: item.id,
+          code: item.code,
+          label: item.supplierName || item.partnerName || "Phiếu nhập",
+          subtitle: item.warehouseName || "Kho",
+          route: "/approvals",
+        }),
+      ),
+      ...(Array.isArray(exportData?.content) ? exportData.content : []).map(
+        (item) => ({
+          id: item.id,
+          code: item.code,
+          label: item.warehouseName || "Phiếu xuất",
+          subtitle: item.status || "Chờ duyệt",
+          route: "/approvals",
+        }),
+      ),
+    ];
+
+    return { items, failed: false };
+  } catch (error) {
+    return { items: [], failed: true };
+  }
+}
+
+async function loadLowStockItems() {
+  try {
+    const data = await getLowStockInventory({ page: 0, size: 5 });
+    const items = Array.isArray(data?.content)
+      ? data.content.map((item) => ({
+          id: item.inventoryId || item.productId,
+          productName: item.productName || "Sản phẩm",
+          warehouseName: item.warehouse || item.warehouseName || "Kho",
+          available: item.currentQuantity ?? 0,
+          minStock: item.minStock ?? 0,
+        }))
+      : [];
+
+    return { items, failed: false };
+  } catch (error) {
+    return { items: [], failed: true };
+  }
 }
 
 function formatNumber(value) {
-  return new Intl.NumberFormat('vi-VN').format(Number(value || 0))
+  return new Intl.NumberFormat("vi-VN").format(Number(value || 0));
 }
 
 function openRoute(path) {
-  router.push(path)
+  router.push(path);
 }
 </script>
 
@@ -143,11 +224,17 @@ function openRoute(path) {
           <p class="eyebrow">KPI</p>
           <h2 class="section-title">Tổng quan vận hành</h2>
         </div>
-        <span class="pill">{{ isLoading ? 'Đang tải...' : 'Cập nhật gần đây' }}</span>
+        <span class="pill">{{
+          isLoading ? "Đang tải..." : "Cập nhật gần đây"
+        }}</span>
       </div>
 
       <div v-if="isLoading" class="kpi-grid">
-        <article v-for="index in 4" :key="index" class="kpi-card kpi-card--loading">
+        <article
+          v-for="index in 4"
+          :key="index"
+          class="kpi-card kpi-card--loading"
+        >
           <div class="kpi-card__icon"></div>
           <div class="kpi-card__body">
             <div class="kpi-label skeleton"></div>
@@ -222,7 +309,11 @@ function openRoute(path) {
           <p class="eyebrow">Pending</p>
           <h2 class="section-title">Phiếu cần duyệt</h2>
         </div>
-        <button v-if="canSeeApprovals" class="text-link" @click="openRoute('/approvals')">
+        <button
+          v-if="canSeeApprovals"
+          class="text-link"
+          @click="openRoute('/approvals')"
+        >
           Xem tất cả
         </button>
       </div>
@@ -262,7 +353,9 @@ function openRoute(path) {
           <p class="eyebrow">Low Stock</p>
           <h2 class="section-title">Sản phẩm sắp hết</h2>
         </div>
-        <button class="text-link" @click="openRoute('/inventory')">Xem chi tiết</button>
+        <button class="text-link" @click="openRoute('/inventory')">
+          Xem chi tiết
+        </button>
       </div>
 
       <div v-if="!isLoading && lowStockFailed" class="section-warning">
