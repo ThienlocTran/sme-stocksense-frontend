@@ -77,13 +77,15 @@ async function loadDashboardData() {
   lowStockFailed.value = false;
 
   try {
+    const summaryPromises = [
+      loadProductCount(),
+      loadWarehouseCount(),
+      loadStockTotal(),
+      canSeeWarnings.value ? loadLowStockCount() : Promise.resolve(0),
+    ];
+
     const [productsResponse, warehouseData, stockTotals, lowStockResponse] =
-      await Promise.all([
-        loadProductCount(),
-        loadWarehouseCount(),
-        loadStockTotal(),
-        loadLowStockCount(),
-      ]);
+      await Promise.all(summaryPromises);
 
     summary.value = {
       products: productsResponse,
@@ -99,22 +101,32 @@ async function loadDashboardData() {
     }
   }
 
-  try {
-    const pendingData = await loadPendingApprovals();
-    pendingItems.value = pendingData.items;
-    pendingFailed.value = pendingData.failed;
-  } catch (error) {
+  if (canSeeApprovals.value) {
+    try {
+      const pendingData = await loadPendingApprovals();
+      pendingItems.value = pendingData.items;
+      pendingFailed.value = pendingData.failed;
+    } catch (error) {
+      pendingItems.value = [];
+      pendingFailed.value = true;
+    }
+  } else {
     pendingItems.value = [];
-    pendingFailed.value = true;
+    pendingFailed.value = false;
   }
 
-  try {
-    const lowStockData = await loadLowStockItems();
-    lowStockItems.value = lowStockData.items;
-    lowStockFailed.value = lowStockData.failed;
-  } catch (error) {
+  if (canSeeWarnings.value) {
+    try {
+      const lowStockData = await loadLowStockItems();
+      lowStockItems.value = lowStockData.items;
+      lowStockFailed.value = lowStockData.failed;
+    } catch (error) {
+      lowStockItems.value = [];
+      lowStockFailed.value = true;
+    }
+  } else {
     lowStockItems.value = [];
-    lowStockFailed.value = true;
+    lowStockFailed.value = false;
   }
 
   isLoading.value = false;
