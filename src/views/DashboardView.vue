@@ -160,26 +160,22 @@ async function loadProductCount() {
 }
 
 async function loadWarehouseCount() {
-  const data = await getWarehouses({});
-  return Array.isArray(data) ? data.length : 0;
+  const data = await getWarehouses({ page: 0, size: 1 });
+  return Number(data?.totalElements || 0);
 }
 
 async function loadStockTotal() {
   try {
     const data = await getInventory({ page: 0, size: 1 });
     const aggregateValue = Number(
-      data?.stockTotal ??
-        data?.totalStock ??
-        data?.total ??
-        data?.totalElements ??
-        0,
+      data?.stockTotal ?? data?.totalStock ?? data?.total ?? 0,
     );
 
     if (Number.isFinite(aggregateValue) && aggregateValue >= 0) {
       return aggregateValue;
     }
   } catch (error) {
-    // Fallback to 0 when the aggregate endpoint is unavailable or invalid.
+    throw new Error("Không thể tải tổng tồn kho.");
   }
 
   return 0;
@@ -323,7 +319,7 @@ function openRoute(path) {
           />
         </div>
 
-        <div v-else class="kpi-grid">
+        <div v-else class="kpi-grid" :class="{ 'kpi-grid--three-columns': !canSeeWarnings }">
           <article class="kpi-card">
             <div class="kpi-card__icon">
               <i class="mdi mdi-package-variant-closed"></i>
@@ -558,6 +554,10 @@ function openRoute(path) {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.kpi-grid--three-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .kpi-card {
