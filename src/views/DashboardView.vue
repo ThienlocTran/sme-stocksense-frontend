@@ -272,9 +272,7 @@ function openRoute(route) {
           <div>
             <p class="kpi-label">Sản phẩm</p>
             <div class="metric">
-              {{
-                summaryFailures.products ? "—" : formatNumber(summary.products)
-              }}
+              {{ isLoading ? "Đang tải..." : summaryFailures.products ? "—" : formatNumber(summary.products) }}
             </div>
           </div>
         </article>
@@ -286,11 +284,7 @@ function openRoute(route) {
           <div>
             <p class="kpi-label">Kho hoạt động</p>
             <div class="metric">
-              {{
-                summaryFailures.warehouses
-                  ? "—"
-                  : formatNumber(summary.warehouses)
-              }}
+              {{ isLoading ? "Đang tải..." : summaryFailures.warehouses ? "—" : formatNumber(summary.warehouses) }}
             </div>
           </div>
         </article>
@@ -302,9 +296,7 @@ function openRoute(route) {
           <div>
             <p class="kpi-label">Sắp hết hàng</p>
             <div class="metric">
-              {{
-                summaryFailures.lowStock ? "—" : formatNumber(summary.lowStock)
-              }}
+              {{ isLoading ? "Đang tải..." : summaryFailures.lowStock ? "—" : formatNumber(summary.lowStock) }}
             </div>
           </div>
         </article>
@@ -316,9 +308,7 @@ function openRoute(route) {
           <div>
             <p class="kpi-label">Chờ xử lý</p>
             <div class="metric">
-              {{
-                summaryFailures.pending ? "—" : formatNumber(summary.pending)
-              }}
+              {{ isLoading ? "Đang tải..." : summaryFailures.pending ? "—" : formatNumber(summary.pending) }}
             </div>
           </div>
         </article>
@@ -344,7 +334,7 @@ function openRoute(route) {
         <span class="badge badge--warning">Không thể tải dữ liệu</span>
         <p class="muted">Danh sách phiếu cần duyệt chưa cập nhật.</p>
       </div>
-      <div v-else-if="pendingItems.length" class="stack-list">
+      <div v-if="pendingItems.length" class="stack-list">
         <div
           v-for="item in pendingItems"
           :key="`${item.label}-${item.id}`"
@@ -363,7 +353,7 @@ function openRoute(route) {
         </div>
       </div>
       <EmptyState
-        v-else-if="!isLoading"
+        v-if="!isLoading && !pendingFailed && !pendingItems.length"
         title="Không có phiếu chờ duyệt"
         description="Tất cả việc cần xử lý đã được hoàn tất."
       />
