@@ -28,32 +28,36 @@ const hasDashboardData = computed(() =>
   Object.values(summary.value).some((value) => Number(value) > 0),
 );
 
-const visibleQuickAccess = computed(() => [
-  {
-    title: "Sản phẩm",
-    description: "Quản lý mặt hàng và tồn kho",
-    icon: "mdi-package-variant-closed",
-    route: "/products",
-  },
-  {
-    title: "Kho hàng",
-    description: "Theo dõi các kho đang hoạt động",
-    icon: "mdi-warehouse",
-    route: "/warehouses",
-  },
-  {
-    title: "Nhập/Xuất",
-    description: "Xem luồng giao dịch kho",
-    icon: "mdi-truck",
-    route: "/stock-documents",
-  },
-  {
-    title: "Cảnh báo",
-    description: "Xem sản phẩm sắp hết hàng",
-    icon: "mdi-alert-circle-outline",
-    route: "/inventory",
-  },
-]);
+const visibleQuickAccess = computed(() => {
+  const items = [
+    {
+      title: "Sản phẩm",
+      description: "Quản lý mặt hàng và tồn kho",
+      icon: "mdi-package-variant-closed",
+      route: "/products",
+    },
+    {
+      title: "Kho hàng",
+      description: "Theo dõi các kho đang hoạt động",
+      icon: "mdi-warehouse",
+      route: "/warehouses",
+    },
+    {
+      title: "Nhập/Xuất",
+      description: "Xem luồng giao dịch kho",
+      icon: "mdi-truck",
+      route: "/stock-documents",
+    },
+    {
+      title: "Cảnh báo",
+      description: "Xem sản phẩm sắp hết hàng",
+      icon: "mdi-alert-circle-outline",
+      route: "/inventory",
+    },
+  ];
+
+  return items.filter((item) => canAccessRoute(item.route));
+});
 
 onMounted(() => {
   loadDashboardData();
@@ -86,6 +90,7 @@ async function loadDashboardData() {
     errorMessage.value = error?.message || "Không thể tải dữ liệu tổng quan.";
     if (error?.status === 401) {
       router.replace("/login");
+      return;
     }
   }
 
@@ -121,25 +126,24 @@ async function loadWarehouseCount() {
 }
 
 async function loadStockTotal() {
-  let total = 0;
-  let page = 0;
-
-  while (true) {
-    const data = await getInventory({ page, size: 100 });
-    const items = Array.isArray(data?.content) ? data.content : [];
-    total += items.reduce(
-      (sum, item) => sum + Number(item?.currentQuantity || 0),
-      0,
+  try {
+    const data = await getInventory({ page: 0, size: 1 });
+    const aggregateValue = Number(
+      data?.totalElements ??
+        data?.stockTotal ??
+        data?.totalStock ??
+        data?.total ??
+        0,
     );
 
-    if (page + 1 >= (data?.totalPages || 1)) {
-      break;
+    if (Number.isFinite(aggregateValue) && aggregateValue >= 0) {
+      return aggregateValue;
     }
-
-    page += 1;
+  } catch (error) {
+    // Fallback to the previous numeric behavior when the aggregate endpoint is unavailable.
   }
 
-  return total;
+  return 0;
 }
 
 async function loadLowStockCount() {
