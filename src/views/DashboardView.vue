@@ -97,17 +97,20 @@ async function loadDashboardData() {
       loadProductCount(),
       loadWarehouseCount(),
       loadStockTotal(),
-      canSeeWarnings.value ? loadLowStockCount() : Promise.resolve(0),
     ];
 
-    const [productsResponse, warehouseData, stockTotals, lowStockResponse] =
+    const [productsResponse, warehouseData, stockTotals] =
       await Promise.all(summaryPromises);
+
+    const warningCount = canSeeWarnings.value
+      ? await loadLowStockCount().catch(() => 0)
+      : 0;
 
     summary.value = {
       products: productsResponse,
       warehouses: warehouseData,
       stock: stockTotals,
-      warnings: lowStockResponse,
+      warnings: warningCount,
     };
   } catch (error) {
     errorMessage.value = error?.message || "Không thể tải dữ liệu tổng quan.";
@@ -175,7 +178,14 @@ async function loadStockTotal() {
       return aggregateValue;
     }
   } catch (error) {
-    throw new Error("Không thể tải tổng tồn kho.");
+    if (error?.status === 401) {
+      throw error;
+    }
+
+    const wrappedError = new Error("Không thể tải tổng tồn kho.");
+    wrappedError.status = error?.status;
+    wrappedError.errors = error?.errors;
+    throw wrappedError;
   }
 
   return 0;
@@ -289,9 +299,13 @@ function openRoute(path) {
         }}</span>
       </div>
 
-      <div v-if="isLoading" class="kpi-grid">
+      <div
+        v-if="isLoading"
+        class="kpi-grid"
+        :class="{ 'kpi-grid--three-columns': !canSeeWarnings }"
+      >
         <article
-          v-for="index in 4"
+          v-for="index in canSeeWarnings ? 4 : 3"
           :key="index"
           class="kpi-card kpi-card--loading"
         >
@@ -319,7 +333,11 @@ function openRoute(path) {
           />
         </div>
 
-        <div v-else class="kpi-grid" :class="{ 'kpi-grid--three-columns': !canSeeWarnings }">
+        <div
+          v-else
+          class="kpi-grid"
+          :class="{ 'kpi-grid--three-columns': !canSeeWarnings }"
+        >
           <article class="kpi-card">
             <div class="kpi-card__icon">
               <i class="mdi mdi-package-variant-closed"></i>
