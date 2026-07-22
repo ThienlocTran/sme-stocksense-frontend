@@ -31,10 +31,12 @@ const canSeeExportApprovals = computed(() =>
 );
 const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
 const canSeeAlerts = computed(() => canAccessRoute("/alerts"));
+const visibleKpiCardCount = computed(() => (canSeeWarnings.value ? 4 : 2));
 const hasDashboardData = computed(() => {
   const values = { ...summary.value };
   if (!canSeeWarnings.value) {
     delete values.warnings;
+    delete values.stock;
   }
 
   const hasSummaryData = Object.values(values).some(
@@ -93,11 +95,9 @@ async function loadDashboardData() {
   lowStockFailed.value = false;
 
   try {
-    const summaryPromises = [
-      loadProductCount(),
-      loadWarehouseCount(),
-      loadStockTotal(),
-    ];
+    const summaryPromises = canSeeWarnings.value
+      ? [loadProductCount(), loadWarehouseCount(), loadStockTotal()]
+      : [loadProductCount(), loadWarehouseCount()];
 
     const [productsResponse, warehouseData, stockTotals] =
       await Promise.all(summaryPromises);
@@ -109,7 +109,7 @@ async function loadDashboardData() {
     summary.value = {
       products: productsResponse,
       warehouses: warehouseData,
-      stock: stockTotals,
+      stock: canSeeWarnings.value ? stockTotals : 0,
       warnings: warningCount,
     };
   } catch (error) {
@@ -128,6 +128,11 @@ async function loadDashboardData() {
       pendingExportItems.value = pendingData.exportItems;
       pendingExportFailed.value = pendingData.exportFailed;
     } catch (error) {
+      if (error?.status === 401) {
+        router.replace("/login");
+        return;
+      }
+
       pendingImportItems.value = [];
       pendingImportFailed.value = true;
       pendingExportItems.value = [];
@@ -146,6 +151,11 @@ async function loadDashboardData() {
       lowStockItems.value = lowStockData.items;
       lowStockFailed.value = lowStockData.failed;
     } catch (error) {
+      if (error?.status === 401) {
+        router.replace("/login");
+        return;
+      }
+
       lowStockItems.value = [];
       lowStockFailed.value = true;
     }
@@ -305,7 +315,7 @@ function openRoute(path) {
         :class="{ 'kpi-grid--three-columns': !canSeeWarnings }"
       >
         <article
-          v-for="index in canSeeWarnings ? 4 : 3"
+          v-for="index in visibleKpiCardCount"
           :key="index"
           class="kpi-card kpi-card--loading"
         >
@@ -358,7 +368,7 @@ function openRoute(path) {
             </div>
           </article>
 
-          <article class="kpi-card">
+          <article v-if="canSeeWarnings" class="kpi-card">
             <div class="kpi-card__icon kpi-card__icon--warn">
               <i class="mdi mdi-cube-outline"></i>
             </div>
