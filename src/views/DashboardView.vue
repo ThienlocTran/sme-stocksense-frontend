@@ -18,19 +18,33 @@ const router = useRouter();
 const isLoading = ref(true);
 const errorMessage = ref("");
 const summary = ref({ products: 0, warehouses: 0, stock: 0, warnings: 0 });
-const pendingItems = ref([]);
-const pendingFailed = ref(false);
+const pendingImportItems = ref([]);
+const pendingImportFailed = ref(false);
+const pendingExportItems = ref([]);
+const pendingExportFailed = ref(false);
 const lowStockItems = ref([]);
 const lowStockFailed = ref(false);
 
-const canSeeApprovals = computed(() => canAccessRoute("/approvals"));
+const canSeeImportApprovals = computed(() => canAccessRoute("/approvals"));
+const canSeeExportApprovals = computed(() =>
+  canAccessRoute("/pending-export-approvals"),
+);
 const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
+const canSeeAlerts = computed(() => canAccessRoute("/alerts"));
 const hasDashboardData = computed(() => {
   const values = { ...summary.value };
   if (!canSeeWarnings.value) {
     delete values.warnings;
   }
-  return Object.values(values).some((value) => Number(value) > 0);
+
+  const hasSummaryData = Object.values(values).some(
+    (value) => Number(value) > 0,
+  );
+  const hasPendingApprovals =
+    pendingImportItems.value.length || pendingExportItems.value.length;
+  const hasLowStockAlerts = lowStockItems.value.length > 0;
+
+  return hasSummaryData || hasPendingApprovals || hasLowStockAlerts;
 });
 
 const visibleQuickAccess = computed(() => {
@@ -71,8 +85,10 @@ onMounted(() => {
 async function loadDashboardData() {
   isLoading.value = true;
   errorMessage.value = "";
-  pendingItems.value = [];
-  pendingFailed.value = false;
+  pendingImportItems.value = [];
+  pendingImportFailed.value = false;
+  pendingExportItems.value = [];
+  pendingExportFailed.value = false;
   lowStockItems.value = [];
   lowStockFailed.value = false;
 
@@ -101,18 +117,24 @@ async function loadDashboardData() {
     }
   }
 
-  if (canSeeApprovals.value) {
+  if (canSeeImportApprovals.value || canSeeExportApprovals.value) {
     try {
       const pendingData = await loadPendingApprovals();
-      pendingItems.value = pendingData.items;
-      pendingFailed.value = pendingData.failed;
+      pendingImportItems.value = pendingData.importItems;
+      pendingImportFailed.value = pendingData.importFailed;
+      pendingExportItems.value = pendingData.exportItems;
+      pendingExportFailed.value = pendingData.exportFailed;
     } catch (error) {
-      pendingItems.value = [];
-      pendingFailed.value = true;
+      pendingImportItems.value = [];
+      pendingImportFailed.value = true;
+      pendingExportItems.value = [];
+      pendingExportFailed.value = true;
     }
   } else {
-    pendingItems.value = [];
-    pendingFailed.value = false;
+    pendingImportItems.value = [];
+    pendingImportFailed.value = false;
+    pendingExportItems.value = [];
+    pendingExportFailed.value = false;
   }
 
   if (canSeeWarnings.value) {
@@ -169,37 +191,55 @@ async function loadLowStockCount() {
 }
 
 async function loadPendingApprovals() {
-  try {
-    const [importData, exportData] = await Promise.all([
-      getPendingApprovals({ page: 0, size: 5 }),
-      getPendingExportReceipts({ page: 0, size: 5 }),
-    ]);
+  const importItems = [];
+  const exportItems = [];
+  let importFailed = false;
+  let exportFailed = false;
 
-    const items = [
-      ...(Array.isArray(importData?.content) ? importData.content : []).map(
-        (item) => ({
-          id: item.id,
-          code: item.code,
-          label: item.supplierName || item.partnerName || "Phiếu nhập",
-          subtitle: item.warehouseName || "Kho",
-          route: "/approvals",
-        }),
-      ),
-      ...(Array.isArray(exportData?.content) ? exportData.content : []).map(
-        (item) => ({
-          id: item.id,
-          code: item.code,
-          label: item.warehouseName || "Phiếu xuất",
-          subtitle: item.status || "Chờ duyệt",
-          route: "/approvals",
-        }),
-      ),
-    ];
-
-    return { items, failed: false };
-  } catch (error) {
-    return { items: [], failed: true };
+  if (canSeeImportApprovals.value) {
+    try {
+      const importData = await getPendingApprovals({ page: 0, size: 5 });
+      importItems.push(
+        ...(Array.isArray(importData?.content) ? importData.content : []).map(
+          (item) => ({
+            id: item.id,
+            code: item.code,
+            label: item.supplierName || item.partnerName || "Phiếu nhập",
+            subtitle: item.warehouseName || "Kho",
+            route: "/approvals",
+          }),
+        ),
+      );
+    } catch (error) {
+      importFailed = true;
+    }
   }
+
+  if (canSeeExportApprovals.value) {
+    try {
+      const exportData = await getPendingExportReceipts({ page: 0, size: 5 });
+      exportItems.push(
+        ...(Array.isArray(exportData?.content) ? exportData.content : []).map(
+          (item) => ({
+            id: item.id,
+            code: item.code,
+            label: item.warehouseName || "Phiếu xuất",
+            subtitle: item.status || "Chờ duyệt",
+            route: "/pending-export-approvals",
+          }),
+        ),
+      );
+    } catch (error) {
+      exportFailed = true;
+    }
+  }
+
+  return {
+    importItems,
+    exportItems,
+    importFailed,
+    exportFailed,
+  };
 }
 
 async function loadLowStockItems() {
@@ -226,7 +266,10 @@ function formatNumber(value) {
 }
 
 function openRoute(path) {
-  router.push(path);
+  if (!path) return;
+  if (canAccessRoute(path)) {
+    router.push(path);
+  }
 }
 </script>
 
@@ -324,28 +367,24 @@ function openRoute(path) {
       </template>
     </section>
 
-    <section v-if="canSeeApprovals" class="card card-pad dashboard-panel">
+    <section v-if="canSeeImportApprovals" class="card card-pad dashboard-panel">
       <div class="section-head between">
         <div>
           <p class="eyebrow">Pending</p>
-          <h2 class="section-title">Phiếu cần duyệt</h2>
+          <h2 class="section-title">Phiếu nhập chờ duyệt</h2>
         </div>
-        <button
-          v-if="canSeeApprovals"
-          class="text-link"
-          @click="openRoute('/approvals')"
-        >
+        <button class="text-link" @click="openRoute('/approvals')">
           Xem tất cả
         </button>
       </div>
 
-      <div v-if="!isLoading && pendingFailed" class="section-warning">
+      <div v-if="!isLoading && pendingImportFailed" class="section-warning">
         <span class="badge badge--warning">Không thể tải dữ liệu</span>
-        <p class="muted">Danh sách phiếu cần duyệt chưa cập nhật.</p>
+        <p class="muted">Danh sách phiếu nhập chờ duyệt chưa cập nhật.</p>
       </div>
-      <div v-if="pendingItems.length" class="stack-list">
+      <div v-if="pendingImportItems.length" class="stack-list">
         <div
-          v-for="item in pendingItems"
+          v-for="item in pendingImportItems"
           :key="`${item.label}-${item.id}`"
           class="list-item"
           @click="openRoute(item.route)"
@@ -362,29 +401,81 @@ function openRoute(path) {
         </div>
       </div>
       <EmptyState
-        v-if="!isLoading && !pendingFailed && !pendingItems.length"
-        title="Không có phiếu chờ duyệt"
-        description="Tất cả việc cần xử lý đã được hoàn tất."
+        v-if="!isLoading && !pendingImportFailed && !pendingImportItems.length"
+        title="Không có phiếu nhập chờ duyệt"
+        description="Tất cả phiếu nhập cần xử lý đã được hoàn tất."
       />
     </section>
 
-    <section class="card card-pad dashboard-panel">
+    <section v-if="canSeeExportApprovals" class="card card-pad dashboard-panel">
       <div class="section-head between">
         <div>
-          <p class="eyebrow">Low Stock</p>
-          <h2 class="section-title">Sản phẩm sắp hết</h2>
+          <p class="eyebrow">Pending</p>
+          <h2 class="section-title">Phiếu xuất chờ duyệt</h2>
         </div>
-        <button class="text-link" @click="openRoute('/inventory')">
+        <button
+          class="text-link"
+          @click="openRoute('/pending-export-approvals')"
+        >
+          Xem tất cả
+        </button>
+      </div>
+
+      <div v-if="!isLoading && pendingExportFailed" class="section-warning">
+        <span class="badge badge--warning">Không thể tải dữ liệu</span>
+        <p class="muted">Danh sách phiếu xuất chờ duyệt chưa cập nhật.</p>
+      </div>
+      <div v-if="pendingExportItems.length" class="stack-list">
+        <div
+          v-for="item in pendingExportItems"
+          :key="`${item.label}-${item.id}`"
+          class="list-item"
+          @click="openRoute(item.route)"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="openRoute(item.route)"
+          @keydown.space.prevent="openRoute(item.route)"
+        >
+          <div>
+            <strong>{{ item.code }}</strong>
+            <p>{{ item.label }} · {{ item.subtitle }}</p>
+          </div>
+          <span class="badge badge--warning">Chờ duyệt</span>
+        </div>
+      </div>
+      <EmptyState
+        v-if="!isLoading && !pendingExportFailed && !pendingExportItems.length"
+        title="Không có phiếu xuất chờ duyệt"
+        description="Tất cả phiếu xuất cần xử lý đã được hoàn tất."
+      />
+    </section>
+
+    <section v-if="canSeeAlerts" class="card card-pad dashboard-panel">
+      <div class="section-head between">
+        <div>
+          <p class="eyebrow">Alerts</p>
+          <h2 class="section-title">Cảnh báo mở</h2>
+        </div>
+        <button class="text-link" @click="openRoute('/alerts')">
           Xem chi tiết
         </button>
       </div>
 
       <div v-if="!isLoading && lowStockFailed" class="section-warning">
         <span class="badge badge--warning">Không thể tải dữ liệu</span>
-        <p class="muted">Danh sách sản phẩm sắp hết chưa cập nhật.</p>
+        <p class="muted">Danh sách cảnh báo tồn kho chưa cập nhật.</p>
       </div>
       <div v-else-if="lowStockItems.length" class="stack-list">
-        <div v-for="item in lowStockItems" :key="item.id" class="list-item">
+        <div
+          v-for="item in lowStockItems"
+          :key="item.id"
+          class="list-item"
+          @click="openRoute('/alerts')"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="openRoute('/alerts')"
+          @keydown.space.prevent="openRoute('/alerts')"
+        >
           <div>
             <strong>{{ item.productName }}</strong>
             <p>{{ item.warehouseName }}</p>
@@ -394,8 +485,8 @@ function openRoute(path) {
       </div>
       <EmptyState
         v-else-if="!isLoading"
-        title="Không có mặt hàng sắp hết"
-        description="Tồn kho hiện đang ở mức an toàn."
+        title="Không có cảnh báo mở"
+        description="Hiện tại chưa có mặt hàng nào ở ngưỡng cảnh báo."
       />
     </section>
 
