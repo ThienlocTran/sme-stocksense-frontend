@@ -24,9 +24,14 @@ const lowStockItems = ref([]);
 const lowStockFailed = ref(false);
 
 const canSeeApprovals = computed(() => canAccessRoute("/approvals"));
-const hasDashboardData = computed(() =>
-  Object.values(summary.value).some((value) => Number(value) > 0),
-);
+const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
+const hasDashboardData = computed(() => {
+  const values = { ...summary.value };
+  if (!canSeeWarnings.value) {
+    delete values.warnings;
+  }
+  return Object.values(values).some((value) => Number(value) > 0);
+});
 
 const visibleQuickAccess = computed(() => {
   const items = [
@@ -129,10 +134,10 @@ async function loadStockTotal() {
   try {
     const data = await getInventory({ page: 0, size: 1 });
     const aggregateValue = Number(
-      data?.totalElements ??
-        data?.stockTotal ??
+      data?.stockTotal ??
         data?.totalStock ??
         data?.total ??
+        data?.totalElements ??
         0,
     );
 
@@ -140,7 +145,7 @@ async function loadStockTotal() {
       return aggregateValue;
     }
   } catch (error) {
-    // Fallback to the previous numeric behavior when the aggregate endpoint is unavailable.
+    // Fallback to 0 when the aggregate endpoint is unavailable or invalid.
   }
 
   return 0;
@@ -294,7 +299,7 @@ function openRoute(path) {
             </div>
           </article>
 
-          <article v-if="canSeeApprovals" class="kpi-card">
+          <article v-if="canSeeWarnings" class="kpi-card">
             <div class="kpi-card__icon kpi-card__icon--success">
               <i class="mdi mdi-alert-circle-outline"></i>
             </div>
