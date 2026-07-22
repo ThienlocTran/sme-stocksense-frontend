@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
@@ -64,6 +64,12 @@ const quickAccess = [
     icon: "mdi-bell-alert-outline",
   },
 ];
+
+const visibleQuickAccess = computed(() =>
+  quickAccess.filter(
+    (item) => item.route !== "/approvals" || canSeeApprovals.value,
+  ),
+);
 
 onMounted(loadDashboard);
 
@@ -303,7 +309,7 @@ function openRoute(route) {
           </div>
         </article>
 
-        <article class="kpi-card">
+        <article v-if="canSeeApprovals" class="kpi-card">
           <div class="kpi-card__icon kpi-card__icon--success">
             <i class="mdi mdi-clock-outline"></i>
           </div>
@@ -319,7 +325,7 @@ function openRoute(route) {
       </div>
     </section>
 
-    <section class="card card-pad dashboard-panel">
+    <section v-if="canSeeApprovals" class="card card-pad dashboard-panel">
       <div class="section-head between">
         <div>
           <p class="eyebrow">Pending</p>
@@ -404,8 +410,7 @@ function openRoute(route) {
 
       <div class="quick-links">
         <button
-          v-for="item in quickAccess"
-          v-if="item.route !== '/approvals' || canSeeApprovals"
+          v-for="item in visibleQuickAccess"
           :key="item.title"
           class="quick-link"
           @click="openRoute(item.route)"
