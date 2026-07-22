@@ -5,6 +5,7 @@ import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
 import { getLowStockInventory } from "../services/inventoryService";
 import { getPendingApprovals as getPendingImportApprovals } from "../services/importReceiptService";
+import { getCurrentRoleCode } from "../services/authService";
 import { getProducts } from "../services/productService";
 import { getPendingExportApprovals } from "../services/stockOutApprovalService";
 import { getWarehouses } from "../services/warehouseService";
@@ -12,6 +13,7 @@ import { getWarehouses } from "../services/warehouseService";
 const router = useRouter();
 const isLoading = ref(true);
 const errorMessage = ref("");
+const canSeeApprovals = ref(false);
 const summary = ref({ products: 0, warehouses: 0, lowStock: 0, pending: 0 });
 const summaryFailures = ref({
   products: false,
@@ -68,6 +70,8 @@ onMounted(loadDashboard);
 async function loadDashboard() {
   isLoading.value = true;
   errorMessage.value = "";
+  const roleCode = getCurrentRoleCode();
+  canSeeApprovals.value = roleCode === "ADMIN" || roleCode === "MANAGER";
   summaryFailures.value = {
     products: false,
     warehouses: false,
@@ -76,6 +80,13 @@ async function loadDashboard() {
   };
   pendingFailed.value = false;
   lowStockFailed.value = false;
+
+  const pendingRequests = canSeeApprovals.value
+    ? [
+        getPendingExportApprovals({ page: 0, size: 4 }),
+        getPendingImportApprovals({ page: 0, size: 4 }),
+      ]
+    : [Promise.resolve(null), Promise.resolve(null)];
 
   const [
     productsResult,
@@ -86,8 +97,7 @@ async function loadDashboard() {
   ] = await Promise.allSettled([
     getProducts({ page: 0, size: 1 }),
     getLowStockInventory({ page: 0, size: 4 }),
-    getPendingExportApprovals({ page: 0, size: 4 }),
-    getPendingImportApprovals({ page: 0, size: 4 }),
+    ...pendingRequests,
     getWarehouses({ status: "HOAT_DONG" }),
   ]);
 
@@ -108,24 +118,39 @@ async function loadDashboard() {
 
   if (productsResult.status === "rejected") {
     summaryFailures.value.products = true;
-    console.error("[DashboardView] Failed to load products KPI data", productsResult.reason);
+    console.error(
+      "[DashboardView] Failed to load products KPI data",
+      productsResult.reason,
+    );
   }
   if (warehousesResult.status === "rejected") {
     summaryFailures.value.warehouses = true;
-    console.error("[DashboardView] Failed to load warehouses KPI data", warehousesResult.reason);
+    console.error(
+      "[DashboardView] Failed to load warehouses KPI data",
+      warehousesResult.reason,
+    );
   }
   if (lowStockResult.status === "rejected") {
     summaryFailures.value.lowStock = true;
     lowStockFailed.value = true;
-    console.error("[DashboardView] Failed to load low stock data", lowStockResult.reason);
+    console.error(
+      "[DashboardView] Failed to load low stock data",
+      lowStockResult.reason,
+    );
   }
   if (exportPendingResult.status === "rejected") {
     pendingFailed.value = true;
-    console.error("[DashboardView] Failed to load export pending approvals data", exportPendingResult.reason);
+    console.error(
+      "[DashboardView] Failed to load export pending approvals data",
+      exportPendingResult.reason,
+    );
   }
   if (importPendingResult.status === "rejected") {
     pendingFailed.value = true;
-    console.error("[DashboardView] Failed to load import pending approvals data", importPendingResult.reason);
+    console.error(
+      "[DashboardView] Failed to load import pending approvals data",
+      importPendingResult.reason,
+    );
   }
   summaryFailures.value.pending =
     exportPendingResult.status === "rejected" ||
@@ -164,8 +189,8 @@ async function loadDashboard() {
 function readCount(payload) {
   if (!payload) return 0;
   if (Array.isArray(payload)) return payload.length;
-  if (Array.isArray(payload.content)) return payload.content.length;
   if (typeof payload.totalElements === "number") return payload.totalElements;
+  if (Array.isArray(payload.content)) return payload.content.length;
   return 0;
 }
 
@@ -241,7 +266,9 @@ function openRoute(route) {
           <div>
             <p class="kpi-label">Sản phẩm</p>
             <div class="metric">
-              {{ summaryFailures.products ? "—" : formatNumber(summary.products) }}
+              {{
+                summaryFailures.products ? "—" : formatNumber(summary.products)
+              }}
             </div>
           </div>
         </article>
@@ -253,7 +280,11 @@ function openRoute(route) {
           <div>
             <p class="kpi-label">Kho hoạt động</p>
             <div class="metric">
-              {{ summaryFailures.warehouses ? "—" : formatNumber(summary.warehouses) }}
+              {{
+                summaryFailures.warehouses
+                  ? "—"
+                  : formatNumber(summary.warehouses)
+              }}
             </div>
           </div>
         </article>
@@ -265,7 +296,9 @@ function openRoute(route) {
           <div>
             <p class="kpi-label">Sắp hết hàng</p>
             <div class="metric">
-              {{ summaryFailures.lowStock ? "—" : formatNumber(summary.lowStock) }}
+              {{
+                summaryFailures.lowStock ? "—" : formatNumber(summary.lowStock)
+              }}
             </div>
           </div>
         </article>
@@ -277,7 +310,9 @@ function openRoute(route) {
           <div>
             <p class="kpi-label">Chờ xử lý</p>
             <div class="metric">
-              {{ summaryFailures.pending ? "—" : formatNumber(summary.pending) }}
+              {{
+                summaryFailures.pending ? "—" : formatNumber(summary.pending)
+              }}
             </div>
           </div>
         </article>
@@ -290,7 +325,11 @@ function openRoute(route) {
           <p class="eyebrow">Pending</p>
           <h2 class="section-title">Phiếu cần duyệt</h2>
         </div>
-        <button class="text-link" @click="openRoute('/approvals')">
+        <button
+          v-if="canSeeApprovals"
+          class="text-link"
+          @click="openRoute('/approvals')"
+        >
           Xem tất cả
         </button>
       </div>
@@ -366,6 +405,7 @@ function openRoute(route) {
       <div class="quick-links">
         <button
           v-for="item in quickAccess"
+          v-if="item.route !== '/approvals' || canSeeApprovals"
           :key="item.title"
           class="quick-link"
           @click="openRoute(item.route)"
