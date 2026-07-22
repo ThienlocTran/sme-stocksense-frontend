@@ -20,6 +20,7 @@ const size = ref(20);
 const totalPages = ref(0);
 const totalElements = ref(0);
 const filters = reactive({ warehouseId: "" });
+const latestRequestId = ref(0);
 
 const columns = [
   { key: "productName", label: "Sản phẩm" },
@@ -65,8 +66,7 @@ async function loadDropdowns() {
 }
 
 async function fetchSuggestions() {
-  if (isLoading.value) return;
-
+  const requestId = ++latestRequestId.value;
   isLoading.value = true;
   errorMessage.value = "";
   try {
@@ -77,17 +77,27 @@ async function fetchSuggestions() {
       warehouseId: filters.warehouseId,
     });
 
+    if (requestId !== latestRequestId.value) {
+      return;
+    }
+
     suggestions.value = data.content || [];
     totalPages.value = data.totalPages || 0;
     totalElements.value = data.totalElements || 0;
   } catch (error) {
+    if (requestId !== latestRequestId.value) {
+      return;
+    }
+
     suggestions.value = [];
     errorMessage.value = error?.message || "Không thể tải dữ liệu.";
     if (error?.status === 401) {
       router.replace("/login");
     }
   } finally {
-    isLoading.value = false;
+    if (requestId === latestRequestId.value) {
+      isLoading.value = false;
+    }
   }
 }
 
