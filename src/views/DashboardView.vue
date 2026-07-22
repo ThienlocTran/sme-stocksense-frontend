@@ -13,8 +13,16 @@ const router = useRouter();
 const isLoading = ref(true);
 const errorMessage = ref("");
 const summary = ref({ products: 0, warehouses: 0, lowStock: 0, pending: 0 });
+const summaryFailures = ref({
+  products: false,
+  warehouses: false,
+  lowStock: false,
+  pending: false,
+});
 const pendingItems = ref([]);
 const lowStockItems = ref([]);
+const pendingFailed = ref(false);
+const lowStockFailed = ref(false);
 
 const quickAccess = [
   {
@@ -60,6 +68,14 @@ onMounted(loadDashboard);
 async function loadDashboard() {
   isLoading.value = true;
   errorMessage.value = "";
+  summaryFailures.value = {
+    products: false,
+    warehouses: false,
+    lowStock: false,
+    pending: false,
+  };
+  pendingFailed.value = false;
+  lowStockFailed.value = false;
 
   const [
     productsResult,
@@ -89,6 +105,31 @@ async function loadDashboard() {
       : null;
   const warehousesData =
     warehousesResult.status === "fulfilled" ? warehousesResult.value : null;
+
+  if (productsResult.status === "rejected") {
+    summaryFailures.value.products = true;
+    console.error("[DashboardView] Failed to load products KPI data", productsResult.reason);
+  }
+  if (warehousesResult.status === "rejected") {
+    summaryFailures.value.warehouses = true;
+    console.error("[DashboardView] Failed to load warehouses KPI data", warehousesResult.reason);
+  }
+  if (lowStockResult.status === "rejected") {
+    summaryFailures.value.lowStock = true;
+    lowStockFailed.value = true;
+    console.error("[DashboardView] Failed to load low stock data", lowStockResult.reason);
+  }
+  if (exportPendingResult.status === "rejected") {
+    pendingFailed.value = true;
+    console.error("[DashboardView] Failed to load export pending approvals data", exportPendingResult.reason);
+  }
+  if (importPendingResult.status === "rejected") {
+    pendingFailed.value = true;
+    console.error("[DashboardView] Failed to load import pending approvals data", importPendingResult.reason);
+  }
+  summaryFailures.value.pending =
+    exportPendingResult.status === "rejected" ||
+    importPendingResult.status === "rejected";
 
   summary.value = {
     products: readCount(productsData),
@@ -199,7 +240,9 @@ function openRoute(route) {
           </div>
           <div>
             <p class="kpi-label">Sản phẩm</p>
-            <div class="metric">{{ formatNumber(summary.products) }}</div>
+            <div class="metric">
+              {{ summaryFailures.products ? "—" : formatNumber(summary.products) }}
+            </div>
           </div>
         </article>
 
@@ -209,7 +252,9 @@ function openRoute(route) {
           </div>
           <div>
             <p class="kpi-label">Kho hoạt động</p>
-            <div class="metric">{{ formatNumber(summary.warehouses) }}</div>
+            <div class="metric">
+              {{ summaryFailures.warehouses ? "—" : formatNumber(summary.warehouses) }}
+            </div>
           </div>
         </article>
 
@@ -219,7 +264,9 @@ function openRoute(route) {
           </div>
           <div>
             <p class="kpi-label">Sắp hết hàng</p>
-            <div class="metric">{{ formatNumber(summary.lowStock) }}</div>
+            <div class="metric">
+              {{ summaryFailures.lowStock ? "—" : formatNumber(summary.lowStock) }}
+            </div>
           </div>
         </article>
 
@@ -229,7 +276,9 @@ function openRoute(route) {
           </div>
           <div>
             <p class="kpi-label">Chờ xử lý</p>
-            <div class="metric">{{ formatNumber(summary.pending) }}</div>
+            <div class="metric">
+              {{ summaryFailures.pending ? "—" : formatNumber(summary.pending) }}
+            </div>
           </div>
         </article>
       </div>
@@ -246,11 +295,20 @@ function openRoute(route) {
         </button>
       </div>
 
-      <div v-if="pendingItems.length" class="stack-list">
+      <div v-if="!isLoading && pendingFailed" class="section-warning">
+        <span class="badge badge--warning">Không thể tải dữ liệu</span>
+        <p class="muted">Danh sách phiếu cần duyệt chưa cập nhật.</p>
+      </div>
+      <div v-else-if="pendingItems.length" class="stack-list">
         <div
           v-for="item in pendingItems"
           :key="`${item.label}-${item.id}`"
           class="list-item"
+          @click="openRoute(item.route)"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="openRoute(item.route)"
+          @keydown.space.prevent="openRoute(item.route)"
         >
           <div>
             <strong>{{ item.code }}</strong>
@@ -260,7 +318,7 @@ function openRoute(route) {
         </div>
       </div>
       <EmptyState
-        v-else
+        v-else-if="!isLoading"
         title="Không có phiếu chờ duyệt"
         description="Tất cả việc cần xử lý đã được hoàn tất."
       />
@@ -277,7 +335,11 @@ function openRoute(route) {
         </button>
       </div>
 
-      <div v-if="lowStockItems.length" class="stack-list">
+      <div v-if="!isLoading && lowStockFailed" class="section-warning">
+        <span class="badge badge--warning">Không thể tải dữ liệu</span>
+        <p class="muted">Danh sách sản phẩm sắp hết chưa cập nhật.</p>
+      </div>
+      <div v-else-if="lowStockItems.length" class="stack-list">
         <div v-for="item in lowStockItems" :key="item.id" class="list-item">
           <div>
             <strong>{{ item.productName }}</strong>
@@ -287,7 +349,7 @@ function openRoute(route) {
         </div>
       </div>
       <EmptyState
-        v-else
+        v-else-if="!isLoading"
         title="Không có mặt hàng sắp hết"
         description="Tồn kho hiện đang ở mức an toàn."
       />
@@ -439,11 +501,7 @@ function openRoute(route) {
   gap: 10px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
-}
-
-.list-item:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
+  cursor: pointer;
 }
 
 .list-item strong {
