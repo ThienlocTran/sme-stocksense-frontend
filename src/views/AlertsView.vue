@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -10,6 +10,11 @@ const errorMessage = ref("");
 const alertItems = ref([]);
 const totalElements = ref(0);
 const totalPages = ref(0);
+const currentPage = ref(0);
+const pageSize = 50;
+
+const hasPreviousPage = computed(() => currentPage.value > 0);
+const hasNextPage = computed(() => currentPage.value + 1 < totalPages.value);
 
 const columns = [
   { key: "product", label: "Product", class: "cell-long" },
@@ -28,7 +33,10 @@ async function fetchAlerts() {
   errorMessage.value = "";
 
   try {
-    const data = await getLowStockInventory({ page: 0, size: 50 });
+    const data = await getLowStockInventory({
+      page: currentPage.value,
+      size: pageSize,
+    });
     alertItems.value = Array.isArray(data?.content) ? data.content : [];
     totalElements.value = Number(data?.totalElements || 0);
     totalPages.value = Number(data?.totalPages || 0);
@@ -38,6 +46,18 @@ async function fetchAlerts() {
   } finally {
     isLoading.value = false;
   }
+}
+
+function goToPreviousPage() {
+  if (!hasPreviousPage.value) return;
+  currentPage.value -= 1;
+  fetchAlerts();
+}
+
+function goToNextPage() {
+  if (!hasNextPage.value) return;
+  currentPage.value += 1;
+  fetchAlerts();
 }
 
 function displayProductName(row) {
@@ -105,9 +125,29 @@ function formatNumber(value) {
 
   <div v-if="alertItems.length > 0" class="summary-bar card card-pad">
     <span class="muted">{{ totalElements }} cảnh báo</span>
-    <span class="muted"
-      >Trang {{ totalPages === 0 ? 0 : 1 }}/{{ totalPages }}</span
-    >
+    <div class="pagination-actions">
+      <button
+        class="pagination-button"
+        type="button"
+        :disabled="!hasPreviousPage || isLoading"
+        @click="goToPreviousPage"
+      >
+        Trước
+      </button>
+      <span class="muted"
+        >Trang {{ totalPages === 0 ? 0 : currentPage + 1 }}/{{
+          totalPages
+        }}</span
+      >
+      <button
+        class="pagination-button"
+        type="button"
+        :disabled="!hasNextPage || isLoading"
+        @click="goToNextPage"
+      >
+        Sau
+      </button>
+    </div>
   </div>
 </template>
 
@@ -147,6 +187,27 @@ function formatNumber(value) {
   gap: 16px;
 }
 
+.pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pagination-button {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px 10px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.pagination-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .severity-pill {
   display: inline-flex;
   align-items: center;
@@ -169,6 +230,10 @@ function formatNumber(value) {
     flex-direction: column;
     align-items: stretch;
     text-align: center;
+  }
+
+  .pagination-actions {
+    justify-content: center;
   }
 }
 </style>

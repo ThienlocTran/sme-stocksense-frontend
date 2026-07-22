@@ -73,7 +73,7 @@ const visibleQuickAccess = computed(() => {
       title: "Cảnh báo",
       description: "Xem sản phẩm sắp hết hàng",
       icon: "mdi-alert-circle-outline",
-      route: "/inventory",
+      route: "/alerts",
     },
   ];
 
@@ -102,15 +102,28 @@ async function loadDashboardData() {
     const [productsResponse, warehouseData, stockTotals] =
       await Promise.all(summaryPromises);
 
-    const warningCount = canSeeWarnings.value
-      ? await loadLowStockCount().catch(() => 0)
-      : 0;
+    let warningCount = 0;
+    let warningCountFailed = false;
+
+    if (canSeeWarnings.value) {
+      try {
+        warningCount = await loadLowStockCount();
+      } catch (error) {
+        if (error?.status === 401) {
+          router.replace("/login");
+          return;
+        }
+
+        warningCountFailed = true;
+        lowStockFailed.value = true;
+      }
+    }
 
     summary.value = {
       products: productsResponse,
       warehouses: warehouseData,
       stock: canSeeWarnings.value ? stockTotals : 0,
-      warnings: warningCount,
+      warnings: warningCountFailed ? null : warningCount,
     };
   } catch (error) {
     errorMessage.value = error?.message || "Không thể tải dữ liệu tổng quan.";
@@ -227,6 +240,10 @@ async function loadPendingApprovals() {
         ),
       );
     } catch (error) {
+      if (error?.status === 401) {
+        throw error;
+      }
+
       importFailed = true;
     }
   }
@@ -246,6 +263,10 @@ async function loadPendingApprovals() {
         ),
       );
     } catch (error) {
+      if (error?.status === 401) {
+        throw error;
+      }
+
       exportFailed = true;
     }
   }
@@ -273,12 +294,21 @@ async function loadLowStockItems() {
 
     return { items, failed: false };
   } catch (error) {
+    if (error?.status === 401) {
+      throw error;
+    }
+
     return { items: [], failed: true };
   }
 }
 
 function formatNumber(value) {
-  return new Intl.NumberFormat("vi-VN").format(Number(value || 0));
+  const normalizedValue = Number(value);
+  if (value === null || value === undefined || Number.isNaN(normalizedValue)) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("vi-VN").format(normalizedValue);
 }
 
 function openRoute(path) {
@@ -312,7 +342,7 @@ function openRoute(path) {
       <div
         v-if="isLoading"
         class="kpi-grid"
-        :class="{ 'kpi-grid--three-columns': !canSeeWarnings }"
+        :class="{ 'kpi-grid--two-columns': !canSeeWarnings }"
       >
         <article
           v-for="index in visibleKpiCardCount"
@@ -346,7 +376,7 @@ function openRoute(path) {
         <div
           v-else
           class="kpi-grid"
-          :class="{ 'kpi-grid--three-columns': !canSeeWarnings }"
+          :class="{ 'kpi-grid--two-columns': !canSeeWarnings }"
         >
           <article class="kpi-card">
             <div class="kpi-card__icon">
@@ -584,8 +614,8 @@ function openRoute(path) {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.kpi-grid--three-columns {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.kpi-grid--two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .kpi-card {
