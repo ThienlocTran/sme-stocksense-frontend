@@ -16,6 +16,7 @@ import { getWarehouses } from "../services/warehouseService";
 const router = useRouter();
 
 const isLoading = ref(true);
+const isRetrying = ref(false);
 const errorMessage = ref("");
 const summary = ref({ products: 0, warehouses: 0, stock: 0, warnings: 0 });
 const pendingImportItems = ref([]);
@@ -34,6 +35,27 @@ const canSeeExportApprovals = computed(() =>
 const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
 const canSeeAlerts = computed(() => canAccessRoute("/alerts"));
 const visibleKpiCardCount = computed(() => (canSeeWarnings.value ? 4 : 2));
+const hasAnyApiError = computed(() => {
+  return (
+    Boolean(errorMessage.value) ||
+    pendingImportFailed.value ||
+    pendingExportFailed.value ||
+    lowStockFailed.value ||
+    stockTotalFailed.value ||
+    warningCountFailed.value
+  );
+});
+const dashboardAlertMessage = computed(() => {
+  if (errorMessage.value) {
+    return errorMessage.value;
+  }
+
+  if (hasAnyApiError.value) {
+    return "Một số dữ liệu trên dashboard chưa tải được. Vui lòng thử lại.";
+  }
+
+  return "";
+});
 const hasDashboardData = computed(() => {
   const values = { ...summary.value };
   if (!canSeeWarnings.value) {
@@ -104,11 +126,16 @@ const visibleQuickAccess = computed(() => {
 });
 
 onMounted(() => {
-  loadDashboardData();
+  loadDashboardData(true);
 });
 
-async function loadDashboardData() {
+async function loadDashboardData(forceReload = false) {
+  if (isLoading.value && !forceReload) {
+    return;
+  }
+
   isLoading.value = true;
+  isRetrying.value = true;
   errorMessage.value = "";
   pendingImportItems.value = [];
   pendingImportFailed.value = false;
@@ -168,51 +195,52 @@ async function loadDashboardData() {
     }
   }
 
-  if (canSeeImportApprovals.value || canSeeExportApprovals.value) {
-    try {
+  try {
+    if (canSeeImportApprovals.value || canSeeExportApprovals.value) {
       const pendingData = await loadPendingApprovals();
       pendingImportItems.value = pendingData.importItems;
       pendingImportFailed.value = pendingData.importFailed;
       pendingExportItems.value = pendingData.exportItems;
       pendingExportFailed.value = pendingData.exportFailed;
-    } catch (error) {
-      if (error?.status === 401) {
-        router.replace("/login");
-        return;
-      }
-
+    } else {
       pendingImportItems.value = [];
-      pendingImportFailed.value = true;
+      pendingImportFailed.value = false;
       pendingExportItems.value = [];
-      pendingExportFailed.value = true;
+      pendingExportFailed.value = false;
     }
-  } else {
-    pendingImportItems.value = [];
-    pendingImportFailed.value = false;
-    pendingExportItems.value = [];
-    pendingExportFailed.value = false;
-  }
 
-  if (canSeeWarnings.value) {
-    try {
+    if (canSeeWarnings.value) {
       const lowStockData = await loadLowStockItems();
       lowStockItems.value = lowStockData.items;
       lowStockFailed.value = lowStockData.failed;
-    } catch (error) {
-      if (error?.status === 401) {
-        router.replace("/login");
-        return;
-      }
-
+    } else {
       lowStockItems.value = [];
-      lowStockFailed.value = true;
+      lowStockFailed.value = false;
     }
-  } else {
+  } catch (error) {
+    if (error?.status === 401) {
+      router.replace("/login");
+      return;
+    }
+
+    pendingImportItems.value = [];
+    pendingImportFailed.value = true;
+    pendingExportItems.value = [];
+    pendingExportFailed.value = true;
     lowStockItems.value = [];
-    lowStockFailed.value = false;
+    lowStockFailed.value = true;
+  } finally {
+    isLoading.value = false;
+    isRetrying.value = false;
+  }
+}
+
+async function retryDashboardLoad() {
+  if (isLoading.value) {
+    return;
   }
 
-  isLoading.value = false;
+  await loadDashboardData(true);
 }
 
 async function loadProductCount() {
@@ -360,7 +388,20 @@ function openRoute(path) {
     description="Tóm tắt hoạt động kho hàng và các việc cần xử lý."
   />
 
-  <div v-if="errorMessage" class="dashboard-alert">{{ errorMessage }}</div>
+  <div v-if="dashboardAlertMessage" class="dashboard-alert">
+    <div class="dashboard-alert__content">
+      <strong>Không thể tải đầy đủ dữ liệu</strong>
+      <p>{{ dashboardAlertMessage }}</p>
+    </div>
+    <button
+      class="retry-button"
+      type="button"
+      :disabled="isLoading"
+      @click="retryDashboardLoad"
+    >
+      {{ isLoading ? "Đang tải..." : "Thử lại" }}
+    </button>
+  </div>
 
   <div class="dashboard-grid">
     <section class="card card-pad dashboard-panel dashboard-panel--wide">
@@ -393,12 +434,20 @@ function openRoute(path) {
       </div>
 
       <template v-else>
-        <div v-if="errorMessage" class="dashboard-empty">
+        <div v-if="errorMessage && !hasDashboardData" class="dashboard-empty">
           <EmptyState
             title="Không thể tải dữ liệu tổng quan"
             description="Vui lòng thử lại sau hoặc kiểm tra kết nối backend."
             icon="mdi-alert-circle-outline"
           />
+          <button
+            class="retry-button retry-button--inline"
+            type="button"
+            :disabled="isLoading"
+            @click="retryDashboardLoad"
+          >
+            Thử lại
+          </button>
         </div>
 
         <div v-else-if="!hasDashboardData" class="dashboard-empty">
@@ -471,11 +520,22 @@ function openRoute(path) {
         </button>
       </div>
 
-      <div v-if="!isLoading && pendingImportFailed" class="section-warning">
+      <div v-if="isLoading" class="section-skeleton">
+        <div class="skeleton section-skeleton__line"></div>
+        <div class="skeleton section-skeleton__line"></div>
+      </div>
+      <div v-else-if="pendingImportFailed" class="section-warning">
         <span class="badge badge--warning">Không thể tải dữ liệu</span>
         <p class="muted">Danh sách phiếu nhập chờ duyệt chưa cập nhật.</p>
+        <button
+          class="retry-button retry-button--inline"
+          type="button"
+          @click="retryDashboardLoad"
+        >
+          Thử lại
+        </button>
       </div>
-      <div v-if="pendingImportItems.length" class="stack-list">
+      <div v-else-if="pendingImportItems.length" class="stack-list">
         <div
           v-for="item in pendingImportItems"
           :key="`${item.label}-${item.id}`"
@@ -514,11 +574,22 @@ function openRoute(path) {
         </button>
       </div>
 
-      <div v-if="!isLoading && pendingExportFailed" class="section-warning">
+      <div v-if="isLoading" class="section-skeleton">
+        <div class="skeleton section-skeleton__line"></div>
+        <div class="skeleton section-skeleton__line"></div>
+      </div>
+      <div v-else-if="pendingExportFailed" class="section-warning">
         <span class="badge badge--warning">Không thể tải dữ liệu</span>
         <p class="muted">Danh sách phiếu xuất chờ duyệt chưa cập nhật.</p>
+        <button
+          class="retry-button retry-button--inline"
+          type="button"
+          @click="retryDashboardLoad"
+        >
+          Thử lại
+        </button>
       </div>
-      <div v-if="pendingExportItems.length" class="stack-list">
+      <div v-else-if="pendingExportItems.length" class="stack-list">
         <div
           v-for="item in pendingExportItems"
           :key="`${item.label}-${item.id}`"
@@ -554,9 +625,20 @@ function openRoute(path) {
         </button>
       </div>
 
-      <div v-if="!isLoading && lowStockFailed" class="section-warning">
+      <div v-if="isLoading" class="section-skeleton">
+        <div class="skeleton section-skeleton__line"></div>
+        <div class="skeleton section-skeleton__line"></div>
+      </div>
+      <div v-else-if="lowStockFailed" class="section-warning">
         <span class="badge badge--warning">Không thể tải dữ liệu</span>
         <p class="muted">Danh sách cảnh báo tồn kho chưa cập nhật.</p>
+        <button
+          class="retry-button retry-button--inline"
+          type="button"
+          @click="retryDashboardLoad"
+        >
+          Thử lại
+        </button>
       </div>
       <div v-else-if="lowStockItems.length" class="stack-list">
         <div
@@ -716,6 +798,50 @@ function openRoute(path) {
 
 .dashboard-empty {
   padding: 8px 0 4px;
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.dashboard-alert__content strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.dashboard-alert__content p {
+  margin: 0;
+  color: #7f1d1d;
+}
+
+.retry-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.retry-button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.retry-button--inline {
+  justify-self: start;
 }
 
 .section-warning {
@@ -737,6 +863,16 @@ function openRoute(path) {
 .badge--warning {
   background: #fef3c7;
   color: #92400e;
+}
+
+.section-skeleton {
+  display: grid;
+  gap: 10px;
+}
+
+.section-skeleton__line {
+  width: 100%;
+  height: 12px;
 }
 
 .stack-list {
