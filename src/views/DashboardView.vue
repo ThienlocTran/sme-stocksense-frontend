@@ -25,6 +25,8 @@ const pendingExportItems = ref([]);
 const pendingExportFailed = ref(false);
 const lowStockItems = ref([]);
 const lowStockFailed = ref(false);
+const productCountFailed = ref(false);
+const warehouseCountFailed = ref(false);
 const warningCountFailed = ref(false);
 const stockTotalFailed = ref(false);
 
@@ -41,6 +43,8 @@ const hasAnyApiError = computed(() => {
     pendingImportFailed.value ||
     pendingExportFailed.value ||
     lowStockFailed.value ||
+    productCountFailed.value ||
+    warehouseCountFailed.value ||
     stockTotalFailed.value ||
     warningCountFailed.value
   );
@@ -69,6 +73,9 @@ const hasDashboardData = computed(() => {
   const hasPendingApprovals =
     pendingImportItems.value.length || pendingExportItems.value.length;
   const hasLowStockAlerts = lowStockItems.value.length > 0;
+  const hasPendingSectionErrors =
+    pendingImportFailed.value || pendingExportFailed.value;
+  const hasLowStockSectionError = lowStockFailed.value;
 
   // Treat failed stock/warning loads as dashboard-visible error states so
   // the KPI cards can still render their fallback messages instead of the
@@ -83,8 +90,12 @@ const hasDashboardData = computed(() => {
     hasSummaryData ||
     hasPendingApprovals ||
     hasLowStockAlerts ||
+    hasPendingSectionErrors ||
+    hasLowStockSectionError ||
     hasWarningLoadError ||
-    hasStockLoadError
+    hasStockLoadError ||
+    productCountFailed.value ||
+    warehouseCountFailed.value
   );
 });
 
@@ -143,17 +154,48 @@ async function loadDashboardData(forceReload = false) {
   pendingExportFailed.value = false;
   lowStockItems.value = [];
   lowStockFailed.value = false;
+  productCountFailed.value = false;
+  warehouseCountFailed.value = false;
   warningCountFailed.value = false;
   stockTotalFailed.value = false;
+  summary.value = { products: 0, warehouses: 0, stock: 0, warnings: 0 };
 
   try {
-    const [productsResponse, warehouseData] = await Promise.all([
+    const [productsResult, warehouseResult] = await Promise.allSettled([
       loadProductCount(),
       loadWarehouseCount(),
     ]);
 
+    let productsResponse = 0;
+    let warehouseData = 0;
     let stockTotal = null;
     let warningCount = 0;
+
+    if (productsResult.status === "fulfilled") {
+      productsResponse = productsResult.value;
+      productCountFailed.value = false;
+    } else {
+      productCountFailed.value = true;
+      if (productsResult.reason?.status === 401) {
+        isLoading.value = false;
+        isRetrying.value = false;
+        router.replace("/login");
+        return;
+      }
+    }
+
+    if (warehouseResult.status === "fulfilled") {
+      warehouseData = warehouseResult.value;
+      warehouseCountFailed.value = false;
+    } else {
+      warehouseCountFailed.value = true;
+      if (warehouseResult.reason?.status === 401) {
+        isLoading.value = false;
+        isRetrying.value = false;
+        router.replace("/login");
+        return;
+      }
+    }
 
     if (canSeeWarnings.value) {
       try {
@@ -476,7 +518,8 @@ function openRoute(path) {
             </div>
             <div>
               <p class="kpi-label">Tổng sản phẩm</p>
-              <div class="metric">{{ formatNumber(summary.products) }}</div>
+              <div v-if="productCountFailed" class="metric">Không thể tải</div>
+              <div v-else class="metric">{{ formatNumber(summary.products) }}</div>
             </div>
           </article>
 
@@ -486,7 +529,8 @@ function openRoute(path) {
             </div>
             <div>
               <p class="kpi-label">Tổng kho</p>
-              <div class="metric">{{ formatNumber(summary.warehouses) }}</div>
+              <div v-if="warehouseCountFailed" class="metric">Không thể tải</div>
+              <div v-else class="metric">{{ formatNumber(summary.warehouses) }}</div>
             </div>
           </article>
 

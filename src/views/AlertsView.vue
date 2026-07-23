@@ -48,7 +48,7 @@ async function fetchAlerts(page = currentPage.value) {
   } catch (error) {
     if (error?.status === 401) {
       router.replace("/login");
-      return;
+      throw error;
     }
 
     errorMessage.value = error?.message || "Không thể tải danh sách cảnh báo.";
