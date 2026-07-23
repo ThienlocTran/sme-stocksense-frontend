@@ -25,6 +25,7 @@ const pendingExportFailed = ref(false);
 const lowStockItems = ref([]);
 const lowStockFailed = ref(false);
 const warningCountFailed = ref(false);
+const stockTotalFailed = ref(false);
 
 const canSeeImportApprovals = computed(() => canAccessRoute("/approvals"));
 const canSeeExportApprovals = computed(() =>
@@ -47,18 +48,21 @@ const hasDashboardData = computed(() => {
     pendingImportItems.value.length || pendingExportItems.value.length;
   const hasLowStockAlerts = lowStockItems.value.length > 0;
 
-  // Treat a failed warning-count load as an error state that prevents
-  // showing the empty-dashboard view so the user still sees the warning KPI
-  // (rendered as "Không thể tải").
+  // Treat failed stock/warning loads as dashboard-visible error states so
+  // the KPI cards can still render their fallback messages instead of the
+  // empty-state view.
   const hasWarningLoadError =
     typeof warningCountFailed !== "undefined" &&
     warningCountFailed.value === true;
+  const hasStockLoadError =
+    typeof stockTotalFailed !== "undefined" && stockTotalFailed.value === true;
 
   return (
     hasSummaryData ||
     hasPendingApprovals ||
     hasLowStockAlerts ||
-    hasWarningLoadError
+    hasWarningLoadError ||
+    hasStockLoadError
   );
 });
 
@@ -113,6 +117,7 @@ async function loadDashboardData() {
   lowStockItems.value = [];
   lowStockFailed.value = false;
   warningCountFailed.value = false;
+  stockTotalFailed.value = false;
 
   try {
     const [productsResponse, warehouseData] = await Promise.all([
@@ -126,6 +131,7 @@ async function loadDashboardData() {
     if (canSeeWarnings.value) {
       try {
         stockTotal = await loadStockTotal();
+        stockTotalFailed.value = false;
       } catch (error) {
         if (error?.status === 401) {
           router.replace("/login");
@@ -133,6 +139,7 @@ async function loadDashboardData() {
         }
 
         stockTotal = null;
+        stockTotalFailed.value = true;
       }
 
       try {
@@ -432,7 +439,8 @@ function openRoute(path) {
             </div>
             <div>
               <p class="kpi-label">Tổng tồn</p>
-              <div class="metric">{{ formatNumber(summary.stock) }}</div>
+              <div v-if="stockTotalFailed" class="metric">Không thể tải</div>
+              <div v-else class="metric">{{ formatNumber(summary.stock) }}</div>
             </div>
           </article>
 
