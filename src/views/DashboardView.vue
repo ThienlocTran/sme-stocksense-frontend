@@ -519,7 +519,9 @@ function openRoute(path) {
             <div>
               <p class="kpi-label">Tổng sản phẩm</p>
               <div v-if="productCountFailed" class="metric">Không thể tải</div>
-              <div v-else class="metric">{{ formatNumber(summary.products) }}</div>
+              <div v-else class="metric">
+                {{ formatNumber(summary.products) }}
+              </div>
             </div>
           </article>
 
@@ -529,8 +531,12 @@ function openRoute(path) {
             </div>
             <div>
               <p class="kpi-label">Tổng kho</p>
-              <div v-if="warehouseCountFailed" class="metric">Không thể tải</div>
-              <div v-else class="metric">{{ formatNumber(summary.warehouses) }}</div>
+              <div v-if="warehouseCountFailed" class="metric">
+                Không thể tải
+              </div>
+              <div v-else class="metric">
+                {{ formatNumber(summary.warehouses) }}
+              </div>
             </div>
           </article>
 
