@@ -1,9 +1,12 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { getLowStockInventory } from "../services/inventoryService";
+
+const router = useRouter();
 
 const isLoading = ref(false);
 const errorMessage = ref("");
@@ -43,6 +46,11 @@ async function fetchAlerts(page = currentPage.value) {
     totalPages.value = Number(data?.totalPages || 0);
     return data;
   } catch (error) {
+    if (error?.status === 401) {
+      router.replace("/login");
+      return;
+    }
+
     errorMessage.value = error?.message || "Không thể tải danh sách cảnh báo.";
     throw error;
   } finally {

@@ -161,6 +161,8 @@ async function loadDashboardData(forceReload = false) {
         stockTotalFailed.value = false;
       } catch (error) {
         if (error?.status === 401) {
+          isLoading.value = false;
+          isRetrying.value = false;
           router.replace("/login");
           return;
         }
@@ -173,6 +175,8 @@ async function loadDashboardData(forceReload = false) {
         warningCount = await loadLowStockCount();
       } catch (error) {
         if (error?.status === 401) {
+          isLoading.value = false;
+          isRetrying.value = false;
           router.replace("/login");
           return;
         }
@@ -190,6 +194,8 @@ async function loadDashboardData(forceReload = false) {
   } catch (error) {
     errorMessage.value = error?.message || "Không thể tải dữ liệu tổng quan.";
     if (error?.status === 401) {
+      isLoading.value = false;
+      isRetrying.value = false;
       router.replace("/login");
       return;
     }
@@ -219,6 +225,8 @@ async function loadDashboardData(forceReload = false) {
     }
   } catch (error) {
     if (error?.status === 401) {
+      isLoading.value = false;
+      isRetrying.value = false;
       router.replace("/login");
       return;
     }
