@@ -50,34 +50,47 @@ const hasDashboardData = computed(() => {
   // Treat a failed warning-count load as an error state that prevents
   // showing the empty-dashboard view so the user still sees the warning KPI
   // (rendered as "Không thể tải").
-  const hasWarningLoadError = typeof warningCountFailed !== 'undefined' && warningCountFailed.value === true;
+  const hasWarningLoadError =
+    typeof warningCountFailed !== "undefined" &&
+    warningCountFailed.value === true;
 
-  return hasSummaryData || hasPendingApprovals || hasLowStockAlerts || hasWarningLoadError;
+  return (
+    hasSummaryData ||
+    hasPendingApprovals ||
+    hasLowStockAlerts ||
+    hasWarningLoadError
+  );
 });
 
 const visibleQuickAccess = computed(() => {
   const items = [
     {
-      title: "Sản phẩm",
-      description: "Quản lý mặt hàng và tồn kho",
+      title: "Product",
+      description: "Quản lý mặt hàng",
       icon: "mdi-package-variant-closed",
       route: "/products",
     },
     {
-      title: "Kho hàng",
-      description: "Theo dõi các kho đang hoạt động",
-      icon: "mdi-warehouse",
-      route: "/warehouses",
+      title: "Inventory",
+      description: "Xem tồn kho và biến động",
+      icon: "mdi-clipboard-list-outline",
+      route: "/inventory",
     },
     {
-      title: "Nhập/Xuất",
-      description: "Xem luồng giao dịch kho",
-      icon: "mdi-truck",
-      route: "/stock-documents",
+      title: "Import Receipt",
+      description: "Quản lý phiếu nhập kho",
+      icon: "mdi-tray-arrow-down",
+      route: "/stock-in",
     },
     {
-      title: "Cảnh báo",
-      description: "Xem sản phẩm sắp hết hàng",
+      title: "Export Receipt",
+      description: "Quản lý phiếu xuất kho",
+      icon: "mdi-tray-arrow-up",
+      route: "/stock-out",
+    },
+    {
+      title: "Alerts",
+      description: "Cảnh báo tồn kho thấp",
       icon: "mdi-alert-circle-outline",
       route: "/alerts",
     },
