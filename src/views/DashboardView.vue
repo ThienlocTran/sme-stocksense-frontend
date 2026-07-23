@@ -115,16 +115,26 @@ async function loadDashboardData() {
   warningCountFailed.value = false;
 
   try {
-    const summaryPromises = canSeeWarnings.value
-      ? [loadProductCount(), loadWarehouseCount(), loadStockTotal()]
-      : [loadProductCount(), loadWarehouseCount()];
+    const [productsResponse, warehouseData] = await Promise.all([
+      loadProductCount(),
+      loadWarehouseCount(),
+    ]);
 
-    const [productsResponse, warehouseData, stockTotals] =
-      await Promise.all(summaryPromises);
-
+    let stockTotal = null;
     let warningCount = 0;
 
     if (canSeeWarnings.value) {
+      try {
+        stockTotal = await loadStockTotal();
+      } catch (error) {
+        if (error?.status === 401) {
+          router.replace("/login");
+          return;
+        }
+
+        stockTotal = null;
+      }
+
       try {
         warningCount = await loadLowStockCount();
       } catch (error) {
@@ -140,7 +150,7 @@ async function loadDashboardData() {
     summary.value = {
       products: productsResponse,
       warehouses: warehouseData,
-      stock: canSeeWarnings.value ? stockTotals : 0,
+      stock: canSeeWarnings.value ? stockTotal : 0,
       warnings: warningCountFailed.value ? null : warningCount,
     };
   } catch (error) {

@@ -43,7 +43,6 @@ async function fetchAlerts(page = currentPage.value) {
     totalPages.value = Number(data?.totalPages || 0);
     return data;
   } catch (error) {
-    alertItems.value = [];
     errorMessage.value = error?.message || "Không thể tải danh sách cảnh báo.";
     throw error;
   } finally {
