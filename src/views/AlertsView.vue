@@ -95,7 +95,7 @@ function displayWarehouseName(row) {
   if (row.warehouseCode && row.warehouse) {
     return `${row.warehouseCode} - ${row.warehouse}`;
   }
-  return row.warehouse || row.warehouseName || row.warehouseCode || "-";
+  return row.warehouseName || row.warehouse || row.warehouseCode || "-";
 }
 
 function displaySeverity(row) {
