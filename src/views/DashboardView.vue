@@ -24,6 +24,7 @@ const pendingExportItems = ref([]);
 const pendingExportFailed = ref(false);
 const lowStockItems = ref([]);
 const lowStockFailed = ref(false);
+const warningCountFailed = ref(false);
 
 const canSeeImportApprovals = computed(() => canAccessRoute("/approvals"));
 const canSeeExportApprovals = computed(() =>
@@ -93,6 +94,7 @@ async function loadDashboardData() {
   pendingExportFailed.value = false;
   lowStockItems.value = [];
   lowStockFailed.value = false;
+  warningCountFailed.value = false;
 
   try {
     const summaryPromises = canSeeWarnings.value
@@ -103,7 +105,6 @@ async function loadDashboardData() {
       await Promise.all(summaryPromises);
 
     let warningCount = 0;
-    let warningCountFailed = false;
 
     if (canSeeWarnings.value) {
       try {
@@ -114,8 +115,7 @@ async function loadDashboardData() {
           return;
         }
 
-        warningCountFailed = true;
-        lowStockFailed.value = true;
+        warningCountFailed.value = true;
       }
     }
 
@@ -123,7 +123,7 @@ async function loadDashboardData() {
       products: productsResponse,
       warehouses: warehouseData,
       stock: canSeeWarnings.value ? stockTotals : 0,
-      warnings: warningCountFailed ? null : warningCount,
+      warnings: warningCountFailed.value ? null : warningCount,
     };
   } catch (error) {
     errorMessage.value = error?.message || "Không thể tải dữ liệu tổng quan.";
@@ -414,7 +414,10 @@ function openRoute(path) {
             </div>
             <div>
               <p class="kpi-label">Tổng cảnh báo</p>
-              <div class="metric">{{ formatNumber(summary.warnings) }}</div>
+              <div v-if="warningCountFailed" class="metric">Không thể tải</div>
+              <div v-else class="metric">
+                {{ formatNumber(summary.warnings) }}
+              </div>
             </div>
           </article>
         </div>

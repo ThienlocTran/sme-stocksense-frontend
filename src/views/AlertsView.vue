@@ -28,36 +28,50 @@ onMounted(() => {
   fetchAlerts();
 });
 
-async function fetchAlerts() {
+async function fetchAlerts(page = currentPage.value) {
   isLoading.value = true;
   errorMessage.value = "";
 
   try {
     const data = await getLowStockInventory({
-      page: currentPage.value,
+      page,
       size: pageSize,
     });
     alertItems.value = Array.isArray(data?.content) ? data.content : [];
     totalElements.value = Number(data?.totalElements || 0);
     totalPages.value = Number(data?.totalPages || 0);
+    return data;
   } catch (error) {
     alertItems.value = [];
     errorMessage.value = error?.message || "Không thể tải danh sách cảnh báo.";
+    throw error;
   } finally {
     isLoading.value = false;
   }
 }
 
-function goToPreviousPage() {
+async function goToPreviousPage() {
   if (!hasPreviousPage.value) return;
-  currentPage.value -= 1;
-  fetchAlerts();
+
+  const targetPage = currentPage.value - 1;
+  try {
+    await fetchAlerts(targetPage);
+    currentPage.value = targetPage;
+  } catch (error) {
+    // keep current page unchanged when the request fails
+  }
 }
 
-function goToNextPage() {
+async function goToNextPage() {
   if (!hasNextPage.value) return;
-  currentPage.value += 1;
-  fetchAlerts();
+
+  const targetPage = currentPage.value + 1;
+  try {
+    await fetchAlerts(targetPage);
+    currentPage.value = targetPage;
+  } catch (error) {
+    // keep current page unchanged when the request fails
+  }
 }
 
 function displayProductName(row) {
