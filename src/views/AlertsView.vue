@@ -25,7 +25,8 @@ const columns = [
 ];
 
 onMounted(() => {
-  fetchAlerts();
+  // prevent unhandled rejection on initial load; fetchAlerts manages errorMessage
+  fetchAlerts().catch(() => {});
 });
 
 async function fetchAlerts(page = currentPage.value) {

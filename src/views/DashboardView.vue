@@ -47,7 +47,12 @@ const hasDashboardData = computed(() => {
     pendingImportItems.value.length || pendingExportItems.value.length;
   const hasLowStockAlerts = lowStockItems.value.length > 0;
 
-  return hasSummaryData || hasPendingApprovals || hasLowStockAlerts;
+  // Treat a failed warning-count load as an error state that prevents
+  // showing the empty-dashboard view so the user still sees the warning KPI
+  // (rendered as "Không thể tải").
+  const hasWarningLoadError = typeof warningCountFailed !== 'undefined' && warningCountFailed.value === true;
+
+  return hasSummaryData || hasPendingApprovals || hasLowStockAlerts || hasWarningLoadError;
 });
 
 const visibleQuickAccess = computed(() => {
