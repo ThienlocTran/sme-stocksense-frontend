@@ -25,6 +25,7 @@ const pendingExportFailed = ref(false);
 const lowStockItems = ref([]);
 const lowStockFailed = ref(false);
 const warningCountFailed = ref(false);
+const stockTotalFailed = ref(false);
 
 const canSeeImportApprovals = computed(() => canAccessRoute("/approvals"));
 const canSeeExportApprovals = computed(() =>
@@ -47,37 +48,53 @@ const hasDashboardData = computed(() => {
     pendingImportItems.value.length || pendingExportItems.value.length;
   const hasLowStockAlerts = lowStockItems.value.length > 0;
 
-  // Treat a failed warning-count load as an error state that prevents
-  // showing the empty-dashboard view so the user still sees the warning KPI
-  // (rendered as "Không thể tải").
-  const hasWarningLoadError = typeof warningCountFailed !== 'undefined' && warningCountFailed.value === true;
+  // Treat failed stock/warning loads as dashboard-visible error states so
+  // the KPI cards can still render their fallback messages instead of the
+  // empty-state view.
+  const hasWarningLoadError =
+    typeof warningCountFailed !== "undefined" &&
+    warningCountFailed.value === true;
+  const hasStockLoadError =
+    typeof stockTotalFailed !== "undefined" && stockTotalFailed.value === true;
 
-  return hasSummaryData || hasPendingApprovals || hasLowStockAlerts || hasWarningLoadError;
+  return (
+    hasSummaryData ||
+    hasPendingApprovals ||
+    hasLowStockAlerts ||
+    hasWarningLoadError ||
+    hasStockLoadError
+  );
 });
 
 const visibleQuickAccess = computed(() => {
   const items = [
     {
-      title: "Sản phẩm",
-      description: "Quản lý mặt hàng và tồn kho",
+      title: "Product",
+      description: "Quản lý mặt hàng",
       icon: "mdi-package-variant-closed",
       route: "/products",
     },
     {
-      title: "Kho hàng",
-      description: "Theo dõi các kho đang hoạt động",
-      icon: "mdi-warehouse",
-      route: "/warehouses",
+      title: "Inventory",
+      description: "Xem tồn kho và biến động",
+      icon: "mdi-clipboard-list-outline",
+      route: "/inventory",
     },
     {
-      title: "Nhập/Xuất",
-      description: "Xem luồng giao dịch kho",
-      icon: "mdi-truck",
-      route: "/stock-documents",
+      title: "Import Receipt",
+      description: "Quản lý phiếu nhập kho",
+      icon: "mdi-tray-arrow-down",
+      route: "/stock-in",
     },
     {
-      title: "Cảnh báo",
-      description: "Xem sản phẩm sắp hết hàng",
+      title: "Export Receipt",
+      description: "Quản lý phiếu xuất kho",
+      icon: "mdi-tray-arrow-up",
+      route: "/stock-out",
+    },
+    {
+      title: "Alerts",
+      description: "Cảnh báo tồn kho thấp",
       icon: "mdi-alert-circle-outline",
       route: "/alerts",
     },
@@ -100,18 +117,31 @@ async function loadDashboardData() {
   lowStockItems.value = [];
   lowStockFailed.value = false;
   warningCountFailed.value = false;
+  stockTotalFailed.value = false;
 
   try {
-    const summaryPromises = canSeeWarnings.value
-      ? [loadProductCount(), loadWarehouseCount(), loadStockTotal()]
-      : [loadProductCount(), loadWarehouseCount()];
+    const [productsResponse, warehouseData] = await Promise.all([
+      loadProductCount(),
+      loadWarehouseCount(),
+    ]);
 
-    const [productsResponse, warehouseData, stockTotals] =
-      await Promise.all(summaryPromises);
-
+    let stockTotal = null;
     let warningCount = 0;
 
     if (canSeeWarnings.value) {
+      try {
+        stockTotal = await loadStockTotal();
+        stockTotalFailed.value = false;
+      } catch (error) {
+        if (error?.status === 401) {
+          router.replace("/login");
+          return;
+        }
+
+        stockTotal = null;
+        stockTotalFailed.value = true;
+      }
+
       try {
         warningCount = await loadLowStockCount();
       } catch (error) {
@@ -127,7 +157,7 @@ async function loadDashboardData() {
     summary.value = {
       products: productsResponse,
       warehouses: warehouseData,
-      stock: canSeeWarnings.value ? stockTotals : 0,
+      stock: canSeeWarnings.value ? stockTotal : 0,
       warnings: warningCountFailed.value ? null : warningCount,
     };
   } catch (error) {
@@ -409,7 +439,8 @@ function openRoute(path) {
             </div>
             <div>
               <p class="kpi-label">Tổng tồn</p>
-              <div class="metric">{{ formatNumber(summary.stock) }}</div>
+              <div v-if="stockTotalFailed" class="metric">Không thể tải</div>
+              <div v-else class="metric">{{ formatNumber(summary.stock) }}</div>
             </div>
           </article>
 
