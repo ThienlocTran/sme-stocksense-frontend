@@ -1,128 +1,218 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
-import EmptyState from "../components/EmptyState.vue";
 import SearchFilterBar from "../components/SearchFilterBar.vue";
+import EmptyState from "../components/EmptyState.vue";
+import StatusBadge from "../components/StatusBadge.vue";
+import { getLowStockInventory } from "../services/inventoryService";
 import { getWarehouses } from "../services/warehouseService";
-import { getAlerts } from "../services/alertService";
 
 const router = useRouter();
 const alerts = ref([]);
-const isLoading = ref(false);
-const errorMessage = ref("");
 const warehouses = ref([]);
-
-const filters = reactive({
-  keyword: "",
-  warehouseId: "",
-  severity: "",
-  status: "",
-});
+const isLoading = ref(false);
+const isLoadingDropdowns = ref(false);
+const errorMessage = ref("");
+const dropdownErrorMessage = ref("");
 const searchDraft = ref("");
+const searchKeyword = ref("");
+const page = ref(0);
+const size = ref(20);
+const totalPages = ref(0);
+const totalElements = ref(0);
+const filters = reactive({ warehouseId: "", warehouseStatus: "" });
+const fetchRequestId = ref(0);
+const latestRequestId = ref(0);
+const dropdownRequestId = ref(0);
+const latestDropdownRequestId = ref(0);
 
-const severityOptions = [
-  { value: "", label: "Tất cả mức độ" },
-  { value: "LOW", label: "Thấp" },
-  { value: "MEDIUM", label: "Trung bình" },
-  { value: "HIGH", label: "Cao" },
+const columns = [
+  { key: "productCode", label: "Mã SP", class: "cell-compact" },
+  { key: "productName", label: "Tên sản phẩm", class: "cell-long" },
+  { key: "warehouse", label: "Kho", class: "cell-medium" },
+  { key: "currentQuantity", label: "Tồn hiện tại", class: "cell-compact" },
+  { key: "minStock", label: "Tồn tối thiểu", class: "cell-compact" },
+  { key: "severity", label: "Mức độ", class: "cell-compact" },
+  { key: "status", label: "Trạng thái", class: "cell-nowrap" },
+  { key: "lastUpdatedAt", label: "Cập nhật", class: "cell-nowrap" },
 ];
 
-const statusOptions = [
-  { value: "", label: "Tất cả trạng thái" },
-  { value: "OPEN", label: "Chưa xử lý" },
-  { value: "RESOLVED", label: "Đã xử lý" },
-];
-
+const hasPreviousPage = computed(() => page.value > 0);
+const hasNextPage = computed(() => page.value + 1 < totalPages.value);
 const hasActiveFilters = computed(() => {
-  return !!(
-    filters.keyword?.trim() ||
-    filters.warehouseId ||
-    filters.severity ||
-    filters.status
+  return (
+    searchKeyword.value.trim() !== "" ||
+    filters.warehouseId !== "" ||
+    filters.warehouseStatus !== ""
   );
 });
 
-const columns = [
-  { key: "warehouseName", label: "Kho", class: "cell-compact" },
-  { key: "productCode", label: "Mã sản phẩm" },
-  { key: "productName", label: "Tên sản phẩm" },
-  { key: "severity", label: "Mức độ", class: "cell-compact" },
-  { key: "status", label: "Trạng thái", class: "cell-compact" },
-  { key: "quantity", label: "Số lượng", class: "cell-compact" },
-  { key: "createdAt", label: "Ngày tạo", class: "cell-compact" },
-];
-
-let __latestAlertsRequestId = 0;
-
-onMounted(() => {
-  fetchWarehouses();
-  fetchAlerts();
+onMounted(async () => {
+  const loaded = await loadDropdowns(filters.warehouseStatus);
+  if (loaded) {
+    fetchAlerts();
+  }
 });
 
-async function fetchWarehouses() {
+async function loadDropdowns(status = "") {
+  const requestId = ++dropdownRequestId.value;
+  latestDropdownRequestId.value = requestId;
+
+  isLoadingDropdowns.value = true;
+  dropdownErrorMessage.value = "";
+
   try {
-    warehouses.value = (await getWarehouses({ page: 0, size: 100 })) || [];
-  } catch (err) {
-    // ignore warehouse fetch errors; still allow alerts view to load
+    const data = await getWarehouses({ status: status || undefined });
+    if (requestId !== latestDropdownRequestId.value) {
+      return false;
+    }
+
+    warehouses.value = data;
+    return true;
+  } catch (error) {
+    if (requestId !== latestDropdownRequestId.value) {
+      return false;
+    }
+
     warehouses.value = [];
+    dropdownErrorMessage.value = error.message;
+    if (error.status === 401) {
+      router.replace("/login");
+    }
+    return false;
+  } finally {
+    if (requestId === latestDropdownRequestId.value) {
+      isLoadingDropdowns.value = false;
+    }
   }
 }
 
 async function fetchAlerts() {
-  const requestId = ++__latestAlertsRequestId;
-  // only mark global loading for the latest request
+  if (dropdownErrorMessage.value) {
+    return;
+  }
+
+  const requestId = ++fetchRequestId.value;
+  latestRequestId.value = requestId;
+
   isLoading.value = true;
-  // clear error only for the latest request
-  if (requestId === __latestAlertsRequestId) errorMessage.value = "";
+  errorMessage.value = "";
 
   try {
-    const params = {
-      page: 0,
-      size: 50,
-      keyword: (filters.keyword || "").trim() || undefined,
-      warehouseId: filters.warehouseId || undefined,
-      severity: filters.severity || undefined,
-      status: filters.status || undefined,
-    };
+    const data = await getLowStockInventory({
+      page: page.value,
+      size: size.value,
+      keyword: searchKeyword.value.trim(),
+      warehouseId: filters.warehouseId,
+      warehouseStatus: filters.warehouseStatus,
+    });
 
-    const data = await getAlerts(params);
-    // only update state when this is still the latest request
-    if (requestId === __latestAlertsRequestId) {
-      alerts.value = Array.isArray(data)
-        ? data
-        : data?.content || data?.items || [];
+    if (requestId !== latestRequestId.value) {
+      return;
     }
-  } catch (err) {
-    if (requestId === __latestAlertsRequestId) {
-      alerts.value = [];
-      errorMessage.value =
-        err.message || "Không thể tải cảnh báo. Vui lòng thử lại.";
-      if (err.status === 401) router.replace("/login");
+
+    alerts.value = data.content || [];
+    totalPages.value = data.totalPages || 0;
+    totalElements.value = data.totalElements || 0;
+  } catch (error) {
+    if (requestId !== latestRequestId.value) {
+      return;
+    }
+
+    alerts.value = [];
+    errorMessage.value = error.message;
+    if (error.status === 401) {
+      router.replace("/login");
     }
   } finally {
-    if (requestId === __latestAlertsRequestId) {
+    if (requestId === latestRequestId.value) {
       isLoading.value = false;
     }
   }
 }
 
-function applySearch() {
-  filters.keyword = searchDraft.value.trim();
-  fetchAlerts();
+async function applySearch() {
+  page.value = 0;
+  searchKeyword.value = searchDraft.value.trim();
+  await fetchAlerts();
 }
 
-function applyFilter() {
-  fetchAlerts();
+async function applyFilter() {
+  page.value = 0;
+  const loaded = await loadDropdowns(filters.warehouseStatus);
+
+  if (!loaded) {
+    return;
+  }
+
+  if (
+    filters.warehouseId &&
+    !warehouses.value.some((warehouse) => warehouse.id === filters.warehouseId)
+  ) {
+    filters.warehouseId = "";
+  }
+
+  await fetchAlerts();
 }
 
-function clearFilters() {
+async function clearFilters() {
   searchDraft.value = "";
-  filters.keyword = "";
+  searchKeyword.value = "";
   filters.warehouseId = "";
-  filters.severity = "";
-  filters.status = "";
+  filters.warehouseStatus = "";
+  page.value = 0;
+
+  const loaded = await loadDropdowns();
+  if (loaded) {
+    await fetchAlerts();
+  }
+}
+
+function displayWarehouseName(row) {
+  return row.warehouseCode
+    ? `${row.warehouseCode} - ${row.warehouse}`
+    : row.warehouse || "-";
+}
+
+function formatInventoryStatus(status) {
+  if (status === "LOW_STOCK") return "Sắp hết";
+  if (status === "OUT_OF_STOCK") return "Thiếu hàng";
+  if (status === "NORMAL") return "Đủ hàng";
+  if (status === "OVER_STOCK") return "Thừa hàng";
+  return status || "-";
+}
+
+function computeSeverity(row) {
+  const current = Number(row.currentQuantity ?? 0);
+  const minStock = Number(row.minStock ?? 0);
+  if (current === 0) {
+    return "Khẩn cấp";
+  }
+  if (current < minStock) {
+    return "Cao";
+  }
+  if (current === minStock) {
+    return "Trung bình";
+  }
+  return "Thấp";
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("vi-VN", { hour12: false });
+}
+
+function previousPage() {
+  if (!hasPreviousPage.value) return;
+  page.value -= 1;
+  fetchAlerts();
+}
+
+function nextPage() {
+  if (!hasNextPage.value) return;
+  page.value += 1;
   fetchAlerts();
 }
 </script>
@@ -130,96 +220,148 @@ function clearFilters() {
 <template>
   <PageHeader
     title="Cảnh báo tồn kho"
-    description="Danh sách cảnh báo tồn kho từ backend. Sử dụng bộ lọc để thu hẹp kết quả."
+    description="Hiển thị các sản phẩm có tồn kho dưới ngưỡng tối thiểu."
   />
 
   <SearchFilterBar
     v-model="searchDraft"
-    placeholder="Tìm theo mã/tên sản phẩm"
+    placeholder="Tìm theo mã sản phẩm, tên sản phẩm hoặc mã vạch"
     @keyup.enter="applySearch"
   >
     <select
       v-model="filters.warehouseId"
       class="select"
-      :disabled="isLoading"
+      :disabled="isLoadingDropdowns || isLoading"
       @change="applyFilter"
     >
-      <option value="">Tất cả kho</option>
-      <option v-for="w in warehouses" :key="w.id" :value="w.id">
-        {{ w.tenKho || w.name || w.warehouseName }}
+      <option value="">
+        {{ isLoadingDropdowns ? "Đang tải kho..." : "Tất cả kho" }}
       </option>
-    </select>
-
-    <select
-      v-model="filters.severity"
-      class="select"
-      :disabled="isLoading"
-      @change="applyFilter"
-    >
       <option
-        v-for="opt in severityOptions"
-        :key="opt.value"
-        :value="opt.value"
+        v-for="warehouse in warehouses"
+        :key="warehouse.id"
+        :value="warehouse.id"
       >
-        {{ opt.label }}
+        {{
+          `${warehouse.maKho || warehouse.code || ""}${warehouse.tenKho || warehouse.name ? " - " : ""}${warehouse.tenKho || warehouse.name || ""}`
+        }}
       </option>
     </select>
 
     <select
-      v-model="filters.status"
+      v-model="filters.warehouseStatus"
       class="select"
-      :disabled="isLoading"
+      :disabled="isLoading || isLoadingDropdowns"
       @change="applyFilter"
     >
-      <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-        {{ opt.label }}
-      </option>
+      <option value="">Tất cả trạng thái kho</option>
+      <option value="HOAT_DONG">Đang hoạt động</option>
+      <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
     </select>
 
-    <button
-      class="btn btn-primary"
-      type="button"
-      :disabled="isLoading"
-      @click="applySearch"
-    >
-      <i class="mdi mdi-magnify"></i>
-      Tìm
-    </button>
-
-    <button
-      v-if="hasActiveFilters"
-      class="btn btn-ghost"
-      type="button"
-      :disabled="isLoading"
-      @click="clearFilters"
-    >
-      <i class="mdi mdi-filter-remove-outline"></i>
-      Xóa lọc
-    </button>
+    <div class="filter-actions">
+      <button
+        class="btn btn-primary"
+        type="button"
+        :disabled="isLoading"
+        @click="applySearch"
+      >
+        <i class="mdi mdi-magnify"></i>
+        Tìm kiếm
+      </button>
+      <button
+        v-if="hasActiveFilters"
+        class="btn btn-ghost"
+        type="button"
+        :disabled="isLoading"
+        @click="clearFilters"
+      >
+        <i class="mdi mdi-filter-remove-outline"></i>
+        Xóa lọc
+      </button>
+    </div>
   </SearchFilterBar>
 
-  <div v-if="errorMessage" class="card card-pad">
-    <i class="mdi mdi-alert-circle-outline"></i>
-    <span>{{ errorMessage }}</span>
+  <p v-if="dropdownErrorMessage" class="form-alert form-alert-error">
+    {{ dropdownErrorMessage }}
+  </p>
+  <p v-else-if="errorMessage" class="form-alert form-alert-error">
+    {{ errorMessage }}
+  </p>
+
+  <div v-if="isLoading" class="inventory-loading card card-pad">
+    <i class="mdi mdi-loading mdi-spin"></i>
+    <span>Đang tải dữ liệu cảnh báo tồn kho...</span>
   </div>
 
-  <div class="alerts-shell">
-    <div v-if="isLoading" class="card card-pad">
-      <i class="mdi mdi-loading mdi-spin"></i>
-      <span>Đang tải cảnh báo...</span>
+  <DataTable
+    v-else-if="alerts.length > 0"
+    :columns="columns"
+    :rows="alerts"
+    min-width="1200px"
+  >
+    <template #warehouse="{ row }">{{ displayWarehouseName(row) }}</template>
+    <template #severity="{ row }">{{ computeSeverity(row) }}</template>
+    <template #status="{ row }"
+      ><StatusBadge :status="formatInventoryStatus(row.status)"
+    /></template>
+    <template #lastUpdatedAt="{ value }">{{ formatDate(value) }}</template>
+  </DataTable>
+
+  <EmptyState
+    v-else-if="
+      !isLoading &&
+      !isLoadingDropdowns &&
+      !dropdownErrorMessage &&
+      !errorMessage
+    "
+    title="Không có cảnh báo tồn kho"
+    description="Không tìm thấy sản phẩm có tồn kho dưới ngưỡng."
+    icon="mdi-check-circle-outline"
+  />
+
+  <div v-if="alerts.length > 0" class="pagination-bar card card-pad">
+    <span class="muted">{{ totalElements }} bản ghi</span>
+    <div class="pagination-actions">
+      <button
+        class="btn btn-sm"
+        type="button"
+        :disabled="!hasPreviousPage || isLoading"
+        @click="previousPage"
+      >
+        <i class="mdi mdi-chevron-left"></i>
+        Trước
+      </button>
+      <span class="page-indicator"
+        >Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span
+      >
+      <button
+        class="btn btn-sm"
+        type="button"
+        :disabled="!hasNextPage || isLoading"
+        @click="nextPage"
+      >
+        Sau
+        <i class="mdi mdi-chevron-right"></i>
+      </button>
     </div>
-
-    <DataTable
-      v-else-if="alerts.length > 0"
-      :columns="columns"
-      :rows="alerts"
-      min-width="900px"
-    />
-
-    <EmptyState
-      v-else-if="!isLoading && !errorMessage"
-      title="Không có cảnh báo"
-      description="Hiện không có cảnh báo nào. Thử điều chỉnh bộ lọc hoặc quay lại sau."
-    />
   </div>
 </template>
+
+<style scoped>
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-actions .btn {
+  min-width: 108px;
+}
+
+.inventory-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+</style>
