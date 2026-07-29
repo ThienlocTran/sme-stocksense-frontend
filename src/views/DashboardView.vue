@@ -3,244 +3,230 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
-import { getLowStockInventory } from "../services/inventoryService";
-import { getPendingApprovals as getPendingImportApprovals } from "../services/importReceiptService";
-import { getCurrentRoleCode } from "../services/authService";
+import { getPendingExportReceipts } from "../services/exportReceiptService";
+import {
+  getInventory,
+  getLowStockInventory,
+} from "../services/inventoryService";
+import { getPendingApprovals } from "../services/importReceiptService";
 import { getProducts } from "../services/productService";
-import { getPendingExportApprovals } from "../services/stockOutApprovalService";
+import { canAccessRoute } from "../services/permissionService";
 import { getWarehouses } from "../services/warehouseService";
 
 const router = useRouter();
+
 const isLoading = ref(true);
 const errorMessage = ref("");
-const canSeeApprovals = ref(false);
-const summary = ref({ products: 0, warehouses: 0, lowStock: 0, pending: 0 });
-const summaryFailures = ref({
-  products: false,
-  warehouses: false,
-  lowStock: false,
-  pending: false,
-});
+const summary = ref({ products: 0, warehouses: 0, stock: 0, warnings: 0 });
 const pendingItems = ref([]);
-const lowStockItems = ref([]);
 const pendingFailed = ref(false);
+const lowStockItems = ref([]);
 const lowStockFailed = ref(false);
 
-const quickAccess = [
-  {
-    title: "Sản phẩm",
-    description: "Quản lý sản phẩm và ngưỡng tồn",
-    route: "/products",
-    icon: "mdi-package-variant-closed",
-  },
-  {
-    title: "Tồn kho",
-    description: "Theo dõi tồn kho và cảnh báo",
-    route: "/inventory",
-    icon: "mdi-warehouse",
-  },
-  {
-    title: "Phiếu nhập",
-    description: "Xem và xử lý phiếu nhập",
-    route: "/stock-in",
-    icon: "mdi-tray-plus",
-  },
-  {
-    title: "Phiếu xuất",
-    description: "Theo dõi phiếu xuất và duyệt",
-    route: "/stock-out",
-    icon: "mdi-tray-arrow-up",
-  },
-  {
-    title: "Duyệt",
-    description: "Xử lý các phiếu chờ duyệt",
-    route: "/approvals",
-    icon: "mdi-clipboard-check-outline",
-  },
-  {
-    title: "Cảnh báo",
-    description: "Nhật ký cảnh báo tồn kho",
-    route: "/alerts",
-    icon: "mdi-bell-alert-outline",
-  },
-];
+const canSeeApprovals = computed(() => canAccessRoute("/approvals"));
+const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
+const hasDashboardData = computed(() => {
+  const values = { ...summary.value };
+  if (!canSeeWarnings.value) {
+    delete values.warnings;
+  }
+  return Object.values(values).some((value) => Number(value) > 0);
+});
 
-const visibleQuickAccess = computed(() =>
-  quickAccess.filter(
-    (item) => item.route !== "/approvals" || canSeeApprovals.value,
-  ),
-);
+const visibleQuickAccess = computed(() => {
+  const items = [
+    {
+      title: "Sản phẩm",
+      description: "Quản lý mặt hàng và tồn kho",
+      icon: "mdi-package-variant-closed",
+      route: "/products",
+    },
+    {
+      title: "Kho hàng",
+      description: "Theo dõi các kho đang hoạt động",
+      icon: "mdi-warehouse",
+      route: "/warehouses",
+    },
+    {
+      title: "Nhập/Xuất",
+      description: "Xem luồng giao dịch kho",
+      icon: "mdi-truck",
+      route: "/stock-documents",
+    },
+    {
+      title: "Cảnh báo",
+      description: "Xem sản phẩm sắp hết hàng",
+      icon: "mdi-alert-circle-outline",
+      route: "/inventory",
+    },
+  ];
 
-onMounted(loadDashboard);
+  return items.filter((item) => canAccessRoute(item.route));
+});
 
-async function loadDashboard() {
+onMounted(() => {
+  loadDashboardData();
+});
+
+async function loadDashboardData() {
   isLoading.value = true;
   errorMessage.value = "";
-  const roleCode = getCurrentRoleCode();
-  canSeeApprovals.value = roleCode === "ADMIN" || roleCode === "MANAGER";
-  summaryFailures.value = {
-    products: false,
-    warehouses: false,
-    lowStock: false,
-    pending: false,
-  };
+  pendingItems.value = [];
   pendingFailed.value = false;
+  lowStockItems.value = [];
   lowStockFailed.value = false;
 
-  const pendingRequests = canSeeApprovals.value
-    ? [
-        getPendingExportApprovals({ page: 0, size: 4 }),
-        getPendingImportApprovals({ page: 0, size: 4 }),
-      ]
-    : [Promise.resolve(null), Promise.resolve(null)];
+  try {
+    const summaryPromises = [
+      loadProductCount(),
+      loadWarehouseCount(),
+      loadStockTotal(),
+      canSeeWarnings.value ? loadLowStockCount() : Promise.resolve(0),
+    ];
 
-  const [
-    productsResult,
-    lowStockResult,
-    exportPendingResult,
-    importPendingResult,
-    warehousesResult,
-  ] = await Promise.allSettled([
-    getProducts({ page: 0, size: 1 }),
-    getLowStockInventory({ page: 0, size: 4 }),
-    ...pendingRequests,
-    getWarehouses({ status: "HOAT_DONG" }),
-  ]);
+    const [productsResponse, warehouseData, stockTotals, lowStockResponse] =
+      await Promise.all(summaryPromises);
 
-  const productsData =
-    productsResult.status === "fulfilled" ? productsResult.value : null;
-  const lowStockData =
-    lowStockResult.status === "fulfilled" ? lowStockResult.value : null;
-  const exportPendingData =
-    exportPendingResult.status === "fulfilled"
-      ? exportPendingResult.value
-      : null;
-  const importPendingData =
-    importPendingResult.status === "fulfilled"
-      ? importPendingResult.value
-      : null;
-  const warehousesData =
-    warehousesResult.status === "fulfilled" ? warehousesResult.value : null;
-
-  if (productsResult.status === "rejected") {
-    summaryFailures.value.products = true;
-    console.error(
-      "[DashboardView] Failed to load products KPI data",
-      productsResult.reason,
-    );
+    summary.value = {
+      products: productsResponse,
+      warehouses: warehouseData,
+      stock: stockTotals,
+      warnings: lowStockResponse,
+    };
+  } catch (error) {
+    errorMessage.value = error?.message || "Không thể tải dữ liệu tổng quan.";
+    if (error?.status === 401) {
+      router.replace("/login");
+      return;
+    }
   }
-  if (warehousesResult.status === "rejected") {
-    summaryFailures.value.warehouses = true;
-    console.error(
-      "[DashboardView] Failed to load warehouses KPI data",
-      warehousesResult.reason,
-    );
-  }
-  if (lowStockResult.status === "rejected") {
-    summaryFailures.value.lowStock = true;
-    lowStockFailed.value = true;
-    console.error(
-      "[DashboardView] Failed to load low stock data",
-      lowStockResult.reason,
-    );
-  }
-  if (exportPendingResult.status === "rejected") {
-    pendingFailed.value = true;
-    console.error(
-      "[DashboardView] Failed to load export pending approvals data",
-      exportPendingResult.reason,
-    );
-  }
-  if (importPendingResult.status === "rejected") {
-    pendingFailed.value = true;
-    console.error(
-      "[DashboardView] Failed to load import pending approvals data",
-      importPendingResult.reason,
-    );
-  }
-  summaryFailures.value.pending =
-    exportPendingResult.status === "rejected" ||
-    importPendingResult.status === "rejected";
 
-  summary.value = {
-    products: readCount(productsData),
-    warehouses: readCount(warehousesData),
-    lowStock: readCount(lowStockData),
-    pending: readCount(exportPendingData) + readCount(importPendingData),
-  };
+  if (canSeeApprovals.value) {
+    try {
+      const pendingData = await loadPendingApprovals();
+      pendingItems.value = pendingData.items;
+      pendingFailed.value = pendingData.failed;
+    } catch (error) {
+      pendingItems.value = [];
+      pendingFailed.value = true;
+    }
+  } else {
+    pendingItems.value = [];
+    pendingFailed.value = false;
+  }
 
-  pendingItems.value = [
-    ...mapPendingItems(exportPendingData, "export"),
-    ...mapPendingItems(importPendingData, "import"),
-  ].slice(0, 4);
-
-  lowStockItems.value = mapLowStockItems(lowStockData);
-
-  if (
-    [
-      productsResult,
-      lowStockResult,
-      exportPendingResult,
-      importPendingResult,
-      warehousesResult,
-    ].some((item) => item.status === "rejected")
-  ) {
-    errorMessage.value =
-      "Một số dữ liệu dashboard chưa tải được. Hệ thống vẫn hiển thị các thông tin có sẵn.";
+  if (canSeeWarnings.value) {
+    try {
+      const lowStockData = await loadLowStockItems();
+      lowStockItems.value = lowStockData.items;
+      lowStockFailed.value = lowStockData.failed;
+    } catch (error) {
+      lowStockItems.value = [];
+      lowStockFailed.value = true;
+    }
+  } else {
+    lowStockItems.value = [];
+    lowStockFailed.value = false;
   }
 
   isLoading.value = false;
 }
 
-function readCount(payload) {
-  if (!payload) return 0;
-  if (Array.isArray(payload)) return payload.length;
-  if (typeof payload.totalElements === "number") return payload.totalElements;
-  if (Array.isArray(payload.content)) return payload.content.length;
+async function loadProductCount() {
+  const data = await getProducts({ page: 0, size: 1 });
+  return Number(data?.totalElements || 0);
+}
+
+async function loadWarehouseCount() {
+  const data = await getWarehouses({});
+  return Array.isArray(data) ? data.length : 0;
+}
+
+async function loadStockTotal() {
+  try {
+    const data = await getInventory({ page: 0, size: 1 });
+    const aggregateValue = Number(
+      data?.stockTotal ??
+        data?.totalStock ??
+        data?.total ??
+        data?.totalElements ??
+        0,
+    );
+
+    if (Number.isFinite(aggregateValue) && aggregateValue >= 0) {
+      return aggregateValue;
+    }
+  } catch (error) {
+    // Fallback to 0 when the aggregate endpoint is unavailable or invalid.
+  }
+
   return 0;
 }
 
-function mapPendingItems(payload, type) {
-  const items = payload?.content || payload || [];
-  return items.slice(0, 2).map((item) => ({
-    id: item.id,
-    code: item.code || item.documentCode || `#${item.id}`,
-    label: type === "export" ? "Phiếu xuất" : "Phiếu nhập",
-    subtitle:
-      item.warehouseName ||
-      item.warehouse ||
-      item.createdByName ||
-      item.createdBy ||
-      "Chưa có thông tin",
-    route: type === "export" ? "/pending-export-approvals" : "/approvals",
-  }));
+async function loadLowStockCount() {
+  const data = await getLowStockInventory({ page: 0, size: 1 });
+  return Number(data?.totalElements || 0);
 }
 
-function mapLowStockItems(payload) {
-  const items = payload?.content || payload || [];
-  return items.slice(0, 4).map((item) => ({
-    id:
-      item.id ||
-      `${item.productName || item.product?.name || "item"}-${item.warehouseName || item.warehouse?.name || "warehouse"}`,
-    productName:
-      item.productName ||
-      item.product?.name ||
-      item.productCode ||
-      item.code ||
-      "Sản phẩm",
-    warehouseName: item.warehouseName || item.warehouse?.name || "Kho",
-    available:
-      item.currentQuantity ?? item.quantity ?? item.availableQuantity ?? 0,
-    minStock: item.minStock ?? item.minQuantity ?? item.threshold ?? 0,
-  }));
+async function loadPendingApprovals() {
+  try {
+    const [importData, exportData] = await Promise.all([
+      getPendingApprovals({ page: 0, size: 5 }),
+      getPendingExportReceipts({ page: 0, size: 5 }),
+    ]);
+
+    const items = [
+      ...(Array.isArray(importData?.content) ? importData.content : []).map(
+        (item) => ({
+          id: item.id,
+          code: item.code,
+          label: item.supplierName || item.partnerName || "Phiếu nhập",
+          subtitle: item.warehouseName || "Kho",
+          route: "/approvals",
+        }),
+      ),
+      ...(Array.isArray(exportData?.content) ? exportData.content : []).map(
+        (item) => ({
+          id: item.id,
+          code: item.code,
+          label: item.warehouseName || "Phiếu xuất",
+          subtitle: item.status || "Chờ duyệt",
+          route: "/approvals",
+        }),
+      ),
+    ];
+
+    return { items, failed: false };
+  } catch (error) {
+    return { items: [], failed: true };
+  }
+}
+
+async function loadLowStockItems() {
+  try {
+    const data = await getLowStockInventory({ page: 0, size: 5 });
+    const items = Array.isArray(data?.content)
+      ? data.content.map((item) => ({
+          id: item.inventoryId || item.productId,
+          productName: item.productName || "Sản phẩm",
+          warehouseName: item.warehouse || item.warehouseName || "Kho",
+          available: item.currentQuantity ?? 0,
+          minStock: item.minStock ?? 0,
+        }))
+      : [];
+
+    return { items, failed: false };
+  } catch (error) {
+    return { items: [], failed: true };
+  }
 }
 
 function formatNumber(value) {
-  return new Intl.NumberFormat("vi-VN").format(value || 0);
+  return new Intl.NumberFormat("vi-VN").format(Number(value || 0));
 }
 
-function openRoute(route) {
-  router.push(route);
+function openRoute(path) {
+  router.push(path);
 }
 </script>
 
@@ -264,55 +250,78 @@ function openRoute(route) {
         }}</span>
       </div>
 
-      <div class="kpi-grid">
-        <article class="kpi-card">
-          <div class="kpi-card__icon">
-            <i class="mdi mdi-package-variant-closed"></i>
-          </div>
-          <div>
-            <p class="kpi-label">Sản phẩm</p>
-            <div class="metric">
-              {{ isLoading ? "Đang tải..." : summaryFailures.products ? "—" : formatNumber(summary.products) }}
-            </div>
-          </div>
-        </article>
-
-        <article class="kpi-card">
-          <div class="kpi-card__icon kpi-card__icon--accent">
-            <i class="mdi mdi-warehouse"></i>
-          </div>
-          <div>
-            <p class="kpi-label">Kho hoạt động</p>
-            <div class="metric">
-              {{ isLoading ? "Đang tải..." : summaryFailures.warehouses ? "—" : formatNumber(summary.warehouses) }}
-            </div>
-          </div>
-        </article>
-
-        <article class="kpi-card">
-          <div class="kpi-card__icon kpi-card__icon--warn">
-            <i class="mdi mdi-alert-circle-outline"></i>
-          </div>
-          <div>
-            <p class="kpi-label">Sắp hết hàng</p>
-            <div class="metric">
-              {{ isLoading ? "Đang tải..." : summaryFailures.lowStock ? "—" : formatNumber(summary.lowStock) }}
-            </div>
-          </div>
-        </article>
-
-        <article v-if="canSeeApprovals" class="kpi-card">
-          <div class="kpi-card__icon kpi-card__icon--success">
-            <i class="mdi mdi-clock-outline"></i>
-          </div>
-          <div>
-            <p class="kpi-label">Chờ xử lý</p>
-            <div class="metric">
-              {{ isLoading ? "Đang tải..." : summaryFailures.pending ? "—" : formatNumber(summary.pending) }}
-            </div>
+      <div v-if="isLoading" class="kpi-grid">
+        <article
+          v-for="index in 4"
+          :key="index"
+          class="kpi-card kpi-card--loading"
+        >
+          <div class="kpi-card__icon"></div>
+          <div class="kpi-card__body">
+            <div class="kpi-label skeleton"></div>
+            <div class="metric skeleton"></div>
           </div>
         </article>
       </div>
+
+      <template v-else>
+        <div v-if="errorMessage" class="dashboard-empty">
+          <EmptyState
+            title="Không thể tải dữ liệu tổng quan"
+            description="Vui lòng thử lại sau hoặc kiểm tra kết nối backend."
+            icon="mdi-alert-circle-outline"
+          />
+        </div>
+
+        <div v-else-if="!hasDashboardData" class="dashboard-empty">
+          <EmptyState
+            title="Chưa có dữ liệu tổng quan"
+            description="Hệ thống chưa có sản phẩm, kho hoặc tồn kho để hiển thị."
+          />
+        </div>
+
+        <div v-else class="kpi-grid">
+          <article class="kpi-card">
+            <div class="kpi-card__icon">
+              <i class="mdi mdi-package-variant-closed"></i>
+            </div>
+            <div>
+              <p class="kpi-label">Tổng sản phẩm</p>
+              <div class="metric">{{ formatNumber(summary.products) }}</div>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-card__icon kpi-card__icon--accent">
+              <i class="mdi mdi-warehouse"></i>
+            </div>
+            <div>
+              <p class="kpi-label">Tổng kho</p>
+              <div class="metric">{{ formatNumber(summary.warehouses) }}</div>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-card__icon kpi-card__icon--warn">
+              <i class="mdi mdi-cube-outline"></i>
+            </div>
+            <div>
+              <p class="kpi-label">Tổng tồn</p>
+              <div class="metric">{{ formatNumber(summary.stock) }}</div>
+            </div>
+          </article>
+
+          <article v-if="canSeeWarnings" class="kpi-card">
+            <div class="kpi-card__icon kpi-card__icon--success">
+              <i class="mdi mdi-alert-circle-outline"></i>
+            </div>
+            <div>
+              <p class="kpi-label">Tổng cảnh báo</p>
+              <div class="metric">{{ formatNumber(summary.warnings) }}</div>
+            </div>
+          </article>
+        </div>
+      </template>
     </section>
 
     <section v-if="canSeeApprovals" class="card card-pad dashboard-panel">
@@ -419,76 +428,55 @@ function openRoute(route) {
 <style scoped>
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
   gap: 16px;
 }
 
 .dashboard-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  min-width: 0;
 }
 
 .dashboard-panel--wide {
   grid-column: 1 / -1;
 }
 
-.dashboard-alert {
-  margin-bottom: 14px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-}
-
 .section-head {
-  margin-bottom: 6px;
+  margin-bottom: 16px;
 }
 
 .eyebrow {
   margin: 0 0 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 11px;
-  font-weight: 700;
   color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .pill {
   display: inline-flex;
   align-items: center;
+  padding: 6px 10px;
   border-radius: 999px;
-  padding: 4px 10px;
   background: #eff6ff;
   color: var(--primary);
   font-size: 12px;
   font-weight: 700;
 }
 
-.text-link {
-  background: none;
-  border: 0;
-  padding: 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--primary);
-}
-
 .kpi-grid {
   display: grid;
+  gap: 16px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
 }
 
 .kpi-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  background: var(--surface-soft);
 }
 
 .kpi-card__icon {
@@ -504,12 +492,12 @@ function openRoute(route) {
 
 .kpi-card__icon--accent {
   background: #e0f2fe;
-  color: #0284c7;
+  color: #0369a1;
 }
 
 .kpi-card__icon--warn {
   background: #fef3c7;
-  color: #b45309;
+  color: #92400e;
 }
 
 .kpi-card__icon--success {
@@ -517,15 +505,54 @@ function openRoute(route) {
   color: #15803d;
 }
 
+.kpi-card--loading {
+  min-height: 110px;
+}
+
+.kpi-card__body {
+  flex: 1;
+}
+
 .kpi-label {
-  margin: 0 0 2px;
+  margin: 0 0 8px;
   color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.metric {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.dashboard-empty {
+  padding: 8px 0 4px;
+}
+
+.section-warning {
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a2c00;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
   font-size: 12px;
+  font-weight: 700;
+}
+
+.badge--warning {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .stack-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 10px;
 }
 
@@ -533,10 +560,14 @@ function openRoute(route) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10px 0;
+  gap: 12px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border);
-  cursor: pointer;
+}
+
+.list-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
 }
 
 .list-item strong {
@@ -547,78 +578,81 @@ function openRoute(route) {
 .list-item p {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 12px;
+.text-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--primary);
   font-weight: 700;
-  white-space: nowrap;
-}
-
-.badge--warning {
-  background: #fef3c7;
-  color: #b45309;
 }
 
 .quick-links {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
 .quick-link {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 12px;
   background: #fff;
   text-align: left;
 }
 
 .quick-link i {
-  font-size: 18px;
+  font-size: 20px;
   color: var(--primary);
-  margin-top: 2px;
 }
 
 .quick-link span {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .quick-link small {
   color: var(--muted);
-  line-height: 1.4;
+}
+
+.skeleton {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.1s linear infinite;
+}
+
+.skeleton.metric {
+  width: 72px;
+  height: 24px;
+  margin-top: 6px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 @media (max-width: 1023px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
   .kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-@media (max-width: 640px) {
-  .kpi-grid,
-  .quick-links {
+@media (max-width: 639px) {
+  .kpi-grid {
     grid-template-columns: 1fr;
-  }
-
-  .list-item {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }
 </style>
