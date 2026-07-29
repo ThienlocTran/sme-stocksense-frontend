@@ -78,6 +78,18 @@
 - Kết luận:
   - Cần redesign nhẹ, ưu tiên cao.
 
+### Pending Approvals
+
+- Điểm mạnh:
+  - Màn danh sách và chi tiết duyệt đã có luồng cơ bản với các action chính như xem, duyệt và từ chối.
+  - Đã dùng DataTable và StatusBadge để trình bày trạng thái và hành động.
+- Điểm yếu:
+  - List/detail còn khá thô và chưa làm nổi bật action chính cũng như mức độ ưu tiên của từng phiếu.
+  - Trạng thái từ chối và lý do từ chối chưa được cấu trúc rõ về mặt UI.
+  - Spacing và layout cho action button trên mobile còn chưa tối ưu.
+- Kết luận:
+  - Là màn cần cải thiện nhẹ đến trung bình và phù hợp để đưa vào scope Sprint 5.
+
 ### Profile
 
 - Hiện trạng:
@@ -108,6 +120,7 @@ Các component này có giá trị cao về tái sử dụng và nên được c
 - Inventory table/filter layout
 - Stock In / Stock Out form layout
 - Alerts list presentation
+- Pending approvals list/detail presentation and action area
 - Empty state và error state đồng bộ hơn
 
 ### Cần cải tiến nhẹ
@@ -165,6 +178,13 @@ Các component này có giá trị cao về tái sử dụng và nên được c
 - Badge dùng để biểu thị trạng thái và mức độ ưu tiên.
 - Màu sắc phải nhất quán và dễ phân biệt.
 - Không dùng quá nhiều màu cho cùng một loại trạng thái.
+- Mapping màu cho StatusBadge nên phản ánh đúng contract hiện tại:
+  - NHAP: màu xám.
+  - CHO_DUYET_CAP_1 / CHO_DUYET_CAP_2: màu cam/vàng.
+  - TU_CHOI: màu đỏ.
+  - HUY: màu xám hoặc đỏ nhạt.
+  - HOAN_THANH: màu xanh lá.
+- Khi trạng thái là TU_CHOI, phải hiển thị thêm dòng lý do từ chối ngay dưới Badge, theo đúng quy ước trong README_T121 và README_T124.
 
 ### Empty state
 
