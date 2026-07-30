@@ -1,12 +1,12 @@
 <script setup>
 import { computed } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
-import FeaturePending from '../components/FeaturePending.vue'
 import ImportInspectionPanel from '../components/ImportInspectionPanel.vue'
+import StockOutApprovalDetail from '../components/StockOutApprovalDetail.vue'
 
 const props = defineProps({
   type: { type: String, default: 'in' },
-  id: { type: String, default: '' }
+  id: { type: String, default: '' },
 })
 
 const hasReceiptId = computed(() => String(props.id || '').trim().length > 0)
@@ -26,7 +26,10 @@ const hasReceiptId = computed(() => String(props.id || '').trim().length > 0)
       </div>
     </template>
     <template v-else>
-      <FeaturePending title="Chưa có màn hình chi tiết phiếu xuất kho" />
+      <StockOutApprovalDetail v-if="hasReceiptId" :receiptId="id" />
+      <div v-else class="card card-pad">
+        <p class="form-alert form-alert-error mb-0">Không tìm thấy mã phiếu xuất để tải chi tiết.</p>
+      </div>
     </template>
   </div>
 </template>

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { getImportReceiptHistory } from '../services/importReceiptService'
+import { getExportReceiptHistory } from '../services/exportReceiptService'
 
 const props = defineProps({
   receiptId: {
@@ -10,6 +11,10 @@ const props = defineProps({
   receiptCode: {
     type: String,
     default: '',
+  },
+  documentType: {
+    type: String,
+    default: 'in',
   },
 })
 
@@ -27,7 +32,7 @@ watch(
     errorMessage.value = ''
     historyList.value = []
     try {
-      historyList.value = await getImportReceiptHistory(id)
+      historyList.value = await (props.documentType === 'out' ? getExportReceiptHistory : getImportReceiptHistory)(id)
     } catch (err) {
       errorMessage.value = err.message || 'Không thể tải lịch sử duyệt.'
     } finally {
@@ -38,9 +43,9 @@ watch(
 )
 
 const ACTION_LABELS = {
-  GUI_DUYET: 'Nhân viên gửi duyệt',
-  DUYET_CAP_1: 'Quản lý duyệt phiếu',
-  DUYET_CAP_2: 'Quản lý duyệt phiếu',
+  GUI_DUYET: 'Người tạo gửi duyệt',
+  DUYET_CAP_1: 'Đã duyệt',
+  DUYET_CAP_2: 'Đã duyệt',
   TU_CHOI: 'Quản lý từ chối phiếu',
   HUY: 'Huỷ phiếu',
 }

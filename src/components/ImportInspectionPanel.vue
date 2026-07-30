@@ -76,8 +76,8 @@ const statusLabel = computed(() => {
   if (!receipt.value) return ''
   const labels = {
     NHAP: 'Bản nháp',
-    CHO_DUYET_CAP_1: 'Chờ quản lý duyệt',
-    CHO_DUYET_CAP_2: 'Chờ quản lý duyệt',
+    CHO_DUYET_CAP_1: 'Chờ duyệt',
+    CHO_DUYET_CAP_2: 'Chờ duyệt',
     CHO_HANG_VE: 'Chờ hàng về',
     CHO_KIEM_HANG: 'Chờ kiểm hàng',
     HOAN_THANH: 'Hoàn thành',

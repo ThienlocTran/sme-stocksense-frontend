@@ -2,12 +2,12 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
-import FeaturePending from '../components/FeaturePending.vue'
 import DataTable from '../components/DataTable.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
 import { getCurrentRoleCode } from '../services/authService'
 import { cancelDraft, getImportReceipts, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
+import { cancelExportReceipt, getExportReceipts, getMyExportReceipts, submitExportReceipt } from '../services/exportReceiptService'
 
 const props = defineProps({ type: { type: String, default: 'in' } })
 
@@ -45,26 +45,24 @@ const filters = reactive({ status: '' })
 const hasPreviousPage = computed(() => page.value > 0)
 const hasNextPage = computed(() => page.value + 1 < totalPages.value)
 const currentRole = computed(() => getCurrentRoleCode())
+const isOut = computed(() => props.type === 'out')
 const canCreateImportReceipt = computed(() => currentRole.value === 'ADMIN' || currentRole.value === 'EMPLOYEE')
-const pageTitle = computed(() => currentRole.value === 'EMPLOYEE' ? 'Phiếu nhập của tôi' : 'Phiếu nhập kho')
-const pageDescription = computed(() => currentRole.value === 'EMPLOYEE'
-  ? 'Danh sách phiếu nhập kho do nhân viên tạo từ API backend.'
-  : 'Danh sách phiếu nhập kho từ API backend.')
+const pageTitle = computed(() => `${isOut.value ? 'Phiếu xuất' : 'Phiếu nhập'}${currentRole.value === 'EMPLOYEE' ? ' của tôi' : ' kho'}`)
+const pageDescription = computed(() => `Danh sách phiếu ${isOut.value ? 'xuất' : 'nhập'} kho từ API backend.`)
 
-const columns = [
+const columns = computed(() => [
   { key: 'code', label: 'Mã phiếu' },
   { key: 'warehouseName', label: 'Kho' },
-  { key: 'supplierName', label: 'Nhà cung cấp' },
+  { key: isOut.value ? 'partnerName' : 'supplierName', label: isOut.value ? 'Đối tác' : 'Nhà cung cấp' },
   { key: 'createdAt', label: 'Ngày tạo' },
   { key: 'status', label: 'Trạng thái' },
   { key: 'totalAmount', label: 'Tổng tiền' },
   { key: 'actions', label: 'Thao tác' },
-]
+])
 
 const statusOptions = [
   { value: 'NHAP', label: 'Nháp' },
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ quản lý duyệt' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ quản lý duyệt' },
+  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt' },
   { value: 'CHO_HANG_VE', label: 'Chờ hàng về' },
   { value: 'CHO_KIEM_HANG', label: 'Chờ kiểm hàng' },
   { value: 'HOAN_THANH', label: 'Hoàn thành' },
@@ -72,15 +70,14 @@ const statusOptions = [
   { value: 'HUY', label: 'Hủy' },
 ]
 
-const statusLabels = Object.fromEntries(statusOptions.map(status => [status.value, status.label]))
+const statusLabels = {
+  ...Object.fromEntries(statusOptions.map(status => [status.value, status.label])),
+  CHO_DUYET_CAP_1: 'Chờ duyệt',
+}
 
-onMounted(() => {
-  if (props.type === 'in') fetchReceipts()
-})
+onMounted(fetchReceipts)
 
-watch(() => props.type, type => {
-  if (type === 'in') fetchReceipts()
-})
+watch(() => props.type, () => { page.value = 0; fetchReceipts() })
 
 async function fetchReceipts() {
   const requestId = ++fetchReceiptsRequestId
@@ -89,9 +86,10 @@ async function fetchReceipts() {
   actionMessage.value = ''
   actionErrorMessage.value = ''
   try {
-    const listReceipts = currentRole.value === 'MANAGER' || currentRole.value === 'ADMIN'
-      ? getImportReceipts
-      : getMyImportReceipts
+    const privileged = currentRole.value === 'MANAGER' || currentRole.value === 'ADMIN'
+    const listReceipts = isOut.value
+      ? (privileged ? getExportReceipts : getMyExportReceipts)
+      : (privileged ? getImportReceipts : getMyImportReceipts)
     const data = await listReceipts({
       page: page.value,
       size: size.value,
@@ -137,16 +135,16 @@ function nextPage() {
 
 function goCreate() {
   if (!canCreateImportReceipt.value) return
-  router.push('/stock-in/create')
+  router.push(`${isOut.value ? '/stock-out' : '/stock-in'}/create`)
 }
 
 function goEdit(receipt) {
   if (!canEditImportReceipt(receipt.status)) return
-  router.push(`/stock-in/${receipt.id}/edit`)
+  router.push(`${isOut.value ? '/stock-out' : '/stock-in'}/${receipt.id}/edit`)
 }
 
 function goDetail(receipt) {
-  router.push(`/stock-in/${receipt.id}`)
+  router.push(`${isOut.value ? '/stock-out' : '/stock-in'}/${receipt.id}`)
 }
 
 function handleSubmit(receipt) {
@@ -189,9 +187,10 @@ async function confirmSubmit(receipt) {
   actionErrorMessage.value = ''
 
   try {
-    await submitForApproval(receipt.id)
+    if (isOut.value) await submitExportReceipt(receipt.id, receipt.version)
+    else await submitForApproval(receipt.id)
     await fetchReceipts()
-    actionMessage.value = 'Gửi duyệt phiếu nhập thành công.'
+    actionMessage.value = 'Gửi duyệt thành công.'
   } catch (error) {
     actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
     if (error.status === 401) router.replace('/login')
@@ -208,7 +207,8 @@ async function confirmCancel(receipt) {
   actionErrorMessage.value = ''
 
   try {
-    await cancelDraft(receipt.id)
+    if (isOut.value) await cancelExportReceipt(receipt.id)
+    else await cancelDraft(receipt.id)
     await fetchReceipts()
     actionMessage.value = 'Hủy phiếu nhập thành công.'
   } catch (error) {
@@ -291,8 +291,8 @@ function confirmTitle() {
 
 function confirmMessage() {
   return confirmState.action === 'cancel'
-    ? 'Hủy phiếu nhập này?'
-    : 'Gửi duyệt phiếu nhập này?'
+    ? `Hủy phiếu ${isOut.value ? 'xuất' : 'nhập'} này?`
+    : `Gửi duyệt phiếu ${isOut.value ? 'xuất' : 'nhập'} này?`
 }
 
 function confirmText() {
@@ -301,7 +301,6 @@ function confirmText() {
 </script>
 
 <template>
-  <template v-if="type === 'in'">
     <PageHeader :title="pageTitle" :description="pageDescription">
       <button v-if="canCreateImportReceipt" class="btn btn-primary" type="button" @click="goCreate"><i class="mdi mdi-plus"></i>Tạo phiếu</button>
     </PageHeader>
@@ -317,11 +316,12 @@ function confirmText() {
     <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
     <p v-if="actionErrorMessage" class="form-alert form-alert-error">{{ actionErrorMessage }}</p>
     <p v-if="actionMessage" class="form-alert form-alert-info">{{ actionMessage }}</p>
-    <p v-if="isLoading" class="muted loading-line">Đang tải danh sách phiếu nhập...</p>
+    <p v-if="isLoading" class="muted loading-line">Đang tải danh sách phiếu...</p>
 
     <DataTable :columns="columns" :rows="receipts" empty-text="Chưa có phiếu nhập từ backend">
       <template #warehouseName="{ value }">{{ value || '-' }}</template>
       <template #supplierName="{ value }">{{ value || '-' }}</template>
+      <template #partnerName="{ value }">{{ value || '-' }}</template>
       <template #createdAt="{ value }">{{ formatDate(value) }}</template>
       <template #status="{ row, value }">
         <span class="badge" :class="statusClass(value)">{{ statusLabel(value) }}</span>
@@ -346,7 +346,7 @@ function confirmText() {
     </DataTable>
 
     <div class="pagination-bar card card-pad">
-      <span class="muted">{{ totalElements }} phiếu nhập</span>
+      <span class="muted">{{ totalElements }} phiếu {{ isOut ? 'xuất' : 'nhập' }}</span>
       <div class="pagination-actions">
         <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage" @click="previousPage">Trước</button>
         <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
@@ -359,6 +359,7 @@ function confirmText() {
       v-if="historyState.open"
       :receipt-id="historyState.receiptId"
       :receipt-code="historyState.receiptCode"
+      :document-type="type"
       @close="closeHistory"
     />
 
@@ -371,12 +372,6 @@ function confirmText() {
       @cancel="closeConfirmDialog"
       @confirm="confirmAction"
     />
-  </template>
-
-  <template v-else>
-    <PageHeader title="Phiếu xuất kho" description="Danh sách chứng từ kho từ API backend." />
-    <FeaturePending title="Chưa có API chứng từ kho" description="Không hiển thị phiếu nhập/xuất mô phỏng trong luồng production." />
-  </template>
 </template>
 
 <style scoped>
