@@ -142,6 +142,8 @@ const visibleSections = computed(() =>
   position: fixed;
   inset: 0 auto 0 0;
   width: 260px;
+  max-height: 100vh;
+  overflow-y: auto;
   background: #0f172a;
   color: #e5e7eb;
   padding: 18px 14px;
