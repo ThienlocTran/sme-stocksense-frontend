@@ -6,30 +6,97 @@ import { canAccessRoute } from "../services/permissionService";
 const authStore = useAuthStore();
 const currentRole = computed(() => authStore.currentRole);
 
-const items = [
-  ["Tổng quan", "/dashboard", "mdi-view-dashboard-outline"],
-  ["Sản phẩm", "/products", "mdi-package-variant-closed"],
-  ["Nhà cung cấp", "/partners", "mdi-truck-delivery-outline", "manage"],
-  ["Danh mục", "/categories", "mdi-shape-outline"],
-  ["Kho hàng", "/warehouses", "mdi-warehouse"],
-  ["Tồn kho", "/inventory", "mdi-clipboard-list-outline"],
-  ["Lịch sử giao dịch", "/inventory-transactions", "mdi-history"],
-  ["Phiếu nhập kho", "/stock-in", "mdi-tray-arrow-down"],
-  ["Phiếu xuất kho", "/stock-out", "mdi-tray-arrow-up"],
-  ["Chờ duyệt", "/approvals", "mdi-check-decagram-outline", "approval"],
-  [
-    "Phiếu xuất chờ duyệt",
-    "/pending-export-approvals",
-    "mdi-file-clock-outline",
-    "approval",
-  ],
-  ["Import Excel", "/import-excel", "mdi-file-excel-outline", "admin"],
-  ["Cảnh báo tồn kho", "/alerts", "mdi-alert-outline"],
-  ["Nhân viên", "/employees", "mdi-account-group-outline", "admin"],
-  ["Nhân viên & phân quyền", "/users", "mdi-account-cog-outline", "admin"],
+const menuSections = [
+  {
+    title: null,
+    items: [
+      {
+        label: "Tổng quan",
+        to: "/dashboard",
+        icon: "mdi-view-dashboard-outline",
+      },
+    ],
+  },
+  {
+    title: "Danh mục",
+    items: [
+      {
+        label: "Sản phẩm",
+        to: "/products",
+        icon: "mdi-package-variant-closed",
+      },
+      {
+        label: "Nhà cung cấp",
+        to: "/partners",
+        icon: "mdi-truck-delivery-outline",
+      },
+      { label: "Danh mục", to: "/categories", icon: "mdi-shape-outline" },
+      { label: "Kho hàng", to: "/warehouses", icon: "mdi-warehouse" },
+    ],
+  },
+  {
+    title: "Quản lý kho",
+    items: [
+      {
+        label: "Tồn kho",
+        to: "/inventory",
+        icon: "mdi-clipboard-list-outline",
+      },
+      {
+        label: "Lịch sử giao dịch",
+        to: "/inventory-transactions",
+        icon: "mdi-history",
+      },
+      { label: "Phiếu nhập kho", to: "/stock-in", icon: "mdi-tray-arrow-down" },
+      { label: "Phiếu xuất kho", to: "/stock-out", icon: "mdi-tray-arrow-up" },
+    ],
+  },
+  {
+    title: "Chờ duyệt",
+    items: [
+      {
+        label: "Phiếu nhập chờ duyệt",
+        to: "/approvals",
+        icon: "mdi-check-decagram-outline",
+      },
+      {
+        label: "Phiếu xuất chờ duyệt",
+        to: "/pending-export-approvals",
+        icon: "mdi-file-clock-outline",
+      },
+    ],
+  },
+  {
+    title: "Hệ thống",
+    items: [
+      {
+        label: "Import Excel",
+        to: "/import-excel",
+        icon: "mdi-file-excel-outline",
+      },
+      { label: "Cảnh báo tồn kho", to: "/alerts", icon: "mdi-alert-outline" },
+      {
+        label: "Nhân viên",
+        to: "/employees",
+        icon: "mdi-account-group-outline",
+      },
+      {
+        label: "Nhân viên & phân quyền",
+        to: "/users",
+        icon: "mdi-account-cog-outline",
+      },
+    ],
+  },
 ];
-const visibleItems = computed(() =>
-  items.filter((item) => canAccessRoute(item[1], currentRole.value)),
+const visibleSections = computed(() =>
+  menuSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        canAccessRoute(item.to, currentRole.value),
+      ),
+    }))
+    .filter((section) => section.items.length > 0),
 );
 </script>
 
@@ -43,15 +110,25 @@ const visibleItems = computed(() =>
       </span>
     </RouterLink>
     <nav class="nav-list">
-      <RouterLink
-        v-for="[label, to, icon] in visibleItems"
-        :key="to"
-        :to="to"
-        class="nav-item"
+      <template
+        v-for="section in visibleSections"
+        :key="section.title || 'main'"
       >
-        <i class="mdi" :class="icon"></i>
-        <span>{{ label }}</span>
-      </RouterLink>
+        <div v-if="section.title" class="sidebar-heading">
+          {{ section.title }}
+        </div>
+        <div class="sidebar-section">
+          <RouterLink
+            v-for="item in section.items"
+            :key="item.to"
+            :to="item.to"
+            class="nav-item"
+          >
+            <i class="mdi" :class="item.icon" aria-hidden="true"></i>
+            <span>{{ item.label }}</span>
+          </RouterLink>
+        </div>
+      </template>
     </nav>
     <div class="sidebar-note">
       <strong>Phạm vi hiện tại</strong>
@@ -65,6 +142,8 @@ const visibleItems = computed(() =>
   position: fixed;
   inset: 0 auto 0 0;
   width: 260px;
+  max-height: 100vh;
+  overflow-y: auto;
   background: #0f172a;
   color: #e5e7eb;
   padding: 18px 14px;
@@ -101,31 +180,54 @@ const visibleItems = computed(() =>
   margin-top: 2px;
 }
 .nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 22px;
+}
+.sidebar-heading {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding-left: 4px;
+}
+.sidebar-section {
   display: grid;
-  gap: 4px;
-  margin-top: 16px;
+  gap: 8px;
 }
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 9px 10px;
-  border-radius: 8px;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 12px;
   color: #cbd5e1;
   font-weight: 600;
+  background: rgba(255, 255, 255, 0.03);
+  transition:
+    background 180ms ease,
+    transform 180ms ease,
+    color 180ms ease;
 }
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
+  transform: translateX(1px);
 }
 .nav-item.router-link-active {
-  background: #2563eb;
+  background: #1d4ed8;
   color: #fff;
+  box-shadow: inset 4px 0 0 0 #93c5fd;
+}
+.nav-item.router-link-active:hover {
+  background: #1e40af;
 }
 .nav-item i {
   font-size: 20px;
-  width: 22px;
+  width: 24px;
   text-align: center;
 }
 .sidebar-note {
@@ -148,9 +250,13 @@ const visibleItems = computed(() =>
     position: static;
     width: 100%;
     min-height: auto;
+    padding: 14px 12px 10px;
   }
   .nav-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 16px;
+  }
+  .sidebar-section {
+    gap: 8px;
   }
   .sidebar-note {
     display: none;
