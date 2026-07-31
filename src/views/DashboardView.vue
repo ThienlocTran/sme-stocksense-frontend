@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
 import { getPendingExportReceipts } from "../services/exportReceiptService";
 import {
@@ -455,14 +454,33 @@ function openRoute(path) {
 
   <div class="dashboard-grid">
     <section class="card card-pad dashboard-panel dashboard-panel--wide">
-      <div class="section-head between">
+      <div class="section-head section-head--split">
         <div>
           <p class="eyebrow">KPI</p>
           <h2 class="section-title">Tổng quan vận hành</h2>
+          <p class="section-help">
+            Theo dõi số liệu chính và xu hướng làm việc trong một góc nhìn dễ
+            đọc.
+          </p>
         </div>
-        <span class="pill">{{
-          isLoading ? "Đang tải..." : "Cập nhật gần đây"
-        }}</span>
+        <div class="section-head__meta">
+          <span class="pill">{{
+            isLoading ? "Đang tải..." : "Cập nhật gần đây"
+          }}</span>
+        </div>
+      </div>
+
+      <div class="kpi-summary">
+        <div class="kpi-summary__item">
+          <span class="kpi-summary__label">Phân nhóm</span>
+          <strong>{{
+            canSeeWarnings ? "Vận hành & cảnh báo" : "Vận hành"
+          }}</strong>
+        </div>
+        <div class="kpi-summary__item">
+          <span class="kpi-summary__label">Truy cập nhanh</span>
+          <strong>{{ visibleQuickAccess.length }} mục</strong>
+        </div>
       </div>
 
       <div
@@ -484,12 +502,17 @@ function openRoute(path) {
       </div>
 
       <template v-else>
-        <div v-if="errorMessage && !hasDashboardData" class="dashboard-empty">
-          <EmptyState
-            title="Không thể tải dữ liệu tổng quan"
-            description="Vui lòng thử lại sau hoặc kiểm tra kết nối backend."
-            icon="mdi-alert-circle-outline"
-          />
+        <div
+          v-if="errorMessage && !hasDashboardData"
+          class="state-card state-card--error"
+        >
+          <div class="state-card__icon">
+            <i class="mdi mdi-alert-circle-outline"></i>
+          </div>
+          <div class="state-card__body">
+            <h3>Không thể tải dữ liệu tổng quan</h3>
+            <p>Vui lòng thử lại sau hoặc kiểm tra kết nối backend.</p>
+          </div>
           <button
             class="retry-button retry-button--inline"
             type="button"
@@ -500,11 +523,14 @@ function openRoute(path) {
           </button>
         </div>
 
-        <div v-else-if="!hasDashboardData" class="dashboard-empty">
-          <EmptyState
-            title="Chưa có dữ liệu tổng quan"
-            description="Hệ thống chưa có sản phẩm, kho hoặc tồn kho để hiển thị."
-          />
+        <div v-else-if="!hasDashboardData" class="state-card state-card--empty">
+          <div class="state-card__icon">
+            <i class="mdi mdi-view-dashboard-outline"></i>
+          </div>
+          <div class="state-card__body">
+            <h3>Chưa có dữ liệu tổng quan</h3>
+            <p>Hệ thống chưa có sản phẩm, kho hoặc tồn kho để hiển thị.</p>
+          </div>
         </div>
 
         <div
@@ -567,185 +593,226 @@ function openRoute(path) {
       </template>
     </section>
 
-    <section v-if="canSeeImportApprovals" class="card card-pad dashboard-panel">
-      <div class="section-head between">
-        <div>
-          <p class="eyebrow">Pending</p>
-          <h2 class="section-title">Phiếu nhập chờ duyệt</h2>
-        </div>
-        <button class="text-link" @click="openRoute('/approvals')">
-          Xem tất cả
-        </button>
-      </div>
-
-      <div v-if="isLoading" class="section-skeleton">
-        <div class="skeleton section-skeleton__line"></div>
-        <div class="skeleton section-skeleton__line"></div>
-      </div>
-      <div v-else-if="pendingImportFailed" class="section-warning">
-        <span class="badge badge--warning">Không thể tải dữ liệu</span>
-        <p class="muted">Danh sách phiếu nhập chờ duyệt chưa cập nhật.</p>
-        <button
-          class="retry-button retry-button--inline"
-          type="button"
-          @click="retryDashboardLoad"
-        >
-          Thử lại
-        </button>
-      </div>
-      <div v-else-if="pendingImportItems.length" class="stack-list">
-        <div
-          v-for="item in pendingImportItems"
-          :key="`${item.label}-${item.id}`"
-          class="list-item"
-          @click="openRoute(item.route)"
-          role="button"
-          tabindex="0"
-          @keydown.enter.prevent="openRoute(item.route)"
-          @keydown.space.prevent="openRoute(item.route)"
-        >
+    <div class="dashboard-section-grid">
+      <section
+        v-if="canSeeImportApprovals"
+        class="card card-pad dashboard-panel"
+      >
+        <div class="section-head between">
           <div>
-            <strong>{{ item.code }}</strong>
-            <p>{{ item.label }} · {{ item.subtitle }}</p>
+            <p class="eyebrow">Pending</p>
+            <h2 class="section-title">Phiếu nhập chờ duyệt</h2>
           </div>
-          <span class="badge badge--warning">Chờ duyệt</span>
+          <button class="text-link" @click="openRoute('/approvals')">
+            Xem tất cả
+          </button>
         </div>
-      </div>
-      <EmptyState
-        v-if="!isLoading && !pendingImportFailed && !pendingImportItems.length"
-        title="Không có phiếu nhập chờ duyệt"
-        description="Tất cả phiếu nhập cần xử lý đã được hoàn tất."
-      />
-    </section>
 
-    <section v-if="canSeeExportApprovals" class="card card-pad dashboard-panel">
-      <div class="section-head between">
-        <div>
-          <p class="eyebrow">Pending</p>
-          <h2 class="section-title">Phiếu xuất chờ duyệt</h2>
+        <div v-if="isLoading" class="state-card state-card--loading">
+          <div class="skeleton skeleton--line"></div>
+          <div class="skeleton skeleton--line skeleton--short"></div>
         </div>
-        <button
-          class="text-link"
-          @click="openRoute('/pending-export-approvals')"
-        >
-          Xem tất cả
-        </button>
-      </div>
-
-      <div v-if="isLoading" class="section-skeleton">
-        <div class="skeleton section-skeleton__line"></div>
-        <div class="skeleton section-skeleton__line"></div>
-      </div>
-      <div v-else-if="pendingExportFailed" class="section-warning">
-        <span class="badge badge--warning">Không thể tải dữ liệu</span>
-        <p class="muted">Danh sách phiếu xuất chờ duyệt chưa cập nhật.</p>
-        <button
-          class="retry-button retry-button--inline"
-          type="button"
-          @click="retryDashboardLoad"
-        >
-          Thử lại
-        </button>
-      </div>
-      <div v-else-if="pendingExportItems.length" class="stack-list">
         <div
-          v-for="item in pendingExportItems"
-          :key="`${item.label}-${item.id}`"
-          class="list-item"
-          @click="openRoute(item.route)"
-          role="button"
-          tabindex="0"
-          @keydown.enter.prevent="openRoute(item.route)"
-          @keydown.space.prevent="openRoute(item.route)"
+          v-else-if="pendingImportFailed"
+          class="state-card state-card--error"
         >
-          <div>
-            <strong>{{ item.code }}</strong>
-            <p>{{ item.label }} · {{ item.subtitle }}</p>
+          <div class="state-card__icon">
+            <i class="mdi mdi-alert-circle-outline"></i>
           </div>
-          <span class="badge badge--warning">Chờ duyệt</span>
+          <div class="state-card__body">
+            <h3>Không thể tải dữ liệu</h3>
+            <p>Danh sách phiếu nhập chờ duyệt chưa cập nhật.</p>
+          </div>
+          <button
+            class="retry-button retry-button--inline"
+            type="button"
+            @click="retryDashboardLoad"
+          >
+            Thử lại
+          </button>
         </div>
-      </div>
-      <EmptyState
-        v-if="!isLoading && !pendingExportFailed && !pendingExportItems.length"
-        title="Không có phiếu xuất chờ duyệt"
-        description="Tất cả phiếu xuất cần xử lý đã được hoàn tất."
-      />
-    </section>
-
-    <section v-if="canSeeAlerts" class="card card-pad dashboard-panel">
-      <div class="section-head between">
-        <div>
-          <p class="eyebrow">Alerts</p>
-          <h2 class="section-title">Cảnh báo mở</h2>
+        <div v-else-if="pendingImportItems.length" class="stack-list">
+          <div
+            v-for="item in pendingImportItems"
+            :key="`${item.label}-${item.id}`"
+            class="list-item"
+            @click="openRoute(item.route)"
+            role="button"
+            tabindex="0"
+            @keydown.enter.prevent="openRoute(item.route)"
+            @keydown.space.prevent="openRoute(item.route)"
+          >
+            <div>
+              <strong>{{ item.code }}</strong>
+              <p>{{ item.label }} · {{ item.subtitle }}</p>
+            </div>
+            <span class="badge badge--warning">Chờ duyệt</span>
+          </div>
         </div>
-        <button class="text-link" @click="openRoute('/alerts')">
-          Xem chi tiết
-        </button>
-      </div>
+        <div v-else class="state-card state-card--empty">
+          <div class="state-card__icon">
+            <i class="mdi mdi-file-check-outline"></i>
+          </div>
+          <div class="state-card__body">
+            <h3>Không có phiếu nhập chờ duyệt</h3>
+            <p>Tất cả phiếu nhập cần xử lý đã được hoàn tất.</p>
+          </div>
+        </div>
+      </section>
 
-      <div v-if="isLoading" class="section-skeleton">
-        <div class="skeleton section-skeleton__line"></div>
-        <div class="skeleton section-skeleton__line"></div>
-      </div>
-      <div v-else-if="lowStockFailed" class="section-warning">
-        <span class="badge badge--warning">Không thể tải dữ liệu</span>
-        <p class="muted">Danh sách cảnh báo tồn kho chưa cập nhật.</p>
-        <button
-          class="retry-button retry-button--inline"
-          type="button"
-          @click="retryDashboardLoad"
-        >
-          Thử lại
-        </button>
-      </div>
-      <div v-else-if="lowStockItems.length" class="stack-list">
+      <section
+        v-if="canSeeExportApprovals"
+        class="card card-pad dashboard-panel"
+      >
+        <div class="section-head between">
+          <div>
+            <p class="eyebrow">Pending</p>
+            <h2 class="section-title">Phiếu xuất chờ duyệt</h2>
+          </div>
+          <button
+            class="text-link"
+            @click="openRoute('/pending-export-approvals')"
+          >
+            Xem tất cả
+          </button>
+        </div>
+
+        <div v-if="isLoading" class="state-card state-card--loading">
+          <div class="skeleton skeleton--line"></div>
+          <div class="skeleton skeleton--line skeleton--short"></div>
+        </div>
         <div
-          v-for="item in lowStockItems"
-          :key="item.id"
-          class="list-item"
-          @click="openRoute('/alerts')"
-          role="button"
-          tabindex="0"
-          @keydown.enter.prevent="openRoute('/alerts')"
-          @keydown.space.prevent="openRoute('/alerts')"
+          v-else-if="pendingExportFailed"
+          class="state-card state-card--error"
         >
-          <div>
-            <strong>{{ item.productName }}</strong>
-            <p>{{ item.warehouseName }}</p>
+          <div class="state-card__icon">
+            <i class="mdi mdi-alert-circle-outline"></i>
           </div>
-          <span class="muted">{{ item.available }}/{{ item.minStock }}</span>
+          <div class="state-card__body">
+            <h3>Không thể tải dữ liệu</h3>
+            <p>Danh sách phiếu xuất chờ duyệt chưa cập nhật.</p>
+          </div>
+          <button
+            class="retry-button retry-button--inline"
+            type="button"
+            @click="retryDashboardLoad"
+          >
+            Thử lại
+          </button>
         </div>
-      </div>
-      <EmptyState
-        v-else-if="!isLoading"
-        title="Không có cảnh báo mở"
-        description="Hiện tại chưa có mặt hàng nào ở ngưỡng cảnh báo."
-      />
-    </section>
-
-    <section class="card card-pad dashboard-panel">
-      <div class="section-head between">
-        <div>
-          <p class="eyebrow">Quick Access</p>
-          <h2 class="section-title">Truy cập nhanh</h2>
+        <div v-else-if="pendingExportItems.length" class="stack-list">
+          <div
+            v-for="item in pendingExportItems"
+            :key="`${item.label}-${item.id}`"
+            class="list-item"
+            @click="openRoute(item.route)"
+            role="button"
+            tabindex="0"
+            @keydown.enter.prevent="openRoute(item.route)"
+            @keydown.space.prevent="openRoute(item.route)"
+          >
+            <div>
+              <strong>{{ item.code }}</strong>
+              <p>{{ item.label }} · {{ item.subtitle }}</p>
+            </div>
+            <span class="badge badge--warning">Chờ duyệt</span>
+          </div>
         </div>
-      </div>
+        <div v-else class="state-card state-card--empty">
+          <div class="state-card__icon">
+            <i class="mdi mdi-file-export-outline"></i>
+          </div>
+          <div class="state-card__body">
+            <h3>Không có phiếu xuất chờ duyệt</h3>
+            <p>Tất cả phiếu xuất cần xử lý đã được hoàn tất.</p>
+          </div>
+        </div>
+      </section>
 
-      <div class="quick-links">
-        <button
-          v-for="item in visibleQuickAccess"
-          :key="item.title"
-          class="quick-link"
-          @click="openRoute(item.route)"
-        >
-          <i class="mdi" :class="item.icon"></i>
-          <span>
-            <strong>{{ item.title }}</strong>
-            <small>{{ item.description }}</small>
-          </span>
-        </button>
-      </div>
-    </section>
+      <section v-if="canSeeAlerts" class="card card-pad dashboard-panel">
+        <div class="section-head between">
+          <div>
+            <p class="eyebrow">Alerts</p>
+            <h2 class="section-title">Cảnh báo mở</h2>
+          </div>
+          <button class="text-link" @click="openRoute('/alerts')">
+            Xem chi tiết
+          </button>
+        </div>
+
+        <div v-if="isLoading" class="state-card state-card--loading">
+          <div class="skeleton skeleton--line"></div>
+          <div class="skeleton skeleton--line skeleton--short"></div>
+        </div>
+        <div v-else-if="lowStockFailed" class="state-card state-card--error">
+          <div class="state-card__icon">
+            <i class="mdi mdi-alert-circle-outline"></i>
+          </div>
+          <div class="state-card__body">
+            <h3>Không thể tải dữ liệu</h3>
+            <p>Danh sách cảnh báo tồn kho chưa cập nhật.</p>
+          </div>
+          <button
+            class="retry-button retry-button--inline"
+            type="button"
+            @click="retryDashboardLoad"
+          >
+            Thử lại
+          </button>
+        </div>
+        <div v-else-if="lowStockItems.length" class="stack-list">
+          <div
+            v-for="item in lowStockItems"
+            :key="item.id"
+            class="list-item"
+            @click="openRoute('/alerts')"
+            role="button"
+            tabindex="0"
+            @keydown.enter.prevent="openRoute('/alerts')"
+            @keydown.space.prevent="openRoute('/alerts')"
+          >
+            <div>
+              <strong>{{ item.productName }}</strong>
+              <p>{{ item.warehouseName }}</p>
+            </div>
+            <span class="muted">{{ item.available }}/{{ item.minStock }}</span>
+          </div>
+        </div>
+        <div v-else class="state-card state-card--empty">
+          <div class="state-card__icon">
+            <i class="mdi mdi-bell-outline"></i>
+          </div>
+          <div class="state-card__body">
+            <h3>Không có cảnh báo mở</h3>
+            <p>Hiện tại chưa có mặt hàng nào ở ngưỡng cảnh báo.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-pad dashboard-panel">
+        <div class="section-head between">
+          <div>
+            <p class="eyebrow">Quick Access</p>
+            <h2 class="section-title">Truy cập nhanh</h2>
+          </div>
+        </div>
+
+        <div class="quick-links">
+          <button
+            v-for="item in visibleQuickAccess"
+            :key="item.title"
+            class="quick-link"
+            @click="openRoute(item.route)"
+          >
+            <i class="mdi" :class="item.icon"></i>
+            <span>
+              <strong>{{ item.title }}</strong>
+              <small>{{ item.description }}</small>
+            </span>
+          </button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -763,8 +830,37 @@ function openRoute(path) {
   grid-column: 1 / -1;
 }
 
+.dashboard-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  grid-column: 1 / -1;
+}
+
 .section-head {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-head--split {
+  align-items: flex-start;
+}
+
+.section-help {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 58ch;
+}
+
+.section-head__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .eyebrow {
@@ -787,6 +883,31 @@ function openRoute(path) {
   font-weight: 700;
 }
 
+.kpi-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kpi-summary__item {
+  flex: 1 1 180px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.kpi-summary__label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .kpi-grid {
   display: grid;
   gap: 16px;
@@ -803,8 +924,9 @@ function openRoute(path) {
   gap: 12px;
   padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-soft);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 }
 
 .kpi-card__icon {
@@ -816,6 +938,7 @@ function openRoute(path) {
   background: #dbeafe;
   color: var(--primary);
   font-size: 20px;
+  flex-shrink: 0;
 }
 
 .kpi-card__icon--accent {
@@ -854,10 +977,57 @@ function openRoute(path) {
   line-height: 1.2;
 }
 
-.dashboard-empty {
-  padding: 8px 0 4px;
+.state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+.state-card--loading {
+  min-height: 112px;
+}
+
+.state-card--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.state-card--empty {
+  border-style: dashed;
+  background: #f8fafc;
+}
+
+.state-card__icon {
+  width: 42px;
+  height: 42px;
   display: grid;
-  gap: 12px;
+  place-items: center;
+  border-radius: 10px;
+  background: #e2e8f0;
+  color: var(--slate);
+  font-size: 20px;
+}
+
+.state-card--error .state-card__icon {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.state-card__body h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.state-card__body p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .dashboard-alert {
@@ -902,13 +1072,6 @@ function openRoute(path) {
   justify-self: start;
 }
 
-.section-warning {
-  padding: 12px;
-  border-radius: 8px;
-  background: #fff7ed;
-  color: #9a2c00;
-}
-
 .badge {
   display: inline-flex;
   align-items: center;
@@ -923,16 +1086,6 @@ function openRoute(path) {
   color: #92400e;
 }
 
-.section-skeleton {
-  display: grid;
-  gap: 10px;
-}
-
-.section-skeleton__line {
-  width: 100%;
-  height: 12px;
-}
-
 .stack-list {
   display: grid;
   gap: 10px;
@@ -945,6 +1098,7 @@ function openRoute(path) {
   gap: 12px;
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
+  cursor: pointer;
 }
 
 .list-item:last-child {
@@ -982,9 +1136,19 @@ function openRoute(path) {
   width: 100%;
   padding: 12px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #fff;
+  border-radius: 12px;
+  background: var(--surface-soft);
   text-align: left;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.quick-link:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
 }
 
 .quick-link i {
@@ -1011,6 +1175,14 @@ function openRoute(path) {
   animation: shimmer 1.1s linear infinite;
 }
 
+.skeleton--line {
+  width: 100%;
+}
+
+.skeleton--short {
+  width: 60%;
+}
+
 .skeleton.metric {
   width: 72px;
   height: 24px;
@@ -1030,11 +1202,30 @@ function openRoute(path) {
   .kpi-grid {
     grid-template-columns: 1fr 1fr;
   }
+
+  .dashboard-section-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 639px) {
   .kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-alert {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .list-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
