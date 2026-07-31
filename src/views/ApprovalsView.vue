@@ -45,6 +45,7 @@ const detailState = reactive({
   loading: false,
   error: "",
   receipt: null,
+  requestToken: 0,
 });
 
 // Modal từ chối (T98)
@@ -180,32 +181,40 @@ function nextPage() {
 
 // ===== T96: Xem chi tiết phiếu chờ duyệt =====
 async function openDetail(receipt) {
+  const selectedType = receipt.documentType || documentType.value;
+  const token = detailState.requestToken + 1;
+  detailState.requestToken = token;
   detailState.open = true;
   detailState.loading = true;
   detailState.error = "";
   detailState.receipt = null;
   try {
     const detail = await (
-      documentType.value === "out" ? getExportReceipt : getApprovalDetail
+      selectedType === "out" ? getExportReceipt : getApprovalDetail
     )(receipt.id);
+    if (token !== detailState.requestToken) return;
     detailState.receipt =
-      documentType.value === "out"
+      selectedType === "out"
         ? {
             ...detail,
             supplierName: detail.partnerName,
             details: detail.items,
-            documentType: documentType.value,
+            documentType: selectedType,
           }
-        : { ...detail, documentType: documentType.value };
+        : { ...detail, documentType: selectedType };
   } catch (error) {
+    if (token !== detailState.requestToken) return;
     detailState.error = error.message || "Không thể tải chi tiết phiếu.";
     if (error.status === 401) router.replace("/login");
   } finally {
-    detailState.loading = false;
+    if (token === detailState.requestToken) {
+      detailState.loading = false;
+    }
   }
 }
 
 function closeDetail() {
+  detailState.requestToken += 1;
   detailState.open = false;
   detailState.receipt = null;
   detailState.error = "";
