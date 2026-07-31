@@ -33,6 +33,7 @@ const size = ref(10);
 const totalPages = ref(0);
 const totalElements = ref(0);
 const filters = reactive({ status: "", warehouse: "" });
+const requestToken = ref(0);
 
 // Trạng thái thao tác đang chạy theo từng phiếu
 const actionState = reactive({ receiptId: null, action: "" });
@@ -50,6 +51,7 @@ const detailState = reactive({
 const rejectState = reactive({
   open: false,
   receiptId: null,
+  documentType: "in",
   reason: "",
   error: "",
   submitting: false,
@@ -99,8 +101,7 @@ const hasNextPage = computed(() => page.value + 1 < totalPages.value);
 const warehouseOptions = ref([]);
 
 onMounted(async () => {
-  await loadWarehouseOptions();
-  await fetchPendingApprovals();
+  await Promise.all([loadWarehouseOptions(), fetchPendingApprovals()]);
 });
 
 async function loadWarehouseOptions() {
@@ -117,6 +118,7 @@ async function loadWarehouseOptions() {
 }
 
 async function fetchPendingApprovals() {
+  const token = ++requestToken.value;
   isLoading.value = true;
   errorMessage.value = "";
   actionMessage.value = "";
@@ -132,18 +134,23 @@ async function fetchPendingApprovals() {
       status: filters.status,
       warehouse: filters.warehouse || undefined,
     });
+    if (token !== requestToken.value) return;
     receipts.value = (data.content || []).map((item) => ({
       ...item,
       supplierName: item.supplierName || item.partnerName,
+      documentType: documentType.value,
     }));
     totalPages.value = data.totalPages || 0;
     totalElements.value = data.totalElements || 0;
   } catch (error) {
+    if (token !== requestToken.value) return;
     receipts.value = [];
     errorMessage.value = error.message;
     if (error.status === 401) router.replace("/login");
   } finally {
-    isLoading.value = false;
+    if (token === requestToken.value) {
+      isLoading.value = false;
+    }
   }
 }
 
@@ -183,8 +190,13 @@ async function openDetail(receipt) {
     )(receipt.id);
     detailState.receipt =
       documentType.value === "out"
-        ? { ...detail, supplierName: detail.partnerName, details: detail.items }
-        : detail;
+        ? {
+            ...detail,
+            supplierName: detail.partnerName,
+            details: detail.items,
+            documentType: documentType.value,
+          }
+        : { ...detail, documentType: documentType.value };
   } catch (error) {
     detailState.error = error.message || "Không thể tải chi tiết phiếu.";
     if (error.status === 401) router.replace("/login");
@@ -217,14 +229,13 @@ async function confirmApprove() {
   const receipt = approveConfirmState.receipt;
   if (!receipt || !isPendingApproval(receipt.status)) return;
 
+  const isOut = receipt.documentType === "out";
   actionState.receiptId = receipt.id;
   actionState.action = "approve";
   actionMessage.value = "";
   actionErrorMessage.value = "";
   try {
-    await (
-      documentType.value === "out" ? approveExportReceipt : approveImportReceipt
-    )(receipt.id);
+    await (isOut ? approveExportReceipt : approveImportReceipt)(receipt.id);
     approveConfirmState.open = false;
     approveConfirmState.receipt = null;
     closeDetail();
@@ -244,6 +255,7 @@ function openRejectModal(receipt) {
   if (!isPendingApproval(receipt?.status)) return;
   rejectState.open = true;
   rejectState.receiptId = receipt.id;
+  rejectState.documentType = receipt.documentType || documentType.value;
   rejectState.reason = "";
   rejectState.error = "";
   rejectState.submitting = false;
@@ -253,12 +265,14 @@ function closeRejectModal() {
   if (rejectState.submitting) return;
   rejectState.open = false;
   rejectState.receiptId = null;
+  rejectState.documentType = "in";
   rejectState.reason = "";
   rejectState.error = "";
 }
 
 async function confirmReject() {
   const reason = rejectState.reason.trim();
+  const currentDocumentType = rejectState.documentType || documentType.value;
   if (!reason) {
     rejectState.error = "Vui lòng nhập lý do từ chối.";
     return;
@@ -274,18 +288,18 @@ async function confirmReject() {
   actionErrorMessage.value = "";
   try {
     await (
-      documentType.value === "out" ? rejectExportReceipt : rejectImportReceipt
+      currentDocumentType === "out" ? rejectExportReceipt : rejectImportReceipt
     )(rejectState.receiptId, reason);
     rejectState.open = false;
     rejectState.submitting = false;
     closeDetail();
     await fetchPendingApprovals();
-    actionMessage.value = `Đã từ chối phiếu ${documentType.value === "out" ? "xuất" : "nhập"} thành công.`;
+    actionMessage.value = `Đã từ chối phiếu ${currentDocumentType === "out" ? "xuất" : "nhập"} thành công.`;
   } catch (error) {
     rejectState.submitting = false;
     rejectState.error =
       error.message ||
-      (documentType.value === "out"
+      (currentDocumentType === "out"
         ? "Không thể từ chối phiếu xuất."
         : "Không thể từ chối phiếu nhập.");
     if (error.status === 401) router.replace("/login");
