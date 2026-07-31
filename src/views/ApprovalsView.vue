@@ -17,6 +17,7 @@ import {
   getPendingExportReceipts,
   rejectExportReceipt,
 } from "../services/exportReceiptService";
+import { getWarehouses } from "../services/warehouseService";
 
 const router = useRouter();
 const documentType = ref("in");
@@ -63,16 +64,19 @@ const historyState = reactive({
 
 const REJECT_REASON_MAX = 500;
 
-const columns = [
+const columns = computed(() => [
   { key: "code", label: "Mã phiếu" },
   { key: "warehouseName", label: "Kho" },
-  { key: "supplierName", label: "Nhà cung cấp" },
+  {
+    key: "supplierName",
+    label: documentType.value === "out" ? "Khách hàng" : "Nhà cung cấp",
+  },
   { key: "createdByName", label: "Người tạo" },
   { key: "submittedAt", label: "Ngày gửi duyệt" },
   { key: "status", label: "Trạng thái" },
   { key: "totalAmount", label: "Tổng tiền" },
   { key: "actions", label: "Thao tác" },
-];
+]);
 
 const documentTypeOptions = [
   { value: "in", label: "Phiếu nhập" },
@@ -85,35 +89,32 @@ const statusOptions = [
 ];
 
 const statusLabels = {
-  CHO_DUYET_CAP_1: "Chờ duyệt",
-  CHO_DUYET_CAP_2: "Chờ duyệt",
+  CHO_DUYET_CAP_1: "Chờ cấp 1",
+  CHO_DUYET_CAP_2: "Chờ cấp 2",
 };
 
 const hasPreviousPage = computed(() => page.value > 0);
 const hasNextPage = computed(() => page.value + 1 < totalPages.value);
 
-const warehouseOptions = computed(() => {
-  return [
-    ...new Set(
-      (receipts.value || []).map((item) => item.warehouseName).filter(Boolean),
-    ),
-  ].sort();
+const warehouseOptions = ref([]);
+
+onMounted(async () => {
+  await loadWarehouseOptions();
+  await fetchPendingApprovals();
 });
 
-const visibleReceipts = computed(() => {
-  const warehouseQuery = String(filters.warehouse || "")
-    .trim()
-    .toLowerCase();
-  if (!warehouseQuery) return receipts.value;
-  return receipts.value.filter((item) => {
-    const warehouse = String(item.warehouseName || "")
-      .trim()
-      .toLowerCase();
-    return warehouse.includes(warehouseQuery);
-  });
-});
-
-onMounted(fetchPendingApprovals);
+async function loadWarehouseOptions() {
+  try {
+    const data = await getWarehouses({ status: "HOAT_DONG" });
+    const list = Array.isArray(data) ? data : data?.content || [];
+    warehouseOptions.value = list
+      .map((item) => item?.name || item?.warehouseName || item?.tenKho || "")
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, "vi"));
+  } catch (error) {
+    warehouseOptions.value = [];
+  }
+}
 
 async function fetchPendingApprovals() {
   isLoading.value = true;
@@ -129,6 +130,7 @@ async function fetchPendingApprovals() {
       page: page.value,
       size: size.value,
       status: filters.status,
+      warehouse: filters.warehouse || undefined,
     });
     receipts.value = (data.content || []).map((item) => ({
       ...item,
@@ -239,6 +241,7 @@ async function confirmApprove() {
 }
 
 function openRejectModal(receipt) {
+  if (!isPendingApproval(receipt?.status)) return;
   rejectState.open = true;
   rejectState.receiptId = receipt.id;
   rejectState.reason = "";
@@ -280,7 +283,11 @@ async function confirmReject() {
     actionMessage.value = `Đã từ chối phiếu ${documentType.value === "out" ? "xuất" : "nhập"} thành công.`;
   } catch (error) {
     rejectState.submitting = false;
-    rejectState.error = error.message || "Không thể từ chối phiếu nhập.";
+    rejectState.error =
+      error.message ||
+      (documentType.value === "out"
+        ? "Không thể từ chối phiếu xuất."
+        : "Không thể từ chối phiếu nhập.");
     if (error.status === 401) router.replace("/login");
   }
 }
@@ -388,6 +395,7 @@ function getRejectionReason(receipt) {
             v-model="documentType"
             class="select"
             @change="
+              filters.warehouse = '';
               page = 0;
               fetchPendingApprovals();
             "
@@ -452,7 +460,7 @@ function getRejectionReason(receipt) {
 
   <DataTable
     :columns="columns"
-    :rows="visibleReceipts"
+    :rows="receipts"
     empty-text="Không có phiếu nào đang chờ duyệt"
   >
     <template #code="{ row, value }">
@@ -496,7 +504,7 @@ function getRejectionReason(receipt) {
         <button
           class="btn btn-sm btn-primary"
           type="button"
-          :disabled="isAnyActionRunning(row)"
+          :disabled="isAnyActionRunning(row) || !isPendingApproval(row.status)"
           @click="handleApprove(row)"
         >
           {{
@@ -508,7 +516,7 @@ function getRejectionReason(receipt) {
         <button
           class="btn btn-sm btn-danger"
           type="button"
-          :disabled="isAnyActionRunning(row)"
+          :disabled="isAnyActionRunning(row) || !isPendingApproval(row.status)"
           @click="openRejectModal(row)"
         >
           Từ chối
@@ -563,37 +571,6 @@ function getRejectionReason(receipt) {
         </p>
 
         <template v-else-if="detailState.receipt">
-          <div
-            v-if="
-              detailState.receipt &&
-              isPendingApproval(detailState.receipt.status)
-            "
-            class="detail-focus-card"
-          >
-            <div>
-              <p class="detail-focus-title">Tác vụ duyệt nhanh</p>
-              <p class="detail-focus-text">
-                Duyệt hoặc từ chối phiếu ngay trong panel để xử lý nhanh hơn.
-              </p>
-            </div>
-            <div class="detail-focus-actions">
-              <button
-                class="btn btn-danger"
-                type="button"
-                @click="openRejectModal(detailState.receipt)"
-              >
-                Từ chối phiếu
-              </button>
-              <button
-                class="btn btn-primary"
-                type="button"
-                @click="handleApprove(detailState.receipt)"
-              >
-                {{ approveLabel(detailState.receipt.status) }}
-              </button>
-            </div>
-          </div>
-
           <div
             v-if="getRejectionReason(detailState.receipt)"
             class="detail-rejection-card"
