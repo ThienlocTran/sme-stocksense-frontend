@@ -797,7 +797,7 @@ function openRoute(path) {
           </div>
         </div>
 
-        <div class="quick-links">
+        <div v-if="visibleQuickAccess.length > 0" class="quick-links">
           <button
             v-for="item in visibleQuickAccess"
             :key="item.title"
@@ -810,6 +810,15 @@ function openRoute(path) {
               <small>{{ item.description }}</small>
             </span>
           </button>
+        </div>
+        <div v-else class="state-card state-card--empty">
+          <div class="state-card__icon">
+            <i class="mdi mdi-link-variant"></i>
+          </div>
+          <div class="state-card__body">
+            <h3>Không có mục truy cập nhanh</h3>
+            <p>Bạn không có quyền truy cập vào các mục nhanh hiện tại.</p>
+          </div>
         </div>
       </section>
     </div>
