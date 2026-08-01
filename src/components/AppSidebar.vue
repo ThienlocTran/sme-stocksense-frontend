@@ -76,6 +76,11 @@ const menuSections = [
       },
       { label: "Cảnh báo tồn kho", to: "/alerts", icon: "mdi-alert-outline" },
       {
+        label: "Hồ sơ",
+        to: "/profile",
+        icon: "mdi-account-outline",
+      },
+      {
         label: "Nhân viên",
         to: "/employees",
         icon: "mdi-account-group-outline",
