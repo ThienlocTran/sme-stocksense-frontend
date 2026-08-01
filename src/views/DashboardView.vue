@@ -239,8 +239,7 @@ async function loadDashboardData(forceReload = false) {
   summary.value = { products: 0, warehouses: 0, stock: 0, warnings: 0 };
 
   try {
-    let overviewResult = { status: "fulfilled", value: null };
-    const requests = [Promise.resolve(overviewResult)];
+    const requests = [loadDashboardOverview()];
     let productsResult = { status: "fulfilled", value: 0 };
     let warehouseResult = { status: "fulfilled", value: 0 };
 
