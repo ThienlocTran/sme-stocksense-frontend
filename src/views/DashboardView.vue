@@ -72,6 +72,8 @@ const canSeeExportApprovals = computed(() =>
 );
 const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
 const canSeeAlerts = computed(() => canAccessRoute("/alerts"));
+const canSeeProducts = computed(() => canAccessRoute("/products"));
+const canSeeWarehouses = computed(() => canAccessRoute("/warehouses"));
 
 const chartCategories = computed(() => {
   const categories = [];
@@ -237,25 +239,41 @@ async function loadDashboardData(forceReload = false) {
   summary.value = { products: 0, warehouses: 0, stock: 0, warnings: 0 };
 
   try {
-    const [overviewResult, productsResult, warehouseResult] =
-      await Promise.allSettled([
-        loadDashboardOverview(),
-        loadProductCount(),
-        loadWarehouseCount(),
-      ]);
+    let overviewResult = { status: "fulfilled", value: null };
+    const requests = [Promise.resolve(overviewResult)];
+    let productsResult = { status: "fulfilled", value: 0 };
+    let warehouseResult = { status: "fulfilled", value: 0 };
+
+    if (canSeeProducts.value) {
+      requests.push(loadProductCount());
+    } else {
+      requests.push(Promise.resolve(0));
+    }
+
+    if (canSeeWarehouses.value) {
+      requests.push(loadWarehouseCount());
+    } else {
+      requests.push(Promise.resolve(0));
+    }
+
+    const [overviewResultValue, productsCountResult, warehouseCountResult] =
+      await Promise.allSettled(requests);
+
+    productsResult = productsCountResult ?? { status: "fulfilled", value: 0 };
+    warehouseResult = warehouseCountResult ?? { status: "fulfilled", value: 0 };
 
     let productsResponse = 0;
     let warehouseData = 0;
     let stockTotal = null;
     let warningCount = 0;
 
-    if (overviewResult.status === "fulfilled") {
-      dashboardOverview.value = overviewResult.value;
+    if (overviewResultValue.status === "fulfilled") {
+      dashboardOverview.value = overviewResultValue.value;
       dashboardOverviewFailed.value = false;
     } else {
       dashboardOverview.value = null;
       dashboardOverviewFailed.value = true;
-      if (overviewResult.reason?.status === 401) {
+      if (overviewResultValue.reason?.status === 401) {
         isLoading.value = false;
         isRetrying.value = false;
         router.replace("/login");
@@ -263,7 +281,8 @@ async function loadDashboardData(forceReload = false) {
       }
 
       errorMessage.value =
-        overviewResult.reason?.message || "Không thể tải dữ liệu dashboard.";
+        overviewResultValue.reason?.message ||
+        "Không thể tải dữ liệu dashboard.";
     }
 
     if (productsResult.status === "fulfilled") {

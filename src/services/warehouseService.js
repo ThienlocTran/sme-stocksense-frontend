@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { clearAuth, getAuthorizationHeader } from './authService'
+import { canAccessRoute } from '../services/permissionService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
@@ -17,6 +18,10 @@ const warehouseClient = axios.create({
  * - Mã kho không được cho trùng và không cho phép sửa đổi để đảm bảo tính toàn vẹn dữ liệu.
  */
 export async function getWarehouses({ keyword = '', status = '' } = {}) {
+  if (!canAccessRoute('/warehouses')) {
+    return { content: [], totalElements: 0 }
+  }
+
   try {
     const { data } = await warehouseClient.get('/api/warehouses', {
       headers: getAuthorizationHeader(),
