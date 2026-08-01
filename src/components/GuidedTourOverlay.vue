@@ -1,5 +1,12 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
 import { useRouter } from "vue-router";
 
 const props = defineProps({
@@ -22,6 +29,8 @@ const router = useRouter();
 
 const currentStepIndex = ref(props.initialStep);
 const spotlightRect = ref(null);
+let updateTargetInFlight = false;
+let updateTargetQueued = false;
 
 const currentStep = computed(() => props.steps[currentStepIndex.value] || null);
 const isLastStep = computed(() => {
@@ -31,48 +40,72 @@ const isLastStep = computed(() => {
 async function updateTarget() {
   if (!props.open) return;
 
-  const step = currentStep.value;
-  if (!step) {
-    spotlightRect.value = null;
+  if (updateTargetInFlight) {
+    updateTargetQueued = true;
     return;
   }
 
-  if (step.route && router.currentRoute.value.path !== step.route) {
-    try {
-      await router.push(step.route);
+  updateTargetInFlight = true;
+
+  try {
+    while (true) {
+      updateTargetQueued = false;
+
+      const step = currentStep.value;
+      if (!step) {
+        spotlightRect.value = null;
+        break;
+      }
+
+      if (step.route && router.currentRoute.value.path !== step.route) {
+        try {
+          await router.push(step.route);
+          await nextTick();
+        } catch {
+          spotlightRect.value = null;
+          break;
+        }
+      }
+
+      const selector = step.selector;
+      if (!selector) {
+        spotlightRect.value = null;
+        break;
+      }
+
       await nextTick();
-    } catch {
-      spotlightRect.value = null;
-      return;
+
+      const target = document.querySelector(selector);
+      if (!(target instanceof HTMLElement)) {
+        spotlightRect.value = null;
+        if (currentStepIndex.value < props.steps.length - 1) {
+          currentStepIndex.value += 1;
+        } else {
+          emit("completed");
+        }
+        break;
+      }
+
+      const rect = target.getBoundingClientRect();
+      spotlightRect.value = {
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+        height: rect.height,
+      };
+
+      if (updateTargetQueued) {
+        continue;
+      }
+
+      break;
+    }
+  } finally {
+    updateTargetInFlight = false;
+    if (updateTargetQueued) {
+      await updateTarget();
     }
   }
-
-  const selector = step.selector;
-  if (!selector) {
-    spotlightRect.value = null;
-    return;
-  }
-
-  await nextTick();
-
-  const target = document.querySelector(selector);
-  if (!(target instanceof HTMLElement)) {
-    spotlightRect.value = null;
-    if (currentStepIndex.value < props.steps.length - 1) {
-      currentStepIndex.value += 1;
-    } else {
-      emit("completed");
-    }
-    return;
-  }
-
-  const rect = target.getBoundingClientRect();
-  spotlightRect.value = {
-    top: rect.top + window.scrollY,
-    left: rect.left + window.scrollX,
-    width: rect.width,
-    height: rect.height,
-  };
 }
 
 function handleNextStep() {
@@ -132,24 +165,41 @@ onBeforeUnmount(() => {
     <div v-if="open" class="tour-backdrop" @click.self="closeTour">
       <div
         class="tour-spotlight"
-        :style="spotlightRect ? {
-          top: `${spotlightRect.top}px`,
-          left: `${spotlightRect.left}px`,
-          width: `${spotlightRect.width}px`,
-          height: `${spotlightRect.height}px`
-        } : {}"
+        :style="
+          spotlightRect
+            ? {
+                top: `${spotlightRect.top}px`,
+                left: `${spotlightRect.left}px`,
+                width: `${spotlightRect.width}px`,
+                height: `${spotlightRect.height}px`,
+              }
+            : {}
+        "
       />
 
-      <div class="tour-card" :style="spotlightRect ? {
-        top: `${Math.min(Math.max(spotlightRect.top + spotlightRect.height + 12, 24), Math.max(window.innerHeight - 220, 24))}px`,
-        left: `${Math.min(Math.max(spotlightRect.left, 24), Math.max(window.innerWidth - 360, 24))}px`,
-        maxWidth: `${Math.min(360, window.innerWidth - 48)}px`
-      } : { top: '24px', right: '24px', maxWidth: '360px' }">
+      <div
+        class="tour-card"
+        :style="
+          spotlightRect
+            ? {
+                top: `${Math.min(Math.max(spotlightRect.top + spotlightRect.height + 12, 24), Math.max(window.innerHeight - 220, 24))}px`,
+                left: `${Math.min(Math.max(spotlightRect.left, 24), Math.max(window.innerWidth - 360, 24))}px`,
+                maxWidth: `${Math.min(360, window.innerWidth - 48)}px`,
+              }
+            : { top: '24px', right: '24px', maxWidth: '360px' }
+        "
+      >
         <div class="tour-pill">Hướng dẫn nhanh</div>
         <h3>{{ currentStep?.title || "Hướng dẫn" }}</h3>
-        <p>{{ currentStep?.description || "Bạn có thể bỏ qua bất cứ lúc nào." }}</p>
+        <p>
+          {{ currentStep?.description || "Bạn có thể bỏ qua bất cứ lúc nào." }}
+        </p>
         <div class="tour-actions">
-          <button class="btn btn-ghost tour-btn" type="button" @click="skipTour">
+          <button
+            class="btn btn-ghost tour-btn"
+            type="button"
+            @click="skipTour"
+          >
             Bỏ qua
           </button>
           <button class="btn tour-btn" type="button" @click="handleNextStep">

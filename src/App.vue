@@ -23,17 +23,26 @@ function getStorageKey(baseKey) {
 
 function shouldShowWelcomeModal() {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(getStorageKey(WELCOME_MODAL_STORAGE_KEY)) !== "true";
+  return (
+    window.localStorage.getItem(getStorageKey(WELCOME_MODAL_STORAGE_KEY)) !==
+    "true"
+  );
 }
 
 function shouldShowGuidedTour() {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(getStorageKey(GUIDED_TOUR_STORAGE_KEY)) !== "true";
+  return (
+    window.localStorage.getItem(getStorageKey(GUIDED_TOUR_STORAGE_KEY)) !==
+    "true"
+  );
 }
 
 function closeWelcomeModal() {
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(getStorageKey(WELCOME_MODAL_STORAGE_KEY), "true");
+    window.localStorage.setItem(
+      getStorageKey(WELCOME_MODAL_STORAGE_KEY),
+      "true",
+    );
   }
   isWelcomeModalOpen.value = false;
   if (shouldShowGuidedTour()) {
@@ -58,17 +67,20 @@ function skipGuidedTour() {
 const guidedTourSteps = [
   {
     title: "Sidebar điều hướng",
-    description: "Bắt đầu từ thanh bên để di chuyển nhanh giữa tổng quan, kho, phiếu nhập/xuất và cảnh báo.",
+    description:
+      "Bắt đầu từ thanh bên để di chuyển nhanh giữa tổng quan, kho, phiếu nhập/xuất và cảnh báo.",
     selector: ".sidebar",
   },
   {
     title: "Dashboard tổng quan",
-    description: "Tại đây bạn xem KPI, biểu đồ và các mục cần xử lý trong một bố cục mới dễ đọc hơn.",
+    description:
+      "Tại đây bạn xem KPI, biểu đồ và các mục cần xử lý trong một bố cục mới dễ đọc hơn.",
     selector: ".dashboard-panel--wide",
   },
   {
     title: "Pending Approval",
-    description: "Nhóm này giúp bạn thấy các phiếu nhập và xuất đang chờ duyệt trước khi vào màn hình chi tiết.",
+    description:
+      "Nhóm này giúp bạn thấy các phiếu nhập và xuất đang chờ duyệt trước khi vào màn hình chi tiết.",
     selector: ".dashboard-section-grid .card:nth-of-type(1)",
   },
   {
@@ -78,18 +90,22 @@ const guidedTourSteps = [
   },
   {
     title: "Inventory",
-    description: "Mở màn hình tồn kho để lọc theo kho, trạng thái và tìm kiếm nhanh hơn.",
+    description:
+      "Mở màn hình tồn kho để lọc theo kho, trạng thái và tìm kiếm nhanh hơn.",
     route: "/inventory",
     selector: ".filter-bar",
   },
   {
     title: "Shortcut tạo phiếu",
-    description: "Bạn có thể tạo phiếu nhập hoặc xuất nhanh từ các mục truy cập nhanh trên dashboard.",
+    description:
+      "Bạn có thể tạo phiếu nhập hoặc xuất nhanh từ các mục truy cập nhanh trên dashboard.",
+    route: "/dashboard",
     selector: ".quick-link",
   },
   {
     title: "Filter",
-    description: "Sử dụng bộ lọc để thu hẹp dữ liệu theo kho, trạng thái hoặc từ khóa trước khi làm việc.",
+    description:
+      "Sử dụng bộ lọc để thu hẹp dữ liệu theo kho, trạng thái hoặc từ khóa trước khi làm việc.",
     route: "/inventory",
     selector: ".filter-bar",
   },
