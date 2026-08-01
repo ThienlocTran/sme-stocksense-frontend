@@ -45,6 +45,10 @@ export async function getCurrentProfile() {
 
         lastError = normalizedError
 
+        if (!error?.response) {
+          break
+        }
+
         if (error.response?.status === 404) {
           continue
         }

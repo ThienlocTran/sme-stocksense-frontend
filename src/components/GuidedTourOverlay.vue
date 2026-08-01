@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
 const props = defineProps({
   open: {
@@ -17,6 +18,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close", "completed", "skip"]);
+const router = useRouter();
 
 const currentStepIndex = ref(props.initialStep);
 const spotlightRect = ref(null);
@@ -26,16 +28,41 @@ const isLastStep = computed(() => {
   return currentStepIndex.value >= (props.steps.length || 1) - 1;
 });
 
-function updateTarget() {
-  const selector = currentStep.value?.selector;
+async function updateTarget() {
+  if (!props.open) return;
+
+  const step = currentStep.value;
+  if (!step) {
+    spotlightRect.value = null;
+    return;
+  }
+
+  if (step.route && router.currentRoute.value.path !== step.route) {
+    try {
+      await router.push(step.route);
+      await nextTick();
+    } catch {
+      spotlightRect.value = null;
+      return;
+    }
+  }
+
+  const selector = step.selector;
   if (!selector) {
     spotlightRect.value = null;
     return;
   }
 
+  await nextTick();
+
   const target = document.querySelector(selector);
   if (!(target instanceof HTMLElement)) {
     spotlightRect.value = null;
+    if (currentStepIndex.value < props.steps.length - 1) {
+      currentStepIndex.value += 1;
+    } else {
+      emit("completed");
+    }
     return;
   }
 
@@ -85,6 +112,7 @@ watch(currentStepIndex, () => {
 });
 
 function handleResize() {
+  if (!props.open) return;
   updateTarget();
 }
 

@@ -5,6 +5,7 @@ import AppSidebar from "./components/AppSidebar.vue";
 import AppTopbar from "./components/AppTopbar.vue";
 import GuidedTourOverlay from "./components/GuidedTourOverlay.vue";
 import WelcomeModal from "./components/WelcomeModal.vue";
+import { getCurrentUser } from "./services/authService";
 
 const route = useRoute();
 const isAuthLayout = computed(() => route.meta.layout === "auth");
@@ -14,19 +15,25 @@ const isGuidedTourOpen = ref(false);
 const WELCOME_MODAL_STORAGE_KEY = "stocksense_welcome_modal_seen";
 const GUIDED_TOUR_STORAGE_KEY = "stocksense_guided_tour_seen";
 
+function getStorageKey(baseKey) {
+  const currentUser = getCurrentUser();
+  const userId = currentUser?.employeeId || currentUser?.id || "guest";
+  return `${baseKey}_${userId}`;
+}
+
 function shouldShowWelcomeModal() {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(WELCOME_MODAL_STORAGE_KEY) !== "true";
+  return window.localStorage.getItem(getStorageKey(WELCOME_MODAL_STORAGE_KEY)) !== "true";
 }
 
 function shouldShowGuidedTour() {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(GUIDED_TOUR_STORAGE_KEY) !== "true";
+  return window.localStorage.getItem(getStorageKey(GUIDED_TOUR_STORAGE_KEY)) !== "true";
 }
 
 function closeWelcomeModal() {
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, "true");
+    window.localStorage.setItem(getStorageKey(WELCOME_MODAL_STORAGE_KEY), "true");
   }
   isWelcomeModalOpen.value = false;
   if (shouldShowGuidedTour()) {
@@ -36,14 +43,14 @@ function closeWelcomeModal() {
 
 function closeGuidedTour() {
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(GUIDED_TOUR_STORAGE_KEY, "true");
+    window.localStorage.setItem(getStorageKey(GUIDED_TOUR_STORAGE_KEY), "true");
   }
   isGuidedTourOpen.value = false;
 }
 
 function skipGuidedTour() {
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(GUIDED_TOUR_STORAGE_KEY, "true");
+    window.localStorage.setItem(getStorageKey(GUIDED_TOUR_STORAGE_KEY), "true");
   }
   isGuidedTourOpen.value = false;
 }
@@ -72,7 +79,8 @@ const guidedTourSteps = [
   {
     title: "Inventory",
     description: "Mở màn hình tồn kho để lọc theo kho, trạng thái và tìm kiếm nhanh hơn.",
-    selector: ".nav-item[href='/inventory'], .nav-item.router-link-active[href='/inventory']",
+    route: "/inventory",
+    selector: ".filter-bar",
   },
   {
     title: "Shortcut tạo phiếu",
@@ -82,6 +90,7 @@ const guidedTourSteps = [
   {
     title: "Filter",
     description: "Sử dụng bộ lọc để thu hẹp dữ liệu theo kho, trạng thái hoặc từ khóa trước khi làm việc.",
+    route: "/inventory",
     selector: ".filter-bar",
   },
 ];

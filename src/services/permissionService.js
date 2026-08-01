@@ -53,6 +53,10 @@ export function canAccessRoute(path, role) {
     return ['ADMIN', 'MANAGER'].includes(resolvedRole)
   }
 
+  if (path === '/products' || path === '/warehouses' || path === '/inventory' || path === '/alerts') {
+    return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
+  }
+
   if (/^\/stock-in\/[^/]+$/.test(path)) {
     return ['ADMIN', 'EMPLOYEE'].includes(resolvedRole)
   }
