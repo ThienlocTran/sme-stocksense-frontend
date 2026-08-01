@@ -37,26 +37,7 @@ const warehouseCountFailed = ref(false);
 const warningCountFailed = ref(false);
 const stockTotalFailed = ref(false);
 
-const pendingApprovalsTotal = computed(() => {
-  if (!dashboardOverview.value) return 0;
-  return (
-    Number(dashboardOverview.value.pendingTasks.importReceipts || 0) +
-    Number(dashboardOverview.value.pendingTasks.exportReceipts || 0)
-  );
-});
-
-const chartSeries = computed(() => [
-  {
-    name: "Số lượng",
-    data: [
-      Number(dashboardOverview.value?.overview.totalStock || 0),
-      pendingApprovalsTotal.value,
-      Number(dashboardOverview.value?.pendingTasks.inventoryAlerts || 0),
-    ],
-  },
-]);
-
-const chartOptions = {
+const chartOptions = computed(() => ({
   chart: {
     type: "bar",
     toolbar: { show: false },
@@ -70,7 +51,7 @@ const chartOptions = {
   },
   dataLabels: { enabled: false },
   xaxis: {
-    categories: ["Tồn kho", "Phê duyệt", "Cảnh báo"],
+    categories: chartCategories.value,
   },
   yaxis: {
     labels: {
@@ -83,7 +64,7 @@ const chartOptions = {
       formatter: (value) => new Intl.NumberFormat("vi-VN").format(value),
     },
   },
-};
+}));
 
 const canSeeImportApprovals = computed(() => canAccessRoute("/approvals"));
 const canSeeExportApprovals = computed(() =>
@@ -91,6 +72,39 @@ const canSeeExportApprovals = computed(() =>
 );
 const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
 const canSeeAlerts = computed(() => canAccessRoute("/alerts"));
+
+const chartCategories = computed(() => {
+  const categories = [];
+  if (canSeeWarnings.value) categories.push("Tồn kho");
+  if (canSeeImportApprovals.value || canSeeExportApprovals.value)
+    categories.push("Phê duyệt");
+  if (canSeeAlerts.value) categories.push("Cảnh báo");
+  return categories;
+});
+
+const pendingApprovalsTotal = computed(() => {
+  return (
+    Number(dashboardOverview.value?.pendingTasks?.importReceipts || 0) +
+    Number(dashboardOverview.value?.pendingTasks?.exportReceipts || 0)
+  );
+});
+
+const chartSeries = computed(() => [
+  {
+    name: "Số lượng",
+    data: [
+      ...(canSeeWarnings.value
+        ? [Number(dashboardOverview.value?.overview?.totalStock || 0)]
+        : []),
+      ...(canSeeImportApprovals.value || canSeeExportApprovals.value
+        ? [pendingApprovalsTotal.value]
+        : []),
+      ...(canSeeAlerts.value
+        ? [Number(dashboardOverview.value?.pendingTasks?.inventoryAlerts || 0)]
+        : []),
+    ],
+  },
+]);
 const visibleKpiCardCount = computed(() => (canSeeWarnings.value ? 4 : 2));
 const hasAnyApiError = computed(() => {
   return (
