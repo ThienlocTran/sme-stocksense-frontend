@@ -1,5 +1,11 @@
 <script setup>
-import { onBeforeUnmount, onMounted } from "vue";
+import {
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  nextTick,
+} from "vue";
 
 const props = defineProps({
   open: {
@@ -10,22 +16,94 @@ const props = defineProps({
 
 const emit = defineEmits(["close"]);
 
+const dialogRef = ref(null);
+let previouslyFocused = null;
+
 function close() {
   emit("close");
 }
 
-function handleKeydown(event) {
+function handleWindowKeydown(event) {
   if (event.key === "Escape" && props.open) {
     close();
   }
 }
 
+function getFocusableElements() {
+  if (!dialogRef.value) return [];
+  const selectors =
+    'a[href], button:not([disabled]), textarea, input:not([disabled]), select, [tabindex]:not([tabindex="-1"])';
+  return Array.from(dialogRef.value.querySelectorAll(selectors)).filter(
+    (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+  );
+}
+
+function handleDialogKeydown(e) {
+  if (e.key !== "Tab") return;
+  const focusable = getFocusableElements();
+  if (focusable.length === 0) {
+    e.preventDefault();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (e.shiftKey) {
+    if (document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    }
+  } else {
+    if (document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+}
+
+function enforceFocus(e) {
+  if (!dialogRef.value) return;
+  if (!dialogRef.value.contains(e.target)) {
+    e.stopImmediatePropagation();
+    dialogRef.value.focus();
+  }
+}
+
+watch(
+  () => props.open,
+  async (open) => {
+    if (open) {
+      previouslyFocused = document.activeElement;
+      await nextTick();
+      const focusable = getFocusableElements();
+      if (focusable.length) {
+        focusable[0].focus();
+      } else if (dialogRef.value) {
+        dialogRef.value.setAttribute("tabindex", "-1");
+        dialogRef.value.focus();
+      }
+      document.addEventListener("focus", enforceFocus, true);
+      dialogRef.value?.addEventListener("keydown", handleDialogKeydown);
+    } else {
+      document.removeEventListener("focus", enforceFocus, true);
+      dialogRef.value?.removeEventListener("keydown", handleDialogKeydown);
+      if (previouslyFocused && previouslyFocused.focus) {
+        previouslyFocused.focus();
+      }
+      previouslyFocused = null;
+    }
+  },
+);
+
 onMounted(() => {
-  window.addEventListener("keydown", handleKeydown);
+  window.addEventListener("keydown", handleWindowKeydown);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("keydown", handleKeydown);
+  window.removeEventListener("keydown", handleWindowKeydown);
+  document.removeEventListener("focus", enforceFocus, true);
+  dialogRef.value?.removeEventListener("keydown", handleDialogKeydown);
 });
 </script>
 
@@ -38,6 +116,7 @@ onBeforeUnmount(() => {
         @click.self="close"
       >
         <div
+          ref="dialogRef"
           class="welcome-modal"
           role="dialog"
           aria-modal="true"

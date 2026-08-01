@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import AppSidebar from "./components/AppSidebar.vue";
 import AppTopbar from "./components/AppTopbar.vue";
@@ -25,6 +25,15 @@ function closeWelcomeModal() {
 
 onMounted(() => {
   if (!isAuthLayout.value && shouldShowWelcomeModal()) {
+    isWelcomeModalOpen.value = true;
+  }
+});
+
+// When transitioning from the auth layout into the app, show the welcome
+// modal if it hasn't been dismissed. This prevents opening while still on
+// an auth route and preserves the existing localStorage check/close behavior.
+watch(isAuthLayout, (newVal, oldVal) => {
+  if (oldVal === true && newVal === false && shouldShowWelcomeModal()) {
     isWelcomeModalOpen.value = true;
   }
 });
