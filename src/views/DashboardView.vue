@@ -74,6 +74,13 @@ const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
 const canSeeAlerts = computed(() => canAccessRoute("/alerts"));
 const canSeeProducts = computed(() => canAccessRoute("/products"));
 const canSeeWarehouses = computed(() => canAccessRoute("/warehouses"));
+const canSeeDashboardOverview = computed(
+  () =>
+    canSeeWarnings.value ||
+    canSeeAlerts.value ||
+    canSeeImportApprovals.value ||
+    canSeeExportApprovals.value,
+);
 
 const chartCategories = computed(() => {
   const categories = [];
@@ -111,7 +118,13 @@ const chartSeries = computed(() => [
     ],
   },
 ]);
-const visibleKpiCardCount = computed(() => (canSeeWarnings.value ? 4 : 2));
+const visibleKpiCardCount = computed(() => {
+  let count = 0;
+  if (canSeeProducts.value) count += 1;
+  if (canSeeWarehouses.value) count += 1;
+  if (canSeeWarnings.value) count += 2;
+  return count || 2;
+});
 const hasAnyApiError = computed(() => {
   return (
     Boolean(errorMessage.value) ||
@@ -239,9 +252,15 @@ async function loadDashboardData(forceReload = false) {
   summary.value = { products: 0, warehouses: 0, stock: 0, warnings: 0 };
 
   try {
-    const requests = [loadDashboardOverview()];
+    const requests = [];
     let productsResult = { status: "fulfilled", value: 0 };
     let warehouseResult = { status: "fulfilled", value: 0 };
+
+    if (canSeeDashboardOverview.value) {
+      requests.push(loadDashboardOverview());
+    } else {
+      requests.push(Promise.resolve(null));
+    }
 
     if (canSeeProducts.value) {
       requests.push(loadProductCount());
@@ -656,7 +675,7 @@ function openRoute(path) {
           class="kpi-grid"
           :class="{ 'kpi-grid--two-columns': !canSeeWarnings }"
         >
-          <article class="kpi-card">
+          <article v-if="canSeeProducts" class="kpi-card">
             <div class="kpi-card__icon">
               <i class="mdi mdi-package-variant-closed"></i>
             </div>
@@ -669,7 +688,7 @@ function openRoute(path) {
             </div>
           </article>
 
-          <article class="kpi-card">
+          <article v-if="canSeeWarehouses" class="kpi-card">
             <div class="kpi-card__icon kpi-card__icon--accent">
               <i class="mdi mdi-warehouse"></i>
             </div>
