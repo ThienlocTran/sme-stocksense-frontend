@@ -93,7 +93,7 @@ const guidedTourSteps = [
     description:
       "Mở màn hình tồn kho để lọc theo kho, trạng thái và tìm kiếm nhanh hơn.",
     route: "/inventory",
-    selector: ".filter-bar",
+    selector: ".table-wrap",
   },
   {
     title: "Shortcut tạo phiếu",

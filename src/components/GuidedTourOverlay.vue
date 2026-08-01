@@ -60,7 +60,9 @@ async function updateTarget() {
       if (step.route && router.currentRoute.value.path !== step.route) {
         try {
           await router.push(step.route);
+          if (!props.open) break;
           await nextTick();
+          if (!props.open) break;
         } catch {
           spotlightRect.value = null;
           break;
@@ -74,6 +76,7 @@ async function updateTarget() {
       }
 
       await nextTick();
+      if (!props.open) break;
 
       const target = document.querySelector(selector);
       if (!(target instanceof HTMLElement)) {
@@ -102,7 +105,7 @@ async function updateTarget() {
     }
   } finally {
     updateTargetInFlight = false;
-    if (updateTargetQueued) {
+    if (updateTargetQueued && props.open) {
       await updateTarget();
     }
   }
