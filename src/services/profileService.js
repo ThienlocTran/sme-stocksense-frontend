@@ -15,6 +15,8 @@ const profileClient = axios.create({
 export async function getCurrentProfile() {
   const fallbackProfile = normalizeProfile(getCurrentUser())
 
+  let lastError = null
+
   try {
     const endpoints = ['/api/auth/me', '/api/auth/profile']
     const currentUser = getCurrentUser()
@@ -34,10 +36,14 @@ export async function getCurrentProfile() {
           return normalized
         }
       } catch (error) {
-        if (error.response?.status === 401) {
+        const normalizedError = normalizeProfileError(error, 'Phiên đăng nhập đã hết hạn.')
+
+        if (normalizedError.status === 401) {
           clearAuth()
-          throw normalizeProfileError(error, 'Phiên đăng nhập đã hết hạn.')
+          throw normalizedError
         }
+
+        lastError = normalizedError
 
         if (error.response?.status === 404) {
           continue
@@ -51,6 +57,10 @@ export async function getCurrentProfile() {
 
     if (hasProfileData(fallbackProfile)) {
       return fallbackProfile
+    }
+
+    if (lastError) {
+      throw lastError
     }
 
     return null

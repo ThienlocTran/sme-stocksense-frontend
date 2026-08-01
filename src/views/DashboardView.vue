@@ -261,6 +261,9 @@ async function loadDashboardData(forceReload = false) {
         router.replace("/login");
         return;
       }
+
+      errorMessage.value =
+        overviewResult.reason?.message || "Không thể tải dữ liệu dashboard.";
     }
 
     if (productsResult.status === "fulfilled") {
