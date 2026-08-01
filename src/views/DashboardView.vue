@@ -83,10 +83,14 @@ const chartCategories = computed(() => {
 });
 
 const pendingApprovalsTotal = computed(() => {
-  return (
-    Number(dashboardOverview.value?.pendingTasks?.importReceipts || 0) +
-    Number(dashboardOverview.value?.pendingTasks?.exportReceipts || 0)
-  );
+  const importReceipts = canSeeImportApprovals.value
+    ? Number(dashboardOverview.value?.pendingTasks?.importReceipts || 0)
+    : 0;
+  const exportReceipts = canSeeExportApprovals.value
+    ? Number(dashboardOverview.value?.pendingTasks?.exportReceipts || 0)
+    : 0;
+
+  return importReceipts + exportReceipts;
 });
 
 const chartSeries = computed(() => [

@@ -2,9 +2,11 @@ import axios from 'axios'
 import { clearAuth, getAuthorizationHeader, getCurrentUser } from './authService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const API_TIMEOUT_MS = 15000
 
 const profileClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -47,13 +49,23 @@ export async function getCurrentProfile() {
       }
     }
 
-    return fallbackProfile
-  } catch (error) {
     if (hasProfileData(fallbackProfile)) {
       return fallbackProfile
     }
 
-    throw normalizeProfileError(error, 'Không thể tải thông tin hồ sơ.')
+    return null
+  } catch (error) {
+    const normalizedError = normalizeProfileError(error, 'Không thể tải thông tin hồ sơ.')
+
+    if (normalizedError.status === 401) {
+      throw normalizedError
+    }
+
+    if (hasProfileData(fallbackProfile)) {
+      return fallbackProfile
+    }
+
+    throw normalizedError
   }
 }
 

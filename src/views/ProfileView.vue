@@ -1,36 +1,36 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-import { useAuthStore } from '../stores/auth'
-import { getCurrentProfile } from '../services/profileService'
-import { formatRole } from '../services/authService'
+import { onMounted, ref } from "vue";
+import { useAuthStore } from "../stores/auth";
+import { getCurrentProfile } from "../services/profileService";
+import { formatRole } from "../services/authService";
 
-const authStore = useAuthStore()
-const profile = ref(null)
-const isLoading = ref(true)
-const errorMessage = ref('')
+const authStore = useAuthStore();
+const profile = ref(null);
+const isLoading = ref(true);
+const errorMessage = ref("");
 
 function getStatusLabel(status) {
-  if (!status) return '—'
-  return String(status).toUpperCase()
+  if (!status) return "—";
+  return String(status).toUpperCase();
 }
 
 async function loadProfile() {
-  isLoading.value = true
-  errorMessage.value = ''
+  isLoading.value = true;
+  errorMessage.value = "";
 
   try {
-    const data = await getCurrentProfile()
-    profile.value = data
+    const data = await getCurrentProfile();
+    profile.value = data;
   } catch (error) {
-    errorMessage.value = error?.message || 'Không thể tải hồ sơ.'
+    errorMessage.value = error?.message || "Không thể tải hồ sơ.";
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
 onMounted(() => {
-  loadProfile()
-})
+  loadProfile();
+});
 </script>
 
 <template>
@@ -38,7 +38,9 @@ onMounted(() => {
     <header class="page-header">
       <div>
         <h1 class="page-title">Hồ sơ</h1>
-        <p class="page-desc">Xem thông tin tài khoản và vai trò đang hoạt động.</p>
+        <p class="page-desc">
+          Xem thông tin tài khoản và vai trò đang hoạt động.
+        </p>
       </div>
     </header>
 
@@ -48,17 +50,24 @@ onMounted(() => {
       <p class="muted">Đang lấy dữ liệu từ hệ thống...</p>
     </div>
 
-    <div v-else-if="errorMessage" class="card card-pad state-card state-card-error">
+    <div
+      v-else-if="errorMessage"
+      class="card card-pad state-card state-card-error"
+    >
       <div class="state-icon"><i class="mdi mdi-alert-circle-outline"></i></div>
       <h2 class="section-title">Không thể tải hồ sơ</h2>
       <p class="muted">{{ errorMessage }}</p>
-      <button class="btn btn-primary" type="button" @click="loadProfile">Thử lại</button>
+      <button class="btn btn-primary" type="button" @click="loadProfile">
+        Thử lại
+      </button>
     </div>
 
     <div v-else-if="!profile" class="card card-pad state-card">
       <div class="state-icon"><i class="mdi mdi-account-outline"></i></div>
       <h2 class="section-title">Chưa có dữ liệu hồ sơ</h2>
-      <p class="muted">Hệ thống chưa trả về thông tin profile cho tài khoản này.</p>
+      <p class="muted">
+        Hệ thống chưa trả về thông tin profile cho tài khoản này.
+      </p>
     </div>
 
     <div v-else class="profile-shell">
@@ -68,33 +77,39 @@ onMounted(() => {
             <i class="mdi mdi-account"></i>
           </div>
           <div>
-            <h2 class="section-title">{{ profile.fullName || '—' }}</h2>
-            <p class="muted">{{ profile.email || 'Chưa có email' }}</p>
+            <h2 class="section-title">{{ profile.fullName || "—" }}</h2>
+            <p class="muted">{{ profile.email || "Chưa có email" }}</p>
           </div>
         </div>
         <div class="hero-badge">
-          <span class="badge-chip">{{ formatRole(profile.role || authStore.currentRole) }}</span>
+          <span class="badge-chip">{{
+            formatRole(profile.role || authStore.currentRole)
+          }}</span>
         </div>
       </div>
 
       <div class="card card-pad">
         <div class="section-head">
           <h3 class="section-title">Thông tin tài khoản</h3>
-          <p class="muted">Chỉ hiển thị dữ liệu từ hệ thống và không cho chỉnh sửa trực tiếp.</p>
+          <p class="muted">
+            Chỉ hiển thị dữ liệu từ hệ thống và không cho chỉnh sửa trực tiếp.
+          </p>
         </div>
 
         <div class="profile-grid">
           <div class="info-item">
             <span class="info-label">Họ và tên</span>
-            <strong>{{ profile.fullName || '—' }}</strong>
+            <strong>{{ profile.fullName || "—" }}</strong>
           </div>
           <div class="info-item">
             <span class="info-label">Email</span>
-            <strong>{{ profile.email || '—' }}</strong>
+            <strong>{{ profile.email || "—" }}</strong>
           </div>
           <div class="info-item">
             <span class="info-label">Vai trò</span>
-            <strong>{{ formatRole(profile.role || authStore.currentRole) || '—' }}</strong>
+            <strong>{{
+              formatRole(profile.role || authStore.currentRole) || "—"
+            }}</strong>
           </div>
           <div class="info-item">
             <span class="info-label">Trạng thái</span>
@@ -107,11 +122,31 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.page-stack { display: grid; gap: 20px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.profile-shell { display: grid; gap: 20px; }
-.profile-hero { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.avatar-wrap { display: flex; align-items: center; gap: 16px; }
+.page-stack {
+  display: grid;
+  gap: 20px;
+}
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.profile-shell {
+  display: grid;
+  gap: 20px;
+}
+.profile-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.avatar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
 .avatar {
   width: 56px;
   height: 56px;
@@ -134,7 +169,12 @@ onMounted(() => {
   font-weight: 700;
   white-space: nowrap;
 }
-.section-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+.section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
 .profile-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -149,7 +189,13 @@ onMounted(() => {
   flex-direction: column;
   gap: 6px;
 }
-.info-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+.info-label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
 .state-card {
   min-height: 260px;
   display: grid;
@@ -157,7 +203,10 @@ onMounted(() => {
   text-align: center;
   gap: 8px;
 }
-.state-card-error { border-color: #fecaca; background: #fff7f7; }
+.state-card-error {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
 .state-icon {
   width: 50px;
   height: 50px;
@@ -168,15 +217,28 @@ onMounted(() => {
   color: var(--primary);
   font-size: 24px;
 }
-.state-card-error .state-icon { background: #fef2f2; color: var(--danger); }
-.mdi-spin { animation: spin 0.8s linear infinite; }
+.state-card-error .state-icon {
+  background: #fef2f2;
+  color: var(--danger);
+}
+.mdi-spin {
+  animation: spin 0.8s linear infinite;
+}
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 720px) {
-  .page-header, .profile-hero { flex-direction: column; align-items: flex-start; }
-  .profile-grid { grid-template-columns: 1fr; }
+  .page-header,
+  .profile-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
