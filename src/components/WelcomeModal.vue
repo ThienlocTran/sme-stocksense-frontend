@@ -117,6 +117,7 @@ onBeforeUnmount(() => {
       >
         <div
           ref="dialogRef"
+          tabindex="-1"
           class="welcome-modal"
           role="dialog"
           aria-modal="true"
