@@ -7,8 +7,11 @@ import GuidedTourOverlay from "./components/GuidedTourOverlay.vue";
 import WelcomeModal from "./components/WelcomeModal.vue";
 import { getCurrentUser } from "./services/authService";
 import { canAccessRoute } from "./services/permissionService";
+import { useAuthStore } from "./stores/auth";
 
 const route = useRoute();
+const authStore = useAuthStore();
+const currentRole = computed(() => authStore.currentRole);
 const isAuthLayout = computed(() => route.meta.layout === "auth");
 const isWelcomeModalOpen = ref(false);
 const isGuidedTourOpen = ref(false);
@@ -123,9 +126,13 @@ const guidedTourSteps = [
 ];
 
 const visibleGuidedTourSteps = computed(() =>
-  guidedTourSteps.filter(
-    (step) => !step.permissionRoute || canAccessRoute(step.permissionRoute),
-  ),
+  guidedTourSteps.filter((step) => {
+    if (!step.permissionRoute) {
+      return true;
+    }
+
+    return canAccessRoute(step.permissionRoute, currentRole.value);
+  }),
 );
 
 onMounted(() => {
