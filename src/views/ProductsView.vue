@@ -317,9 +317,14 @@ function formatCurrency(value) {
   <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
   <p v-if="successMessage" class="form-alert form-alert-success">{{ successMessage }}</p>
 
-  <div v-if="isLoading" class="loading-card card card-pad">
-    <i class="mdi mdi-loading mdi-spin"></i>
-    <span>Đang tải sản phẩm...</span>
+  <div v-if="isLoading" class="state-card state-card--loading">
+    <div class="state-card__icon">
+      <i class="mdi mdi-loading mdi-spin"></i>
+    </div>
+    <div class="state-card__body">
+      <h3>Đang tải sản phẩm</h3>
+      <p>Hệ thống đang chuẩn bị danh sách dữ liệu cho bạn.</p>
+    </div>
   </div>
 
   <DataTable

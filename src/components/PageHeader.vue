@@ -7,7 +7,7 @@ defineProps({
 
 <template>
   <div class="between page-header">
-    <div>
+    <div class="page-header__content">
       <h1 class="page-title">{{ title }}</h1>
       <p v-if="description" class="page-desc">{{ description }}</p>
     </div>
@@ -16,5 +16,6 @@ defineProps({
 </template>
 
 <style scoped>
-.page-header { margin-bottom: 18px; align-items: flex-start; }
+.page-header { margin-bottom: 20px; align-items: flex-start; gap: 16px; }
+.page-header__content { display: grid; gap: 4px; }
 </style>

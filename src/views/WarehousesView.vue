@@ -288,9 +288,14 @@ function displayStatus(status) {
   </div>
 
   <div class="warehouse-table-shell">
-    <div v-if="isLoading" class="warehouse-loading card card-pad">
-      <i class="mdi mdi-loading mdi-spin"></i>
-      <span>Đang tải danh sách kho hàng...</span>
+    <div v-if="isLoading" class="state-card state-card--loading">
+      <div class="state-card__icon">
+        <i class="mdi mdi-loading mdi-spin"></i>
+      </div>
+      <div class="state-card__body">
+        <h3>Đang tải danh sách kho</h3>
+        <p>Hệ thống đang chuẩn bị dữ liệu kho cho bạn xem.</p>
+      </div>
     </div>
 
     <DataTable v-else-if="warehouses.length > 0" :columns="columns" :rows="warehouses" min-width="900px">

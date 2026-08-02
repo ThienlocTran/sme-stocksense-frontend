@@ -1260,18 +1260,25 @@ function openRoute(path) {
 }
 
 .retry-button {
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 8px 14px;
   background: var(--primary);
   color: #fff;
   font-weight: 700;
   cursor: pointer;
+  min-height: 38px;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.16);
+}
+
+.retry-button:hover {
+  background: var(--primary-dark);
 }
 
 .retry-button:disabled {
   opacity: 0.7;
   cursor: progress;
+  box-shadow: none;
 }
 
 .retry-button--inline {
