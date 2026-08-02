@@ -92,6 +92,7 @@ const guidedTourSteps = [
     description:
       "Nhóm này giúp bạn thấy các phiếu nhập và xuất đang chờ duyệt trước khi vào màn hình chi tiết.",
     selector: ".dashboard-section-grid .card:nth-of-type(1)",
+    permissionRoute: "/approvals",
   },
   {
     title: "Alerts",
@@ -122,7 +123,9 @@ const guidedTourSteps = [
 ];
 
 const visibleGuidedTourSteps = computed(() =>
-  guidedTourSteps.filter((step) => !step.route || canAccessRoute(step.route)),
+  guidedTourSteps.filter(
+    (step) => !step.permissionRoute || canAccessRoute(step.permissionRoute),
+  ),
 );
 
 onMounted(() => {
@@ -134,6 +137,12 @@ onMounted(() => {
 });
 
 watch(isAuthLayout, (newVal, oldVal) => {
+  if (newVal === true) {
+    isWelcomeModalOpen.value = false;
+    isGuidedTourOpen.value = false;
+    return;
+  }
+
   if (oldVal === true && newVal === false) {
     if (shouldShowWelcomeModal()) {
       isWelcomeModalOpen.value = true;

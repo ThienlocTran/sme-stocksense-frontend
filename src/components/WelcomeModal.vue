@@ -91,6 +91,7 @@ watch(
       previouslyFocused = null;
     }
   },
+  { immediate: true },
 );
 
 onMounted(() => {
