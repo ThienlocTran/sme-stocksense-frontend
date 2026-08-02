@@ -229,6 +229,21 @@ onMounted(() => {
   loadDashboardData(true);
 });
 
+function handleSessionExpired() {
+  isLoading.value = false;
+  isRetrying.value = false;
+  router.replace("/login");
+}
+
+function shouldRedirectForSessionError(error) {
+  if (error?.status === 401) {
+    handleSessionExpired();
+    return true;
+  }
+
+  return false;
+}
+
 async function loadDashboardData(forceReload = false) {
   if (isLoading.value && !forceReload) {
     return;
@@ -291,10 +306,7 @@ async function loadDashboardData(forceReload = false) {
     } else {
       dashboardOverview.value = null;
       dashboardOverviewFailed.value = true;
-      if (overviewResultValue.reason?.status === 401) {
-        isLoading.value = false;
-        isRetrying.value = false;
-        router.replace("/login");
+      if (shouldRedirectForSessionError(overviewResultValue.reason)) {
         return;
       }
 
@@ -308,10 +320,7 @@ async function loadDashboardData(forceReload = false) {
       productCountFailed.value = false;
     } else {
       productCountFailed.value = true;
-      if (productsResult.reason?.status === 401) {
-        isLoading.value = false;
-        isRetrying.value = false;
-        router.replace("/login");
+      if (shouldRedirectForSessionError(productsResult.reason)) {
         return;
       }
     }
@@ -321,10 +330,7 @@ async function loadDashboardData(forceReload = false) {
       warehouseCountFailed.value = false;
     } else {
       warehouseCountFailed.value = true;
-      if (warehouseResult.reason?.status === 401) {
-        isLoading.value = false;
-        isRetrying.value = false;
-        router.replace("/login");
+      if (shouldRedirectForSessionError(warehouseResult.reason)) {
         return;
       }
     }
@@ -334,10 +340,7 @@ async function loadDashboardData(forceReload = false) {
         stockTotal = await loadStockTotal();
         stockTotalFailed.value = false;
       } catch (error) {
-        if (error?.status === 401) {
-          isLoading.value = false;
-          isRetrying.value = false;
-          router.replace("/login");
+        if (shouldRedirectForSessionError(error)) {
           return;
         }
 
@@ -348,10 +351,7 @@ async function loadDashboardData(forceReload = false) {
       try {
         warningCount = await loadLowStockCount();
       } catch (error) {
-        if (error?.status === 401) {
-          isLoading.value = false;
-          isRetrying.value = false;
-          router.replace("/login");
+        if (shouldRedirectForSessionError(error)) {
           return;
         }
 
@@ -367,10 +367,7 @@ async function loadDashboardData(forceReload = false) {
     };
   } catch (error) {
     errorMessage.value = error?.message || "Không thể tải dữ liệu tổng quan.";
-    if (error?.status === 401) {
-      isLoading.value = false;
-      isRetrying.value = false;
-      router.replace("/login");
+    if (shouldRedirectForSessionError(error)) {
       return;
     }
   }
@@ -398,10 +395,7 @@ async function loadDashboardData(forceReload = false) {
       lowStockFailed.value = false;
     }
   } catch (error) {
-    if (error?.status === 401) {
-      isLoading.value = false;
-      isRetrying.value = false;
-      router.replace("/login");
+    if (shouldRedirectForSessionError(error)) {
       return;
     }
 

@@ -1,15 +1,20 @@
 <script setup>
-import { computed } from 'vue'
+import { computed } from "vue";
 
 const props = defineProps({
   status: { type: String, required: true },
-  variant: { type: String, default: 'status' },
-})
+  variant: { type: String, default: "status" },
+});
 
 const badgeClass = computed(() => {
-  const normalized = props.status.toLowerCase().replaceAll(' ', '-').replaceAll('/', '')
-  return props.variant === 'severity' ? `severity-${normalized}` : `status-${normalized}`
-})
+  const normalized = props.status
+    .toLowerCase()
+    .replaceAll(" ", "-")
+    .replaceAll("/", "");
+  return props.variant === "severity"
+    ? `severity-${normalized}`
+    : `status-${normalized}`;
+});
 </script>
 
 <template>

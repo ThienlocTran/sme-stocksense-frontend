@@ -37,7 +37,7 @@ function shouldShowGuidedTour() {
   );
 }
 
-function closeWelcomeModal() {
+function closeWelcomeModal(action = "dismiss") {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(
       getStorageKey(WELCOME_MODAL_STORAGE_KEY),
@@ -45,8 +45,17 @@ function closeWelcomeModal() {
     );
   }
   isWelcomeModalOpen.value = false;
-  if (shouldShowGuidedTour()) {
+
+  if (action === "start" && shouldShowGuidedTour()) {
     isGuidedTourOpen.value = true;
+  } else if (action === "skip") {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        getStorageKey(GUIDED_TOUR_STORAGE_KEY),
+        "true",
+      );
+    }
+    isGuidedTourOpen.value = false;
   }
 }
 

@@ -1,9 +1,12 @@
 <script setup>
 defineProps({
-  title: { type: String, default: 'Chưa có dữ liệu' },
-  description: { type: String, default: 'Thử thay đổi bộ lọc hoặc tạo dữ liệu mới.' },
-  icon: { type: String, default: 'mdi-database-off-outline' },
-})
+  title: { type: String, default: "Chưa có dữ liệu" },
+  description: {
+    type: String,
+    default: "Thử thay đổi bộ lọc hoặc tạo dữ liệu mới.",
+  },
+  icon: { type: String, default: "mdi-database-off-outline" },
+});
 </script>
 
 <template>

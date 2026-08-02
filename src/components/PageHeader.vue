@@ -1,8 +1,8 @@
 <script setup>
 defineProps({
   title: { type: String, required: true },
-  description: { type: String, default: '' },
-})
+  description: { type: String, default: "" },
+});
 </script>
 
 <template>
@@ -16,6 +16,13 @@ defineProps({
 </template>
 
 <style scoped>
-.page-header { margin-bottom: 20px; align-items: flex-start; gap: 16px; }
-.page-header__content { display: grid; gap: 4px; }
+.page-header {
+  margin-bottom: 20px;
+  align-items: flex-start;
+  gap: 16px;
+}
+.page-header__content {
+  display: grid;
+  gap: 4px;
+}
 </style>
