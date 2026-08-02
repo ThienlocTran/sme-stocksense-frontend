@@ -6,6 +6,7 @@ import AppTopbar from "./components/AppTopbar.vue";
 import GuidedTourOverlay from "./components/GuidedTourOverlay.vue";
 import WelcomeModal from "./components/WelcomeModal.vue";
 import { getCurrentUser } from "./services/authService";
+import { canAccessRoute } from "./services/permissionService";
 
 const route = useRoute();
 const isAuthLayout = computed(() => route.meta.layout === "auth");
@@ -120,6 +121,10 @@ const guidedTourSteps = [
   },
 ];
 
+const visibleGuidedTourSteps = computed(() =>
+  guidedTourSteps.filter((step) => !step.route || canAccessRoute(step.route)),
+);
+
 onMounted(() => {
   if (!isAuthLayout.value && shouldShowWelcomeModal()) {
     isWelcomeModalOpen.value = true;
@@ -152,7 +157,7 @@ watch(isAuthLayout, (newVal, oldVal) => {
     <WelcomeModal :open="isWelcomeModalOpen" @close="closeWelcomeModal" />
     <GuidedTourOverlay
       :open="isGuidedTourOpen"
-      :steps="guidedTourSteps"
+      :steps="visibleGuidedTourSteps"
       @close="closeGuidedTour"
       @completed="closeGuidedTour"
       @skip="skipGuidedTour"

@@ -70,6 +70,9 @@ watch(
     if (open) {
       previouslyFocused = document.activeElement;
       await nextTick();
+      if (!props.open || !dialogRef.value) {
+        return;
+      }
       const focusable = getFocusableElements();
       if (focusable.length) {
         focusable[0].focus();
