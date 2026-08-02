@@ -31,6 +31,10 @@ const currentStepIndex = ref(props.initialStep);
 const spotlightRect = ref(null);
 let updateTargetInFlight = false;
 let updateTargetQueued = false;
+let navToken = 0;
+let pendingNavigationToken = null;
+let pendingNavigationPrevRoute = null;
+let pendingNavigationCancelled = false;
 
 const currentStep = computed(() => props.steps[currentStepIndex.value] || null);
 const isLastStep = computed(() => {
@@ -59,10 +63,38 @@ async function updateTarget() {
 
       if (step.route && router.currentRoute.value.path !== step.route) {
         try {
+          // prepare cancellable navigation token and remember previous route
+          pendingNavigationPrevRoute = router.currentRoute.value.fullPath;
+          navToken += 1;
+          const token = navToken;
+          pendingNavigationToken = token;
+          pendingNavigationCancelled = false;
+
           await router.push(step.route);
-          if (!props.open) break;
+
+          // if the tour was closed or cancelled while navigation was pending, revert
+          if (!props.open || pendingNavigationToken !== token || pendingNavigationCancelled) {
+            if (router.currentRoute.value.fullPath !== pendingNavigationPrevRoute) {
+              try {
+                await router.push(pendingNavigationPrevRoute);
+              } catch {
+                // ignore revert errors
+              }
+            }
+            spotlightRect.value = null;
+            break;
+          }
+
           await nextTick();
-          if (!props.open) break;
+          if (!props.open || pendingNavigationToken !== token || pendingNavigationCancelled) {
+            if (router.currentRoute.value.fullPath !== pendingNavigationPrevRoute) {
+              try {
+                await router.push(pendingNavigationPrevRoute);
+              } catch {}
+            }
+            spotlightRect.value = null;
+            break;
+          }
         } catch {
           spotlightRect.value = null;
           break;
