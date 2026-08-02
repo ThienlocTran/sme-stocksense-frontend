@@ -95,6 +95,17 @@ async function updateTarget() {
             spotlightRect.value = null;
             break;
           }
+          // If navigation was redirected or blocked and we're not on the expected route,
+          // skip this step rather than attempting to locate a selector on the wrong page.
+          if (router.currentRoute.value.path !== step.route) {
+            spotlightRect.value = null;
+            if (currentStepIndex.value < props.steps.length - 1) {
+              currentStepIndex.value += 1;
+            } else {
+              emit("completed");
+            }
+            break;
+          }
         } catch {
           spotlightRect.value = null;
           break;
