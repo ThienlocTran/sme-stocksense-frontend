@@ -764,7 +764,7 @@ function openRoute(path) {
           Thử lại
         </button>
       </div>
-      <div v-else-if="dashboardOverview.value" class="dashboard-chart-card">
+      <div v-else-if="dashboardOverview" class="dashboard-chart-card">
         <ApexCharts
           type="bar"
           :options="chartOptions"
