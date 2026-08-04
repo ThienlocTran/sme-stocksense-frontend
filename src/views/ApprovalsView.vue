@@ -492,8 +492,9 @@ function getRejectionReason(receipt) {
           <span
             class="badge doc-badge"
             :class="documentTypeBadgeClass(row.documentType)"
-            >{{ documentTypeLabel(row.documentType) }}</span
           >
+            {{ documentTypeLabel(row.documentType) }}
+          </span>
         </div>
       </template>
       <template #warehouseName="{ value }">{{ value || "-" }}</template>
@@ -501,9 +502,9 @@ function getRejectionReason(receipt) {
       <template #createdByName="{ value }">{{ value || "-" }}</template>
       <template #submittedAt="{ value }">{{ formatDateTime(value) }}</template>
       <template #status="{ value }">
-        <span class="badge" :class="statusClass(value)">{{
-          statusLabel(value)
-        }}</span>
+        <span class="badge" :class="statusClass(value)">
+          {{ statusLabel(value) }}
+        </span>
       </template>
       <template #totalAmount="{ value }">{{ formatCurrency(value) }}</template>
       <template #actions="{ row }">
@@ -518,35 +519,40 @@ function getRejectionReason(receipt) {
           </button>
           <button
             class="btn btn-sm btn-secondary"
-          type="button"
-          :disabled="isAnyActionRunning(row)"
-          @click="openHistory(row)"
-        >
-          Lịch sử
-        </button>
-        <button
-          class="btn btn-sm btn-primary"
-          type="button"
-          :disabled="isAnyActionRunning(row) || !isPendingApproval(row.status)"
-          @click="handleApprove(row)"
-        >
-          {{
-            isActionRunning(row, "approve")
-              ? "Đang duyệt..."
-              : approveLabel(row.status)
-          }}
-        </button>
-        <button
-          class="btn btn-sm btn-danger"
-          type="button"
-          :disabled="isAnyActionRunning(row) || !isPendingApproval(row.status)"
-          @click="openRejectModal(row)"
-        >
-          Từ chối
-        </button>
-      </div>
-    </template>
-  </DataTable>
+            type="button"
+            :disabled="isAnyActionRunning(row)"
+            @click="openHistory(row)"
+          >
+            Lịch sử
+          </button>
+          <button
+            class="btn btn-sm btn-primary"
+            type="button"
+            :disabled="
+              isAnyActionRunning(row) || !isPendingApproval(row.status)
+            "
+            @click="handleApprove(row)"
+          >
+            {{
+              isActionRunning(row, "approve")
+                ? "Đang duyệt..."
+                : approveLabel(row.status)
+            }}
+          </button>
+          <button
+            class="btn btn-sm btn-danger"
+            type="button"
+            :disabled="
+              isAnyActionRunning(row) || !isPendingApproval(row.status)
+            "
+            @click="openRejectModal(row)"
+          >
+            Từ chối
+          </button>
+        </div>
+      </template>
+    </DataTable>
+  </div>
 
   <div class="pagination-bar card card-pad">
     <span class="muted">{{ totalElements }} phiếu chờ duyệt</span>
@@ -578,8 +584,13 @@ function getRejectionReason(receipt) {
     <div class="modal detail-modal">
       <div class="modal-head between">
         <h2 class="section-title">
-          Chi tiết phiếu {{ (detailState.receipt?.documentType || documentType) === "out" ? "xuất" : "nhập" }} chờ
-          duyệt
+          Chi tiết phiếu
+          {{
+            (detailState.receipt?.documentType || documentType) === "out"
+              ? "xuất"
+              : "nhập"
+          }}
+          chờ duyệt
         </h2>
         <button class="btn btn-icon" aria-label="Đóng" @click="closeDetail">
           <i class="mdi mdi-close"></i>
@@ -621,7 +632,9 @@ function getRejectionReason(receipt) {
               <span class="detail-label">Loại phiếu</span
               ><span
                 class="badge doc-badge"
-                :class="documentTypeBadgeClass(detailState.receipt.documentType)"
+                :class="
+                  documentTypeBadgeClass(detailState.receipt.documentType)
+                "
                 >{{ documentTypeLabel(detailState.receipt.documentType) }}</span
               >
             </div>

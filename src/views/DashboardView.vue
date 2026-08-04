@@ -11,6 +11,12 @@ import { getPendingApprovals } from "../services/importReceiptService";
 import { getProducts } from "../services/productService";
 import { canAccessRoute } from "../services/permissionService";
 import { getWarehouses } from "../services/warehouseService";
+import ApexCharts from "vue3-apexcharts";
+import { getDashboardOverview } from "../services/dashboardService";
+
+defineOptions({
+  components: { ApexCharts },
+});
 
 const router = useRouter();
 
@@ -18,6 +24,8 @@ const isLoading = ref(true);
 const isRetrying = ref(false);
 const errorMessage = ref("");
 const summary = ref({ products: 0, warehouses: 0, stock: 0, warnings: 0 });
+const dashboardOverview = ref(null);
+const dashboardOverviewFailed = ref(false);
 const pendingImportItems = ref([]);
 const pendingImportFailed = ref(false);
 const pendingExportItems = ref([]);
@@ -29,16 +37,79 @@ const warehouseCountFailed = ref(false);
 const warningCountFailed = ref(false);
 const stockTotalFailed = ref(false);
 
+const chartOptions = computed(() => ({
+  chart: {
+    type: "bar",
+    toolbar: { show: false },
+  },
+  plotOptions: {
+    bar: {
+      horizontal: false,
+      borderRadius: 8,
+      columnWidth: "56%",
+    },
+  },
+  dataLabels: { enabled: false },
+  xaxis: {
+    categories: chartCategories.value,
+  },
+  yaxis: {
+    labels: {
+      formatter: (value) => new Intl.NumberFormat("vi-VN").format(value),
+    },
+  },
+  colors: ["#3b82f6", "#f59e0b", "#ef4444"],
+  tooltip: {
+    y: {
+      formatter: (value) => new Intl.NumberFormat("vi-VN").format(value),
+    },
+  },
+}));
+
 const canSeeImportApprovals = computed(() => canAccessRoute("/approvals"));
 const canSeeExportApprovals = computed(() =>
   canAccessRoute("/pending-export-approvals"),
 );
 const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
 const canSeeAlerts = computed(() => canAccessRoute("/alerts"));
+
+const chartCategories = computed(() => {
+  const categories = [];
+  if (canSeeWarnings.value) categories.push("Tồn kho");
+  if (canSeeImportApprovals.value || canSeeExportApprovals.value)
+    categories.push("Phê duyệt");
+  if (canSeeAlerts.value) categories.push("Cảnh báo");
+  return categories;
+});
+
+const pendingApprovalsTotal = computed(() => {
+  return (
+    Number(dashboardOverview.value?.pendingTasks?.importReceipts || 0) +
+    Number(dashboardOverview.value?.pendingTasks?.exportReceipts || 0)
+  );
+});
+
+const chartSeries = computed(() => [
+  {
+    name: "Số lượng",
+    data: [
+      ...(canSeeWarnings.value
+        ? [Number(dashboardOverview.value?.overview?.totalStock || 0)]
+        : []),
+      ...(canSeeImportApprovals.value || canSeeExportApprovals.value
+        ? [pendingApprovalsTotal.value]
+        : []),
+      ...(canSeeAlerts.value
+        ? [Number(dashboardOverview.value?.pendingTasks?.inventoryAlerts || 0)]
+        : []),
+    ],
+  },
+]);
 const visibleKpiCardCount = computed(() => (canSeeWarnings.value ? 4 : 2));
 const hasAnyApiError = computed(() => {
   return (
     Boolean(errorMessage.value) ||
+    dashboardOverviewFailed.value ||
     pendingImportFailed.value ||
     pendingExportFailed.value ||
     lowStockFailed.value ||
@@ -147,6 +218,8 @@ async function loadDashboardData(forceReload = false) {
   isLoading.value = true;
   isRetrying.value = true;
   errorMessage.value = "";
+  dashboardOverview.value = null;
+  dashboardOverviewFailed.value = false;
   pendingImportItems.value = [];
   pendingImportFailed.value = false;
   pendingExportItems.value = [];
@@ -160,15 +233,31 @@ async function loadDashboardData(forceReload = false) {
   summary.value = { products: 0, warehouses: 0, stock: 0, warnings: 0 };
 
   try {
-    const [productsResult, warehouseResult] = await Promise.allSettled([
-      loadProductCount(),
-      loadWarehouseCount(),
-    ]);
+    const [overviewResult, productsResult, warehouseResult] =
+      await Promise.allSettled([
+        loadDashboardOverview(),
+        loadProductCount(),
+        loadWarehouseCount(),
+      ]);
 
     let productsResponse = 0;
     let warehouseData = 0;
     let stockTotal = null;
     let warningCount = 0;
+
+    if (overviewResult.status === "fulfilled") {
+      dashboardOverview.value = overviewResult.value;
+      dashboardOverviewFailed.value = false;
+    } else {
+      dashboardOverview.value = null;
+      dashboardOverviewFailed.value = true;
+      if (overviewResult.reason?.status === 401) {
+        isLoading.value = false;
+        isRetrying.value = false;
+        router.replace("/login");
+        return;
+      }
+    }
 
     if (productsResult.status === "fulfilled") {
       productsResponse = productsResult.value;
@@ -329,6 +418,10 @@ async function loadStockTotal() {
 async function loadLowStockCount() {
   const data = await getLowStockInventory({ page: 0, size: 1 });
   return Number(data?.totalElements || 0);
+}
+
+async function loadDashboardOverview() {
+  return await getDashboardOverview();
 }
 
 async function loadPendingApprovals() {
@@ -593,6 +686,59 @@ function openRoute(path) {
       </template>
     </section>
 
+    <section class="card card-pad dashboard-panel dashboard-panel--wide">
+      <div class="section-head between">
+        <div>
+          <p class="eyebrow">Chart</p>
+          <h2 class="section-title">Tổng quan chính</h2>
+        </div>
+        <button class="text-link" type="button" @click="retryDashboardLoad">
+          Làm mới
+        </button>
+      </div>
+
+      <div v-if="isLoading" class="state-card state-card--loading">
+        <div class="skeleton skeleton--line"></div>
+        <div class="skeleton skeleton--line skeleton--short"></div>
+      </div>
+      <div
+        v-else-if="dashboardOverviewFailed"
+        class="state-card state-card--error"
+      >
+        <div class="state-card__icon">
+          <i class="mdi mdi-alert-circle-outline"></i>
+        </div>
+        <div class="state-card__body">
+          <h3>Không thể tải dữ liệu biểu đồ</h3>
+          <p>Dữ liệu dashboard chưa được đồng bộ với backend.</p>
+        </div>
+        <button
+          class="retry-button retry-button--inline"
+          type="button"
+          @click="retryDashboardLoad"
+        >
+          Thử lại
+        </button>
+      </div>
+      <div v-else-if="dashboardOverview.value" class="dashboard-chart-card">
+        <ApexCharts
+          type="bar"
+          :options="chartOptions"
+          :series="chartSeries"
+          height="320"
+        />
+      </div>
+      <div v-else class="state-card state-card--empty">
+        <div class="state-card__icon">
+          <i class="mdi mdi-chart-bar"></i>
+        </div>
+        <div class="state-card__body">
+          <h3>Chưa có dữ liệu biểu đồ</h3>
+          <p>Biểu đồ sẽ hiển thị khi backend trả dữ liệu tổng quan.</p>
+        </div>
+      </div>
+    </section>
+
     <div class="dashboard-section-grid">
       <section
         v-if="canSeeImportApprovals"
@@ -837,6 +983,13 @@ function openRoute(path) {
 
 .dashboard-panel--wide {
   grid-column: 1 / -1;
+}
+
+.dashboard-chart-card {
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .dashboard-section-grid {
