@@ -72,6 +72,15 @@ const canSeeExportApprovals = computed(() =>
 );
 const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
 const canSeeAlerts = computed(() => canAccessRoute("/alerts"));
+const canSeeProducts = computed(() => canAccessRoute("/products"));
+const canSeeWarehouses = computed(() => canAccessRoute("/warehouses"));
+const canSeeDashboardOverview = computed(
+  () =>
+    canSeeWarnings.value ||
+    canSeeAlerts.value ||
+    canSeeImportApprovals.value ||
+    canSeeExportApprovals.value,
+);
 
 const chartCategories = computed(() => {
   const categories = [];
@@ -83,10 +92,14 @@ const chartCategories = computed(() => {
 });
 
 const pendingApprovalsTotal = computed(() => {
-  return (
-    Number(dashboardOverview.value?.pendingTasks?.importReceipts || 0) +
-    Number(dashboardOverview.value?.pendingTasks?.exportReceipts || 0)
-  );
+  const importReceipts = canSeeImportApprovals.value
+    ? Number(dashboardOverview.value?.pendingTasks?.importReceipts || 0)
+    : 0;
+  const exportReceipts = canSeeExportApprovals.value
+    ? Number(dashboardOverview.value?.pendingTasks?.exportReceipts || 0)
+    : 0;
+
+  return importReceipts + exportReceipts;
 });
 
 const chartSeries = computed(() => [
@@ -105,7 +118,13 @@ const chartSeries = computed(() => [
     ],
   },
 ]);
-const visibleKpiCardCount = computed(() => (canSeeWarnings.value ? 4 : 2));
+const visibleKpiCardCount = computed(() => {
+  let count = 0;
+  if (canSeeProducts.value) count += 1;
+  if (canSeeWarehouses.value) count += 1;
+  if (canSeeWarnings.value) count += 2;
+  return count || 2;
+});
 const hasAnyApiError = computed(() => {
   return (
     Boolean(errorMessage.value) ||
@@ -233,30 +252,55 @@ async function loadDashboardData(forceReload = false) {
   summary.value = { products: 0, warehouses: 0, stock: 0, warnings: 0 };
 
   try {
-    const [overviewResult, productsResult, warehouseResult] =
-      await Promise.allSettled([
-        loadDashboardOverview(),
-        loadProductCount(),
-        loadWarehouseCount(),
-      ]);
+    const requests = [];
+    let productsResult = { status: "fulfilled", value: 0 };
+    let warehouseResult = { status: "fulfilled", value: 0 };
+
+    if (canSeeDashboardOverview.value) {
+      requests.push(loadDashboardOverview());
+    } else {
+      requests.push(Promise.resolve(null));
+    }
+
+    if (canSeeProducts.value) {
+      requests.push(loadProductCount());
+    } else {
+      requests.push(Promise.resolve(0));
+    }
+
+    if (canSeeWarehouses.value) {
+      requests.push(loadWarehouseCount());
+    } else {
+      requests.push(Promise.resolve(0));
+    }
+
+    const [overviewResultValue, productsCountResult, warehouseCountResult] =
+      await Promise.allSettled(requests);
+
+    productsResult = productsCountResult ?? { status: "fulfilled", value: 0 };
+    warehouseResult = warehouseCountResult ?? { status: "fulfilled", value: 0 };
 
     let productsResponse = 0;
     let warehouseData = 0;
     let stockTotal = null;
     let warningCount = 0;
 
-    if (overviewResult.status === "fulfilled") {
-      dashboardOverview.value = overviewResult.value;
+    if (overviewResultValue.status === "fulfilled") {
+      dashboardOverview.value = overviewResultValue.value;
       dashboardOverviewFailed.value = false;
     } else {
       dashboardOverview.value = null;
       dashboardOverviewFailed.value = true;
-      if (overviewResult.reason?.status === 401) {
+      if (overviewResultValue.reason?.status === 401) {
         isLoading.value = false;
         isRetrying.value = false;
         router.replace("/login");
         return;
       }
+
+      errorMessage.value =
+        overviewResultValue.reason?.message ||
+        "Không thể tải dữ liệu dashboard.";
     }
 
     if (productsResult.status === "fulfilled") {
@@ -631,7 +675,7 @@ function openRoute(path) {
           class="kpi-grid"
           :class="{ 'kpi-grid--two-columns': !canSeeWarnings }"
         >
-          <article class="kpi-card">
+          <article v-if="canSeeProducts" class="kpi-card">
             <div class="kpi-card__icon">
               <i class="mdi mdi-package-variant-closed"></i>
             </div>
@@ -644,7 +688,7 @@ function openRoute(path) {
             </div>
           </article>
 
-          <article class="kpi-card">
+          <article v-if="canSeeWarehouses" class="kpi-card">
             <div class="kpi-card__icon kpi-card__icon--accent">
               <i class="mdi mdi-warehouse"></i>
             </div>
