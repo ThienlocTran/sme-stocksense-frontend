@@ -18,12 +18,8 @@ export async function getCurrentProfile() {
   let lastError = null
 
   try {
-    const endpoints = ['/api/auth/me', '/api/auth/profile']
+    const endpoints = ['/api/employees/profile/me']
     const currentUser = getCurrentUser()
-
-    if (currentUser?.employeeId) {
-      endpoints.unshift(`/api/employees/${currentUser.employeeId}`)
-    }
 
     for (const endpoint of endpoints) {
       try {
@@ -79,15 +75,47 @@ export async function getCurrentProfile() {
   }
 }
 
+export async function updateProfile(data) {
+  try {
+    const response = await profileClient.put('/api/employees/profile/me', data, {
+      headers: getAuthorizationHeader(),
+    })
+    return normalizeProfile(response.data)
+  } catch (error) {
+    throw normalizeProfileError(error, 'Không thể cập nhật hồ sơ.')
+  }
+}
+
+export async function uploadAvatar(file) {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await profileClient.post('/api/employees/profile/me/avatar', formData, {
+      headers: {
+        ...getAuthorizationHeader(),
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return normalizeProfile(response.data)
+  } catch (error) {
+    throw normalizeProfileError(error, 'Không thể tải lên ảnh đại diện.')
+  }
+}
+
 function normalizeProfile(data = {}, fallback = {}) {
   return {
     id: data?.id ?? data?.employeeId ?? fallback?.id ?? fallback?.employeeId ?? null,
     employeeId: data?.employeeId ?? data?.id ?? fallback?.employeeId ?? fallback?.id ?? null,
     fullName: data?.fullName ?? fallback?.fullName ?? '',
     email: data?.email ?? fallback?.email ?? '',
+    phone: data?.phone ?? fallback?.phone ?? '',
     role: data?.roleName ?? data?.role ?? data?.roleCode ?? fallback?.roleName ?? fallback?.role ?? fallback?.roleCode ?? '',
     roleCode: data?.roleCode ?? fallback?.roleCode ?? '',
     status: data?.status ?? fallback?.status ?? '',
+    avatarUrl: data?.avatarUrl ?? fallback?.avatarUrl ?? null,
+    gender: data?.gender ?? fallback?.gender ?? '',
+    dateOfBirth: data?.dateOfBirth ?? fallback?.dateOfBirth ?? null,
   }
 }
 

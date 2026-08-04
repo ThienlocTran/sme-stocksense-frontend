@@ -76,11 +76,6 @@ const menuSections = [
       },
       { label: "Cảnh báo tồn kho", to: "/alerts", icon: "mdi-alert-outline" },
       {
-        label: "Hồ sơ",
-        to: "/profile",
-        icon: "mdi-account-outline",
-      },
-      {
         label: "Nhân viên",
         to: "/employees",
         icon: "mdi-account-group-outline",
@@ -135,9 +130,17 @@ const visibleSections = computed(() =>
         </div>
       </template>
     </nav>
-    <div class="sidebar-note">
-      <strong>Phạm vi hiện tại</strong>
-      <span>CRUD kho, phiếu nhập/xuất, duyệt phiếu và import theo mẫu.</span>
+    <div class="sidebar-user" v-if="authStore.currentUser" @click="$router.push('/profile')">
+      <div 
+        class="user-avatar"
+        :style="authStore.currentUser.avatarUrl ? { backgroundImage: `url(${authStore.currentUser.avatarUrl})` } : {}"
+      >
+        <i v-if="!authStore.currentUser.avatarUrl" class="mdi mdi-account"></i>
+      </div>
+      <div class="user-info">
+        <strong>{{ authStore.currentUser.fullName || authStore.currentUser.email }}</strong>
+        <span>{{ authStore.currentUser.role || authStore.currentRole }}</span>
+      </div>
     </div>
   </aside>
 </template>
@@ -147,8 +150,7 @@ const visibleSections = computed(() =>
   position: fixed;
   inset: 0 auto 0 0;
   width: 260px;
-  max-height: 100vh;
-  overflow-y: auto;
+  height: 100vh;
   background: #0f172a;
   color: #e5e7eb;
   padding: 18px 14px;
@@ -189,6 +191,17 @@ const visibleSections = computed(() =>
   flex-direction: column;
   gap: 22px;
   margin-top: 22px;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+/* Optional scrollbar styling for nav-list */
+.nav-list::-webkit-scrollbar {
+  width: 4px;
+}
+.nav-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 .sidebar-heading {
   color: #94a3b8;
@@ -235,19 +248,55 @@ const visibleSections = computed(() =>
   width: 24px;
   text-align: center;
 }
-.sidebar-note {
-  margin-top: auto;
+.sidebar-user {
+  margin-top: 16px;
   padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  display: grid;
-  gap: 4px;
-  color: #cbd5e1;
-  line-height: 18px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease;
 }
-.sidebar-note strong {
-  color: #fff;
+.sidebar-user:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateX(1px);
+}
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.user-avatar i {
+  color: #94a3b8;
+  font-size: 20px;
+}
+.user-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.user-info strong {
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-info span {
+  color: #94a3b8;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 1023px) {
@@ -263,7 +312,7 @@ const visibleSections = computed(() =>
   .sidebar-section {
     gap: 8px;
   }
-  .sidebar-note {
+  .sidebar-user {
     display: none;
   }
 }

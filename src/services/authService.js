@@ -147,6 +147,7 @@ function storeAuth(response) {
     authority: response.authority,
     authorities: response.authorities,
     status: response.status,
+    avatarUrl: response.avatarUrl,
   }
 
   localStorage.setItem(AUTH_STORAGE_KEYS.accessToken, response.accessToken)
