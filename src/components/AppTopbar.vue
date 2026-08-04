@@ -132,9 +132,17 @@ function applyPasswordBackendErrors(errors = {}) {
         <i class="mdi mdi-check-circle-outline"></i>
         <span>{{ passwordSuccessMessage }}</span>
       </div>
-      <div v-if="currentUser" class="user-chip">
-        <strong>{{ currentUser.fullName }}</strong>
-        <span>{{ currentUserRole }}</span>
+      <div v-if="currentUser" class="user-chip" style="display: flex; align-items: center; gap: 8px;">
+        <div 
+          style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
+          :style="currentUser.avatarUrl ? { backgroundImage: `url(${currentUser.avatarUrl})` } : {}"
+        >
+          <i v-if="!currentUser.avatarUrl" class="mdi mdi-account" style="color: #94a3b8;"></i>
+        </div>
+        <div>
+          <strong>{{ currentUser.fullName }}</strong>
+          <span>{{ currentUserRole }}</span>
+        </div>
       </div>
       <button v-if="currentUser" class="btn btn-sm" type="button" :disabled="isLoggingOut" @click="openPasswordModal">
         <i class="mdi mdi-lock-reset"></i>
