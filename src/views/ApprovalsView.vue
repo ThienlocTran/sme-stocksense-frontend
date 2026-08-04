@@ -320,7 +320,6 @@ function isPendingApproval(status) {
 }
 
 function approveLabel(status) {
-  if (isPendingApproval(status)) return "Duyệt phiếu";
   return "Duyệt phiếu";
 }
 
@@ -481,43 +480,44 @@ function getRejectionReason(receipt) {
     Đang tải danh sách phiếu chờ duyệt...
   </p>
 
-  <DataTable
-    :columns="columns"
-    :rows="receipts"
-    empty-text="Không có phiếu nào đang chờ duyệt"
-  >
-    <template #code="{ row, value }">
-      <div class="document-cell">
-        <span class="document-code">{{ value || "-" }}</span>
-        <span
-          class="badge doc-badge"
-          :class="documentTypeBadgeClass(documentType)"
-          >{{ documentTypeLabel(documentType) }}</span
-        >
-      </div>
-    </template>
-    <template #warehouseName="{ value }">{{ value || "-" }}</template>
-    <template #supplierName="{ value }">{{ value || "-" }}</template>
-    <template #createdByName="{ value }">{{ value || "-" }}</template>
-    <template #submittedAt="{ value }">{{ formatDateTime(value) }}</template>
-    <template #status="{ value }">
-      <span class="badge" :class="statusClass(value)">{{
-        statusLabel(value)
-      }}</span>
-    </template>
-    <template #totalAmount="{ value }">{{ formatCurrency(value) }}</template>
-    <template #actions="{ row }">
-      <div class="actions">
-        <button
-          class="btn btn-sm"
-          type="button"
-          :disabled="isAnyActionRunning(row)"
-          @click="openDetail(row)"
-        >
-          Xem
-        </button>
-        <button
-          class="btn btn-sm btn-secondary"
+  <div v-if="!isLoading">
+    <DataTable
+      :columns="columns"
+      :rows="receipts"
+      empty-text="Không có phiếu nào đang chờ duyệt"
+    >
+      <template #code="{ row, value }">
+        <div class="document-cell">
+          <span class="document-code">{{ value || "-" }}</span>
+          <span
+            class="badge doc-badge"
+            :class="documentTypeBadgeClass(row.documentType)"
+            >{{ documentTypeLabel(row.documentType) }}</span
+          >
+        </div>
+      </template>
+      <template #warehouseName="{ value }">{{ value || "-" }}</template>
+      <template #supplierName="{ value }">{{ value || "-" }}</template>
+      <template #createdByName="{ value }">{{ value || "-" }}</template>
+      <template #submittedAt="{ value }">{{ formatDateTime(value) }}</template>
+      <template #status="{ value }">
+        <span class="badge" :class="statusClass(value)">{{
+          statusLabel(value)
+        }}</span>
+      </template>
+      <template #totalAmount="{ value }">{{ formatCurrency(value) }}</template>
+      <template #actions="{ row }">
+        <div class="actions">
+          <button
+            class="btn btn-sm"
+            type="button"
+            :disabled="isAnyActionRunning(row)"
+            @click="openDetail(row)"
+          >
+            Xem
+          </button>
+          <button
+            class="btn btn-sm btn-secondary"
           type="button"
           :disabled="isAnyActionRunning(row)"
           @click="openHistory(row)"
@@ -578,7 +578,7 @@ function getRejectionReason(receipt) {
     <div class="modal detail-modal">
       <div class="modal-head between">
         <h2 class="section-title">
-          Chi tiết phiếu {{ documentType === "out" ? "xuất" : "nhập" }} chờ
+          Chi tiết phiếu {{ (detailState.receipt?.documentType || documentType) === "out" ? "xuất" : "nhập" }} chờ
           duyệt
         </h2>
         <button class="btn btn-icon" aria-label="Đóng" @click="closeDetail">
@@ -621,8 +621,8 @@ function getRejectionReason(receipt) {
               <span class="detail-label">Loại phiếu</span
               ><span
                 class="badge doc-badge"
-                :class="documentTypeBadgeClass(documentType)"
-                >{{ documentTypeLabel(documentType) }}</span
+                :class="documentTypeBadgeClass(detailState.receipt.documentType)"
+                >{{ documentTypeLabel(detailState.receipt.documentType) }}</span
               >
             </div>
             <div>
@@ -632,7 +632,11 @@ function getRejectionReason(receipt) {
               }}</span>
             </div>
             <div>
-              <span class="detail-label">Nhà cung cấp</span
+              <span class="detail-label">{{
+                detailState.receipt.documentType === "out"
+                  ? "Khách hàng"
+                  : "Nhà cung cấp"
+              }}</span
               ><span class="detail-value">{{
                 detailState.receipt.supplierName || "-"
               }}</span>
