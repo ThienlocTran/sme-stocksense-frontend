@@ -1,8 +1,167 @@
+<template>
+  <div class="container mx-auto px-4 py-6 max-w-6xl">
+    <PageHeader title="Import dữ liệu Excel" description="Nhập dữ liệu danh sách sản phẩm hoặc sản phẩm kèm tồn kho đầu kỳ bằng file mẫu chuẩn." />
+
+    <!-- Message Alert Area -->
+    <div class="mt-4 mb-6">
+      <div v-if="globalError" class="p-4 text-red-800 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3 shadow-sm animate-fade-in">
+        <svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <div><span class="font-bold">Lỗi: </span><span>{{ globalError }}</span></div>
+      </div>
+      <div v-if="globalSuccess" class="p-4 text-green-800 rounded-lg bg-green-50 border border-green-200 flex items-start gap-3 shadow-sm animate-fade-in">
+        <svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <div><span class="font-bold">Thành công: </span><span>{{ globalSuccess }}</span></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- PHẦN 1: TẢI MẪU & CẤU HÌNH -->
+      <div class="md:col-span-1 space-y-6">
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <h3 class="text-lg font-bold text-gray-800 mb-2">1. Tải file mẫu</h3>
+          <p class="text-sm text-gray-500 mb-4">Sử dụng đúng template chuẩn (bản sạch) để dữ liệu được xử lý mượt mà nhất.</p>
+          <button 
+            class="w-full py-2.5 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 shadow-sm"
+            :disabled="isDownloading"
+            @click="handleDownloadTemplate"
+          >
+            <svg v-if="isDownloading" class="animate-spin h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Tải Template
+          </button>
+        </div>
+
+        <!-- Tùy chọn Import đã được di chuyển sang phía trên khu vực Upload -->
+      </div>
+
+      <!-- PHẦN 2: UPLOAD & KẾT QUẢ -->
+      <div class="md:col-span-2">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-full flex flex-col">
+          <h3 class="text-lg font-bold text-gray-800 mb-2">2. Upload & Xác nhận</h3>
+          <p class="text-sm text-gray-500 mb-6">Hệ thống tự động chạy Validation ngay sau khi file được tải lên.</p>
+
+          <!-- Dropdown Loại dữ liệu Import -->
+          <div v-if="!validationResult" class="mb-4">
+            <label class="block text-sm font-bold text-gray-700 mb-1">
+              Loại dữ liệu Import <span class="text-red-500">*</span>
+            </label>
+            <select v-model="importType" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2.5 px-3 border bg-white" :disabled="isProcessing" :class="{'border-red-300': globalError && !importType}">
+              <option value="" disabled>-- Vui lòng chọn loại dữ liệu trước khi tải file --</option>
+              <option value="PRODUCT_ONLY">Sản phẩm</option>
+              <option value="PRODUCT_WITH_OPENING_STOCK">Tồn đầu kỳ</option>
+            </select>
+            
+            <div v-if="importType === 'PRODUCT_WITH_OPENING_STOCK'" class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Kho nhận tồn đầu kỳ (tùy chọn)</label>
+              <select v-model="selectedWarehouseId" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm py-2.5 px-3 border bg-white" :disabled="isProcessing">
+                <option value="">-- Để trống nếu file đã có mã kho --</option>
+                <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.tenKho }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Upload Area (Chỉ hiện khi chưa có kết quả thành công/lỗi nặng) -->
+          <div 
+            v-if="!validationResult"
+            class="border-2 border-dashed rounded-xl p-10 text-center transition-colors mb-6"
+            :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'"
+            @dragover.prevent="isDragging = true"
+            @dragleave.prevent="isDragging = false"
+            @drop.prevent="handleDrop"
+          >
+            <div v-if="isProcessing" class="flex flex-col items-center justify-center">
+              <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+              <p class="text-blue-700 font-semibold text-lg">{{ processingStatusText }}</p>
+            </div>
+            <div v-else>
+              <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <div class="text-base text-gray-600">
+                <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-semibold text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                  <span>Chọn file Excel (.xlsx)</span>
+                  <input id="file-upload" ref="fileInput" type="file" accept=".xlsx" class="sr-only" @change="onFileChange">
+                </label>
+                <p class="pl-1 inline">hoặc kéo thả vào đây</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- NẾU FILE HỢP LỆ (Thành công -> Chốt) -->
+          <div v-if="validationResult?.valid" class="bg-green-50 rounded-xl p-6 border border-green-200 mt-auto shadow-inner">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="bg-green-100 p-3 rounded-full"><svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+              <div>
+                <h4 class="text-green-800 font-bold text-lg">Dữ liệu hoàn toàn hợp lệ!</h4>
+                <p class="text-green-700">Sẵn sàng nhập <span class="font-bold text-lg">{{ validationResult.soDongHopLe }}</span> dòng dữ liệu vào hệ thống.</p>
+              </div>
+            </div>
+            <button 
+              @click="handleFinalImport"
+              class="w-full py-3.5 bg-green-600 text-white font-bold text-lg rounded-lg hover:bg-green-700 transition-colors shadow-md flex justify-center items-center gap-2"
+              :disabled="isApplying"
+            >
+              <svg v-if="isApplying" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              Xác nhận Import Dữ Liệu
+            </button>
+            <div class="mt-4 text-center">
+              <button @click="resetFlow" class="text-sm text-gray-500 hover:text-gray-700 underline">Hủy bỏ / Chọn file khác</button>
+            </div>
+          </div>
+
+          <!-- NẾU FILE CÓ LỖI -->
+          <div v-if="validationResult && !validationResult.valid" class="flex flex-col h-full">
+            <div class="bg-red-50 border border-red-200 rounded-t-lg p-4 flex justify-between items-center">
+              <span class="font-bold text-red-800 flex items-center gap-2 text-base">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                Phát hiện {{ validationResult.soDongLoi }} dòng lỗi
+              </span>
+              <button @click="resetFlow" class="px-4 py-1.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 shadow-sm">Thử lại file khác</button>
+            </div>
+            
+            <div class="overflow-x-auto border-x border-b border-red-200 rounded-b-lg">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-red-100/50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Dòng</th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Cột lỗi</th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Chi tiết</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="err in errorsResponse?.content" :key="err.id" class="text-sm">
+                    <td class="px-4 py-3 font-semibold text-gray-900">#{{ err.rowNumber }}</td>
+                    <td class="px-4 py-3 text-red-600 font-bold bg-red-50/30">{{ err.columnName }}</td>
+                    <td class="px-4 py-3 text-gray-700">
+                      <span class="block mb-1">{{ err.message }}</span>
+                      <span class="text-xs text-gray-500 block">Dữ liệu gốc: <code class="bg-gray-100 px-1 py-0.5 rounded">{{ err.originalValue || '(trống)' }}</code></span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              <!-- Phân trang lỗi -->
+              <div class="bg-gray-50 px-4 py-3 flex justify-between items-center border-t border-gray-200" v-if="errorsResponse">
+                <span class="text-xs text-gray-500 font-medium">Trang {{ errorsResponse.page + 1 }}/{{ errorsResponse.totalPages }}</span>
+                <div class="flex gap-2">
+                  <button class="px-3 py-1.5 text-xs font-semibold border rounded bg-white hover:bg-gray-100 disabled:opacity-50" :disabled="errorsResponse.page === 0" @click="fetchErrors(errorsResponse.page - 1)">Trang trước</button>
+                  <button class="px-3 py-1.5 text-xs font-semibold border rounded bg-white hover:bg-gray-100 disabled:opacity-50" :disabled="errorsResponse.page >= errorsResponse.totalPages - 1" @click="fetchErrors(errorsResponse.page + 1)">Trang sau</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
-import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { getWarehouses } from '../services/warehouseService'
 import {
   downloadTemplate,
@@ -15,698 +174,156 @@ import {
 
 const router = useRouter()
 
-// Basic config & warehouse states
-const importType = ref('PRODUCT_ONLY') // PRODUCT_ONLY or PRODUCT_WITH_OPENING_STOCK
+// -- States --
+const importType = ref('')
 const warehouses = ref([])
 const selectedWarehouseId = ref('')
-const isLoadingWarehouses = ref(false)
-const warehouseError = ref('')
 
-// File picker states
+const isDragging = ref(false)
 const fileInput = ref(null)
 const selectedFile = ref(null)
-const fileError = ref('')
 
-// Step statuses & session workflow states
-const isDownloadingTemplate = ref(false)
-const isCreatingSession = ref(false)
-const isValidating = ref(false)
-const isConfirming = ref(false)
+const isDownloading = ref(false)
+const isProcessing = ref(false)
 const isApplying = ref(false)
+const processingStatusText = ref('')
 
-// Session detail states
-const importId = ref(null)
-const sessionSummary = ref(null)
-const validationResult = ref(null)
-const confirmResult = ref(null)
-const applyResult = ref(null)
-
-// Error table states (Step 4)
-const errorsResponse = ref(null)
-const errorPage = ref(0)
-const errorSize = ref(20)
-const isLoadingErrors = ref(false)
-
-// Warning / Success messages
 const globalError = ref('')
-const globalWarning = ref('')
 const globalSuccess = ref('')
-const showApplyConfirm = ref(false)
 
-// Step status computation
-const step1Status = computed(() => 'completed')
+const importId = ref(null)
+const validationResult = ref(null)
+const errorsResponse = ref(null)
 
-const step2Status = computed(() => {
-  return selectedFile.value ? 'completed' : 'active'
-})
-
-const step3Status = computed(() => {
-  if (applyResult.value || confirmResult.value || validationResult.value || importId.value) return 'completed'
-  return selectedFile.value ? 'active' : 'locked'
-})
-
-const step4Status = computed(() => {
-  if (applyResult.value || confirmResult.value || (validationResult.value && validationResult.value.valid)) return 'completed'
-  if (validationResult.value && !validationResult.value.valid) return 'failed'
-  return (importId.value && selectedFile.value) ? 'active' : 'locked'
-})
-
-const step5Status = computed(() => {
-  if (applyResult.value || confirmResult.value) return 'completed'
-  return (validationResult.value && validationResult.value.valid && selectedFile.value) ? 'active' : 'locked'
-})
-
-const step6Status = computed(() => {
-  if (applyResult.value) return 'completed'
-  return (confirmResult.value && selectedFile.value) ? 'active' : 'locked'
-})
-
-// Fetch warehouse options
-async function fetchWarehouseList() {
-  isLoadingWarehouses.value = true
-  warehouseError.value = ''
+// -- Lifecycle --
+onMounted(async () => {
   try {
     const list = await getWarehouses({ status: 'HOAT_DONG' })
     warehouses.value = list || []
-    warehouseError.value = ''
   } catch (error) {
-    warehouseError.value = error.message || 'Không thể tải danh sách kho hàng. Vui lòng thử lại.'
-  } finally {
-    isLoadingWarehouses.value = false
-  }
-}
-
-onMounted(() => {
-  fetchWarehouseList()
-})
-
-// File handlers
-function onFileChange(event) {
-  const files = event.target.files
-  fileError.value = ''
-  globalError.value = ''
-  globalSuccess.value = ''
-
-  if (!files || files.length === 0) {
-    selectedFile.value = null
-    event.target.value = ''
-    return
-  }
-
-  const file = files[0]
-  if (!file.name.toLowerCase().endsWith('.xlsx')) {
-    fileError.value = 'Chỉ chấp nhận file định dạng .xlsx'
-    selectedFile.value = null
-    event.target.value = ''
-    return
-  }
-
-  selectedFile.value = file
-}
-
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-// Watchers for resetting flow on configuration/file change
-watch(selectedFile, (newVal, oldVal) => {
-  if (!newVal && fileInput.value) {
-    fileInput.value.value = ''
-  }
-  if (importId.value && newVal !== oldVal) {
-    resetWorkflowState('File đã thay đổi, vui lòng validate lại từ đầu.')
+    globalError.value = 'Không tải được danh sách kho.'
   }
 })
 
-watch([importType, selectedWarehouseId], () => {
-  if (importId.value) {
-    resetWorkflowState('Cấu hình import đã thay đổi, vui lòng khởi tạo phiên và validate lại từ đầu.')
-  }
-})
-
-function resetWorkflowState(warningMessage) {
+// -- Utils --
+function resetFlow() {
+  selectedFile.value = null
+  if (fileInput.value) fileInput.value.value = ''
   importId.value = null
-  sessionSummary.value = null
   validationResult.value = null
   errorsResponse.value = null
-  errorPage.value = 0
-  confirmResult.value = null
-  applyResult.value = null
-  globalWarning.value = warningMessage
-  globalSuccess.value = ''
   globalError.value = ''
+  globalSuccess.value = ''
 }
 
-// Step 1: Download template
+// -- Handlers --
 async function handleDownloadTemplate() {
-  isDownloadingTemplate.value = true
+  isDownloading.value = true
   globalError.value = ''
-  globalSuccess.value = ''
   try {
     const { data, filename } = await downloadTemplate()
     const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', filename || 'SME_StockSense_Import_Template_v1.xlsx')
+    // Cập nhật tên template sạch như yêu cầu T238
+    link.setAttribute('download', filename || 'Template_SME_StockSense_Clean.xlsx')
     document.body.appendChild(link)
     link.click()
     link.remove()
     window.URL.revokeObjectURL(url)
-    globalSuccess.value = 'Tải file mẫu Excel thành công.'
-  } catch (error) {
-    globalError.value = error.message || 'Không thể tải file mẫu.'
-    if (error.status === 401) router.replace('/login')
+  } catch (err) {
+    globalError.value = 'Tải file mẫu thất bại. Vui lòng thử lại.'
   } finally {
-    isDownloadingTemplate.value = false
+    isDownloading.value = false
   }
 }
 
-// Step 3: Create import session
-async function handleCreateSession() {
-  if (!selectedFile.value) {
-    globalError.value = 'Vui lòng chọn file Excel trước.'
+function handleDrop(e) {
+  isDragging.value = false
+  const files = e.dataTransfer.files
+  if (files.length > 0) processSelectedFile(files[0])
+}
+
+function onFileChange(e) {
+  const files = e.target.files
+  if (files.length > 0) processSelectedFile(files[0])
+}
+
+// KẾT HỢP LUỒNG VALIDATE NGAY LÚC UPLOAD
+async function processSelectedFile(file) {
+  resetFlow()
+  if (!importType.value) {
+    globalError.value = 'Vui lòng chọn "Loại dữ liệu Import" trước khi tải file lên.'
     return
   }
-
-  isCreatingSession.value = true
-  globalError.value = ''
-  globalSuccess.value = ''
-  globalWarning.value = ''
-
-  try {
-    const data = await createImportSession(
-      selectedFile.value,
-      importType.value,
-      selectedWarehouseId.value || null
-    )
-    importId.value = data.id
-    sessionSummary.value = data
-    globalSuccess.value = `Khởi tạo phiên import thành công (ID: ${data.id}). Hãy thực hiện Validate ở bước tiếp theo.`
-  } catch (error) {
-    globalError.value = error.message || 'Không thể khởi tạo phiên import.'
-    if (error.status === 401) router.replace('/login')
-  } finally {
-    isCreatingSession.value = false
+  if (!file.name.toLowerCase().endsWith('.xlsx')) {
+    globalError.value = 'Hệ thống chỉ chấp nhận định dạng Excel (.xlsx)'
+    return
   }
-}
-
-// Step 4: Validate and fetch errors
-async function handleValidateSession() {
-  if (!importId.value || !selectedFile.value) return
-
-  isValidating.value = true
-  globalError.value = ''
-  globalSuccess.value = ''
-  globalWarning.value = ''
-  errorsResponse.value = null
-  errorPage.value = 0
+  selectedFile.value = file
+  isProcessing.value = true
 
   try {
-    const response = await validateImportSession(
-      importId.value,
-      selectedFile.value,
-      importType.value,
-      selectedWarehouseId.value || null
-    )
-    validationResult.value = response
+    // 1. Khởi tạo phiên ngầm
+    processingStatusText.value = 'Đang đẩy file lên máy chủ...'
+    const sessionInfo = await createImportSession(file, importType.value, selectedWarehouseId.value || null)
+    importId.value = sessionInfo.id
 
-    if (response.soDongLoi > 0 || !response.valid) {
-      globalError.value = `Dữ liệu file Excel có ${response.soDongLoi} dòng lỗi. Vui lòng xem bảng lỗi bên dưới.`
+    // 2. Tự động gọi Validate ngầm
+    processingStatusText.value = 'Đang kiểm tra và xác thực dữ liệu...'
+    const validation = await validateImportSession(importId.value, file, importType.value, selectedWarehouseId.value || null)
+    validationResult.value = validation
+
+    // 3. Phân nhánh kết quả
+    if (validation.soDongLoi > 0 || !validation.valid) {
       await fetchErrors(0)
-    } else {
-      globalSuccess.value = 'Tất cả dòng dữ liệu hợp lệ! Sẵn sàng xác nhận để import.'
     }
-  } catch (error) {
-    globalError.value = error.message || 'Không thể kiểm tra dữ liệu file Excel.'
-    if (error.status === 401) router.replace('/login')
+  } catch (err) {
+    globalError.value = err.message || 'Lỗi xử lý file Excel. Vui lòng kiểm tra lại.'
+    if (err.status === 401) router.replace('/login')
   } finally {
-    isValidating.value = false
+    isProcessing.value = false
   }
 }
 
-// Fetch paginated errors
 async function fetchErrors(page = 0) {
-  if (!importId.value || !selectedFile.value) return
-  isLoadingErrors.value = true
+  if (!importId.value) return
   try {
-    const data = await getSessionErrors(importId.value, page, errorSize.value)
+    const data = await getSessionErrors(importId.value, page, 20)
     errorsResponse.value = data
-    errorPage.value = page
-  } catch (error) {
-    globalError.value = error.message || 'Không thể tải danh sách lỗi validation.'
-    if (error.status === 401) router.replace('/login')
-  } finally {
-    isLoadingErrors.value = false
+  } catch (err) {
+    globalError.value = 'Không tải được chi tiết lỗi.'
   }
 }
 
-// Step 5: Confirm import
-async function handleConfirmSession() {
+// KẾT HỢP LUỒNG CONFIRM & APPLY VÀO 1 NÚT XÁC NHẬN
+async function handleFinalImport() {
   if (!importId.value || !selectedFile.value) return
-
-  isConfirming.value = true
-  globalError.value = ''
-  globalSuccess.value = ''
-
-  try {
-    const response = await confirmImportSession(importId.value)
-    confirmResult.value = response
-    globalSuccess.value = 'Xác nhận phiên import thành công. Bạn có thể tiến hành Apply dữ liệu.'
-  } catch (error) {
-    globalError.value = error.message || 'Không thể xác nhận phiên import.'
-    if (error.status === 401) router.replace('/login')
-  } finally {
-    isConfirming.value = false
-  }
-}
-
-// Step 6: Apply import
-async function handleApplySession() {
-  showApplyConfirm.value = false
-  if (!importId.value || !selectedFile.value) return
-
   isApplying.value = true
   globalError.value = ''
-  globalSuccess.value = ''
-
   try {
-    const response = await applyImportSession(importId.value, selectedFile.value)
-    applyResult.value = response
-    globalSuccess.value = 'Import dữ liệu Excel vào hệ thống thành công!'
-  } catch (error) {
-    globalError.value = error.message || 'Không thể áp dụng dữ liệu import.'
-    if (error.status === 401) router.replace('/login')
+    // Gọi Confirm
+    await confirmImportSession(importId.value)
+    // Gọi Apply ngay sau đó
+    await applyImportSession(importId.value, selectedFile.value)
+    
+    globalSuccess.value = 'Tích hợp dữ liệu vào hệ thống THÀNH CÔNG!'
+    validationResult.value = null // Ẩn nút xác nhận
+    selectedFile.value = null
+  } catch (err) {
+    globalError.value = err.message || 'Lỗi khi đồng bộ dữ liệu vào Database.'
   } finally {
     isApplying.value = false
   }
 }
-
-// Reset everything to start fresh
-function handleResetAll() {
-  selectedFile.value = null
-  selectedWarehouseId.value = ''
-  if (fileInput.value) fileInput.value.value = ''
-  resetWorkflowState('')
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  try {
-    return new Date(dateStr).toLocaleString('vi-VN')
-  } catch (e) {
-    return dateStr
-  }
-}
 </script>
 
-<template>
-  <div class="page-shell">
-    <PageHeader title="Import dữ liệu Excel" description="Nhập dữ liệu danh sách sản phẩm hoặc sản phẩm kèm tồn kho đầu kỳ bằng file mẫu Excel." />
-
-    <!-- Message Alert Area -->
-    <div class="mt-4">
-      <div v-if="globalError" class="p-4 mb-4 text-red-800 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2 shadow-sm animate-fade-in">
-        <i class="mdi mdi-alert-circle-outline text-lg mt-0.5"></i>
-        <div>
-          <span class="font-bold">Lỗi: </span>
-          <span>{{ globalError }}</span>
-        </div>
-      </div>
-
-      <div v-if="globalWarning" class="p-4 mb-4 text-yellow-800 rounded-lg bg-yellow-50 border border-yellow-200 flex items-start gap-2 shadow-sm animate-fade-in">
-        <i class="mdi mdi-alert-outline text-lg mt-0.5"></i>
-        <div>
-          <span class="font-bold">Cảnh báo: </span>
-          <span>{{ globalWarning }}</span>
-        </div>
-      </div>
-
-      <div v-if="globalSuccess" class="p-4 mb-4 text-green-800 rounded-lg bg-green-50 border border-green-200 flex items-start gap-2 shadow-sm animate-fade-in">
-        <i class="mdi mdi-check-circle-outline text-lg mt-0.5"></i>
-        <div>
-          <span class="font-bold">Thành công: </span>
-          <span>{{ globalSuccess }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stepper Workflow -->
-    <div class="mt-6 flex flex-col gap-6">
-
-      <!-- Step 1: Download Template -->
-      <div class="card card-pad step-card" :class="[step1Status]">
-        <div class="flex items-start gap-4">
-          <div class="step-number" :class="[step1Status]">
-            <i class="mdi mdi-check"></i>
-          </div>
-          <div class="flex-1">
-            <h3 class="section-title text-slate-800 flex items-center gap-2">
-              Bước 1 — Tải File Mẫu Excel
-            </h3>
-            <p class="muted mt-1">Dùng file mẫu chuẩn để nhập sản phẩm hoặc sản phẩm kèm tồn kho đầu kỳ.</p>
-            <div class="mt-3">
-              <button class="btn btn-primary" :disabled="isDownloadingTemplate" @click="handleDownloadTemplate">
-                <i v-if="isDownloadingTemplate" class="mdi mdi-loading mdi-spin"></i>
-                <i v-else class="mdi mdi-download"></i>
-                Tải file mẫu Excel
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2: Setup Import -->
-      <div class="card card-pad step-card" :class="[step2Status]">
-        <div class="flex items-start gap-4">
-          <div class="step-number" :class="[step2Status]">
-            <i v-if="step2Status === 'completed'" class="mdi mdi-check"></i>
-            <span v-else>2</span>
-          </div>
-          <div class="flex-1">
-            <h3 class="section-title text-slate-800">Bước 2 — Cấu hình & Chọn File</h3>
-            <p class="muted mt-1 mb-4">Lựa chọn loại dữ liệu import, kho hàng (nếu kèm tồn kho) và tải file lên.</p>
-
-            <div class="grid grid-2 md:grid-cols-2 gap-4">
-              <!-- Select Import Type -->
-              <div class="field">
-                <label>Loại import *</label>
-                <select v-model="importType" class="select" :disabled="isCreatingSession || isValidating || isConfirming || isApplying || applyResult">
-                  <option value="PRODUCT_ONLY">Chỉ sản phẩm (PRODUCT_ONLY)</option>
-                  <option value="PRODUCT_WITH_OPENING_STOCK">Sản phẩm + tồn đầu kỳ (PRODUCT_WITH_OPENING_STOCK)</option>
-                </select>
-              </div>
-
-              <!-- Select Warehouse if Required -->
-              <div v-if="importType === 'PRODUCT_WITH_OPENING_STOCK'" class="field">
-                <label>Kho nhận hàng đầu kỳ</label>
-                <select v-model="selectedWarehouseId" class="select" :disabled="isLoadingWarehouses || isCreatingSession || isValidating || isConfirming || isApplying || applyResult">
-                  <option value="">-- Chọn kho hàng nhận tồn đầu kỳ --</option>
-                  <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.tenKho }} ({{ w.maKho }})</option>
-                </select>
-                <small class="text-slate-400 mt-1 block">Có thể để trống nếu file tồn đầu kỳ đã có mã kho theo từng dòng.</small>
-                <small v-if="isLoadingWarehouses" class="text-slate-400">Đang tải danh sách kho hàng...</small>
-                <small v-if="warehouseError" class="text-red-600 font-semibold mt-1 block">{{ warehouseError }}</small>
-              </div>
-            </div>
-
-            <!-- File Upload -->
-            <div class="field mt-4">
-              <label>Chọn file dữ liệu Excel (.xlsx) *</label>
-              <div class="flex flex-wrap items-center gap-3">
-                <button class="btn btn-secondary" type="button" :disabled="isCreatingSession || isValidating || isConfirming || isApplying || applyResult" @click="fileInput.click()">
-                  <i class="mdi mdi-file-excel-outline"></i>
-                  Chọn file từ máy tính
-                </button>
-                <input ref="fileInput" type="file" accept=".xlsx" class="hidden" @change="onFileChange" />
-
-                <div v-if="selectedFile" class="flex items-center gap-2 p-2 bg-slate-100 rounded-md border border-slate-200">
-                  <i class="mdi mdi-file-check-outline text-green-600 text-lg"></i>
-                  <span class="text-sm font-semibold text-slate-700">{{ selectedFile.name }} ({{ formatFileSize(selectedFile.size) }})</span>
-                </div>
-                <span v-else class="text-sm text-slate-400">Chưa có file nào được chọn</span>
-              </div>
-              <small v-if="fileError" class="text-red-600 font-semibold mt-1 block">{{ fileError }}</small>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3: Create Session -->
-      <div class="card card-pad step-card" :class="[step3Status]">
-        <div class="flex items-start gap-4">
-          <div class="step-number" :class="[step3Status]">
-            <i v-if="step3Status === 'completed'" class="mdi mdi-check"></i>
-            <span v-else>3</span>
-          </div>
-          <div class="flex-1">
-            <h3 class="section-title text-slate-800">Bước 3 — Tạo Phiên Import</h3>
-            <p class="muted mt-1">Đăng ký file và loại import với hệ thống để khởi tạo mã phiên.</p>
-
-            <!-- Session details if created -->
-            <div v-if="sessionSummary" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm">
-              <div class="font-bold text-blue-900 mb-1">Chi tiết phiên import khởi tạo:</div>
-              <div class="grid grid-2 gap-x-4 gap-y-1">
-                <div>Mã phiên import (ID): <span class="font-semibold">{{ sessionSummary.id }}</span></div>
-                <div>Tên file gốc: <span class="font-semibold">{{ sessionSummary.tenFile }}</span></div>
-                <div>Loại import: <span class="font-semibold">{{ sessionSummary.loaiImport }}</span></div>
-                <div>Trạng thái:
-                  <span class="font-bold px-2 py-0.5 rounded-full text-xs" :class="sessionSummary.trangThai === 'CHO_XU_LY' ? 'bg-yellow-100 text-yellow-800' : 'bg-slate-100 text-slate-800'">
-                    {{ sessionSummary.trangThai }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-3">
-              <button class="btn btn-primary" :disabled="step3Status !== 'active' || isCreatingSession || !selectedFile" @click="handleCreateSession">
-                <i v-if="isCreatingSession" class="mdi mdi-loading mdi-spin"></i>
-                Khởi tạo phiên import
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 4: Validate and Persist Errors -->
-      <div class="card card-pad step-card" :class="[step4Status]">
-        <div class="flex items-start gap-4">
-          <div class="step-number" :class="[step4Status]">
-            <i v-if="step4Status === 'completed'" class="mdi mdi-check"></i>
-            <i v-else-if="step4Status === 'failed'" class="mdi mdi-close-circle-outline"></i>
-            <span v-else>4</span>
-          </div>
-          <div class="flex-1">
-            <h3 class="section-title text-slate-800">Bước 4 — Kiểm Tra Dữ Liệu (Validate)</h3>
-            <p class="muted mt-1">Hệ thống sẽ kiểm tra định dạng dữ liệu, sự tồn tại của mã sản phẩm, danh mục và kho hàng.</p>
-
-            <!-- Validation Summary -->
-            <div v-if="validationResult" class="mt-3 p-3 rounded-md text-sm border" :class="validationResult.valid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'">
-              <div class="font-bold mb-1" :class="validationResult.valid ? 'text-green-900' : 'text-red-900'">Kết quả kiểm tra dữ liệu:</div>
-              <div class="grid grid-4 gap-2">
-                <div>Tổng số dòng: <span class="font-bold">{{ validationResult.tongSoDong }}</span></div>
-                <div>Số dòng hợp lệ: <span class="font-bold text-green-700">{{ validationResult.soDongHopLe }}</span></div>
-                <div>Số dòng lỗi: <span class="font-bold text-red-700">{{ validationResult.soDongLoi }}</span></div>
-                <div>Kết luận:
-                  <span class="font-bold" :class="validationResult.valid ? 'text-green-700' : 'text-red-700'">
-                    {{ validationResult.valid ? 'HỢP LỆ' : 'KHÔNG HỢP LỆ' }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Action button -->
-            <div class="mt-3">
-              <button class="btn btn-primary" :disabled="step4Status === 'locked' || isValidating || !selectedFile || !importId" @click="handleValidateSession">
-                <i v-if="isValidating" class="mdi mdi-loading mdi-spin"></i>
-                Kiểm tra dữ liệu Excel
-              </button>
-            </div>
-
-            <!-- Error Report Table -->
-            <div v-if="errorsResponse && errorsResponse.content && errorsResponse.content.length > 0" class="mt-4 border border-red-100 rounded-lg overflow-hidden">
-              <div class="bg-red-900 text-white p-3 font-semibold flex items-center gap-2">
-                <i class="mdi mdi-alert-box-outline"></i>
-                Bảng chi tiết các lỗi dữ liệu trong file Excel (Trang {{ errorsResponse.page + 1 }}/{{ errorsResponse.totalPages }})
-              </div>
-
-              <div class="table-wrap">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th style="width: 80px;">Dòng</th>
-                      <th style="width: 150px;">Cột dữ liệu</th>
-                      <th style="width: 180px;">Giá trị trong file</th>
-                      <th>Chi tiết lỗi</th>
-                      <th>Gợi ý khắc phục</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="err in errorsResponse.content" :key="err.id">
-                      <td class="font-bold text-slate-900">{{ err.rowNumber }}</td>
-                      <td class="text-red-700 font-semibold">{{ err.columnName }}</td>
-                      <td>
-                        <code class="px-1.5 py-0.5 bg-slate-100 border rounded text-xs text-slate-800">{{ err.originalValue === null || err.originalValue === '' ? '(trống)' : err.originalValue }}</code>
-                      </td>
-                      <td class="text-red-600 font-semibold">{{ err.message }}</td>
-                      <td class="text-green-700 font-semibold">{{ err.suggestion || '-' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Pagination controls -->
-              <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-                <span class="text-sm text-slate-600">Tìm thấy <span class="font-bold">{{ errorsResponse.totalElements }}</span> lỗi dữ liệu</span>
-                <div class="flex items-center gap-2">
-                  <button class="btn btn-sm" :disabled="errorsResponse.page === 0 || isLoadingErrors" @click="fetchErrors(errorsResponse.page - 1)">
-                    <i class="mdi mdi-chevron-left"></i> Trước
-                  </button>
-                  <span class="text-sm font-semibold">Trang {{ errorsResponse.page + 1 }} / {{ errorsResponse.totalPages }}</span>
-                  <button class="btn btn-sm" :disabled="errorsResponse.page >= errorsResponse.totalPages - 1 || isLoadingErrors" @click="fetchErrors(errorsResponse.page + 1)">
-                    Sau <i class="mdi mdi-chevron-right"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 5: Confirm -->
-      <div class="card card-pad step-card" :class="[step5Status]">
-        <div class="flex items-start gap-4">
-          <div class="step-number" :class="[step5Status]">
-            <i v-if="step5Status === 'completed'" class="mdi mdi-check"></i>
-            <span v-else>5</span>
-          </div>
-          <div class="flex-1">
-            <h3 class="section-title text-slate-800">Bước 5 — Xác Nhận</h3>
-            <p class="muted mt-1">Xác nhận phiên import đã đầy đủ dữ liệu hợp lệ và sẵn sàng tích hợp vào cơ sở dữ liệu.</p>
-
-            <div v-if="confirmResult" class="mt-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-900">
-              <i class="mdi mdi-check-circle text-green-600 mr-1"></i>
-              Phiên import đã được chuyển sang trạng thái: <span class="font-bold">{{ confirmResult.status }}</span> (Đã Xác Nhận).
-            </div>
-
-            <div class="mt-3">
-              <button class="btn btn-primary" :disabled="step5Status !== 'active' || isConfirming || !selectedFile || !importId" @click="handleConfirmSession">
-                <i v-if="isConfirming" class="mdi mdi-loading mdi-spin"></i>
-                Xác nhận phiên import
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 6: Apply -->
-      <div class="card card-pad step-card" :class="[step6Status]">
-        <div class="flex items-start gap-4">
-          <div class="step-number" :class="[step6Status]">
-            <i v-if="step6Status === 'completed'" class="mdi mdi-check"></i>
-            <span v-else>6</span>
-          </div>
-          <div class="flex-1">
-            <h3 class="section-title text-slate-800">Bước 6 — Áp Dụng Dữ Liệu</h3>
-            <p class="muted mt-1">Thực thi lưu chính thức các sản phẩm mới và cập nhật số lượng tồn kho đầu kỳ tương ứng.</p>
-
-            <div v-if="applyResult" class="mt-3 p-4 bg-slate-100 border border-slate-300 rounded-lg text-slate-800">
-              <h4 class="font-bold text-slate-900 mb-2">Kết quả thực thi import thành công:</h4>
-              <ul class="list-disc pl-5 space-y-1 text-sm">
-                <li>Mã import: <span class="font-semibold">{{ applyResult.importId }}</span></li>
-                <li>Trạng thái: <span class="font-bold text-green-700">{{ applyResult.status }}</span></li>
-                <li>Thời gian hoàn thành: <span class="font-semibold">{{ formatDate(applyResult.completedAt) }}</span></li>
-                <li>Tổng số sản phẩm/khoản mục xử lý: <span class="font-semibold">{{ applyResult.totalRows }}</span></li>
-                <li>Số dòng áp dụng thành công: <span class="font-bold text-green-700">{{ applyResult.validRows }}</span></li>
-                <li>Thông điệp: <span class="font-semibold">{{ applyResult.message }}</span></li>
-              </ul>
-            </div>
-
-            <div class="mt-4 flex gap-3">
-              <button class="btn btn-success" :disabled="step6Status !== 'active' || isApplying || !selectedFile || !importId" @click="showApplyConfirm = true">
-                <i v-if="isApplying" class="mdi mdi-loading mdi-spin"></i>
-                Áp dụng import dữ liệu
-              </button>
-
-              <button class="btn" type="button" @click="handleResetAll">
-                Làm mới từ đầu
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Confirm Apply Dialog -->
-    <ConfirmDialog
-      :open="showApplyConfirm"
-      title="Cảnh báo cập nhật dữ liệu"
-      message="Thao tác này sẽ cập nhật dữ liệu sản phẩm/tồn kho chính thức vào hệ thống và ghi nhận các giao dịch nhập tồn kho đầu kỳ. Bạn có chắc chắn muốn thực hiện?"
-      confirm-text="Đồng ý import"
-      :loading="isApplying"
-      @cancel="showApplyConfirm = false"
-      @confirm="handleApplySession"
-    />
-  </div>
-</template>
-
 <style scoped>
-.step-card {
-  border-left: 4px solid transparent;
-  transition: all 0.2s ease-in-out;
-}
-
-.step-card.completed {
-  border-left-color: var(--success);
-  background-color: #f0fdf4;
-}
-
-.step-card.active {
-  border-left-color: var(--primary);
-  background-color: #ffffff;
-  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.08);
-}
-
-.step-card.failed {
-  border-left-color: var(--danger);
-  background-color: #fef2f2;
-}
-
-.step-card.locked {
-  border-left-color: var(--border);
-  opacity: 0.55;
-  background-color: var(--surface-soft);
-}
-
-.step-number {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.step-number.completed {
-  background-color: var(--success);
-  color: #ffffff;
-}
-
-.step-number.active {
-  background-color: var(--primary);
-  color: #ffffff;
-}
-
-.step-number.failed {
-  background-color: var(--danger);
-  color: #ffffff;
-}
-
-.step-number.locked {
-  background-color: var(--border-strong);
-  color: var(--muted);
-}
-
-.mdi-spin {
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
+/* Tailwind CSS đã bao hàm tất cả, không cần thêm style thủ công */
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out both;
+  animation: fadeIn 0.3s ease-out both;
 }
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }

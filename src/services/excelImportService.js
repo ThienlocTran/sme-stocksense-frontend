@@ -47,7 +47,7 @@ export async function createImportSession(file, loaiImport, warehouseId) {
     formData.append('file', file)
     formData.append('loaiImport', loaiImport)
     if (warehouseId) {
-      formData.append('khoId', warehouseId)
+      formData.append('khoId', warehouseId) 
     }
 
     const { data } = await excelImportClient.post('/api/excel-imports', formData, {

@@ -70,12 +70,12 @@ const menuSections = [
   {
     title: "Hệ thống",
     items: [
+      { label: "Cảnh báo tồn kho", to: "/alerts", icon: "mdi-alert-outline" },
       {
-        label: "Import Excel",
+        label: "Nhập liệu Excel",
         to: "/import-excel",
         icon: "mdi-file-excel-outline",
       },
-      { label: "Cảnh báo tồn kho", to: "/alerts", icon: "mdi-alert-outline" },
       {
         label: "Nhân viên",
         to: "/employees",
