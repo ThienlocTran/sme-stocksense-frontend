@@ -32,7 +32,10 @@ export async function getCurrentProfile() {
           return normalized
         }
       } catch (error) {
-        const normalizedError = normalizeProfileError(error, 'Phiên đăng nhập đã hết hạn.')
+        const fallbackMessage = error?.response?.status === 401
+          ? 'Phiên đăng nhập đã hết hạn.'
+          : 'Không thể tải thông tin hồ sơ.'
+        const normalizedError = normalizeProfileError(error, fallbackMessage)
 
         if (normalizedError.status === 401) {
           clearAuth()
@@ -49,8 +52,8 @@ export async function getCurrentProfile() {
           continue
         }
 
-        if (error.response?.status && error.response.status < 500) {
-          break
+        if (error.response?.status && error.response.status >= 400 && error.response.status < 500) {
+          continue
         }
       }
     }

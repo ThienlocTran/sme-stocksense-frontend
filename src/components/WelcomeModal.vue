@@ -1,11 +1,5 @@
 <script setup>
-import {
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-  nextTick,
-} from "vue";
+import { onBeforeUnmount, onMounted, ref, watch, nextTick } from "vue";
 
 const props = defineProps({
   open: {
@@ -19,8 +13,8 @@ const emit = defineEmits(["close"]);
 const dialogRef = ref(null);
 let previouslyFocused = null;
 
-function close() {
-  emit("close");
+function close(action = "dismiss") {
+  emit("close", action);
 }
 
 function handleWindowKeydown(event) {
@@ -76,6 +70,9 @@ watch(
     if (open) {
       previouslyFocused = document.activeElement;
       await nextTick();
+      if (!props.open || !dialogRef.value) {
+        return;
+      }
       const focusable = getFocusableElements();
       if (focusable.length) {
         focusable[0].focus();
@@ -94,6 +91,7 @@ watch(
       previouslyFocused = null;
     }
   },
+  { immediate: true },
 );
 
 onMounted(() => {
@@ -153,10 +151,14 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="welcome-actions">
-            <button class="btn btn-ghost" type="button" @click="close">
+            <button class="btn btn-ghost" type="button" @click="close('skip')">
               Để sau
             </button>
-            <button class="btn btn-primary" type="button" @click="close">
+            <button
+              class="btn btn-primary"
+              type="button"
+              @click="close('start')"
+            >
               Bắt đầu
             </button>
           </div>

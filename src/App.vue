@@ -6,8 +6,12 @@ import AppTopbar from "./components/AppTopbar.vue";
 import GuidedTourOverlay from "./components/GuidedTourOverlay.vue";
 import WelcomeModal from "./components/WelcomeModal.vue";
 import { getCurrentUser } from "./services/authService";
+import { canAccessRoute } from "./services/permissionService";
+import { useAuthStore } from "./stores/auth";
 
 const route = useRoute();
+const authStore = useAuthStore();
+const currentRole = computed(() => authStore.currentRole);
 const isAuthLayout = computed(() => route.meta.layout === "auth");
 const isWelcomeModalOpen = ref(false);
 const isGuidedTourOpen = ref(false);
@@ -37,7 +41,7 @@ function shouldShowGuidedTour() {
   );
 }
 
-function closeWelcomeModal() {
+function closeWelcomeModal(action = "dismiss") {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(
       getStorageKey(WELCOME_MODAL_STORAGE_KEY),
@@ -45,8 +49,17 @@ function closeWelcomeModal() {
     );
   }
   isWelcomeModalOpen.value = false;
-  if (shouldShowGuidedTour()) {
+
+  if (action === "start" && shouldShowGuidedTour()) {
     isGuidedTourOpen.value = true;
+  } else if (action === "skip") {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        getStorageKey(GUIDED_TOUR_STORAGE_KEY),
+        "true",
+      );
+    }
+    isGuidedTourOpen.value = false;
   }
 }
 
@@ -82,6 +95,7 @@ const guidedTourSteps = [
     description:
       "Nhóm này giúp bạn thấy các phiếu nhập và xuất đang chờ duyệt trước khi vào màn hình chi tiết.",
     selector: ".dashboard-section-grid .card:nth-of-type(1)",
+    permissionRoute: "/approvals",
   },
   {
     title: "Alerts",
@@ -111,6 +125,16 @@ const guidedTourSteps = [
   },
 ];
 
+const visibleGuidedTourSteps = computed(() =>
+  guidedTourSteps.filter((step) => {
+    if (!step.permissionRoute) {
+      return true;
+    }
+
+    return canAccessRoute(step.permissionRoute, currentRole.value);
+  }),
+);
+
 onMounted(() => {
   if (!isAuthLayout.value && shouldShowWelcomeModal()) {
     isWelcomeModalOpen.value = true;
@@ -120,6 +144,12 @@ onMounted(() => {
 });
 
 watch(isAuthLayout, (newVal, oldVal) => {
+  if (newVal === true) {
+    isWelcomeModalOpen.value = false;
+    isGuidedTourOpen.value = false;
+    return;
+  }
+
   if (oldVal === true && newVal === false) {
     if (shouldShowWelcomeModal()) {
       isWelcomeModalOpen.value = true;
@@ -143,7 +173,7 @@ watch(isAuthLayout, (newVal, oldVal) => {
     <WelcomeModal :open="isWelcomeModalOpen" @close="closeWelcomeModal" />
     <GuidedTourOverlay
       :open="isGuidedTourOpen"
-      :steps="guidedTourSteps"
+      :steps="visibleGuidedTourSteps"
       @close="closeGuidedTour"
       @completed="closeGuidedTour"
       @skip="skipGuidedTour"

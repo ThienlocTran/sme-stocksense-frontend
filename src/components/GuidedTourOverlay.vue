@@ -73,8 +73,15 @@ async function updateTarget() {
           await router.push(step.route);
 
           // if the tour was closed or cancelled while navigation was pending, revert
-          if (!props.open || pendingNavigationToken !== token || pendingNavigationCancelled) {
-            if (router.currentRoute.value.fullPath !== pendingNavigationPrevRoute) {
+          if (
+            !props.open ||
+            pendingNavigationToken !== token ||
+            pendingNavigationCancelled
+          ) {
+            if (
+              router.currentRoute.value.path === step.route &&
+              pendingNavigationPrevRoute !== null
+            ) {
               try {
                 await router.push(pendingNavigationPrevRoute);
               } catch {
@@ -86,8 +93,15 @@ async function updateTarget() {
           }
 
           await nextTick();
-          if (!props.open || pendingNavigationToken !== token || pendingNavigationCancelled) {
-            if (router.currentRoute.value.fullPath !== pendingNavigationPrevRoute) {
+          if (
+            !props.open ||
+            pendingNavigationToken !== token ||
+            pendingNavigationCancelled
+          ) {
+            if (
+              router.currentRoute.value.path === step.route &&
+              pendingNavigationPrevRoute !== null
+            ) {
               try {
                 await router.push(pendingNavigationPrevRoute);
               } catch {}
@@ -164,24 +178,59 @@ function handleNextStep() {
 }
 
 function closeTour() {
+  pendingNavigationCancelled = true;
   emit("close");
 }
 
 function skipTour() {
+  pendingNavigationCancelled = true;
   emit("skip");
+}
+
+function syncCurrentStepIndex() {
+  if (!props.open) return;
+
+  if (!props.steps?.length) {
+    emit("close");
+    return;
+  }
+
+  const clampedIndex = Math.min(
+    Math.max(currentStepIndex.value, 0),
+    props.steps.length - 1,
+  );
+
+  if (clampedIndex !== currentStepIndex.value) {
+    currentStepIndex.value = clampedIndex;
+  }
+
+  nextTick(() => {
+    updateTarget();
+  });
 }
 
 watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
-      currentStepIndex.value = props.initialStep;
+      currentStepIndex.value = Math.min(
+        Math.max(props.initialStep, 0),
+        Math.max(props.steps.length - 1, 0),
+      );
       nextTick(() => {
         updateTarget();
       });
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => props.steps,
+  () => {
+    syncCurrentStepIndex();
+  },
+  { deep: true },
 );
 
 watch(currentStepIndex, () => {

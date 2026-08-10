@@ -47,6 +47,7 @@ const emit = defineEmits(["row-click"]);
   text-align: center;
   color: var(--muted);
   padding: 32px;
+  font-weight: 600;
 }
 .clickable-row {
   cursor: pointer;
