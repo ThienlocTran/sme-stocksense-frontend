@@ -15,6 +15,7 @@ import ApprovalsView from '../views/ApprovalsView.vue'
 import PendingExportApprovalsView from '../views/PendingExportApprovalsView.vue'
 import ImportExcelView from '../views/ImportExcelView.vue'
 import AlertsView from '../views/AlertsView.vue'
+import InventoryCountList from '../views/InventoryCountList.vue'
 import UsersView from '../views/UsersView.vue'
 import EmployeeListView from '../views/employees/EmployeeListView.vue'
 import CategoryListView from '../views/categories/CategoryListView.vue'
@@ -29,6 +30,8 @@ const routes = [
   { path: '/warehouses', component: WarehousesView, meta: { title: 'Kho hàng' } },
   { path: '/inventory', component: InventoryView, meta: { title: 'Tồn kho' } },
   { path: '/inventory-transactions', component: InventoryTransactionsView, meta: { title: 'Lịch sử giao dịch' } },
+  { path: '/inventory-counts', component: InventoryCountList, meta: { title: 'Kiểm kê kho' } },
+  { path: '/inventory/:id', name: 'InventoryDetail', component: () => import('../views/InventoryCountDetailView.vue') },
   { path: '/stock-in', component: StockDocumentsView, props: { type: 'in' }, meta: { title: 'Phiếu nhập kho' } },
   { path: '/stock-in/create', component: StockDocumentCreateView, props: { type: 'in' }, meta: { title: 'Tạo phiếu nhập kho' } },
   { path: '/stock-in/:id/edit', component: StockDocumentCreateView, props: route => ({ id: route.params.id, type: 'in', mode: 'edit' }), meta: { title: 'Chỉnh sửa phiếu nhập kho' } },
@@ -44,7 +47,6 @@ const routes = [
   { path: '/alerts', component: AlertsView, meta: { title: 'Cảnh báo tồn kho' } },
   { path: '/employees', component: EmployeeListView, meta: { title: 'Nhân viên' } },
   { path: '/users', component: UsersView, meta: { title: 'Nhân viên & phân quyền' } },
-
 ]
 
 const router = createRouter({

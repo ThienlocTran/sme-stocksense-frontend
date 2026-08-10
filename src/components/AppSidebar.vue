@@ -49,6 +49,7 @@ const menuSections = [
       },
       { label: "Phiếu nhập kho", to: "/stock-in", icon: "mdi-tray-arrow-down" },
       { label: "Phiếu xuất kho", to: "/stock-out", icon: "mdi-tray-arrow-up" },
+      { label: "Kiểm kê kho", to: "/inventory-counts", icon: "mdi-clipboard-check-outline" },
     ],
   },
   {
