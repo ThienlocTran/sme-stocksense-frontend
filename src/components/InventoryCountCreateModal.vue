@@ -22,31 +22,6 @@
         </button>
       </div>
 
-      <!-- Body Form -->Đóng vai trò là một Tech Lead / Frontend Architect. Dự án Vue 3 + Tailwind CSS của chúng tôi đang ở giai đoạn nước rút (Sprint 5). Tôi vừa hoàn thành Task T231 (Danh sách đợt kiểm kê) và T233 (Modal tạo đợt kiểm kê).
-
-Hãy đọc toàn bộ thư mục src/views/ và src/components/, đặc biệt tập trung vào các module Inventory và ImportExcel, sau đó thực hiện 2 việc sau:
-
-Phần 1: Gap Analysis (Đánh giá hiện trạng)
-Đối chiếu source code hiện tại với danh sách các task dưới đây để báo cáo xem file/component nào đã có, file nào chưa có, hoặc code nào đang làm dở:
-
-Cụm Chi tiết Kiểm kê (T232, T234, T235, T236):
-
-Cần UI hiển thị danh sách sản phẩm trong đợt kiểm kê (số lượng hệ thống, số lượng thực tế, chênh lệch).
-
-Yêu cầu cốt lõi (T234): Form nhập số lượng thực tế phải là dạng inline-editing (nhập trực tiếp trên bảng), thao tác phải cực nhanh, tuyệt đối KHÔNG bắt user mở modal cho từng dòng.
-
-Cần có nút Chốt (Finalize) / Hủy (Cancel) đợt kiểm kê và khóa UI sau thao tác (T235).
-
-Phải có UI loading, empty state, và xử lý lỗi API (T236).
-
-Cụm Import Excel (T237, T238):
-
-Flow import phải được rút gọn tối đa còn 2 bước: (1) Upload file -> Backend validate -> Nếu hợp lệ mới bật nút (2) Xác nhận Import. Không được để nút validate rời rạc ở Frontend.
-
-Nút tải file mẫu (Template) phải tải đúng bản sạch, không kèm sheet tham chiếu rườm rà.
-
-Phần 2: Actionable Coding Plan (Kế hoạch thực thi)
-Sau khi đánh giá, hãy cung cấp cho tôi bản thiết kế Component (dự kiến tên file, các biến state cần có, logic tính toán chênh lệch) và viết mã nguồn hoàn chỉnh cho Task T232 + T234 (Giao diện chi tiết đợt kiểm kê & Bảng nhập liệu inline) để tôi có thể bắt đầu code ngay lập tức. Đảm bảo sử dụng Tailwind CSS đồng bộ với dự án.
       <div class="p-6">
         <form @submit.prevent="handleSubmit">
           
@@ -62,7 +37,7 @@ Sau khi đánh giá, hãy cung cấp cho tôi bản thiết kế Component (dự
               @change="errors.warehouseId = false"
             >
               <option value="" disabled>-- Chọn kho --</option>
-              <option v-for="wh in mockWarehouses" :key="wh.id" :value="wh.id">
+              <option v-for="wh in warehouses" :key="wh.id" :value="wh.id">
                 {{ wh.name }}
               </option>
             </select>
@@ -106,7 +81,7 @@ Sau khi đánh giá, hãy cung cấp cho tôi bản thiết kế Component (dự
             <!-- Wrapper có thanh cuộn nếu danh sách dài -->
             <div class="max-h-48 overflow-y-auto pr-2 custom-scrollbar">
               <div 
-                v-for="product in mockProducts" 
+                v-for="product in products" 
                 :key="product.id"
                 class="flex items-center py-2 border-b border-gray-100 last:border-0 hover:bg-white transition-colors px-2 rounded"
               >
@@ -178,11 +153,10 @@ Sau khi đánh giá, hãy cung cấp cho tôi bản thiết kế Component (dự
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { getWarehouses } from '../services/warehouseService'
+import { getProducts } from '../services/productService'
 
-// ==========================================
-// 1. PROPS & EMITS
-// ==========================================
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -192,30 +166,14 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 
-// ==========================================
-// 2. MOCK DATA
-// ==========================================
-const mockWarehouses = [
-  { id: 'WH01', name: 'Kho Tổng Hà Nội' },
-  { id: 'WH02', name: 'Kho Chi nhánh HCM' },
-  { id: 'WH03', name: 'Kho Lạnh Đà Nẵng' }
-]
+const warehouses = ref([])
+const products = ref([])
+const isLoading = ref(false)
+const isSubmitting = ref(false)
 
-const mockProducts = [
-  { id: 'P001', sku: 'IP14-PRO-128', name: 'iPhone 14 Pro 128GB', stock: 45 },
-  { id: 'P002', sku: 'MB-AIR-M2', name: 'MacBook Air M2 256GB', stock: 12 },
-  { id: 'P003', sku: 'AP-PRO-2', name: 'AirPods Pro Gen 2', stock: 105 },
-  { id: 'P004', sku: 'IPAD-AIR-5', name: 'iPad Air 5 64GB', stock: 30 },
-  { id: 'P005', sku: 'AW-S8-45', name: 'Apple Watch Series 8 45mm', stock: 22 },
-  { id: 'P006', sku: 'SS-S23-ULT', name: 'Samsung S23 Ultra', stock: 15 }
-]
-
-// ==========================================
-// 3. STATE (FORM & VALIDATION)
-// ==========================================
 const formData = reactive({
   warehouseId: '',
-  scope: 'ALL', // 'ALL' hoặc 'PARTIAL'
+  scope: 'ALL',
   productIds: [],
   note: ''
 })
@@ -225,81 +183,45 @@ const errors = reactive({
   productIds: false
 })
 
-const isSubmitting = ref(false)
+const fetchInitialData = async () => {
+  isLoading.value = true
+  try {
+    const warehouseData = await getWarehouses({ status: 'HOAT_DONG' })
+    warehouses.value = warehouseData.content || warehouseData.data || warehouseData
 
-// ==========================================
-// 4. WATCHERS
-// ==========================================
-// Reset form mỗi khi Modal được mở lên
-watch(() => props.isOpen, (newVal) => {
-  if (newVal) {
-    formData.warehouseId = ''
-    formData.scope = 'ALL'
-    formData.productIds = []
-    formData.note = ''
-    errors.warehouseId = false
-    errors.productIds = false
+    const productData = await getProducts()
+    products.value = productData.content || productData.data || productData
+  } catch (error) {
+    console.error('Lỗi tải dữ liệu kho/sản phẩm:', error)
+  } finally {
+    isLoading.value = false
   }
+}
+
+onMounted(() => {
+  fetchInitialData()
 })
 
-// Tự động clear danh sách sản phẩm nếu người dùng đổi lại scope là 'ALL'
-watch(() => formData.scope, (newVal) => {
-  if (newVal === 'ALL') {
-    formData.productIds = []
-    errors.productIds = false
-  }
-})
-
-// ==========================================
-// 5. ACTIONS
-// ==========================================
 const closeModal = () => {
-  if (isSubmitting.value) return // Không cho đóng khi đang tải
+  if (isSubmitting.value) return
+  formData.warehouseId = ''
+  formData.scope = 'ALL'
+  formData.productIds = []
+  formData.note = ''
+  errors.warehouseId = false
+  errors.productIds = false
   emit('close')
 }
 
 const handleSubmit = async () => {
-  // --- A. Validate ---
-  let isValid = true
-  
-  if (!formData.warehouseId) {
-    errors.warehouseId = true
-    isValid = false
-  }
-  
-  if (formData.scope === 'PARTIAL' && formData.productIds.length === 0) {
-    errors.productIds = true
-    isValid = false
-  }
+  errors.warehouseId = !formData.warehouseId
+  errors.productIds = formData.scope === 'PARTIAL' && formData.productIds.length === 0
 
-  if (!isValid) return
+  if (errors.warehouseId || errors.productIds) return
 
-  // --- B. Xử lý Submit (Giả lập gọi API) ---
   isSubmitting.value = true
-  
   try {
-    // Giả lập delay mạng 1 giây để xem hiệu ứng loading
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Gói dữ liệu (Payload) gửi ra component cha
-    const payload = {
-      // Dữ liệu thực tế form
-      ...formData,
-      
-      // Mock thêm các field giống DB để component cha dễ push vào mảng hiển thị
-      id: Math.floor(Math.random() * 10000), 
-      code: `KK-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 1000)}`,
-      warehouseName: mockWarehouses.find(w => w.id === formData.warehouseId)?.name,
-      status: 'DRAFT',
-      createdDate: new Date().toISOString(),
-      createdBy: 'Current User'
-    }
-    
-    // Bắn event báo cha đóng modal và add data
-    emit('submit', payload)
-    
-  } catch (error) {
-    console.error(error)
+    emit('submit', { ...formData })
   } finally {
     isSubmitting.value = false
   }
