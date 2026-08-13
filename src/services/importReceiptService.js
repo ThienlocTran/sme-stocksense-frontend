@@ -110,7 +110,7 @@ export async function getDetail(receiptId) {
 
 // ===== Luồng duyệt phiếu nhập (T91-T94) =====
 
-export async function getPendingApprovals({ page = 0, size = 10, status = '' } = {}) {
+export async function getPendingApprovals({ page = 0, size = 10, status = '', warehouse = '' } = {}) {
   try {
     const { data } = await importReceiptClient.get('/api/import-receipts/pending-approval', {
       headers: getAuthorizationHeader(),
@@ -118,6 +118,7 @@ export async function getPendingApprovals({ page = 0, size = 10, status = '' } =
         page,
         size,
         status: status || undefined,
+        warehouse: warehouse || undefined,
       },
     })
     return data

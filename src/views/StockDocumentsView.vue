@@ -62,7 +62,10 @@ const columns = computed(() => [
 
 const statusOptions = [
   { value: 'NHAP', label: 'Nháp' },
+  { value: 'CHO_DUYET', label: 'Chờ duyệt' },
+  { value: 'CHO_DUYET_CAP_1', label: 'Chờ duyệt' },
   { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt' },
+  { value: 'DA_DUYET', label: 'Đã duyệt' },
   { value: 'CHO_HANG_VE', label: 'Chờ hàng về' },
   { value: 'CHO_KIEM_HANG', label: 'Chờ kiểm hàng' },
   { value: 'HOAN_THANH', label: 'Hoàn thành' },
@@ -72,7 +75,6 @@ const statusOptions = [
 
 const statusLabels = {
   ...Object.fromEntries(statusOptions.map(status => [status.value, status.label])),
-  CHO_DUYET_CAP_1: 'Chờ duyệt',
 }
 
 onMounted(fetchReceipts)
@@ -385,7 +387,8 @@ function confirmText() {
 .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
 .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 800; white-space: nowrap; background: #f1f5f9; color: #475569; }
 .status-nhap, .status-huy { background: #f1f5f9; color: #475569; }
-.status-cho-duyet-cap-1, .status-cho-duyet-cap-2, .status-cho-hang-ve, .status-cho-kiem-hang { background: #fef3c7; color: #b45309; }
+.status-cho-duyet, .status-cho-duyet-cap-1, .status-cho-duyet-cap-2, .status-cho-hang-ve, .status-cho-kiem-hang { background: #fef3c7; color: #b45309; }
+.status-da-duyet { background: #eff6ff; color: #1d4ed8; }
 .status-tu-choi { background: #fee2e2; color: #b91c1c; }
 .status-hoan-thanh { background: #dcfce7; color: #15803d; }
 .pagination-bar { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }

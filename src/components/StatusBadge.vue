@@ -1,15 +1,20 @@
 <script setup>
-import { computed } from 'vue'
+import { computed } from "vue";
 
 const props = defineProps({
   status: { type: String, required: true },
-  variant: { type: String, default: 'status' },
-})
+  variant: { type: String, default: "status" },
+});
 
 const badgeClass = computed(() => {
-  const normalized = props.status.toLowerCase().replaceAll(' ', '-').replaceAll('/', '')
-  return props.variant === 'severity' ? `severity-${normalized}` : `status-${normalized}`
-})
+  const normalized = props.status
+    .toLowerCase()
+    .replaceAll(" ", "-")
+    .replaceAll("/", "");
+  return props.variant === "severity"
+    ? `severity-${normalized}`
+    : `status-${normalized}`;
+});
 </script>
 
 <template>
@@ -22,9 +27,9 @@ const badgeClass = computed(() => {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 6px 10px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
   letter-spacing: 0.01em;
   background: #f1f5f9;
@@ -35,25 +40,32 @@ const badgeClass = computed(() => {
 
 .status-nháp,
 .status-đã-hủy,
+.status-hủy,
 .status-tạm-khóa {
   background: #f1f5f9;
   color: #475569;
+  border-color: rgba(148, 163, 184, 0.2);
 }
 
 .status-chờ-duyệt,
+.status-chờ-duyệt-cấp-1,
+.status-chờ-duyệt-cấp-2,
 .status-sắp-hết,
 .status-trung-bình,
 .status-chưa-xử-lý,
 .status-nhập-đầu-kỳ,
 .status-điều-chỉnh-tăng,
-.status-điều-chỉnh-giảm {
-  background: #fef3c7;
+.status-điều-chỉnh-giảm,
+.status-đang-kiểm-kê {
+  background: #fff7ed;
   color: #b45309;
+  border-color: rgba(245, 158, 11, 0.16);
 }
 
 .status-đã-duyệt {
-  background: #dbeafe;
+  background: #eff6ff;
   color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.16);
 }
 
 .status-từ-chối,
@@ -61,8 +73,9 @@ const badgeClass = computed(() => {
 .status-cao,
 .status-khẩn-cấp,
 .status-xuất-kho {
-  background: #fee2e2;
+  background: #fef2f2;
   color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.16);
 }
 
 .status-hoàn-thành,
@@ -71,9 +84,11 @@ const badgeClass = computed(() => {
 .status-thấp,
 .status-đang-xử-lý,
 .status-đang-bán,
-.status-nhập-kho {
-  background: #dcfce7;
+.status-nhập-kho,
+.status-đã-chốt {
+  background: #ecfdf3;
   color: #15803d;
+  border-color: rgba(22, 163, 74, 0.16);
 }
 
 .status-tạm-ngưng,
@@ -81,20 +96,21 @@ const badgeClass = computed(() => {
 .status-thừa-hàng {
   background: #e2e8f0;
   color: #334155;
+  border-color: rgba(148, 163, 184, 0.2);
 }
 
 .status-open {
-  background: #fee2e2;
+  background: #fef2f2;
   color: #b91c1c;
 }
 
 .status-viewed {
-  background: #fef3c7;
+  background: #fff7ed;
   color: #b45309;
 }
 
 .status-processed {
-  background: #dcfce7;
+  background: #ecfdf3;
   color: #15803d;
 }
 
@@ -111,7 +127,7 @@ const badgeClass = computed(() => {
 }
 
 .severity-medium {
-  background: #fef3c7;
+  background: #fff7ed;
   color: #d97706;
   border-color: rgba(217, 119, 6, 0.16);
 }

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { clearAuth, getAuthorizationHeader } from './authService'
+import { canAccessRoute } from '../services/permissionService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
@@ -11,6 +12,10 @@ const productClient = axios.create({
 })
 
 export async function getProducts({ page = 0, size = 10, keyword = '', categoryId = '', status = '' } = {}) {
+  if (!canAccessRoute('/products')) {
+    return { content: [], totalElements: 0 }
+  }
+
   try {
     const { data } = await productClient.get('/api/products', {
       headers: getAuthorizationHeader(),
