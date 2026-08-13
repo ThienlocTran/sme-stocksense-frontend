@@ -191,7 +191,7 @@ function formatDate(dateString) {
 <template>
   <div class="page-container">
     <PageHeader :title="count ? `Chi tiết kiểm kê: ${count.code}` : 'Chi tiết kiểm kê'" description="Theo dõi đối soát và cập nhật số lượng tồn kho thực tế.">
-      <template #actions>
+      <div class="flex items-center gap-2">
         <button class="btn btn-outline" @click="router.push('/inventory-counts')">
           <i class="mdi mdi-arrow-left"></i> Quay lại danh sách
         </button>
@@ -203,7 +203,7 @@ function formatDate(dateString) {
             <i class="mdi mdi-check-all"></i> Chốt kiểm kê
           </button>
         </template>
-      </template>
+      </div>
     </PageHeader>
 
     <!-- Loading State -->

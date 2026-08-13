@@ -145,11 +145,9 @@ function formatDate(dateString) {
 <template>
   <div class="page-container">
     <PageHeader title="Kiểm kê kho" description="Kiểm tra thực tế và cân bằng tồn kho hệ thống.">
-      <template #actions v-if="canManage">
-        <button class="btn btn-primary" @click="openCreateModal">
-          <i class="mdi mdi-plus"></i> Tạo đợt kiểm kê
-        </button>
-      </template>
+      <button v-if="canManage" class="btn btn-primary" @click="openCreateModal">
+        <i class="mdi mdi-plus"></i> Tạo đợt kiểm kê
+      </button>
     </PageHeader>
 
     <!-- Filter Bar -->
