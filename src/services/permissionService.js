@@ -4,7 +4,7 @@ const MASTER_DATA_MANAGE_ROLES = ['ADMIN', 'MANAGER']
 const MASTER_DATA_VIEW_ROLES = ['ADMIN', 'MANAGER', 'EMPLOYEE']
 const IMPORT_RECEIPT_PROCESS_ROLES = ['ADMIN', 'EMPLOYEE']
 const EMPLOYEE_MANAGE_ROLES = ['ADMIN']
-const EXCEL_IMPORT_ROLES = ['ADMIN']
+const EXCEL_IMPORT_ROLES = ['ADMIN', 'EMPLOYEE']
 
 function resolveRole(role) {
   return normalizeRole(role) || getCurrentRoleCode()
@@ -45,8 +45,12 @@ export function canManageInventoryCounts(role) {
 export function canAccessRoute(path, role) {
   const resolvedRole = resolveRole(role)
 
-  if (path === '/employees' || path === '/users' || path === '/import-excel') {
+  if (path === '/employees' || path === '/users') {
     return resolvedRole === 'ADMIN'
+  }
+
+  if (path === '/import-excel') {
+    return EXCEL_IMPORT_ROLES.includes(resolvedRole)
   }
 
   if (path === '/partners') {
@@ -62,7 +66,8 @@ export function canAccessRoute(path, role) {
   }
 
   if (/^\/stock-in\/[^/]+$/.test(path)) {
-    return ['ADMIN', 'EMPLOYEE'].includes(resolvedRole)
+    // MANAGER cần xem chi tiết phiếu nhập để duyệt/từ chối
+    return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
   }
 
   if (/^\/stock-out\/[^/]+$/.test(path)) {

@@ -38,6 +38,29 @@ export async function downloadTemplate() {
 }
 
 /**
+ * Validate file Excel ngay (không cần tạo session trước)
+ * POST /api/excel-imports/validate
+ * Response bao gồm danh sách lỗi inline, không cần gọi thêm /errors
+ */
+export async function validateFile(file, loaiImport, warehouseId) {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('loaiImport', loaiImport)
+    if (warehouseId) {
+      formData.append('khoId', warehouseId)
+    }
+
+    const { data } = await excelImportClient.post('/api/excel-imports/validate', formData, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeExcelImportError(error, 'Không thể kiểm tra file Excel.')
+  }
+}
+
+/**
  * Khởi tạo phiên import Excel
  * POST /api/excel-imports
  */

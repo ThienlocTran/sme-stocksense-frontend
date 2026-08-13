@@ -78,7 +78,13 @@ async function saveProfile() {
     let updatedProfile = await updateProfile(formData);
     
     if (pendingAvatarFile.value) {
-      updatedProfile = await uploadAvatar(pendingAvatarFile.value);
+      try {
+        updatedProfile = await uploadAvatar(pendingAvatarFile.value);
+      } catch (uploadError) {
+        pendingAvatarFile.value = null;
+        previewAvatarUrl.value = "";
+        throw uploadError;
+      }
     }
     
     profile.value = updatedProfile;
@@ -204,9 +210,9 @@ onMounted(() => {
         <div class="relative group shrink-0">
           <div 
             class="w-24 h-24 rounded-full bg-zinc-100 flex items-center justify-center overflow-hidden border border-zinc-200"
-            :style="(previewAvatarUrl || profile.avatarUrl) && !isSaving ? { backgroundImage: `url(${previewAvatarUrl || profile.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}"
+            :style="(previewAvatarUrl || (profile.avatarUrl && !profile.avatarUrl.includes('/null'))) && !isSaving ? { backgroundImage: `url(${previewAvatarUrl || profile.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}"
           >
-            <i v-if="!previewAvatarUrl && !profile.avatarUrl && !isSaving" class="mdi mdi-account text-3xl text-zinc-400"></i>
+            <i v-if="!previewAvatarUrl && (!profile.avatarUrl || profile.avatarUrl.includes('/null')) && !isSaving" class="mdi mdi-account text-3xl text-zinc-400"></i>
             <i v-if="isSaving" class="mdi mdi-loading mdi-spin text-2xl text-zinc-500"></i>
           </div>
           <button 

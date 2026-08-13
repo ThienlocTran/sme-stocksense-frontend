@@ -138,9 +138,9 @@ const visibleSections = computed(() =>
     <div class="sidebar-user" v-if="authStore.currentUser" @click="$router.push('/profile')">
       <div 
         class="user-avatar"
-        :style="authStore.currentUser.avatarUrl ? { backgroundImage: `url(${authStore.currentUser.avatarUrl})` } : {}"
+        :style="authStore.currentUser.avatarUrl && !authStore.currentUser.avatarUrl.includes('/null') ? { backgroundImage: `url(${authStore.currentUser.avatarUrl})` } : {}"
       >
-        <i v-if="!authStore.currentUser.avatarUrl" class="mdi mdi-account"></i>
+        <i v-if="!authStore.currentUser.avatarUrl || authStore.currentUser.avatarUrl.includes('/null')" class="mdi mdi-account"></i>
       </div>
       <div class="user-info">
         <strong>{{ authStore.currentUser.fullName || authStore.currentUser.email }}</strong>

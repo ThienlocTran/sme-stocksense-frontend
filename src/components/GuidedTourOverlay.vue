@@ -29,6 +29,8 @@ const router = useRouter();
 
 const currentStepIndex = ref(props.initialStep);
 const spotlightRect = ref(null);
+const viewportWidth = ref(0);
+const viewportHeight = ref(0);
 let updateTargetInFlight = false;
 let updateTargetQueued = false;
 let navToken = 0;
@@ -240,18 +242,28 @@ watch(currentStepIndex, () => {
 });
 
 function handleResize() {
+  if (typeof window !== "undefined") {
+    viewportWidth.value = window.innerWidth;
+    viewportHeight.value = window.innerHeight;
+  }
   if (!props.open) return;
   updateTarget();
 }
 
 onMounted(() => {
-  window.addEventListener("resize", handleResize);
-  window.addEventListener("scroll", handleResize, true);
+  if (typeof window !== "undefined") {
+    viewportWidth.value = window.innerWidth;
+    viewportHeight.value = window.innerHeight;
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize, true);
+  }
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("resize", handleResize);
-  window.removeEventListener("scroll", handleResize, true);
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", handleResize);
+    window.removeEventListener("scroll", handleResize, true);
+  }
 });
 </script>
 
@@ -277,9 +289,9 @@ onBeforeUnmount(() => {
         :style="
           spotlightRect
             ? {
-                top: `${Math.min(Math.max(spotlightRect.top + spotlightRect.height + 12, 24), Math.max(window.innerHeight - 220, 24))}px`,
-                left: `${Math.min(Math.max(spotlightRect.left, 24), Math.max(window.innerWidth - 360, 24))}px`,
-                maxWidth: `${Math.min(360, window.innerWidth - 48)}px`,
+                top: `${Math.min(Math.max(spotlightRect.top + spotlightRect.height + 12, 24), Math.max(viewportHeight - 220, 24))}px`,
+                left: `${Math.min(Math.max(spotlightRect.left, 24), Math.max(viewportWidth - 360, 24))}px`,
+                maxWidth: `${Math.min(360, viewportWidth - 48)}px`,
               }
             : { top: '24px', right: '24px', maxWidth: '360px' }
         "

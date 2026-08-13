@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { login as loginWithPassword } from '../services/authService'
 import { useAuthStore } from '../stores/auth'
@@ -14,10 +14,31 @@ const successMessage = ref('')
 const isSubmitting = ref(false)
 const showPassword = ref(false)
 
+watch(() => form.email, () => {
+  fieldErrors.email = ''
+})
+
+watch(() => form.password, () => {
+  fieldErrors.password = ''
+})
+
 async function submitLogin() {
   if (isSubmitting.value) return
 
   clearMessages()
+
+  let hasError = false
+  if (!form.email.trim()) {
+    fieldErrors.email = 'Vui lòng nhập email.'
+    hasError = true
+  }
+  if (!form.password) {
+    fieldErrors.password = 'Vui lòng nhập mật khẩu.'
+    hasError = true
+  }
+
+  if (hasError) return
+
   isSubmitting.value = true
 
   try {
@@ -26,9 +47,12 @@ async function submitLogin() {
     successMessage.value = 'Đăng nhập thành công.'
     router.push(getPostLoginRoute(response.role))
   } catch (error) {
-    generalError.value = error.message
-    fieldErrors.email = error.errors?.email || ''
-    fieldErrors.password = error.errors?.password || ''
+    if (error.errors && (error.errors.email || error.errors.password)) {
+      fieldErrors.email = error.errors.email || ''
+      fieldErrors.password = error.errors.password || ''
+    } else {
+      generalError.value = error.message
+    }
   } finally {
     isSubmitting.value = false
   }

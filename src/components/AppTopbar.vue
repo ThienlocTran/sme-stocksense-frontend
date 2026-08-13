@@ -135,9 +135,9 @@ function applyPasswordBackendErrors(errors = {}) {
       <div v-if="currentUser" class="user-chip" style="display: flex; align-items: center; gap: 8px;">
         <div 
           style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
-          :style="currentUser.avatarUrl ? { backgroundImage: `url(${currentUser.avatarUrl})` } : {}"
+          :style="currentUser.avatarUrl && !currentUser.avatarUrl.includes('/null') ? { backgroundImage: `url(${currentUser.avatarUrl})` } : {}"
         >
-          <i v-if="!currentUser.avatarUrl" class="mdi mdi-account" style="color: #94a3b8;"></i>
+          <i v-if="!currentUser.avatarUrl || currentUser.avatarUrl.includes('/null')" class="mdi mdi-account" style="color: #94a3b8;"></i>
         </div>
         <div>
           <strong>{{ currentUser.fullName }}</strong>
