@@ -17,10 +17,13 @@ export const AUTH_ROLE_LABELS = {
 }
 
 const AUTH_ROLE_CODES = {
-  'Admin / IT': 'ADMIN',
-  'Quản lý kho': 'MANAGER',
-  'Nhân viên kho': 'EMPLOYEE',
-  'Quản trị viên': 'ADMIN',
+  'admin / it': 'ADMIN',
+  'quản lý kho': 'MANAGER',
+  'nhân viên kho': 'EMPLOYEE',
+  'quản trị viên': 'ADMIN',
+  'admin': 'ADMIN',
+  'manager': 'MANAGER',
+  'employee': 'EMPLOYEE',
 }
 
 const authClient = axios.create({
@@ -117,7 +120,18 @@ export function normalizeRole(role) {
   if (!role) return ''
   if (Array.isArray(role)) return role.map(normalizeRole).find(Boolean) || ''
   if (typeof role === 'object') {
-    const extracted = role.code || role.name || role.maVaiTro || role.role || role.roleCode
+    const extracted = role.code || 
+                      role.ma_vai_tro || 
+                      role.maVaiTro || 
+                      role.name || 
+                      role.ten_vai_tro || 
+                      role.tenVaiTro || 
+                      role.role || 
+                      role.roleCode || 
+                      role.role_code ||
+                      role.roleName || 
+                      role.role_name ||
+                      role.authority
     if (extracted && typeof extracted !== 'object') {
       const normalized = normalizeRole(extracted)
       if (normalized) return normalized
@@ -125,10 +139,10 @@ export function normalizeRole(role) {
     return normalizeUserRole(role)
   }
 
-  const roleText = String(role).trim()
+  const roleText = String(role).trim().toLowerCase()
   const mappedRole = AUTH_ROLE_CODES[roleText]
   if (mappedRole) return mappedRole
-  return roleText.replace(/^ROLE_/i, '').toUpperCase()
+  return roleText.replace(/^role_/i, '').toUpperCase()
 }
 
 export function normalizeUserRole(user) {
@@ -136,9 +150,14 @@ export function normalizeUserRole(user) {
 
   return [
     user.roleCode,
+    user.role_code,
     user.role,
     user.roleName,
+    user.role_name,
     user.maVaiTro,
+    user.ma_vai_tro,
+    user.tenVaiTro,
+    user.ten_vai_tro,
     user.authority,
     user.authorities,
   ].map(normalizeRole).find(Boolean) || ''
