@@ -19,6 +19,8 @@ import UsersView from '../views/UsersView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import EmployeeListView from '../views/employees/EmployeeListView.vue'
 import CategoryListView from '../views/categories/CategoryListView.vue'
+import InventoryCountListView from '../views/inventory-counts/InventoryCountListView.vue'
+import InventoryCountDetailView from '../views/inventory-counts/InventoryCountDetailView.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -46,6 +48,8 @@ const routes = [
   { path: '/profile', component: ProfileView, meta: { title: 'Hồ sơ' } },
   { path: '/employees', component: EmployeeListView, meta: { title: 'Nhân viên' } },
   { path: '/users', component: UsersView, meta: { title: 'Nhân viên & phân quyền' } },
+  { path: '/inventory-counts', component: InventoryCountListView, meta: { title: 'Kiểm kê kho' } },
+  { path: '/inventory-counts/:id', component: InventoryCountDetailView, props: true, meta: { title: 'Chi tiết kiểm kê kho' } },
 
 ]
 

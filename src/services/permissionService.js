@@ -38,6 +38,10 @@ export function canImportExcel(role) {
   return EXCEL_IMPORT_ROLES.includes(resolveRole(role))
 }
 
+export function canManageInventoryCounts(role) {
+  return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
+}
+
 export function canAccessRoute(path, role) {
   const resolvedRole = resolveRole(role)
 
@@ -53,7 +57,7 @@ export function canAccessRoute(path, role) {
     return ['ADMIN', 'MANAGER'].includes(resolvedRole)
   }
 
-  if (path === '/products' || path === '/warehouses' || path === '/inventory' || path === '/alerts') {
+  if (path === '/products' || path === '/warehouses' || path === '/inventory' || path === '/alerts' || path === '/inventory-counts' || /^\/inventory-counts\/[^/]+$/.test(path)) {
     return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
   }
 

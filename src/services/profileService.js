@@ -7,9 +7,6 @@ const API_TIMEOUT_MS = 15000
 const profileClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT_MS,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 })
 
 export async function getCurrentProfile() {
@@ -101,7 +98,6 @@ export async function uploadAvatar(file) {
     const response = await profileClient.post('/api/employees/profile/me/avatar', formData, {
       headers: {
         ...getAuthorizationHeader(),
-        'Content-Type': 'multipart/form-data',
       },
     })
     return normalizeProfile(response.data)

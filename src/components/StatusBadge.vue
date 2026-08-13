@@ -55,7 +55,8 @@ const badgeClass = computed(() => {
 .status-chưa-xử-lý,
 .status-nhập-đầu-kỳ,
 .status-điều-chỉnh-tăng,
-.status-điều-chỉnh-giảm {
+.status-điều-chỉnh-giảm,
+.status-đang-kiểm-kê {
   background: #fff7ed;
   color: #b45309;
   border-color: rgba(245, 158, 11, 0.16);
@@ -83,7 +84,8 @@ const badgeClass = computed(() => {
 .status-thấp,
 .status-đang-xử-lý,
 .status-đang-bán,
-.status-nhập-kho {
+.status-nhập-kho,
+.status-đã-chốt {
   background: #ecfdf3;
   color: #15803d;
   border-color: rgba(22, 163, 74, 0.16);
