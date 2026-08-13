@@ -87,13 +87,18 @@ const documentTypeOptions = [
 ];
 
 const statusOptions = [
+  { value: "CHO_DUYET", label: "Chờ duyệt" },
   { value: "CHO_DUYET_CAP_1", label: "Chờ cấp 1" },
   { value: "CHO_DUYET_CAP_2", label: "Chờ cấp 2" },
+  { value: "DA_DUYET", label: "Đã duyệt" },
 ];
 
 const statusLabels = {
+  CHO_DUYET: "Chờ duyệt",
   CHO_DUYET_CAP_1: "Chờ cấp 1",
   CHO_DUYET_CAP_2: "Chờ cấp 2",
+  DA_DUYET: "Đã duyệt",
+  HOAN_THANH: "Hoàn thành",
 };
 
 const hasPreviousPage = computed(() => page.value > 0);
@@ -316,7 +321,7 @@ async function confirmReject() {
 }
 
 function isPendingApproval(status) {
-  return status === "CHO_DUYET_CAP_1" || status === "CHO_DUYET_CAP_2";
+  return status === "CHO_DUYET" || status === "CHO_DUYET_CAP_1" || status === "CHO_DUYET_CAP_2";
 }
 
 function approveLabel(status) {
@@ -923,12 +928,17 @@ function getRejectionReason(receipt) {
   background: #dcfce7;
   color: #166534;
 }
+.status-cho-duyet,
 .status-cho-duyet-cap-1,
 .status-cho-duyet-cap-2,
 .status-cho-hang-ve,
 .status-cho-kiem-hang {
   background: #fef3c7;
   color: #b45309;
+}
+.status-da-duyet {
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 .status-tu-choi {
   background: #fee2e2;

@@ -80,3 +80,8 @@ export function canAccessRoute(path, role) {
 
   return true
 }
+
+export function canCompleteExportReceipt(role) {
+  return ['ADMIN', 'EMPLOYEE'].includes(resolveRole(role))
+}
+

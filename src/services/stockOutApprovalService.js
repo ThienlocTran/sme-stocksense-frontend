@@ -24,7 +24,6 @@ function normalizeId(id) {
 
 function normalizeStatus(status) {
   if (status === 'CHO_DUYET_CAP_1' || status === 'CHO_DUYET_CAP_2') return 'CHO_DUYET'
-  if (status === 'HOAN_THANH') return 'DA_DUYET'
   return status
 }
 
@@ -150,3 +149,18 @@ export async function rejectExportReceipt(id, reason) {
     throw normalizeError(error, 'Không thể từ chối phiếu xuất.')
   }
 }
+
+export async function completeExportReceipt(id) {
+  const normalizedId = normalizeId(id)
+
+  try {
+    const { data } = await exportReceiptClient.put(`/api/export-receipts/${normalizedId}/complete`, null, {
+      headers: getAuthorizationHeader(),
+    })
+
+    return normalizeReceipt(data)
+  } catch (error) {
+    throw normalizeError(error, 'Không thể hoàn tất phiếu xuất.')
+  }
+}
+

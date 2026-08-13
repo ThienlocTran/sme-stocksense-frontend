@@ -43,3 +43,6 @@ export const rejectExportReceipt = (id, reason) => request({
 export const getExportReceiptHistory = id => request({
   method: 'get', url: `/api/export-receipts/${id}/history`,
 }, 'Không thể tải lịch sử phiếu xuất.')
+
+export const completeExportReceipt = id => request({ method: 'put', url: `/api/export-receipts/${id}/complete` }, 'Không thể hoàn tất phiếu xuất.')
+

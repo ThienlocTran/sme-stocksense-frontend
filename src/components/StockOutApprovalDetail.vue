@@ -5,6 +5,7 @@ import {
   approveExportReceipt,
   getPendingExportApprovalDetail,
   rejectExportReceipt,
+  completeExportReceipt,
 } from "../services/stockOutApprovalService";
 import EmptyState from "./EmptyState.vue";
 
@@ -41,6 +42,15 @@ const canApprove = computed(() => {
     !actionLoading.value &&
     receipt.value &&
     receipt.value.status === "CHO_DUYET"
+  );
+});
+
+const canComplete = computed(() => {
+  return (
+    ["ADMIN", "EMPLOYEE"].includes(authStore.currentRole) &&
+    !actionLoading.value &&
+    receipt.value &&
+    receipt.value.status === "DA_DUYET"
   );
 });
 
@@ -106,9 +116,33 @@ async function handleApprove() {
   try {
     const approvedReceipt = await approveExportReceipt(String(props.receiptId));
     receipt.value = approvedReceipt;
-    actionMessage.value = `Đã gửi duyệt thành công cho phiếu ${approvedReceipt?.code || props.receiptId}.`;
+    actionMessage.value = `Đã duyệt phiếu thành công cho phiếu ${approvedReceipt?.code || props.receiptId}.`;
   } catch (err) {
     actionError.value = err.message || "Không thể duyệt phiếu xuất.";
+  } finally {
+    actionLoading.value = false;
+  }
+}
+
+async function handleComplete() {
+  if (!canComplete.value) return;
+
+  const confirmed = window.confirm(
+    `Hoàn tất xuất kho cho phiếu ${receipt.value?.code || props.receiptId} này?`,
+  );
+  if (!confirmed) return;
+
+  actionLoading.value = true;
+  actionMessage.value = "";
+  actionError.value = "";
+
+  try {
+    const completedReceipt = await completeExportReceipt(String(props.receiptId));
+    receipt.value = completedReceipt;
+    actionMessage.value = `Hoàn tất xuất kho thành công cho phiếu ${completedReceipt?.code || props.receiptId}.`;
+    await loadDetail();
+  } catch (err) {
+    actionError.value = err.message || "Không thể hoàn tất phiếu xuất.";
   } finally {
     actionLoading.value = false;
   }
@@ -190,6 +224,7 @@ function formatStatus(status) {
   const statusMap = {
     CHO_DUYET: "Chờ duyệt",
     DA_DUYET: "Đã duyệt",
+    HOAN_THANH: "Hoàn thành",
     TU_CHOI: "Từ chối",
     DA_HUY: "Đã hủy",
   };
@@ -370,6 +405,7 @@ watch(
 
       <div class="actions-row">
         <button
+          v-if="receipt?.status === 'CHO_DUYET'"
           class="btn btn-primary"
           type="button"
           :disabled="!canApprove"
@@ -378,6 +414,7 @@ watch(
           {{ approveButtonLabel() }}
         </button>
         <button
+          v-if="receipt?.status === 'CHO_DUYET'"
           class="btn btn-danger"
           type="button"
           :disabled="!canReject"
@@ -385,10 +422,22 @@ watch(
         >
           {{ rejectState.submitting ? "Đang gửi..." : "Từ chối" }}
         </button>
+        <button
+          v-if="receipt?.status === 'DA_DUYET'"
+          class="btn btn-success"
+          type="button"
+          :disabled="!canComplete"
+          @click="handleComplete"
+        >
+          {{ actionLoading ? "Đang hoàn tất..." : "Hoàn tất xuất kho" }}
+        </button>
       </div>
 
-      <p v-if="!canManageApproval" class="muted mt-2">
+      <p v-if="receipt?.status === 'CHO_DUYET' && !canManageApproval" class="muted mt-2">
         Bạn hiện không có quyền thực hiện hành động này.
+      </p>
+      <p v-if="receipt?.status === 'DA_DUYET' && !['ADMIN', 'EMPLOYEE'].includes(authStore.currentRole)" class="muted mt-2">
+        Chỉ Admin hoặc Nhân viên kho được hoàn tất xuất kho.
       </p>
     </div>
   </div>
