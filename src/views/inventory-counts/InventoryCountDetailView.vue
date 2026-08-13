@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import DataTable from '../../components/DataTable.vue'
@@ -35,6 +35,18 @@ const cancelErrorMessage = ref('')
 // Local edit values
 const localActuals = ref({})
 const localNotes = ref({})
+
+const toast = reactive({
+  show: false,
+  message: '',
+  color: 'success'
+})
+
+function showToast(message, color = 'success') {
+  toast.message = message
+  toast.color = color
+  toast.show = true
+}
 
 const authStore = useAuthStore()
 const canManage = computed(() => canManageInventoryCounts(authStore.currentUser))
@@ -75,12 +87,12 @@ async function fetchDetail() {
 async function saveLine(detail) {
   const actualVal = localActuals.value[detail.id]
   if (actualVal === '' || actualVal === null || actualVal === undefined) {
-    alert('Vui lòng nhập số lượng thực tế hợp lệ.')
+    showToast('Vui lòng nhập số lượng thực tế hợp lệ.', 'error')
     return
   }
   const actualQty = Number(actualVal)
   if (isNaN(actualQty) || actualQty < 0) {
-    alert('Số lượng thực tế phải là số nguyên lớn hơn hoặc bằng 0.')
+    showToast('Số lượng thực tế phải là số nguyên lớn hơn hoặc bằng 0.', 'error')
     return
   }
 
@@ -101,8 +113,9 @@ async function saveLine(detail) {
         localNotes.value[d.id] = d.note || ''
       })
     }
+    showToast('Cập nhật số lượng dòng này thành công!', 'success')
   } catch (error) {
-    alert(error.message || 'Không thể cập nhật số lượng dòng này.')
+    showToast(error.message || 'Không thể cập nhật số lượng dòng này.', 'error')
   } finally {
     savingDetailId.value = null
   }
@@ -111,7 +124,7 @@ async function saveLine(detail) {
 function openFinalize() {
   // Check if all lines have actual quantities
   if (count.value.details.some(d => d.actualQuantity === null)) {
-    alert('Bạn phải nhập số lượng thực tế cho tất cả sản phẩm trước khi chốt kiểm kê.')
+    showToast('Bạn phải nhập số lượng thực tế cho tất cả sản phẩm trước khi chốt kiểm kê.', 'error')
     return
   }
   isFinalizeOpen.value = true
@@ -123,8 +136,9 @@ async function handleFinalize() {
     const updated = await finalizeInventoryCount(countId, { version: count.value.version })
     count.value = updated
     isFinalizeOpen.value = false
+    showToast('Chốt đợt kiểm kê thành công!', 'success')
   } catch (error) {
-    alert(error.message || 'Chốt kiểm kê thất bại.')
+    showToast(error.message || 'Chốt kiểm kê thất bại.', 'error')
   } finally {
     isFinalizeLoading.value = false
   }
@@ -150,6 +164,7 @@ async function handleCancel() {
     })
     count.value = updated
     isCancelOpen.value = false
+    showToast('Hủy đợt kiểm kê thành công!', 'success')
   } catch (error) {
     cancelErrorMessage.value = error.message || 'Không thể hủy đợt kiểm kê.'
   } finally {
@@ -345,6 +360,20 @@ function formatDate(dateString) {
         <span v-if="cancelErrorMessage" class="text-danger text-xs mt-1 block">{{ cancelErrorMessage }}</span>
       </div>
     </ConfirmDialog>
+
+    <!-- Toast Notification Success/Error -->
+    <v-snackbar
+      v-model="toast.show"
+      :color="toast.color"
+      timeout="3000"
+      rounded="xl"
+      elevation="4"
+    >
+      <div class="flex items-center gap-2">
+        <i class="mdi" :class="toast.color === 'success' ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"></i>
+        <span>{{ toast.message }}</span>
+      </div>
+    </v-snackbar>
   </div>
 </template>
 
