@@ -31,6 +31,7 @@ const isCancelOpen = ref(false)
 const isCancelLoading = ref(false)
 const cancelReason = ref('')
 const cancelErrorMessage = ref('')
+const savingAll = ref(false)
 
 // Local edit values
 const localActuals = ref({})
@@ -81,6 +82,91 @@ async function fetchDetail() {
     errorMessage.value = error.message || 'Không thể tải chi tiết đợt kiểm kê.'
   } finally {
     isLoading.value = false
+  }
+}
+
+async function saveAllLines() {
+  if (!isActive.value || !count.value || !count.value.details) return
+
+  const modifiedLines = []
+  
+  for (const d of count.value.details) {
+    const localActual = localActuals.value[d.id]
+    const localNote = localNotes.value[d.id]
+    
+    const origActual = d.actualQuantity !== null ? d.actualQuantity : ''
+    const origNote = d.note || ''
+    
+    const isModified = localActual !== origActual || localNote !== origNote
+    
+    if (isModified) {
+      if (localActual === '' || localActual === null || localActual === undefined) {
+        showToast(`Dòng sản phẩm ${d.productCode} chưa nhập số lượng thực tế hợp lệ.`, 'error')
+        return
+      }
+      const actualQty = Number(localActual)
+      if (isNaN(actualQty) || actualQty < 0) {
+        showToast(`Số lượng dòng ${d.productCode} phải là số nguyên >= 0.`, 'error')
+        return
+      }
+      
+      modifiedLines.push({
+        detail: d,
+        actualQuantity: actualQty,
+        note: localNote ? localNote.trim() : null
+      })
+    }
+  }
+
+  if (modifiedLines.length === 0) {
+    showToast('Không có thay đổi nào để lưu.', 'info')
+    return
+  }
+
+  savingAll.value = true
+  let successCount = 0
+  let failCount = 0
+  let lastErrorMessage = ''
+
+  const savePromises = modifiedLines.map(async ({ detail, actualQuantity, note }) => {
+    try {
+      const payload = {
+        actualQuantity,
+        note,
+        version: detail.version
+      }
+      await updateInventoryCountDetail(countId, detail.id, payload)
+      successCount++
+    } catch (err) {
+      failCount++
+      lastErrorMessage = err.message || `Lỗi khi lưu dòng ${detail.productCode}`
+    }
+  })
+
+  await Promise.allSettled(savePromises)
+
+  // Reload details after saving
+  try {
+    const data = await getInventoryCountById(countId)
+    count.value = data
+    if (data.details) {
+      data.details.forEach(d => {
+        localActuals.value[d.id] = d.actualQuantity !== null ? d.actualQuantity : ''
+        localNotes.value[d.id] = d.note || ''
+      })
+    }
+  } catch (error) {
+    console.error('Không thể tải lại chi tiết:', error)
+  }
+
+  savingAll.value = false
+
+  if (failCount === 0) {
+    showToast(`Đã lưu thành công tất cả ${successCount} dòng thay đổi!`, 'success')
+  } else if (successCount > 0) {
+    showToast(`Đã lưu ${successCount} dòng thành công, ${failCount} dòng thất bại. Lỗi cuối: ${lastErrorMessage}`, 'error')
+  } else {
+    showToast(`Lưu thất bại. Lỗi: ${lastErrorMessage}`, 'error')
   }
 }
 
@@ -282,6 +368,20 @@ function formatDate(dateString) {
         </div>
 
         <DataTable :columns="columns" :rows="count.details">
+          <template #actions-header>
+            <button
+              v-if="isActive"
+              class="btn btn-primary btn-sm flex items-center gap-1"
+              @click="saveAllLines"
+              :disabled="savingAll"
+              title="Lưu tất cả thay đổi"
+              style="padding: 4px 8px; font-size: 12px; line-height: 1.2; text-transform: none; font-weight: 600;"
+            >
+              <i class="mdi" :class="savingAll ? 'mdi-loading mdi-spin' : 'mdi-content-save-all'"></i>
+              Lưu
+            </button>
+            <span v-else>Lưu</span>
+          </template>
           <template #productCode="{ row }">
             <span class="font-semibold text-zinc-900">{{ row.productCode }}</span>
           </template>
