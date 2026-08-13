@@ -87,6 +87,14 @@ function normalizeError(error, fallbackMessage) {
     clearAuth()
   }
 
+  if (error.response?.status === 403) {
+    return {
+      status: 403,
+      message: 'Bạn không có quyền thực hiện thao tác này.',
+      errors: {},
+    }
+  }
+
   if (error.response?.data) {
     return {
       status: error.response.status,

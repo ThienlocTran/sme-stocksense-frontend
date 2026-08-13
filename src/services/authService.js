@@ -116,7 +116,14 @@ export function clearAuth() {
 export function normalizeRole(role) {
   if (!role) return ''
   if (Array.isArray(role)) return role.map(normalizeRole).find(Boolean) || ''
-  if (typeof role === 'object') return normalizeUserRole(role)
+  if (typeof role === 'object') {
+    const extracted = role.code || role.name || role.maVaiTro || role.role || role.roleCode
+    if (extracted && typeof extracted !== 'object') {
+      const normalized = normalizeRole(extracted)
+      if (normalized) return normalized
+    }
+    return normalizeUserRole(role)
+  }
 
   const roleText = String(role).trim()
   const mappedRole = AUTH_ROLE_CODES[roleText]
@@ -131,6 +138,7 @@ export function normalizeUserRole(user) {
     user.roleCode,
     user.role,
     user.roleName,
+    user.maVaiTro,
     user.authority,
     user.authorities,
   ].map(normalizeRole).find(Boolean) || ''

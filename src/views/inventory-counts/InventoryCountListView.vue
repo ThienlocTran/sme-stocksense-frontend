@@ -8,6 +8,7 @@ import EmptyState from '../../components/EmptyState.vue'
 import { getInventoryCounts, createInventoryCount } from '../../services/inventoryCountService'
 import { getWarehouses } from '../../services/warehouseService'
 import { canManageInventoryCounts } from '../../services/permissionService'
+import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
 const counts = ref([])
@@ -32,7 +33,8 @@ const countStatusOptions = [
   { value: 'DA_HUY', label: 'Đã hủy' }
 ]
 
-const canManage = computed(() => canManageInventoryCounts())
+const authStore = useAuthStore()
+const canManage = computed(() => canManageInventoryCounts(authStore.currentUser))
 
 const columns = [
   { key: 'code', label: 'Mã kiểm kê', class: 'cell-compact' },

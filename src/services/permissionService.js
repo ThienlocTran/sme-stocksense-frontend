@@ -39,7 +39,8 @@ export function canImportExcel(role) {
 }
 
 export function canManageInventoryCounts(role) {
-  return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
+  const resolvedRole = (role !== undefined && role !== null) ? normalizeRole(role) : getCurrentRoleCode()
+  return ['ADMIN', 'MANAGER'].includes(resolvedRole)
 }
 
 export function canAccessRoute(path, role) {

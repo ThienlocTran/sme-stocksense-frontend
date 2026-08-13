@@ -12,6 +12,7 @@ import {
   cancelInventoryCount
 } from '../../services/inventoryCountService'
 import { canManageInventoryCounts } from '../../services/permissionService'
+import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,7 +36,8 @@ const cancelErrorMessage = ref('')
 const localActuals = ref({})
 const localNotes = ref({})
 
-const canManage = computed(() => canManageInventoryCounts())
+const authStore = useAuthStore()
+const canManage = computed(() => canManageInventoryCounts(authStore.currentUser))
 const isActive = computed(() => count.value && count.value.status === 'DANG_KIEM_KE')
 
 const columns = [
