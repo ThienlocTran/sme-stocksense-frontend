@@ -28,20 +28,21 @@ defineProps({
   place-items: center;
   align-content: center;
   gap: 12px;
-  color: var(--muted);
+  color: var(--color-text-secondary);
   text-align: center;
   padding: 28px 24px;
-  background: linear-gradient(135deg, #f8fafc 0%, #fefefe 100%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
 .empty-state__icon {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
-  background: rgba(37, 99, 235, 0.1);
-  color: var(--primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 .empty-state__icon i {
@@ -54,7 +55,7 @@ defineProps({
 }
 
 .empty-state strong {
-  color: var(--text);
+  color: var(--color-text-primary);
   font-size: 16px;
   font-weight: 700;
 }

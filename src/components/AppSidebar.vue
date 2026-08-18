@@ -1,51 +1,31 @@
 <script setup>
 import { computed } from "vue";
 import { useAuthStore } from "../stores/auth";
+import { useLayoutStore } from "../stores/layout";
 import { canAccessRoute } from "../services/permissionService";
 
 const authStore = useAuthStore();
+const layoutStore = useLayoutStore();
 const currentRole = computed(() => authStore.currentRole);
 
 const menuSections = [
   {
-    title: null,
+    title: "Vận hành",
     items: [
       {
         label: "Tổng quan",
         to: "/dashboard",
         icon: "mdi-view-dashboard-outline",
       },
-    ],
-  },
-  {
-    title: "Danh mục",
-    items: [
       {
         label: "Sản phẩm",
         to: "/products",
         icon: "mdi-package-variant-closed",
       },
       {
-        label: "Nhà cung cấp",
-        to: "/partners",
-        icon: "mdi-truck-delivery-outline",
-      },
-      { label: "Danh mục", to: "/categories", icon: "mdi-shape-outline" },
-      { label: "Kho hàng", to: "/warehouses", icon: "mdi-warehouse" },
-    ],
-  },
-  {
-    title: "Quản lý kho",
-    items: [
-      {
         label: "Tồn kho",
         to: "/inventory",
         icon: "mdi-clipboard-list-outline",
-      },
-      {
-        label: "Lịch sử giao dịch",
-        to: "/inventory-transactions",
-        icon: "mdi-history",
       },
       { label: "Phiếu nhập kho", to: "/stock-in", icon: "mdi-tray-arrow-down" },
       { label: "Phiếu xuất kho", to: "/stock-out", icon: "mdi-tray-arrow-up" },
@@ -57,7 +37,19 @@ const menuSections = [
     ],
   },
   {
-    title: "Chờ duyệt",
+    title: "Phân tích",
+    items: [
+      { label: "Dự báo AI", to: "/forecast", icon: "mdi-chart-line" },
+      { label: "Cảnh báo tồn kho", to: "/alerts", icon: "mdi-alert-outline" },
+      {
+        label: "Lịch sử giao dịch",
+        to: "/inventory-transactions",
+        icon: "mdi-history",
+      },
+    ],
+  },
+  {
+    title: "Phê duyệt",
     items: [
       {
         label: "Phiếu nhập chờ duyệt",
@@ -72,27 +64,27 @@ const menuSections = [
     ],
   },
   {
-    title: "Hệ thống",
+    title: "Quản lý",
     items: [
       {
-        label: "Import Excel",
-        to: "/import-excel",
-        icon: "mdi-file-excel-outline",
+        label: "Đối tác",
+        to: "/partners",
+        icon: "mdi-truck-delivery-outline",
       },
-      { label: "Cảnh báo tồn kho", to: "/alerts", icon: "mdi-alert-outline" },
       {
         label: "Nhân viên",
         to: "/employees",
         icon: "mdi-account-group-outline",
       },
       {
-        label: "Nhân viên & phân quyền",
-        to: "/users",
-        icon: "mdi-account-cog-outline",
+        label: "Import Excel",
+        to: "/import-excel",
+        icon: "mdi-file-excel-outline",
       },
     ],
   },
 ];
+
 const visibleSections = computed(() =>
   menuSections
     .map((section) => ({
@@ -106,12 +98,12 @@ const visibleSections = computed(() =>
 </script>
 
 <template>
-  <aside class="sidebar">
-    <RouterLink to="/dashboard" class="brand">
+  <aside class="sidebar" :class="{ 'sidebar--mobile-open': layoutStore.isMobileOpen }">
+    <RouterLink to="/dashboard" class="brand" @click="layoutStore.closeMobileSidebar">
       <span class="brand-mark">S</span>
       <span>
         <strong>SME StockSense</strong>
-        <small>Quản lý tồn kho MVP</small>
+        <small>Quản lý tồn kho thông minh</small>
       </span>
     </RouterLink>
     <nav class="nav-list">
@@ -128,6 +120,8 @@ const visibleSections = computed(() =>
             :key="item.to"
             :to="item.to"
             class="nav-item"
+            :data-tooltip="item.label"
+            @click="layoutStore.closeMobileSidebar"
           >
             <i class="mdi" :class="item.icon" aria-hidden="true"></i>
             <span>{{ item.label }}</span>
@@ -135,7 +129,11 @@ const visibleSections = computed(() =>
         </div>
       </template>
     </nav>
-    <div class="sidebar-user" v-if="authStore.currentUser" @click="$router.push('/profile')">
+    <div 
+      class="sidebar-user" 
+      v-if="authStore.currentUser" 
+      @click="$router.push('/profile'); layoutStore.closeMobileSidebar()"
+    >
       <div 
         class="user-avatar"
         :style="authStore.currentUser.avatarUrl && !authStore.currentUser.avatarUrl.includes('/null') ? { backgroundImage: `url(${authStore.currentUser.avatarUrl})` } : {}"
@@ -154,99 +152,96 @@ const visibleSections = computed(() =>
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
-  width: 260px;
+  width: 240px;
   height: 100vh;
-  background: #0f172a;
-  color: #e5e7eb;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-right: 1px solid var(--color-border);
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
   z-index: 20;
+  transition: width 180ms ease, left 180ms ease;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 8px 10px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--color-border);
 }
 .brand-mark {
   width: 38px;
   height: 38px;
   border-radius: 8px;
-  background: #2563eb;
+  background: var(--color-brand);
   display: grid;
   place-items: center;
   color: #fff;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 20px;
 }
 .brand strong {
   display: block;
-  color: #fff;
+  color: var(--color-text-primary);
   line-height: 20px;
 }
 .brand small {
   display: block;
-  color: #94a3b8;
+  color: var(--color-text-secondary);
   margin-top: 2px;
 }
 .nav-list {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  margin-top: 22px;
+  gap: 20px;
+  margin-top: 20px;
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
 }
-/* Optional scrollbar styling for nav-list */
 .nav-list::-webkit-scrollbar {
   width: 4px;
 }
 .nav-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-border);
   border-radius: 4px;
 }
 .sidebar-heading {
-  color: #94a3b8;
-  font-size: 12px;
+  color: var(--color-text-muted);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   padding-left: 4px;
+  margin-bottom: 6px;
 }
 .sidebar-section {
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 .nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 48px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  color: #cbd5e1;
+  min-height: 40px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--color-text-secondary);
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.03);
+  background: transparent;
   transition:
-    background 180ms ease,
-    transform 180ms ease,
-    color 180ms ease;
+    background 160ms ease,
+    transform 160ms ease,
+    color 160ms ease;
 }
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  transform: translateX(1px);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 .nav-item.router-link-active {
-  background: #1d4ed8;
-  color: #fff;
-  box-shadow: inset 4px 0 0 0 #93c5fd;
-}
-.nav-item.router-link-active:hover {
-  background: #1e40af;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 .nav-item i {
   font-size: 20px;
@@ -256,22 +251,24 @@ const visibleSections = computed(() =>
 .sidebar-user {
   margin-top: 16px;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  transition: background 180ms ease, transform 180ms ease;
+  background: var(--color-bg);
+  transition: background 160ms ease, border-color 160ms ease;
 }
 .sidebar-user:hover {
-  background: rgba(255, 255, 255, 0.12);
-  transform: translateX(1px);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand);
 }
 .user-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-border-strong);
   background-size: cover;
   background-position: center;
   display: flex;
@@ -280,7 +277,7 @@ const visibleSections = computed(() =>
   flex-shrink: 0;
 }
 .user-avatar i {
-  color: #94a3b8;
+  color: var(--color-text-secondary);
   font-size: 20px;
 }
 .user-info {
@@ -289,7 +286,7 @@ const visibleSections = computed(() =>
   overflow: hidden;
 }
 .user-info strong {
-  color: #f8fafc;
+  color: var(--color-text-primary);
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
@@ -297,28 +294,72 @@ const visibleSections = computed(() =>
   text-overflow: ellipsis;
 }
 .user-info span {
-  color: #94a3b8;
+  color: var(--color-text-secondary);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-@media (max-width: 1023px) {
+/* Collapsed view (1024px to 1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
   .sidebar {
-    position: static;
-    width: 100%;
-    min-height: auto;
-    padding: 14px 12px 10px;
+    width: 72px;
+    padding: 18px 10px;
   }
-  .nav-list {
-    margin-top: 16px;
+  .brand {
+    justify-content: center;
+    padding: 8px 0 18px;
   }
-  .sidebar-section {
-    gap: 8px;
+  .brand span:not(.brand-mark),
+  .sidebar-heading,
+  .nav-item span,
+  .user-info {
+    display: none !important;
+  }
+  .nav-item {
+    justify-content: center;
+    position: relative;
+  }
+  /* CSS Tooltip on Hover when Collapsed */
+  .nav-item::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--color-text-primary);
+    color: var(--color-surface);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+    margin-left: 12px;
+    z-index: 100;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  }
+  .nav-item:hover::after {
+    opacity: 1;
   }
   .sidebar-user {
-    display: none;
+    justify-content: center;
+    padding: 8px;
+  }
+}
+
+/* Mobile Viewport Drawer rules */
+@media (max-width: 1023px) {
+  .sidebar {
+    position: fixed;
+    left: -240px;
+    width: 240px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+  .sidebar.sidebar--mobile-open {
+    left: 0;
   }
 }
 </style>

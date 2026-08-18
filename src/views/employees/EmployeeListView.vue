@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchFilterBar from '../../components/SearchFilterBar.vue'
 import DataTable from '../../components/DataTable.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import {
   employeeRoleOptions,
   employeeStatusOptions,
@@ -34,15 +35,7 @@ const form = reactive(createEmptyForm())
 const formErrors = reactive({ fullName: '', email: '', phoneNumber: '', password: '', roleCode: '', status: '' })
 const resetForm = reactive({ newPassword: '', confirmPassword: '' })
 const resetErrors = reactive({ newPassword: '', confirmPassword: '' })
-
-const baseColumns = [
-  { key: 'fullName', label: 'Họ tên', class: 'employee-name-column' },
-  { key: 'email', label: 'Email', class: 'employee-email-column' },
-  { key: 'phoneNumber', label: 'Số điện thoại', class: 'employee-phone-column' },
-  { key: 'role', label: 'Vai trò', class: 'employee-role-column' },
-  { key: 'status', label: 'Trạng thái', class: 'employee-status-column' },
-  { key: 'createdAt', label: 'Ngày tạo', class: 'employee-date-column' },
-]
+const activeDropdownId = ref(null)
 
 const statusOptions = [{ value: '', label: 'Tất cả trạng thái' }, ...employeeStatusOptions]
 const roleOptions = [{ value: '', label: 'Tất cả vai trò' }, ...employeeRoleOptions]
@@ -53,10 +46,24 @@ const canGoPrevious = computed(() => filters.page > 0 && !isLoading.value)
 const canGoNext = computed(() => filters.page + 1 < pageInfo.totalPages && !isLoading.value)
 const isEditMode = computed(() => formMode.value === 'edit')
 const canManageEmployees = computed(() => getCurrentRoleCode() === 'ADMIN')
-const columns = computed(() => (
-  canManageEmployees.value ? [...baseColumns, { key: 'actions', label: 'Thao tác', class: 'employee-actions-column' }] : baseColumns
-))
-const formTitle = computed(() => (isEditMode.value ? 'Sửa nhân viên' : 'Thêm nhân viên'))
+
+const columns = [
+  { key: 'fullName', label: 'Nhân viên', class: 'employee-name-column' },
+  { key: 'email', label: 'Email', class: 'employee-email-column' },
+  { key: 'phoneNumber', label: 'Số điện thoại', class: 'employee-phone-column' },
+  { key: 'role', label: 'Vai trò', class: 'employee-role-column' },
+  { key: 'status', label: 'Trạng thái', class: 'employee-status-column' },
+  { key: 'actions', label: 'Thao tác', class: 'employee-actions-column text-right' }
+]
+
+const formTitle = computed(() => {
+  return isEditMode.value ? 'Chỉnh sửa nhân viên' : 'Thêm nhân viên mới'
+})
+
+const formDesc = computed(() => {
+  return isEditMode.value ? 'Cập nhật hồ sơ nhân sự và quyền truy cập hệ thống.' : 'Tạo nhân viên mới với vai trò và trạng thái ban đầu.'
+})
+
 const rangeText = computed(() => {
   if (pageInfo.totalElements === 0) return '0 nhân viên'
   const start = filters.page * filters.size + 1
@@ -66,7 +73,26 @@ const rangeText = computed(() => {
 
 onMounted(() => {
   fetchEmployees()
+  window.addEventListener('click', handleOutsideClick)
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('click', handleOutsideClick)
+})
+
+function handleOutsideClick(event) {
+  if (!event.target.closest('.action-dropdown')) {
+    closeAllDropdowns()
+  }
+}
+
+function toggleDropdown(id) {
+  activeDropdownId.value = activeDropdownId.value === id ? null : id
+}
+
+function closeAllDropdowns() {
+  activeDropdownId.value = null
+}
 
 async function fetchEmployees() {
   isLoading.value = true
@@ -114,18 +140,41 @@ function goNext() {
 }
 
 function getToggleStatusLabel(employee) {
-  if (employee.status === 'HOAT_DONG') return 'Khóa'
-  if (employee.status === 'TAM_KHOA') return 'Mở khóa'
-  return 'Ngừng'
+  if (employee.status === 'HOAT_DONG') return 'Khóa tài khoản'
+  return 'Mở khóa tài khoản'
 }
 
 function isStatusToggleDisabled(employee) {
   return employee.status === 'NGUNG_HOAT_DONG'
 }
 
-async function toggleEmployeeStatus(employee) {
+// Confirmation State
+const confirmOpen = ref(false)
+const confirmTitle = ref('')
+const confirmMessage = ref('')
+const confirmDanger = ref(false)
+const pendingEmployee = ref(null)
+
+function confirmToggleStatus(employee) {
   if (!canManageEmployees.value || !employee?.id || statusUpdatingId.value || isStatusToggleDisabled(employee)) return
 
+  pendingEmployee.value = employee
+  const shouldLock = employee.status === 'HOAT_DONG'
+  confirmTitle.value = shouldLock ? 'Khóa tài khoản?' : 'Mở khóa tài khoản?'
+  confirmMessage.value = `Bạn có chắc chắn muốn ${shouldLock ? 'khóa' : 'mở khóa'} tài khoản của nhân viên "${employee.fullName}" (${employee.email}) không?`
+  confirmDanger.value = shouldLock
+  confirmOpen.value = true
+}
+
+function cancelToggle() {
+  pendingEmployee.value = null
+  confirmOpen.value = false
+}
+
+async function executeToggleEmployeeStatus() {
+  if (!pendingEmployee.value) return
+  
+  const employee = pendingEmployee.value
   const shouldLock = employee.status === 'HOAT_DONG'
   statusUpdatingId.value = employee.id
   errorMessage.value = ''
@@ -137,17 +186,18 @@ async function toggleEmployeeStatus(employee) {
     } else {
       await unlockEmployee(employee.id)
     }
-    successMessage.value = shouldLock ? 'Khóa nhân viên thành công.' : 'Mở khóa nhân viên thành công.'
+    successMessage.value = shouldLock ? 'Khóa tài khoản thành công.' : 'Mở khóa tài khoản thành công.'
     await fetchEmployees()
   } catch (error) {
     if (error.status === 401) {
       router.replace('/login')
       return
     }
-
     errorMessage.value = error.message
   } finally {
     statusUpdatingId.value = null
+    confirmOpen.value = false
+    pendingEmployee.value = null
   }
 }
 
@@ -165,6 +215,7 @@ function createEmptyForm() {
 
 function openCreateForm() {
   if (!canManageEmployees.value) return
+  closeAllDropdowns()
   formMode.value = 'create'
   Object.assign(form, createEmptyForm())
   successMessage.value = ''
@@ -174,6 +225,7 @@ function openCreateForm() {
 
 function openEditForm(employee) {
   if (!canManageEmployees.value) return
+  closeAllDropdowns()
   formMode.value = 'edit'
   Object.assign(form, {
     id: employee.id,
@@ -306,6 +358,7 @@ function applyBackendErrors(errors = {}) {
 
 function openResetPassword(employee) {
   if (!canManageEmployees.value) return
+  closeAllDropdowns()
   resetEmployee.value = employee
   successMessage.value = ''
   clearResetFeedback()
@@ -387,10 +440,16 @@ function applyResetBackendErrors(errors = {}) {
 }
 
 function displayRole(employee) {
+  if (employee.roleCode === 'ADMIN') return 'Quản trị viên'
+  if (employee.roleCode === 'MANAGER') return 'Quản lý kho'
+  if (employee.roleCode === 'EMPLOYEE') return 'Nhân viên kho'
   return getRoleLabel(employee.roleCode, employee.roleName)
 }
 
 function displayStatus(status) {
+  if (status === 'HOAT_DONG') return 'Đang làm việc'
+  if (status === 'TAM_KHOA') return 'Tạm khóa'
+  if (status === 'NGUNG_HOAT_DONG') return 'Đã nghỉ việc'
   return getStatusLabel(status)
 }
 
@@ -402,16 +461,30 @@ function statusClass(status) {
   }
 }
 
-function formatDate(value) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+function editModalResetPassword() {
+  const row = {
+    id: form.id,
+    fullName: form.fullName,
+    email: form.email
+  }
+  closeForm()
+  openResetPassword(row)
+}
+
+function editModalToggleStatus() {
+  const row = {
+    id: form.id,
+    fullName: form.fullName,
+    email: form.email,
+    status: form.status
+  }
+  closeForm()
+  confirmToggleStatus(row)
 }
 </script>
 
 <template>
-  <PageHeader title="Nhân viên" description="Theo dõi danh sách nhân viên theo vai trò, trạng thái và từ khóa tìm kiếm.">
+  <PageHeader title="Nhân viên" description="Quản lý hồ sơ nhân sự, vai trò và quyền truy cập hệ thống.">
     <button v-if="canManageEmployees" class="btn btn-primary employee-create-btn" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
       <i class="mdi mdi-account-plus-outline"></i>
       Thêm nhân viên
@@ -447,18 +520,32 @@ function formatDate(value) {
       Đang tải danh sách nhân viên
     </div>
 
-    <DataTable v-else :columns="columns" :rows="employees" empty-text="Không có nhân viên phù hợp" min-width="1180px">
+    <DataTable v-else :columns="columns" :rows="employees" empty-text="Không có dữ liệu phù hợp" min-width="1000px">
+      <template #fullName="{ value }">
+        <strong class="text-sm font-semibold text-zinc-900">{{ value }}</strong>
+      </template>
       <template #phoneNumber="{ value }">{{ value || '-' }}</template>
       <template #role="{ row }">{{ displayRole(row) }}</template>
       <template #status="{ value }">
         <span class="employee-status" :class="statusClass(value)">{{ displayStatus(value) }}</span>
       </template>
-      <template #createdAt="{ value }">{{ formatDate(value) }}</template>
       <template #actions="{ row }">
-        <div class="actions employee-actions">
-          <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">Sửa</button>
-          <button class="btn btn-sm" type="button" :disabled="isLoading || statusUpdatingId || isStatusToggleDisabled(row)" @click="toggleEmployeeStatus(row)">{{ getToggleStatusLabel(row) }}</button>
-          <button class="btn btn-sm" type="button" :disabled="isLoading || isResetting" @click="openResetPassword(row)">Reset mật khẩu</button>
+        <div class="actions employee-actions justify-end">
+          <button class="btn btn-sm btn-secondary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">Sửa</button>
+          
+          <div class="action-dropdown" :class="{ 'dropdown-active': activeDropdownId === row.id }">
+            <button class="btn btn-sm btn-icon" type="button" :disabled="isLoading" @click.stop="toggleDropdown(row.id)">
+              <i class="mdi mdi-dots-horizontal"></i>
+            </button>
+            <div v-if="activeDropdownId === row.id" class="dropdown-menu">
+              <button class="dropdown-item" type="button" :disabled="isStatusToggleDisabled(row) || statusUpdatingId" @click="confirmToggleStatus(row)">
+                {{ getToggleStatusLabel(row) }}
+              </button>
+              <button class="dropdown-item" type="button" :disabled="isResetting" @click="openResetPassword(row)">
+                Reset mật khẩu
+              </button>
+            </div>
+          </div>
         </div>
       </template>
     </DataTable>
@@ -490,7 +577,7 @@ function formatDate(value) {
         <div class="modal-head between">
           <div>
             <h2 class="section-title">{{ formTitle }}</h2>
-            <p class="modal-desc">{{ isEditMode ? 'Cập nhật thông tin nhân viên.' : 'Tạo nhân viên mới với vai trò và trạng thái ban đầu.' }}</p>
+            <p class="modal-desc">{{ formDesc }}</p>
           </div>
           <button class="btn btn-icon" type="button" :disabled="isSaving" aria-label="Đóng" @click="closeForm">
             <i class="mdi mdi-close"></i>
@@ -502,6 +589,9 @@ function formatDate(value) {
             <i class="mdi mdi-alert-circle-outline"></i>
             <span>{{ saveErrorMessage }}</span>
           </div>
+
+          <!-- Section: THÔNG TIN NHÂN SỰ -->
+          <div class="form-section-title col-span-2">THÔNG TIN NHÂN SỰ</div>
 
           <label class="field">
             <span>Họ tên</span>
@@ -521,13 +611,24 @@ function formatDate(value) {
             <small v-if="formErrors.phoneNumber" class="field-error">{{ formErrors.phoneNumber }}</small>
           </label>
 
-          <label v-if="!isEditMode" class="field">
-            <span>Mật khẩu</span>
+          <label class="field">
+            <span>Trạng thái nhân sự</span>
+            <select v-model="form.status" class="select" :disabled="isSaving">
+              <option v-for="option in employeeStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+            <small v-if="formErrors.status" class="field-error">{{ formErrors.status }}</small>
+          </label>
+
+          <label v-if="!isEditMode" class="field col-span-2">
+            <span>Mật khẩu ban đầu</span>
             <input v-model="form.password" class="input" type="password" placeholder="Tối thiểu 8 ký tự" :disabled="isSaving" autocomplete="new-password" />
             <small v-if="formErrors.password" class="field-error">{{ formErrors.password }}</small>
           </label>
 
-          <label class="field">
+          <!-- Section: TÀI KHOẢN HỆ THỐNG -->
+          <div class="form-section-title col-span-2">TÀI KHOẢN HỆ THỐNG</div>
+
+          <label class="field col-span-2">
             <span>Vai trò</span>
             <select v-model="form.roleCode" class="select" :disabled="isSaving">
               <option value="" disabled>Chọn vai trò</option>
@@ -536,13 +637,19 @@ function formatDate(value) {
             <small v-if="formErrors.roleCode" class="field-error">{{ formErrors.roleCode }}</small>
           </label>
 
-          <label class="field">
-            <span>Trạng thái</span>
-            <select v-model="form.status" class="select" :disabled="isSaving">
-              <option v-for="option in employeeStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-            </select>
-            <small v-if="formErrors.status" class="field-error">{{ formErrors.status }}</small>
-          </label>
+          <!-- Section: BẢO MẬT TÀI KHOẢN (only when editing) -->
+          <template v-if="isEditMode">
+            <div class="form-section-title col-span-2">BẢO MẬT TÀI KHOẢN</div>
+            <div class="security-actions col-span-2">
+              <button class="btn btn-secondary" type="button" @click="editModalResetPassword">
+                <i class="mdi mdi-key-variant"></i> Reset mật khẩu
+              </button>
+              <button class="btn" :class="form.status === 'HOAT_DONG' ? 'btn-danger' : 'btn-success'" type="button" :disabled="isStatusToggleDisabled(form)" @click="editModalToggleStatus">
+                <i class="mdi" :class="form.status === 'HOAT_DONG' ? 'mdi-lock-outline' : 'mdi-lock-open-outline'"></i>
+                {{ form.status === 'HOAT_DONG' ? 'Khóa tài khoản' : 'Mở khóa tài khoản' }}
+              </button>
+            </div>
+          </template>
         </div>
 
         <div class="modal-foot">
@@ -575,13 +682,13 @@ function formatDate(value) {
             <span>{{ resetErrorMessage }}</span>
           </div>
 
-          <label class="field">
+          <label class="field col-span-2">
             <span>Mật khẩu mới</span>
             <input v-model="resetForm.newPassword" class="input" type="password" placeholder="Tối thiểu 8 ký tự" :disabled="isResetting" autocomplete="new-password" />
             <small v-if="resetErrors.newPassword" class="field-error">{{ resetErrors.newPassword }}</small>
           </label>
 
-          <label class="field">
+          <label class="field col-span-2">
             <span>Xác nhận mật khẩu mới</span>
             <input v-model="resetForm.confirmPassword" class="input" type="password" placeholder="Nhập lại mật khẩu mới" :disabled="isResetting" autocomplete="new-password" />
             <small v-if="resetErrors.confirmPassword" class="field-error">{{ resetErrors.confirmPassword }}</small>
@@ -598,6 +705,18 @@ function formatDate(value) {
       </form>
     </div>
   </div>
+
+  <!-- Confirm Dialog for status changes -->
+  <ConfirmDialog
+    :open="confirmOpen"
+    :title="confirmTitle"
+    :message="confirmMessage"
+    confirm-text="Xác nhận"
+    :danger="confirmDanger"
+    :loading="statusUpdatingId !== null"
+    @cancel="cancelToggle"
+    @confirm="executeToggleEmployeeStatus"
+  />
 </template>
 
 <style scoped>
@@ -627,13 +746,73 @@ function formatDate(value) {
 .field-error { color: var(--danger); font-weight: 600; line-height: 18px; }
 .btn:disabled, .select:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* Group titles inside edit/create modal */
+.form-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 12px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 4px;
+}
+.security-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.col-span-2 {
+  grid-column: span 2 / span 2;
+}
+
+/* Action Dropdown styling */
+.action-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  z-index: 30;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+.dropdown-item {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  width: 100%;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.dropdown-item:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+.dropdown-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 :deep(.employee-name-column) { min-width: 170px; }
 :deep(.employee-email-column) { min-width: 220px; }
 :deep(.employee-phone-column),
 :deep(.employee-role-column),
-:deep(.employee-status-column),
-:deep(.employee-date-column) { min-width: 132px; }
-:deep(.employee-actions-column) { min-width: 260px; text-align: right; white-space: nowrap; overflow-wrap: normal; }
+:deep(.employee-status-column) { min-width: 132px; }
+:deep(.employee-actions-column) { min-width: 150px; text-align: right; white-space: nowrap; overflow-wrap: normal; }
 
 @keyframes spin {
   to { transform: rotate(360deg); }

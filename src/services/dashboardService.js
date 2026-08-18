@@ -31,3 +31,18 @@ export const getDashboardOverview = () => request(
   { method: "get", url: "/api/dashboard/overview" }, 
   "Không thể tải dữ liệu dashboard.",
 )
+
+export const getInventoryMovement = (params) => request(
+  { method: "get", url: "/api/dashboard/inventory-movement", params },
+  "Không thể tải dữ liệu biến động kho.",
+)
+
+export const getStockHealth = () => request(
+  { method: "get", url: "/api/dashboard/stock-health" },
+  "Không thể tải dữ liệu tình trạng tồn kho.",
+)
+
+export const getWarehouseDistribution = () => request(
+  { method: "get", url: "/api/dashboard/warehouse-distribution" },
+  "Không thể tải dữ liệu phân bổ kho hàng.",
+)
