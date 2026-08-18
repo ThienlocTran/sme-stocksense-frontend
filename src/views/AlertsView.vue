@@ -199,25 +199,10 @@ function formatInventoryStatus(status) {
 
 function computeSeverity(row) {
   const current = Number(row.currentQuantity ?? 0);
-  const minStock = Number(row.minStock ?? 0);
-  if (current === 0) {
-    return "Khấn cấp"; // Note: mapped to status-khẩn-cấp in StatusBadge (normalized replacement of 'khấn' or 'khẩn')
+  if (current <= 0) {
+    return "CRITICAL";
   }
-  if (current < minStock) {
-    return "Cao";
-  }
-  if (current === minStock) {
-    return "Trung bình";
-  }
-  return "Thấp";
-}
-
-// Map helper for badge safety
-function getSeverityBadgeText(row) {
-  const sev = computeSeverity(row);
-  // StatusBadge uses normalize which removes accents. 'Khấn cấp' -> 'khán-cáp' or we map to 'Khẩn cấp' which is supported by status-khẩn-cấp
-  if (sev === "Khấn cấp") return "Khẩn cấp";
-  return sev;
+  return "WARNING";
 }
 
 function formatDate(value) {
@@ -384,7 +369,7 @@ function navigateToInventory(row) {
           </template>
           <template #severity="{ row }">
             <div class="text-center">
-              <StatusBadge :status="getSeverityBadgeText(row)" />
+              <StatusBadge :status="computeSeverity(row)" variant="severity" />
             </div>
           </template>
           <template #status="{ row }">
@@ -440,7 +425,7 @@ function navigateToInventory(row) {
             </div>
             <div class="detail-row">
               <span class="detail-label">Mức độ ưu tiên</span>
-              <span class="detail-val"><StatusBadge :status="getSeverityBadgeText(row)" /></span>
+              <span class="detail-val"><StatusBadge :status="computeSeverity(row)" variant="severity" /></span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Cập nhật</span>

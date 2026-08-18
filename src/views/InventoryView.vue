@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
@@ -18,6 +18,17 @@ const isLoading = ref(false);
 const isLoadingDropdowns = ref(false);
 const errorMessage = ref("");
 const searchDraft = ref(route.query.keyword ? String(route.query.keyword) : "");
+
+watch(
+  () => route.query,
+  (newQuery) => {
+    searchDraft.value = newQuery.keyword ? String(newQuery.keyword) : "";
+    filters.warehouseId = newQuery.warehouseId ? String(newQuery.warehouseId) : "";
+    page.value = 0;
+    fetchInventory();
+  },
+  { deep: true }
+);
 const page = ref(0);
 const size = ref(20);
 const totalPages = ref(0);

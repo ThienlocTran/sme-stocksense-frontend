@@ -124,6 +124,12 @@ const badgeClass = computed(() => {
   border-color: rgba(220, 38, 38, 0.2);
 }
 
+.severity-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: rgba(217, 119, 6, 0.2);
+}
+
 .severity-high {
   background: var(--color-warning-soft);
   color: var(--color-warning);
