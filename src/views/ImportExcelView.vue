@@ -221,16 +221,16 @@ function formatDate(dateStr) {
 
     <div class="mt-6 flex flex-col gap-5">
 
-      <!-- ── Card 1: Config + Upload ─────────────────────────────────────── -->
-      <div class="card card-pad" :class="{ 'card-done': phase === 'done' }">
+      <!-- ── STEP 1: CONFIG & TEMPLATE ─────────────────────────────────────── -->
+      <div class="card card-pad" :class="{ 'card-done': phase === 'done' || validationResult }">
         <div class="card-section-header">
-          <div class="step-badge" :class="phase === 'done' ? 'badge-done' : 'badge-active'">
-            <i v-if="phase === 'done'" class="mdi mdi-check"></i>
+          <div class="step-badge" :class="phase === 'done' || validationResult ? 'badge-done' : 'badge-active'">
+            <i v-if="phase === 'done' || validationResult" class="mdi mdi-check"></i>
             <span v-else>1</span>
           </div>
           <div>
-            <h3 class="section-title">Tải file Excel lên</h3>
-            <p class="muted mt-0.5">Chọn loại import, kho hàng (nếu cần) và file Excel dữ liệu.</p>
+            <h3 class="section-title">Bước 1: Cấu hình & Tải file mẫu</h3>
+            <p class="muted mt-0.5">Chọn loại import, kho hàng đầu kỳ và tải về tệp Excel mẫu tiêu chuẩn.</p>
           </div>
         </div>
 
@@ -266,6 +266,32 @@ function formatDate(dateStr) {
             </div>
           </div>
 
+          <!-- Download template button unconditional -->
+          <div class="flex items-center gap-3 mt-2">
+            <button class="btn btn-ghost" type="button" :disabled="isDownloadingTemplate" @click="handleDownloadTemplate">
+              <i v-if="isDownloadingTemplate" class="mdi mdi-loading mdi-spin"></i>
+              <i v-else class="mdi mdi-download-outline"></i>
+              Tải file mẫu Excel
+            </button>
+            <span class="text-xs text-slate-500">Sử dụng file mẫu này để nhập dữ liệu đúng định dạng của hệ thống.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STEP 2: UPLOAD FILE & VALIDATE ─────────────────────────────────── -->
+      <div class="card card-pad" :class="{ 'card-done': phase === 'done' || validationResult, 'card-locked': phase !== 'done' && !validationResult && !importType }">
+        <div class="card-section-header">
+          <div class="step-badge" :class="phase === 'done' || validationResult ? 'badge-done' : 'badge-active'">
+            <i v-if="phase === 'done' || validationResult" class="mdi mdi-check"></i>
+            <span v-else>2</span>
+          </div>
+          <div>
+            <h3 class="section-title">Bước 2: Chọn & Kiểm tra file dữ liệu</h3>
+            <p class="muted mt-0.5">Tải lên tệp Excel của bạn và chạy quá trình kiểm tra lỗi tự động.</p>
+          </div>
+        </div>
+
+        <div class="card-body mt-4 flex flex-col gap-4">
           <!-- File picker row -->
           <div class="field">
             <label>File dữ liệu Excel (.xlsx) *</label>
@@ -302,81 +328,93 @@ function formatDate(dateStr) {
               <i v-else class="mdi mdi-upload-outline"></i>
               {{ phase === 'validating' ? 'Đang kiểm tra...' : 'Tải lên & Kiểm tra dữ liệu' }}
             </button>
-
-            <button class="btn btn-ghost" :disabled="!selectedFile" @click="handleDownloadTemplate">
-              <i v-if="isDownloadingTemplate" class="mdi mdi-loading mdi-spin"></i>
-              <i v-else class="mdi mdi-download-outline"></i>
-              Tải file mẫu
-            </button>
           </div>
         </div>
       </div>
 
-      <!-- ── Validation result ────────────────────────────────────────────── -->
+      <!-- ── STEP 3: VALIDATE & PREVIEW (Shown when validationResult exists) ─ -->
       <template v-if="validationResult">
-
-        <!-- Summary bar -->
-        <div
-          class="validation-summary animate-fade-in"
-          :class="validationResult.valid ? 'summary-valid' : 'summary-invalid'"
-        >
-          <div class="summary-icon">
-            <i :class="validationResult.valid ? 'mdi mdi-check-circle' : 'mdi mdi-close-circle'"></i>
+        <div class="card card-pad" :class="{ 'card-done': phase === 'done', 'card-locked': !validationResult.valid }">
+          <div class="card-section-header">
+            <div class="step-badge" :class="phase === 'done' ? 'badge-done' : validationResult.valid ? 'badge-active' : 'badge-locked'">
+              <i v-if="phase === 'done'" class="mdi mdi-check"></i>
+              <i v-else-if="!validationResult.valid" class="mdi mdi-alert-circle-outline"></i>
+              <span v-else>3</span>
+            </div>
+            <div>
+              <h3 class="section-title">Bước 3: Xem trước dữ liệu</h3>
+              <p class="muted mt-0.5">
+                <template v-if="!validationResult.valid">Có lỗi được tìm thấy trong file Excel. Vui lòng sửa lại dữ liệu.</template>
+                <template v-else>Dữ liệu hợp lệ. Xem trước thống kê và nội dung file bên dưới.</template>
+              </p>
+            </div>
           </div>
-          <div class="summary-stats">
-            <span class="stat-item">
-              Tổng dòng: <strong>{{ validationResult.tongSoDong }}</strong>
-            </span>
-            <span class="stat-sep">·</span>
-            <span class="stat-item text-green-700">
-              Hợp lệ: <strong>{{ validationResult.soDongHopLe }}</strong>
-            </span>
-            <span class="stat-sep">·</span>
-            <span class="stat-item" :class="validationResult.soDongLoi > 0 ? 'text-red-700' : 'text-green-700'">
-              Lỗi: <strong>{{ validationResult.soDongLoi }}</strong>
-            </span>
-            <span class="stat-sep">·</span>
-            <span class="font-bold" :class="validationResult.valid ? 'text-green-800' : 'text-red-800'">
-              {{ validationResult.valid ? '✓ DỮ LIỆU HỢP LỆ' : '✗ CÓ LỖI DỮ LIỆU' }}
-            </span>
+
+          <div class="card-body mt-4 flex flex-col gap-4">
+            <!-- Summary bar -->
+            <div
+              class="validation-summary"
+              :class="validationResult.valid ? 'summary-valid' : 'summary-invalid'"
+            >
+              <div class="summary-icon">
+                <i :class="validationResult.valid ? 'mdi mdi-check-circle' : 'mdi mdi-close-circle'"></i>
+              </div>
+              <div class="summary-stats">
+                <span class="stat-item">
+                  Tổng dòng: <strong>{{ validationResult.tongSoDong }}</strong>
+                </span>
+                <span class="stat-sep">·</span>
+                <span class="stat-item text-green-700">
+                  Hợp lệ: <strong>{{ validationResult.soDongHopLe }}</strong>
+                </span>
+                <span class="stat-sep">·</span>
+                <span class="stat-item" :class="validationResult.soDongLoi > 0 ? 'text-red-700' : 'text-green-700'">
+                  Lỗi: <strong>{{ validationResult.soDongLoi }}</strong>
+                </span>
+                <span class="stat-sep">·</span>
+                <span class="font-bold" :class="validationResult.valid ? 'text-green-800' : 'text-red-800'">
+                  {{ validationResult.valid ? '✓ DỮ LIỆU HỢP LỆ' : '✗ CÓ LỖI DỮ LIỆU' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Error table (only when invalid) -->
+            <div v-if="!validationResult.valid && validationResult.errors?.length" class="mt-2 border border-red-200 rounded-lg overflow-hidden">
+              <div class="error-table-header p-3 bg-red-50 text-red-900 border-b border-red-200 font-bold flex items-center gap-2">
+                <i class="mdi mdi-alert-box-outline"></i>
+                Chi tiết lỗi dữ liệu ({{ validationResult.errors.length }} lỗi)
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 70px;">Dòng</th>
+                      <th style="width: 60px;">Sheet</th>
+                      <th style="width: 160px;">Cột dữ liệu</th>
+                      <th style="width: 160px;">Giá trị trong file</th>
+                      <th>Chi tiết lỗi</th>
+                      <th>Gợi ý khắc phục</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(err, idx) in validationResult.errors" :key="idx">
+                      <td class="font-bold text-slate-900">{{ err.rowNumber ?? '-' }}</td>
+                      <td class="text-slate-500 text-xs">{{ err.sheetName ?? '-' }}</td>
+                      <td class="text-red-700 font-semibold">{{ err.columnName }}</td>
+                      <td>
+                        <code class="value-code">{{ (err.rawValue === null || err.rawValue === '') ? '(trống)' : err.rawValue }}</code>
+                      </td>
+                      <td class="text-red-600 font-semibold">{{ err.message }}</td>
+                      <td class="text-green-700">{{ err.suggestion || '-' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Error table (only when invalid) -->
-        <div v-if="!validationResult.valid && validationResult.errors?.length" class="card animate-fade-in">
-          <div class="error-table-header">
-            <i class="mdi mdi-alert-box-outline"></i>
-            Chi tiết lỗi dữ liệu ({{ validationResult.errors.length }} lỗi)
-          </div>
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th style="width: 70px;">Dòng</th>
-                  <th style="width: 60px;">Sheet</th>
-                  <th style="width: 160px;">Cột dữ liệu</th>
-                  <th style="width: 160px;">Giá trị trong file</th>
-                  <th>Chi tiết lỗi</th>
-                  <th>Gợi ý khắc phục</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(err, idx) in validationResult.errors" :key="idx">
-                  <td class="font-bold text-slate-900">{{ err.rowNumber ?? '-' }}</td>
-                  <td class="text-slate-500 text-xs">{{ err.sheetName ?? '-' }}</td>
-                  <td class="text-red-700 font-semibold">{{ err.columnName }}</td>
-                  <td>
-                    <code class="value-code">{{ (err.rawValue === null || err.rawValue === '') ? '(trống)' : err.rawValue }}</code>
-                  </td>
-                  <td class="text-red-600 font-semibold">{{ err.message }}</td>
-                  <td class="text-green-700">{{ err.suggestion || '-' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- ── Card 2: Confirm import ────────────────────────────────────── -->
+        <!-- ── STEP 4: CONFIRM IMPORT ──────────────────────────────────────── -->
         <div
           class="card card-pad animate-fade-in"
           :class="{ 'card-done': phase === 'done', 'card-locked': !validationResult.valid }"
@@ -384,23 +422,23 @@ function formatDate(dateStr) {
           <div class="card-section-header">
             <div class="step-badge" :class="phase === 'done' ? 'badge-done' : validationResult.valid ? 'badge-active' : 'badge-locked'">
               <i v-if="phase === 'done'" class="mdi mdi-check"></i>
-              <span v-else>2</span>
+              <span v-else>4</span>
             </div>
             <div>
-              <h3 class="section-title">Xác nhận Import</h3>
+              <h3 class="section-title">Bước 4: Xác nhận Import dữ liệu</h3>
               <p class="muted mt-0.5">
-                <template v-if="!validationResult.valid">File có lỗi dữ liệu. Vui lòng sửa và tải lại trước khi import.</template>
-                <template v-else-if="phase === 'done'">Dữ liệu đã được import thành công vào hệ thống.</template>
-                <template v-else>Dữ liệu hợp lệ. Nhấn nút bên dưới để import chính thức vào hệ thống.</template>
+                <template v-if="!validationResult.valid">Không thể import do dữ liệu file Excel có lỗi. Hãy sửa và kiểm tra lại.</template>
+                <template v-else-if="phase === 'done'">Import dữ liệu thành công.</template>
+                <template v-else>Nhấn nút bên dưới để tiến hành import chính thức dữ liệu vào hệ thống.</template>
               </p>
             </div>
           </div>
 
           <!-- Apply result -->
-          <div v-if="applyResult" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-900">
+          <div v-if="applyResult" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-900 animate-fade-in">
             <div class="font-bold mb-2 flex items-center gap-2">
               <i class="mdi mdi-check-circle text-green-600 text-lg"></i>
-              Kết quả import:
+              Kết quả import thành công:
             </div>
             <ul class="list-disc pl-5 space-y-1">
               <li>Mã import: <strong>{{ applyResult.importId }}</strong></li>
@@ -423,7 +461,7 @@ function formatDate(dateStr) {
             >
               <i v-if="phase === 'importing'" class="mdi mdi-loading mdi-spin"></i>
               <i v-else class="mdi mdi-database-import-outline"></i>
-              {{ phase === 'importing' ? 'Đang import...' : 'Xác nhận Import' }}
+              {{ phase === 'importing' ? 'Đang import...' : 'Xác nhận Import vào hệ thống' }}
             </button>
 
             <button class="btn" type="button" @click="handleReset">
@@ -432,7 +470,6 @@ function formatDate(dateStr) {
             </button>
           </div>
         </div>
-
       </template>
 
     </div>
