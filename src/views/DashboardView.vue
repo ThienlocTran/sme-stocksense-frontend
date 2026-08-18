@@ -13,8 +13,18 @@ import { getPendingApprovals } from "../services/importReceiptService";
 import { getProducts } from "../services/productService";
 import { canAccessRoute } from "../services/permissionService";
 import { getWarehouses } from "../services/warehouseService";
-import { getDashboardOverview } from "../services/dashboardService";
+import {
+  getDashboardOverview,
+  getInventoryMovement,
+  getStockHealth,
+  getWarehouseDistribution
+} from "../services/dashboardService";
 import { useAuthStore } from "../stores/auth";
+import ApexCharts from "vue3-apexcharts";
+
+defineOptions({
+  components: { ApexCharts },
+});
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -38,6 +48,29 @@ const stockTotalFailed = ref(false);
 
 const recentTransactions = ref([]);
 const recentTransactionsFailed = ref(false);
+
+// Analytics State
+const movementData = ref([]);
+const isMovementLoading = ref(true);
+const movementFailed = ref(false);
+
+const stockHealthData = ref(null);
+const isStockHealthLoading = ref(true);
+const stockHealthFailed = ref(false);
+
+const warehouseDistData = ref([]);
+const isWarehouseDistLoading = ref(true);
+const warehouseDistFailed = ref(false);
+
+const movementWarehouseId = ref("");
+const warehouseList = ref([]);
+const selectedPeriodDays = ref(30);
+
+const periodPresets = [
+  { label: "7 ngày", days: 7 },
+  { label: "30 ngày", days: 30 },
+  { label: "90 ngày", days: 90 },
+];
 
 const currentUser = computed(() => authStore.currentUser);
 const currentUserName = computed(() => currentUser.value?.hoTen || currentUser.value?.fullName || "");
@@ -142,6 +175,7 @@ const visibleQuickActions = computed(() => {
 
 onMounted(() => {
   loadDashboardData(true);
+  loadAnalyticsData();
 });
 
 function handleSessionExpired() {
@@ -345,7 +379,8 @@ async function retryDashboardLoad() {
     return;
   }
 
-  await loadDashboardData(true);
+  loadDashboardData(true);
+  loadAnalyticsData();
 }
 
 async function loadProductCount() {
@@ -354,8 +389,8 @@ async function loadProductCount() {
 }
 
 async function loadWarehouseCount() {
-  const data = await getWarehouses({ page: 0, size: 1 });
-  return Number(data?.totalElements || 0);
+  const data = await getWarehouses();
+  return Number(Array.isArray(data) ? data.length : (data?.totalElements || 0));
 }
 
 async function loadStockTotal() {
@@ -455,14 +490,19 @@ async function loadLowStockItems() {
   try {
     const data = await getLowStockInventory({ page: 0, size: 5 });
     const items = Array.isArray(data?.content)
-      ? data.content.map((item) => ({
-          id: item.inventoryId || item.productId,
-          productCode: item.productCode || "SP",
-          productName: item.productName || "Sản phẩm",
-          warehouseName: item.warehouse || item.warehouseName || "Kho",
-          available: item.currentQuantity ?? 0,
-          minStock: item.minStock ?? 0,
-        }))
+      ? data.content.map((item) => {
+          // Backend severity semantics: quantity <= 0 OR OUT_OF_STOCK -> CRITICAL, otherwise -> WARNING
+          const severity = (item.currentQuantity <= 0 || item.status === "OUT_OF_STOCK") ? "CRITICAL" : "WARNING";
+          return {
+            id: item.inventoryId || item.productId,
+            productCode: item.productCode || "SP",
+            productName: item.productName || "Sản phẩm",
+            warehouseName: item.warehouse || item.warehouseName || "Kho",
+            available: item.currentQuantity ?? 0,
+            minStock: item.minStock ?? 0,
+            severity,
+          };
+        })
       : [];
 
     return { items, failed: false };
@@ -518,6 +558,339 @@ function viewDocumentDetail(type, documentId) {
   const path = type === 'in' ? `/stock-in/${documentId}` : `/stock-out/${documentId}`;
   router.push(path);
 }
+
+// Local Vietnam-timezone-safe date calculations
+function getLocalDateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getRangeDates(days) {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(to.getDate() - (days - 1));
+  return {
+    from: getLocalDateString(from),
+    to: getLocalDateString(to)
+  };
+}
+
+function changePeriod(days) {
+  selectedPeriodDays.value = days;
+  fetchMovementData();
+}
+
+async function loadWarehouseDropdown() {
+  try {
+    const data = await getWarehouses();
+    warehouseList.value = Array.isArray(data) ? data : (data?.content || []);
+  } catch (error) {
+    console.error("Failed to load warehouses for dropdown:", error);
+  }
+}
+
+async function fetchMovementData() {
+  isMovementLoading.value = true;
+  movementFailed.value = false;
+  
+  const { from, to } = getRangeDates(selectedPeriodDays.value);
+  const params = {
+    from,
+    to,
+    warehouseId: movementWarehouseId.value || undefined,
+  };
+  
+  try {
+    const data = await getInventoryMovement(params);
+    movementData.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    if (shouldRedirectForSessionError(error)) return;
+    movementFailed.value = true;
+  } finally {
+    isMovementLoading.value = false;
+  }
+}
+
+async function fetchStockHealth() {
+  isStockHealthLoading.value = true;
+  stockHealthFailed.value = false;
+  
+  try {
+    stockHealthData.value = await getStockHealth();
+  } catch (error) {
+    if (shouldRedirectForSessionError(error)) return;
+    stockHealthFailed.value = true;
+  } finally {
+    isStockHealthLoading.value = false;
+  }
+}
+
+async function fetchWarehouseDistribution() {
+  isWarehouseDistLoading.value = true;
+  warehouseDistFailed.value = false;
+  
+  try {
+    const data = await getWarehouseDistribution();
+    warehouseDistData.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    if (shouldRedirectForSessionError(error)) return;
+    warehouseDistFailed.value = true;
+  } finally {
+    isWarehouseDistLoading.value = false;
+  }
+}
+
+function loadAnalyticsData() {
+  loadWarehouseDropdown().then(() => {
+    fetchMovementData();
+  });
+  
+  Promise.allSettled([
+    fetchStockHealth(),
+    fetchWarehouseDistribution()
+  ]);
+}
+
+// Chart computed properties
+const isMovementEmpty = computed(() => {
+  if (movementData.value.length === 0) return true;
+  return movementData.value.every(
+    item => (item.inboundQuantity || 0) === 0 && (item.outboundQuantity || 0) === 0
+  );
+});
+
+const movementChartSeries = computed(() => {
+  return [
+    {
+      name: "Nhập kho",
+      data: movementData.value.map(item => item.inboundQuantity || 0)
+    },
+    {
+      name: "Xuất kho",
+      data: movementData.value.map(item => item.outboundQuantity || 0)
+    }
+  ];
+});
+
+const movementChartOptions = computed(() => {
+  const dates = movementData.value.map(item => {
+    if (!item.date) return "";
+    const parts = item.date.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}`;
+    }
+    return item.date;
+  });
+  
+  return {
+    chart: {
+      type: "area",
+      fontFamily: "inherit",
+      toolbar: { show: false },
+      zoom: { enabled: false }
+    },
+    stroke: { curve: "smooth", width: 2 },
+    dataLabels: { enabled: false },
+    fill: {
+      type: "gradient",
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.15,
+        opacityTo: 0.02,
+        stops: [0, 90, 100]
+      }
+    },
+    grid: {
+      borderColor: "var(--color-border)",
+      strokeDashArray: 4,
+      xaxis: { lines: { show: false } },
+      yaxis: { lines: { show: true } }
+    },
+    xaxis: {
+      categories: dates,
+      labels: {
+        style: { colors: "var(--color-text-secondary)", fontSize: "11px" },
+        rotate: 0,
+        hideOverlappingLabels: true
+      },
+      axisBorder: { show: false },
+      axisTicks: { show: false }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: "var(--color-text-secondary)", fontSize: "11px" },
+        formatter: (val) => formatNumber(val)
+      }
+    },
+    colors: ["#2563EB", "#1E40AF"],
+    legend: {
+      show: true,
+      position: "top",
+      horizontalAlign: "right",
+      fontSize: "12px",
+      fontFamily: "inherit",
+      markers: { radius: 12 },
+      labels: { colors: "var(--color-text-primary)" }
+    },
+    tooltip: {
+      shared: true,
+      intersect: false,
+      theme: "light",
+      x: { show: true },
+      y: {
+        formatter: (val) => `${formatNumber(val)} sản phẩm`
+      }
+    }
+  };
+});
+
+const stockHealthTotal = computed(() => {
+  if (!stockHealthData.value) return 0;
+  const healthy = stockHealthData.value.healthy || 0;
+  const lowStock = stockHealthData.value.lowStock || 0;
+  const outOfStock = stockHealthData.value.outOfStock || 0;
+  return healthy + lowStock + outOfStock;
+});
+
+const stockHealthSeries = computed(() => {
+  if (!stockHealthData.value) return [0, 0, 0];
+  return [
+    stockHealthData.value.healthy || 0,
+    stockHealthData.value.lowStock || 0,
+    stockHealthData.value.outOfStock || 0
+  ];
+});
+
+const stockHealthOptions = computed(() => {
+  return {
+    chart: {
+      type: "donut",
+      fontFamily: "inherit"
+    },
+    labels: ["Còn hàng", "Sắp hết", "Hết hàng"],
+    colors: ["#16825D", "#D97706", "#DC2626"],
+    stroke: { show: true, colors: ["#FFF"], width: 2 },
+    dataLabels: { enabled: false },
+    legend: {
+      show: false
+    },
+    tooltip: {
+      theme: "light",
+      y: {
+        formatter: (val) => `${formatNumber(val)} vị trí`
+      }
+    },
+    plotOptions: {
+      pie: {
+        expandOnClick: true,
+        donut: {
+          size: "70%",
+          labels: {
+            show: true,
+            name: {
+              show: true,
+              fontSize: "11px",
+              fontFamily: "inherit",
+              color: "var(--color-text-secondary)",
+              offsetY: -4
+            },
+            value: {
+              show: true,
+              fontSize: "20px",
+              fontWeight: "700",
+              fontFamily: "inherit",
+              color: "var(--color-text-primary)",
+              offsetY: 6,
+              formatter: (val) => formatNumber(val)
+            },
+            total: {
+              show: true,
+              label: "Vị trí tồn kho",
+              color: "var(--color-text-secondary)",
+              fontFamily: "inherit",
+              formatter: () => formatNumber(stockHealthTotal.value)
+            }
+          }
+        }
+      }
+    }
+  };
+});
+
+function formatPercent(value, total) {
+  if (!total) return "0%";
+  return `${Math.round((value / total) * 100)}%`;
+}
+
+const warehouseDistSeries = computed(() => {
+  return [
+    {
+      name: "Tổng lượng tồn",
+      data: warehouseDistData.value.map(item => item.totalQuantity || 0)
+    }
+  ];
+});
+
+const warehouseDistOptions = computed(() => {
+  const names = warehouseDistData.value.map(item => item.warehouseName || "");
+  return {
+    chart: {
+      type: "bar",
+      fontFamily: "inherit",
+      toolbar: { show: false }
+    },
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        barHeight: "55%",
+        borderRadius: 4,
+        dataLabels: { position: "right" }
+      }
+    },
+    colors: ["#2563EB"],
+    stroke: { show: false },
+    dataLabels: {
+      enabled: true,
+      textAnchor: "start",
+      style: {
+        colors: ["#17201E"],
+        fontSize: "11px",
+        fontWeight: "bold",
+        fontFamily: "inherit"
+      },
+      formatter: (val) => formatNumber(val),
+      offsetX: 6
+    },
+    grid: {
+      borderColor: "var(--color-border)",
+      strokeDashArray: 4,
+      xaxis: { lines: { show: true } },
+      yaxis: { lines: { show: false } }
+    },
+    xaxis: {
+      categories: names,
+      labels: {
+        style: { colors: "var(--color-text-secondary)", fontSize: "11px" },
+        formatter: (val) => formatNumber(val)
+      }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: "var(--color-text-secondary)", fontSize: "11px" },
+        maxWidth: 160
+      }
+    },
+    tooltip: {
+      theme: "light",
+      x: { show: true },
+      y: {
+        formatter: (val) => `${formatNumber(val)} sản phẩm`
+      }
+    }
+  };
+});
 </script>
 
 <template>
@@ -605,22 +978,69 @@ function viewDocumentDetail(type, documentId) {
       <!-- Left Column: Primary Operational Data (~65%) -->
       <div class="dashboard-main-col">
         
-        <!-- Section: Biến động nhập xuất (Placeholder Chart) -->
+        <!-- Section: Biến động nhập xuất -->
         <section class="card card-pad">
-          <div class="section-head mb-4">
-            <h2 class="section-title text-zinc-900">Biến động Nhập / Xuất kho</h2>
-            <p class="eyebrow text-zinc-500">Xu hướng nhịp độ 30 ngày qua</p>
+          <div class="section-head-wrap mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="section-title text-zinc-900">Biến động Nhập / Xuất kho</h2>
+              <p class="eyebrow text-zinc-500">Xu hướng dòng chảy hàng hóa qua các kho</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <select 
+                v-model="movementWarehouseId" 
+                class="select select-sm w-36" 
+                @change="fetchMovementData" 
+                :disabled="isMovementLoading"
+              >
+                <option value="">Tất cả kho</option>
+                <option v-for="w in warehouseList" :key="w.id" :value="w.id">{{ w.name }}</option>
+              </select>
+              <div class="tabs tabs-sm">
+                <button 
+                  v-for="p in periodPresets" 
+                  :key="p.days" 
+                  class="tab tab-sm" 
+                  :class="{ active: selectedPeriodDays === p.days }"
+                  @click="changePeriod(p.days)"
+                  :disabled="isMovementLoading"
+                >
+                  {{ p.label }}
+                </button>
+              </div>
+            </div>
           </div>
-          
-          <!-- Analytical Placeholder State -->
-          <div class="analytical-placeholder">
+
+          <div v-if="isMovementLoading" class="loading-state-mini">
+            <i class="mdi mdi-loading mdi-spin text-xl text-blue-600"></i>
+            <span>Đang tải biểu đồ biến động...</span>
+          </div>
+
+          <div v-else-if="movementFailed" class="analytical-placeholder-error py-8 text-center">
+            <i class="mdi mdi-alert-circle-outline text-3xl text-red-500 mb-2"></i>
+            <h3 class="font-semibold text-zinc-800 text-sm mb-1">Không thể tải dữ liệu biến động kho</h3>
+            <button class="btn btn-secondary btn-sm mt-2" @click="fetchMovementData">Thử lại</button>
+          </div>
+
+          <div v-else-if="movementData.length === 0" class="analytical-placeholder">
             <div class="placeholder-icon-wrap">
               <i class="mdi mdi-chart-areaspline text-3xl text-zinc-400"></i>
             </div>
-            <h3 class="font-semibold text-zinc-800 text-sm mb-1">Chưa đủ dữ liệu hiển thị biểu đồ biến động</h3>
+            <h3 class="font-semibold text-zinc-800 text-sm mb-1">Chưa có dữ liệu biến động</h3>
             <p class="text-xs text-zinc-500 max-w-md text-center">
-              Biểu đồ dòng chảy thời gian thực yêu cầu tổng hợp dữ liệu biến động hàng ngày từ backend. Tính năng này sẽ được kích hoạt sau.
+              Không tìm thấy hoạt động nhập xuất nào trong khoảng thời gian đã chọn.
             </p>
+          </div>
+
+          <div v-else-if="isMovementEmpty" class="relative">
+            <div class="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center p-4">
+              <i class="mdi mdi-alert-circle-outline text-2xl text-zinc-400 mb-1"></i>
+              <p class="text-xs text-zinc-600 font-medium">Không có biến động nhập/xuất trong khoảng thời gian này.</p>
+            </div>
+            <ApexCharts type="area" :options="movementChartOptions" :series="movementChartSeries" height="280" />
+          </div>
+
+          <div v-else>
+            <ApexCharts type="area" :options="movementChartOptions" :series="movementChartSeries" height="280" />
           </div>
         </section>
 
@@ -699,27 +1119,100 @@ function viewDocumentDetail(type, documentId) {
         <!-- Secondary Analytics Row (Grid-2 on Desktop) -->
         <div class="secondary-analytics-row">
           
-          <!-- Section: Stock Health (Placeholder) -->
+          <!-- Section: Stock Health -->
           <section class="card card-pad">
             <div class="section-head mb-4">
               <h2 class="section-title text-zinc-900">Sức khỏe tồn kho</h2>
-              <p class="eyebrow text-zinc-500">Mật độ SKU khỏe so với tồn cảnh báo</p>
+              <p class="eyebrow text-zinc-500">Mật độ vị trí tồn khỏe so với cảnh báo</p>
             </div>
-            <div class="analytical-placeholder-mini">
+
+            <div v-if="isStockHealthLoading" class="loading-state-mini">
+              <i class="mdi mdi-loading mdi-spin text-xl text-blue-600"></i>
+              <span>Đang tải sức khỏe tồn kho...</span>
+            </div>
+
+            <div v-else-if="stockHealthFailed" class="analytical-placeholder-error py-6 text-center">
+              <i class="mdi mdi-alert-circle-outline text-2xl text-red-500 mb-2"></i>
+              <p class="text-xs text-zinc-700 font-semibold mb-2">Không thể tải dữ liệu tình trạng tồn kho.</p>
+              <button class="btn btn-secondary btn-sm" @click="fetchStockHealth">Thử lại</button>
+            </div>
+
+            <div v-else-if="!stockHealthData || stockHealthTotal === 0" class="analytical-placeholder-mini">
               <i class="mdi mdi-chart-donut text-2xl text-zinc-400 mb-2"></i>
-              <p class="text-xs text-zinc-500 text-center px-4">Tính năng này sẽ được kích hoạt sau.</p>
+              <p class="text-xs text-zinc-500 text-center px-4">Chưa có dữ liệu tồn kho để phân tích.</p>
+            </div>
+
+            <div v-else>
+              <div class="flex justify-center py-2">
+                <ApexCharts type="donut" :options="stockHealthOptions" :series="stockHealthSeries" width="260" height="180" />
+              </div>
+              
+              <!-- Custom Legend & Counts display -->
+              <div class="stock-health-legend mt-2 border-t border-zinc-100 pt-2">
+                <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 last:border-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="legend-dot" style="background-color: #16825D;"></span>
+                    <span class="text-xs text-zinc-700">Còn hàng</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold tabular-num text-zinc-900">{{ formatNumber(stockHealthData.healthy) }}</span>
+                    <span class="text-3xs text-zinc-400">({{ formatPercent(stockHealthData.healthy, stockHealthTotal) }})</span>
+                  </div>
+                </div>
+                <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 last:border-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="legend-dot" style="background-color: #D97706;"></span>
+                    <span class="text-xs text-zinc-700">Sắp hết</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold tabular-num text-zinc-900">{{ formatNumber(stockHealthData.lowStock) }}</span>
+                    <span class="text-3xs text-zinc-400">({{ formatPercent(stockHealthData.lowStock, stockHealthTotal) }})</span>
+                  </div>
+                </div>
+                <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 last:border-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="legend-dot" style="background-color: #DC2626;"></span>
+                    <span class="text-xs text-zinc-700">Hết hàng</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold tabular-num text-zinc-900">{{ formatNumber(stockHealthData.outOfStock) }}</span>
+                    <span class="text-3xs text-zinc-400">({{ formatPercent(stockHealthData.outOfStock, stockHealthTotal) }})</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
-          <!-- Section: Warehouse Distribution (Placeholder) -->
+          <!-- Section: Warehouse Distribution -->
           <section class="card card-pad">
             <div class="section-head mb-4">
               <h2 class="section-title text-zinc-900">Phân bổ kho hàng</h2>
-              <p class="eyebrow text-zinc-500">Tỷ trọng số lượng hàng theo vị trí</p>
+              <p class="eyebrow text-zinc-500">Tỷ trọng số lượng tồn kho theo vị trí</p>
             </div>
-            <div class="analytical-placeholder-mini">
+
+            <div v-if="isWarehouseDistLoading" class="loading-state-mini">
+              <i class="mdi mdi-loading mdi-spin text-xl text-blue-600"></i>
+              <span>Đang tải phân bổ kho...</span>
+            </div>
+
+            <div v-else-if="warehouseDistFailed" class="analytical-placeholder-error py-6 text-center">
+              <i class="mdi mdi-alert-circle-outline text-2xl text-red-500 mb-2"></i>
+              <p class="text-xs text-zinc-700 font-semibold mb-2">Không thể tải dữ liệu phân bổ kho hàng.</p>
+              <button class="btn btn-secondary btn-sm" @click="fetchWarehouseDistribution">Thử lại</button>
+            </div>
+
+            <div v-else-if="warehouseDistData.length === 0" class="analytical-placeholder-mini">
               <i class="mdi mdi-chart-bar-horizontal text-2xl text-zinc-400 mb-2"></i>
-              <p class="text-xs text-zinc-500 text-center px-4">Tính năng này sẽ được kích hoạt sau.</p>
+              <p class="text-xs text-zinc-500 text-center px-4">Chưa có dữ liệu tồn kho theo kho hàng.</p>
+            </div>
+
+            <div v-else>
+              <div class="relative">
+                <ApexCharts type="bar" :options="warehouseDistOptions" :series="warehouseDistSeries" height="180" />
+              </div>
+              <div v-if="warehouseDistData.length > 5" class="mt-2 text-right">
+                <span class="text-3xs text-zinc-400">Hiển thị tất cả {{ warehouseDistData.length }} kho hàng</span>
+              </div>
             </div>
           </section>
         </div>
@@ -808,7 +1301,12 @@ function viewDocumentDetail(type, documentId) {
               tabindex="0"
             >
               <div class="attention-item__main">
-                <span class="badge-tag badge-tag--danger">Tồn kho thấp</span>
+                <span 
+                  class="badge-tag"
+                  :class="item.severity === 'CRITICAL' ? 'badge-tag--danger' : 'badge-tag--warning'"
+                >
+                  {{ item.severity === 'CRITICAL' ? 'Hết hàng' : 'Cảnh báo' }}
+                </span>
                 <strong>{{ item.productName }}</strong>
                 <p>{{ item.warehouseName }} · Tồn: {{ item.available }} / tối thiểu {{ item.minStock }}</p>
               </div>
@@ -1454,5 +1952,38 @@ function viewDocumentDetail(type, documentId) {
   .compact-activity-table {
     min-width: 500px;
   }
+}
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.select-sm {
+  min-height: 32px;
+  height: 32px;
+  padding: 4px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+.tabs-sm {
+  padding: 2px;
+  border-radius: 6px;
+}
+.tab-sm {
+  padding: 4px 10px;
+  font-size: 13px;
+  border-radius: 4px;
+}
+.analytical-placeholder-error {
+  min-height: 120px;
+  border: 1px dashed var(--color-danger);
+  background-color: var(--color-danger-soft);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
 }
 </style>
