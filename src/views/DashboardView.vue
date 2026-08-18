@@ -993,7 +993,9 @@ const warehouseDistOptions = computed(() => {
                 :disabled="isMovementLoading"
               >
                 <option value="">Tất cả kho</option>
-                <option v-for="w in warehouseList" :key="w.id" :value="w.id">{{ w.name }}</option>
+                <option v-for="w in warehouseList" :key="w.id" :value="w.id">
+                  {{ w.maKho || w.code ? `${w.maKho || w.code} - ${w.tenKho || w.name || '-'}` : (w.tenKho || w.name || '-') }}
+                </option>
               </select>
               <div class="tabs tabs-sm">
                 <button 
