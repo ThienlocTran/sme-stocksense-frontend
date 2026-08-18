@@ -599,6 +599,24 @@ function viewDocumentDetail(type, documentId) {
   white-space: nowrap;
 }
 
+.date-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: span 2;
+}
+
+.date-filter-group .input {
+  flex: 1;
+  min-width: 120px;
+}
+
+.date-range-sep {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  padding: 0 4px;
+}
+
 /* Mobile transaction log responsive list */
 .inventory-mobile-list {
   display: none;
@@ -652,6 +670,7 @@ function viewDocumentDetail(type, documentId) {
     align-items: center;
   }
   .date-filter-group {
+    grid-column: span 1;
     flex-direction: column;
     align-items: stretch;
     width: 100%;
