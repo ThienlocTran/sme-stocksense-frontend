@@ -57,25 +57,26 @@ const badgeClass = computed(() => {
 .status-điều-chỉnh-tăng,
 .status-điều-chỉnh-giảm,
 .status-đang-kiểm-kê {
-  background: #fff9f0;
+  background: var(--color-warning-soft);
   color: var(--color-warning);
-  border-color: rgba(216, 138, 19, 0.2);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .status-đã-duyệt {
-  background: #edf4fe;
+  background: var(--color-info-soft);
   color: var(--color-info);
-  border-color: rgba(57, 117, 217, 0.2);
+  border-color: rgba(2, 132, 199, 0.2);
 }
 
 .status-từ-chối,
 .status-thiếu-hàng,
+.status-hết-hàng,
 .status-cao,
 .status-khẩn-cấp,
 .status-xuất-kho {
-  background: #fdf2f2;
+  background: var(--color-danger-soft);
   color: var(--color-danger);
-  border-color: rgba(194, 65, 59, 0.2);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 .status-hoàn-thành,
@@ -86,7 +87,7 @@ const badgeClass = computed(() => {
 .status-đang-bán,
 .status-nhập-kho,
 .status-đã-chốt {
-  background: var(--color-primary-soft);
+  background: var(--color-success-soft);
   color: var(--color-success);
   border-color: rgba(22, 130, 93, 0.2);
 }
@@ -100,44 +101,44 @@ const badgeClass = computed(() => {
 }
 
 .status-open {
-  background: #fdf2f2;
+  background: var(--color-danger-soft);
   color: var(--color-danger);
-  border-color: rgba(194, 65, 59, 0.2);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 .status-viewed {
-  background: #fff9f0;
+  background: var(--color-warning-soft);
   color: var(--color-warning);
-  border-color: rgba(216, 138, 19, 0.2);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .status-processed {
-  background: var(--color-primary-soft);
+  background: var(--color-success-soft);
   color: var(--color-success);
   border-color: rgba(22, 130, 93, 0.2);
 }
 
 .severity-critical {
-  background: #fdf2f2;
+  background: var(--color-danger-soft);
   color: var(--color-danger);
-  border-color: rgba(194, 65, 59, 0.2);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 .severity-high {
-  background: #fff9f0;
+  background: var(--color-warning-soft);
   color: var(--color-warning);
-  border-color: rgba(216, 138, 19, 0.2);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .severity-medium {
-  background: #fff9f0;
+  background: var(--color-warning-soft);
   color: var(--color-warning);
-  border-color: rgba(216, 138, 19, 0.2);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .severity-low {
-  background: #edf4fe;
+  background: var(--color-info-soft);
   color: var(--color-info);
-  border-color: rgba(57, 117, 217, 0.2);
+  border-color: rgba(2, 132, 199, 0.2);
 }
 </style>
