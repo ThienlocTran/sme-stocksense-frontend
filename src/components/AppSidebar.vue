@@ -39,6 +39,7 @@ const menuSections = [
   {
     title: "Phân tích",
     items: [
+      { label: "Dự báo AI", to: "/forecast", icon: "mdi-chart-line" },
       { label: "Cảnh báo tồn kho", to: "/alerts", icon: "mdi-alert-outline" },
       {
         label: "Lịch sử giao dịch",
