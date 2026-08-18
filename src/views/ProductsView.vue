@@ -644,103 +644,154 @@ function formatCurrency(value) {
         {{ saveErrorMessage }}
       </p>
 
-      <div class="form-grid">
-        <label
-          >Mã sản phẩm<input
-            v-model="form.code"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.code }}</small></label
-        >
-        <label
-          >Tên sản phẩm<input
-            v-model="form.name"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.name }}</small></label
-        >
-        <label
-          >SKU<input
-            v-model="form.sku"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.sku }}</small></label
-        >
-        <label
-          >Mã vạch<input
-            v-model="form.barcode"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.barcode }}</small></label
-        >
-        <label
-          >Đơn vị<input
-            v-model="form.unit"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.unit }}</small></label
-        >
-        <label
-          >Đơn giá<input
-            v-model="form.price"
-            class="input"
-            type="number"
-            min="0"
-            step="0.01"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.price }}</small></label
-        >
-        <label
-          >Ngưỡng tối thiểu<input
-            v-model="form.minStock"
-            class="input"
-            type="number"
-            min="0"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.minStock }}</small></label
-        >
-        <label
-          >Danh mục<select
-            v-model="form.categoryId"
-            class="select"
-            :disabled="isSaving"
-          >
-            <option value="">Không chọn</option>
-            <option
-              v-for="category in categories"
-              :key="category.id"
-              :value="category.id"
-            >
-              {{ category.name }}
-            </option></select
-          ><small class="field-error">{{ formErrors.categoryId }}</small></label
-        >
-        <label
-          >Nhà cung cấp<select
-            v-model="form.partnerId"
-            class="select"
-            :disabled="isSaving"
-          >
-            <option value="">Không chọn</option>
-            <option
-              v-for="supplier in suppliers"
-              :key="supplier.id"
-              :value="supplier.id"
-            >
-              {{ supplier.tenDoiTac }}
-            </option></select
-          ><small class="field-error">{{ formErrors.partnerId }}</small></label
-        >
-        <label v-if="isEditMode"
-          >Trạng thái<select
-            v-model="form.status"
-            class="select"
-            :disabled="isSaving"
-          >
-            <option value="HOAT_DONG">Đang hoạt động</option>
-            <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option></select
-          ><small class="field-error">{{ formErrors.status }}</small></label
-        >
+      <div class="form-sections">
+        <!-- Section 1: Thông tin cơ bản -->
+        <fieldset class="form-fieldset">
+          <legend class="form-legend">Thông tin cơ bản</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label class="field-label">Mã sản phẩm *</label>
+              <input
+                v-model="form.code"
+                class="input"
+                :class="{ 'input--error': formErrors.code }"
+                :disabled="isSaving || isEditMode"
+              />
+              <small class="field-error">{{ formErrors.code }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Tên sản phẩm *</label>
+              <input
+                v-model="form.name"
+                class="input"
+                :class="{ 'input--error': formErrors.name }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.name }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">SKU</label>
+              <input
+                v-model="form.sku"
+                class="input"
+                :class="{ 'input--error': formErrors.sku }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.sku }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Mã vạch</label>
+              <input
+                v-model="form.barcode"
+                class="input"
+                :class="{ 'input--error': formErrors.barcode }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.barcode }}</small>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Section 2: Phân loại & Giá cả -->
+        <fieldset class="form-fieldset">
+          <legend class="form-legend">Phân loại & Giá cả</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label class="field-label">Đơn vị *</label>
+              <input
+                v-model="form.unit"
+                class="input"
+                :class="{ 'input--error': formErrors.unit }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.unit }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Đơn giá *</label>
+              <input
+                v-model="form.price"
+                class="input"
+                type="number"
+                min="0"
+                step="0.01"
+                :class="{ 'input--error': formErrors.price }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.price }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Ngưỡng tối thiểu</label>
+              <input
+                v-model="form.minStock"
+                class="input"
+                type="number"
+                min="0"
+                :class="{ 'input--error': formErrors.minStock }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.minStock }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Danh mục</label>
+              <select
+                v-model="form.categoryId"
+                class="select"
+                :class="{ 'input--error': formErrors.categoryId }"
+                :disabled="isSaving"
+              >
+                <option value="">Không chọn</option>
+                <option
+                  v-for="category in categories"
+                  :key="category.id"
+                  :value="category.id"
+                >
+                  {{ category.name }}
+                </option>
+              </select>
+              <small class="field-error">{{ formErrors.categoryId }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Nhà cung cấp</label>
+              <select
+                v-model="form.partnerId"
+                class="select"
+                :class="{ 'input--error': formErrors.partnerId }"
+                :disabled="isSaving"
+              >
+                <option value="">Không chọn</option>
+                <option
+                  v-for="supplier in suppliers"
+                  :key="supplier.id"
+                  :value="supplier.id"
+                >
+                  {{ supplier.tenDoiTac }}
+                </option>
+              </select>
+              <small class="field-error">{{ formErrors.partnerId }}</small>
+            </div>
+
+            <div class="field" v-if="isEditMode">
+              <label class="field-label">Trạng thái *</label>
+              <select
+                v-model="form.status"
+                class="select"
+                :class="{ 'input--error': formErrors.status }"
+                :disabled="isSaving"
+              >
+                <option value="HOAT_DONG">Đang hoạt động</option>
+                <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
+              </select>
+              <small class="field-error">{{ formErrors.status }}</small>
+            </div>
+          </div>
+        </fieldset>
       </div>
 
       <div class="modal-foot">
@@ -1030,5 +1081,39 @@ function formatCurrency(value) {
     flex: 1;
     justify-content: center;
   }
+}
+
+.form-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.form-fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 18px;
+  margin: 0;
+}
+.form-legend {
+  padding: 0 8px;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.input--error {
+  border-color: var(--color-danger) !important;
+  background-color: #fdf2f2 !important;
 }
 </style>
