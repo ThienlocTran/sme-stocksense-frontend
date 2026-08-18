@@ -8,9 +8,11 @@ import WelcomeModal from "./components/WelcomeModal.vue";
 import { getCurrentUser } from "./services/authService";
 import { canAccessRoute } from "./services/permissionService";
 import { useAuthStore } from "./stores/auth";
+import { useLayoutStore } from "./stores/layout";
 
 const route = useRoute();
 const authStore = useAuthStore();
+const layoutStore = useLayoutStore();
 const currentRole = computed(() => authStore.currentRole);
 const isAuthLayout = computed(() => route.meta.layout === "auth");
 const isWelcomeModalOpen = ref(false);
@@ -63,6 +65,7 @@ function closeWelcomeModal(action = "dismiss") {
   }
 }
 
+// Complete rewrite of close/skip guided tour
 function closeGuidedTour() {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(getStorageKey(GUIDED_TOUR_STORAGE_KEY), "true");
@@ -94,13 +97,13 @@ const guidedTourSteps = [
     title: "Pending Approval",
     description:
       "Nhóm này giúp bạn thấy các phiếu nhập và xuất đang chờ duyệt trước khi vào màn hình chi tiết.",
-    selector: ".dashboard-section-grid .card:nth-of-type(1)",
+    selector: ".attention-panel",
     permissionRoute: "/approvals",
   },
   {
     title: "Alerts",
     description: "Theo dõi các mặt hàng ở ngưỡng cảnh báo để xử lý kịp thời.",
-    selector: ".dashboard-section-grid .card:nth-of-type(2)",
+    selector: ".attention-panel",
   },
   {
     title: "Inventory",
@@ -158,11 +161,39 @@ watch(isAuthLayout, (newVal, oldVal) => {
     }
   }
 });
+
+// Watch route changes to automatically close the mobile sidebar drawer
+watch(
+  () => route.path,
+  () => {
+    layoutStore.closeMobileSidebar();
+  }
+);
+
+// Add/remove scroll locking on document body when mobile sidebar is open
+watch(
+  () => layoutStore.isMobileOpen,
+  (isOpen) => {
+    if (typeof document !== "undefined") {
+      if (isOpen) {
+        document.body.classList.add("overflow-hidden");
+      } else {
+        document.body.classList.remove("overflow-hidden");
+      }
+    }
+  }
+);
 </script>
 
 <template>
   <RouterView v-if="isAuthLayout" />
   <div v-else class="app-shell">
+    <div
+      v-if="layoutStore.isMobileOpen"
+      class="sidebar-overlay"
+      @click="layoutStore.closeMobileSidebar"
+    ></div>
+
     <AppSidebar />
     <div class="app-main">
       <AppTopbar />
