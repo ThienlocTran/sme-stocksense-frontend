@@ -65,7 +65,7 @@ export function canAccessRoute(path, role) {
   }
 
   if (path === '/import-excel') {
-    return EXCEL_IMPORT_ROLES.includes(resolvedRole)
+    return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
   }
 
   if (path === '/partners') {
@@ -104,4 +104,28 @@ export function canAccessRoute(path, role) {
 
 export function canCompleteExportReceipt(role) {
   return ['ADMIN', 'EMPLOYEE'].includes(resolveRole(role))
+}
+
+export function canCreateImportReceipt(role) {
+  return ['ADMIN', 'EMPLOYEE'].includes(resolveRole(role))
+}
+
+export function canApproveImportReceipt(role) {
+  return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
+}
+
+export function canCreateExportReceipt(role) {
+  return ['ADMIN', 'EMPLOYEE'].includes(resolveRole(role))
+}
+
+export function canApproveExportReceipt(role) {
+  return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
+}
+
+export function canOperateImportExcel(role) {
+  return ['ADMIN', 'EMPLOYEE'].includes(resolveRole(role))
+}
+
+export function canViewAllStockDocuments(role) {
+  return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
 }

@@ -1,6 +1,8 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { getCurrentRoleCode } from '../services/authService'
+import { canOperateImportExcel } from '../services/permissionService'
 import PageHeader from '../components/PageHeader.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { getWarehouses } from '../services/warehouseService'
@@ -13,6 +15,7 @@ import {
 } from '../services/excelImportService'
 
 const router = useRouter()
+const canOperate = computed(() => canOperateImportExcel(getCurrentRoleCode()))
 
 // Config states
 const importType = ref('PRODUCT_ONLY')
@@ -300,6 +303,11 @@ function formatDate(dateStr) {
         </div>
 
         <div class="card-body mt-4 flex flex-col gap-4">
+          <div v-if="!canOperate" class="alert alert-error mb-2">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <span>Bạn không có quyền tải lên hoặc xác nhận import file Excel (Chỉ khả dụng cho Admin và Nhân viên kho).</span>
+          </div>
+
           <!-- File picker row -->
           <div class="field">
             <label>File dữ liệu Excel (.xlsx) *</label>
@@ -307,7 +315,7 @@ function formatDate(dateStr) {
               <button
                 class="btn btn-secondary"
                 type="button"
-                :disabled="phase === 'validating' || phase === 'importing' || phase === 'done'"
+                :disabled="!canOperate || phase === 'validating' || phase === 'importing' || phase === 'done'"
                 @click="fileInput.click()"
               >
                 <i class="mdi mdi-file-excel-outline"></i>
@@ -329,7 +337,7 @@ function formatDate(dateStr) {
             <button
               id="btn-upload-validate"
               class="btn btn-primary"
-              :disabled="!selectedFile || phase === 'validating' || phase === 'importing' || phase === 'done'"
+              :disabled="!canOperate || !selectedFile || phase === 'validating' || phase === 'importing' || phase === 'done'"
               @click="handleUploadAndValidate"
             >
               <i v-if="phase === 'validating'" class="mdi mdi-loading mdi-spin"></i>
@@ -464,7 +472,7 @@ function formatDate(dateStr) {
               v-if="phase !== 'done'"
               id="btn-confirm-import"
               class="btn btn-success"
-              :disabled="!validationResult.valid || phase === 'importing'"
+              :disabled="!canOperate || !validationResult.valid || phase === 'importing'"
               @click="showConfirmDialog = true"
             >
               <i v-if="phase === 'importing'" class="mdi mdi-loading mdi-spin"></i>

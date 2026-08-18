@@ -6,9 +6,10 @@ import DataTable from '../components/DataTable.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
-import { getCurrentRoleCode } from '../services/authService'
-import { cancelDraft, getImportReceipts, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
-import { cancelExportReceipt, getExportReceipts, getMyExportReceipts, submitExportReceipt } from '../services/exportReceiptService'
+import { getCurrentRoleCode, getCurrentUser } from '../services/authService'
+import { canCreateImportReceipt, canCreateExportReceipt } from '../services/permissionService'
+import { cancelDraft, cancelLateImportReceipt, getImportReceipts, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
+import { cancelExportReceipt, cancelLateExportReceipt, getExportReceipts, getMyExportReceipts, submitExportReceipt } from '../services/exportReceiptService'
 
 const props = defineProps({ type: { type: String, default: 'in' } })
 
@@ -47,7 +48,7 @@ const hasPreviousPage = computed(() => page.value > 0)
 const hasNextPage = computed(() => page.value + 1 < totalPages.value)
 const currentRole = computed(() => getCurrentRoleCode())
 const isOut = computed(() => props.type === 'out')
-const canCreateImportReceipt = computed(() => currentRole.value === 'ADMIN' || currentRole.value === 'EMPLOYEE')
+const canCreateReceipt = computed(() => isOut.value ? canCreateExportReceipt() : canCreateImportReceipt())
 const pageTitle = computed(() => `${isOut.value ? 'Phiếu xuất' : 'Phiếu nhập'}${currentRole.value === 'EMPLOYEE' ? ' của tôi' : ' kho'}`)
 const pageDescription = computed(() => `Danh sách phiếu ${isOut.value ? 'xuất' : 'nhập'} kho từ hệ thống.`)
 
@@ -157,7 +158,7 @@ function nextPage() {
 }
 
 function goCreate() {
-  if (!canCreateImportReceipt.value) return
+  if (!canCreateReceipt.value) return
   router.push(`${isOut.value ? '/stock-out' : '/stock-in'}/create`)
 }
 
@@ -192,7 +193,7 @@ function handleSubmit(receipt) {
 }
 
 function handleCancel(receipt) {
-  if (!canCancelImportReceipt(receipt.status)) return
+  if (!canCancelReceipt(receipt)) return
   confirmState.open = true
   confirmState.action = 'cancel'
   confirmState.receipt = receipt
@@ -244,10 +245,21 @@ async function confirmCancel(receipt) {
   actionErrorMessage.value = ''
 
   try {
-    if (isOut.value) await cancelExportReceipt(receipt.id)
-    else await cancelDraft(receipt.id)
+    if (isOut.value) {
+      if (receipt.status === 'DA_DUYET') {
+        await cancelLateExportReceipt(receipt.id, 'Hủy phiếu xuất')
+      } else {
+        await cancelExportReceipt(receipt.id)
+      }
+    } else {
+      if (receipt.status === 'CHO_HANG_VE' || receipt.status === 'CHO_KIEM_HANG') {
+        await cancelLateImportReceipt(receipt.id, 'Hủy phiếu nhập')
+      } else {
+        await cancelDraft(receipt.id)
+      }
+    }
     await fetchReceipts()
-    actionMessage.value = 'Hủy phiếu nhập thành công.'
+    actionMessage.value = `Hủy phiếu ${isOut.value ? 'xuất' : 'nhập'} thành công.`
   } catch (error) {
     actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
     if (error.status === 401) router.replace('/login')
@@ -295,9 +307,37 @@ function submitLabel(status) {
   return status === 'TU_CHOI' ? 'Gửi duyệt lại' : 'Gửi duyệt'
 }
 
-function canCancelImportReceipt(status) {
-  if (!['ADMIN', 'EMPLOYEE'].includes(currentRole.value)) return false
-  return status === 'NHAP'
+function canCancelReceipt(row) {
+  const role = currentRole.value
+  const status = row.status
+  const currentUser = getCurrentUser()
+  const isReceiptOut = isOut.value
+
+  if (status === 'NHAP') {
+    if (role === 'ADMIN') return true
+    if (role === 'EMPLOYEE') {
+      if (!currentUser) return true
+      const creatorName = row.createdByName || row.createdBy
+      if (creatorName && creatorName !== currentUser.fullName && creatorName !== currentUser.email) {
+        return false
+      }
+      return true
+    }
+    return false
+  }
+
+  // Late stage cancellation
+  if (isReceiptOut) {
+    if (status === 'DA_DUYET') {
+      return ['ADMIN', 'MANAGER'].includes(role)
+    }
+  } else {
+    if (status === 'CHO_HANG_VE' || status === 'CHO_KIEM_HANG') {
+      return ['ADMIN', 'MANAGER'].includes(role)
+    }
+  }
+
+  return false
 }
 
 function formatDate(value) {
@@ -329,7 +369,7 @@ function confirmText() {
 
 <template>
   <PageHeader :title="pageTitle" :description="pageDescription">
-    <button v-if="canCreateImportReceipt" class="btn btn-primary" type="button" @click="goCreate">
+    <button v-if="canCreateReceipt" class="btn btn-primary" type="button" @click="goCreate">
       <i class="mdi" :class="isOut ? 'mdi-tray-arrow-up' : 'mdi-tray-arrow-down'"></i> Tạo phiếu
     </button>
   </PageHeader>
@@ -400,7 +440,7 @@ function confirmText() {
                 <i class="mdi mdi-send-outline"></i> {{ submitLabel(row.status) }}
               </button>
               <button 
-                v-if="canCancelImportReceipt(row.status)" 
+                v-if="canCancelReceipt(row)" 
                 class="dropdown-item" 
                 type="button" 
                 :disabled="isAnyActionRunning(row)" 
@@ -475,7 +515,7 @@ function confirmText() {
         <button v-if="canSubmitImportReceipt(row.status)" class="btn btn-sm btn-primary" type="button" :disabled="isAnyActionRunning(row)" @click="handleSubmit(row)">
           {{ isActionRunning(row, 'submit') ? 'Đang gửi...' : submitLabel(row.status) }}
         </button>
-        <button v-if="canCancelImportReceipt(row.status)" class="btn btn-sm btn-danger" type="button" :disabled="isAnyActionRunning(row)" @click="handleCancel(row)">
+        <button v-if="canCancelReceipt(row)" class="btn btn-sm btn-danger" type="button" :disabled="isAnyActionRunning(row)" @click="handleCancel(row)">
           Hủy
         </button>
         <button class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="openHistory(row)">

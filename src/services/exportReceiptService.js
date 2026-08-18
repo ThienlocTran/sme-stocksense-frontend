@@ -81,3 +81,6 @@ export async function exportExportReceiptExcel(receiptId) {
 }
 
 
+
+export const cancelLateExportReceipt = (id, reason) => request({ method: 'post', url: `/api/export-receipts/${id}/cancel`, data: { reason } }, 'Không thể hủy phiếu xuất.')
+

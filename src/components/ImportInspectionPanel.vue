@@ -1,8 +1,8 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { canProcessImportReceipt } from '../services/permissionService'
-import {
+import { 
   getDetail,
   confirmArrival,
   inspectReceipt,
@@ -11,7 +11,7 @@ import {
   getImportReceiptHistory,
   exportImportReceiptPdf,
   exportImportReceiptExcel
-} from '../services/importReceiptService'
+, cancelLateImportReceipt } from '../services/importReceiptService'
 import { downloadBlobResponse, setPrintWindowBlob } from '../utils/downloadHelper'
 
 
@@ -30,21 +30,63 @@ const error = ref('')
 const successMessage = ref('')
 const exporting = ref(false)
 
-// State cho form kiểm hàng
+// State cho form kiá»ƒm hÃ ng
 const inspectItems = ref([])
 
-// State cho biên bản chênh lệch
+// State cho biÃªn báº£n chÃªnh lá»‡ch
 const discrepancyNote = ref('')
+const cancelLateState = ref({
+  open: false,
+  reason: '',
+  error: '',
+  submitting: false,
+});
+
 const discrepancyReportSaved = ref(false)
 const savedDiscrepancySignature = ref('')
 
-// Lịch sử phê duyệt
+// Lá»‹ch sá»­ phÃª duyá»‡t
 const historyList = ref([])
 
 const authStore = useAuthStore()
 const canProcessReceipt = computed(() => {
   return canProcessImportReceipt(authStore.currentRole)
 })
+const isReceiptOwner = computed(() => {
+  if (!receipt.value) return false
+  const currentUser = authStore.currentUser
+  if (!currentUser) return false
+
+  const creatorName = receipt.value.createdByName || receipt.value.createdBy || receipt.value.creatorName || receipt.value.creator
+  const creatorId = receipt.value.createdById || receipt.value.creatorId || receipt.value.employeeId
+
+  const matchByName = creatorName && (creatorName === currentUser.fullName || creatorName === currentUser.email)
+  const matchById = creatorId && String(creatorId) === String(currentUser.employeeId)
+
+  if (!creatorName && !creatorId) return true
+
+  return Boolean(matchByName || matchById)
+})
+
+const canArrival = computed(() => {
+  if (!canProcessReceipt.value) return false
+  if (authStore.currentRole === 'EMPLOYEE') {
+    return isReceiptOwner.value
+  }
+  return true
+})
+const canManageApproval = computed(() => ['ADMIN', 'MANAGER'].includes(authStore.currentRole));
+
+const canCancelLate = computed(() => {
+  return (
+    canManageApproval.value &&
+    !loading.value &&
+    !submitting.value &&
+    receipt.value &&
+    (receipt.value.status === 'CHO_HANG_VE' || receipt.value.status === 'CHO_KIEM_HANG')
+  );
+});
+
 
 const receiptItems = computed(() => receipt.value?.items ?? receipt.value?.details ?? [])
 
@@ -84,35 +126,35 @@ const statusColor = computed(() => {
 const statusLabel = computed(() => {
   if (!receipt.value) return ''
   const labels = {
-    NHAP: 'Bản nháp',
-    CHO_DUYET_CAP_1: 'Chờ duyệt cấp 1',
-    CHO_DUYET_CAP_2: 'Chờ duyệt cấp 2',
-    CHO_HANG_VE: 'Chờ hàng về',
-    CHO_KIEM_HANG: 'Chờ kiểm hàng',
-    HOAN_THANH: 'Hoàn thành',
-    TU_CHOI: 'Từ chối',
-    HUY: 'Đã hủy'
+    NHAP: 'Báº£n nhÃ¡p',
+    CHO_DUYET_CAP_1: 'Chá» duyá»‡t cáº¥p 1',
+    CHO_DUYET_CAP_2: 'Chá» duyá»‡t cáº¥p 2',
+    CHO_HANG_VE: 'Chá» hÃ ng vá»',
+    CHO_KIEM_HANG: 'Chá» kiá»ƒm hÃ ng',
+    HOAN_THANH: 'HoÃ n thÃ nh',
+    TU_CHOI: 'Tá»« chá»‘i',
+    HUY: 'ÄÃ£ há»§y'
   }
   return labels[receipt.value.status] || receipt.value.status
 })
 
 const statusHelpers = {
-  NHAP: 'Bản nháp - phiếu chưa được gửi phê duyệt.',
-  CHO_DUYET_CAP_1: 'Chờ duyệt cấp 1 - đang chờ quản lý kho cấp 1 xử lý.',
-  CHO_DUYET_CAP_2: 'Chờ duyệt cấp 2 - đang chờ quản lý kho cấp 2 xử lý.',
-  CHO_HANG_VE: 'Chờ hàng về - phiếu đã duyệt, đang chờ hàng giao đến kho.',
-  CHO_KIEM_HANG: 'Chờ kiểm hàng - hàng đã về kho, vui lòng thực hiện kiểm kê thực tế.',
-  HOAN_THANH: 'Hoàn thành - phiếu nhập kho đã hoàn tất và lưu kho thành công.',
-  TU_CHOI: 'Từ chối - phiếu bị từ chối phê duyệt. Vui lòng kiểm tra lý do và chỉnh sửa.',
-  HUY: 'Đã hủy - phiếu nhập kho đã bị hủy.'
+  NHAP: 'Báº£n nhÃ¡p - phiáº¿u chÆ°a Ä‘Æ°á»£c gá»­i phÃª duyá»‡t.',
+  CHO_DUYET_CAP_1: 'Chá» duyá»‡t cáº¥p 1 - Ä‘ang chá» quáº£n lÃ½ kho cáº¥p 1 xá»­ lÃ½.',
+  CHO_DUYET_CAP_2: 'Chá» duyá»‡t cáº¥p 2 - Ä‘ang chá» quáº£n lÃ½ kho cáº¥p 2 xá»­ lÃ½.',
+  CHO_HANG_VE: 'Chá» hÃ ng vá» - phiáº¿u Ä‘Ã£ duyá»‡t, Ä‘ang chá» hÃ ng giao Ä‘áº¿n kho.',
+  CHO_KIEM_HANG: 'Chá» kiá»ƒm hÃ ng - hÃ ng Ä‘Ã£ vá» kho, vui lÃ²ng thá»±c hiá»‡n kiá»ƒm kÃª thá»±c táº¿.',
+  HOAN_THANH: 'HoÃ n thÃ nh - phiáº¿u nháº­p kho Ä‘Ã£ hoÃ n táº¥t vÃ  lÆ°u kho thÃ nh cÃ´ng.',
+  TU_CHOI: 'Tá»« chá»‘i - phiáº¿u bá»‹ tá»« chá»‘i phÃª duyá»‡t. Vui lÃ²ng kiá»ƒm tra lÃ½ do vÃ  chá»‰nh sá»­a.',
+  HUY: 'ÄÃ£ há»§y - phiáº¿u nháº­p kho Ä‘Ã£ bá»‹ há»§y.'
 }
 
 const ACTION_LABELS = {
-  GUI_DUYET: 'Gửi duyệt',
-  DUYET_CAP_1: 'Duyệt cấp 1',
-  DUYET_CAP_2: 'Duyệt cấp 2',
-  TU_CHOI: 'Từ chối',
-  HUY: 'Hủy phiếu',
+  GUI_DUYET: 'Gá»­i duyá»‡t',
+  DUYET_CAP_1: 'Duyá»‡t cáº¥p 1',
+  DUYET_CAP_2: 'Duyá»‡t cáº¥p 2',
+  TU_CHOI: 'Tá»« chá»‘i',
+  HUY: 'Há»§y phiáº¿u',
 }
 const ACTION_ICONS = {
   GUI_DUYET: 'mdi-send-outline',
@@ -139,7 +181,7 @@ function getHistoryActionColor(action) {
   return ACTION_COLORS[action] || 'grey'
 }
 
-const physicalStatusOptions = ['Tốt', 'Hư hỏng', 'Thiếu', 'Khác']
+const physicalStatusOptions = ['Tá»‘t', 'HÆ° há»ng', 'Thiáº¿u', 'KhÃ¡c']
 
 let currentRequestId = 0
 
@@ -156,7 +198,7 @@ async function loadData() {
     discrepancyNote.value = ''
     discrepancyReportSaved.value = false
     savedDiscrepancySignature.value = ''
-    // Khởi tạo form kiểm hàng
+    // Khá»Ÿi táº¡o form kiá»ƒm hÃ ng
     const detailItems = data.items ?? data.details ?? []
     if (detailItems.length > 0) {
       inspectItems.value = detailItems.map(item => ({
@@ -164,11 +206,11 @@ async function loadData() {
         productCode: item.productCode,
         productName: item.productName,
         expectedQuantity: item.quantity,
-        unitName: item.unitName || 'Cái',
-        actualReceivedQuantity: item.quantity, // mặc định bằng số lượng mong đợi
-        physicalStatus: 'Tốt',
+        unitName: item.unitName || 'CÃ¡i',
+        actualReceivedQuantity: item.quantity, // máº·c Ä‘á»‹nh báº±ng sá»‘ lÆ°á»£ng mong Ä‘á»£i
+        physicalStatus: 'Tá»‘t',
         expiryDate: '',
-        // fields cho biên bản chênh lệch
+        // fields cho biÃªn báº£n chÃªnh lá»‡ch
         reason: '',
         action: ''
       }))
@@ -182,7 +224,7 @@ async function loadData() {
     }
   } catch (err) {
     if (requestId !== currentRequestId) return
-    error.value = err.message || 'Lỗi tải dữ liệu phiếu nhập'
+    error.value = err.message || 'Lá»—i táº£i dá»¯ liá»‡u phiáº¿u nháº­p'
   } finally {
     if (requestId !== currentRequestId) return
     loading.value = false
@@ -191,7 +233,7 @@ async function loadData() {
 
 function hasPhysicalIssue(status) {
   if (!status) return false
-  return !['Tốt', 'Bình thường', 'Nguyên vẹn'].includes(status)
+  return !['Tá»‘t', 'BÃ¬nh thÆ°á»ng', 'NguyÃªn váº¹n'].includes(status)
 }
 
 function buildInspectPayload() {
@@ -226,12 +268,59 @@ async function handleArrival() {
   successMessage.value = ''
   try {
     await confirmArrival(props.receiptId)
-    successMessage.value = 'Đã xác nhận hàng về thành công.'
+    successMessage.value = 'ÄÃ£ xÃ¡c nháº­n hÃ ng vá» thÃ nh cÃ´ng.'
     await loadData()
   } catch (err) {
-    error.value = err.message || 'Lỗi khi xác nhận hàng về'
+    error.value = err.message || 'Lá»—i khi xÃ¡c nháº­n hÃ ng vá»'
   } finally {
     submitting.value = false
+  }
+}
+
+function openCancelLateModal() {
+  cancelLateState.value = {
+    open: true,
+    reason: '',
+    error: '',
+    submitting: false,
+  };
+}
+
+function closeCancelLateModal() {
+  if (cancelLateState.value.submitting) return;
+  cancelLateState.value = {
+    open: false,
+    reason: '',
+    error: '',
+    submitting: false,
+  };
+}
+
+async function confirmCancelLate() {
+  const reason = cancelLateState.value.reason.trim();
+  if (!reason) {
+    cancelLateState.value.error = 'Vui lÃ²ng nháº­p lÃ½ do há»§y.';
+    return;
+  }
+  if (reason.length > 500) {
+    cancelLateState.value.error = `LÃ½ do há»§y khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 500 kÃ½ tá»±.`;
+    return;
+  }
+
+  cancelLateState.value.submitting = true;
+  cancelLateState.value.error = '';
+  error.value = '';
+  successMessage.value = '';
+
+  try {
+    const cancelledReceipt = await cancelLateImportReceipt(String(props.receiptId), reason);
+    receipt.value = cancelledReceipt;
+    cancelLateState.value = { open: false, reason: '', error: '', submitting: false };
+    successMessage.value = `ÄÃ£ há»§y phiáº¿u ${cancelledReceipt?.code || props.receiptId} thÃ nh cÃ´ng.`;
+    await loadData();
+  } catch (err) {
+    cancelLateState.value.submitting = false;
+    cancelLateState.value.error = err.message || 'KhÃ´ng thá»ƒ há»§y phiáº¿u nháº­p.';
   }
 }
 
@@ -241,7 +330,7 @@ async function handleComplete() {
   successMessage.value = ''
   try {
     if (inspectItems.value.length === 0) {
-      error.value = 'Không có sản phẩm nào để kiểm tra.'
+      error.value = 'KhÃ´ng cÃ³ sáº£n pháº©m nÃ o Ä‘á»ƒ kiá»ƒm tra.'
       return
     }
 
@@ -252,21 +341,21 @@ async function handleComplete() {
     })
 
     if (invalidItem) {
-      error.value = `Số lượng thực nhận của "${invalidItem.productName}" không hợp lệ.`
+      error.value = `Sá»‘ lÆ°á»£ng thá»±c nháº­n cá»§a "${invalidItem.productName}" khÃ´ng há»£p lá»‡.`
       return
     }
 
     if (hasDiscrepancy.value && !isDiscrepancyReportCurrent.value) {
-      error.value = 'Có chênh lệch số lượng/tình trạng hàng. Vui lòng lưu biên bản chênh lệch trước khi hoàn tất nhập kho.'
+      error.value = 'CÃ³ chÃªnh lá»‡ch sá»‘ lÆ°á»£ng/tÃ¬nh tráº¡ng hÃ ng. Vui lÃ²ng lÆ°u biÃªn báº£n chÃªnh lá»‡ch trÆ°á»›c khi hoÃ n táº¥t nháº­p kho.'
       return
     }
 
     await completeImport(props.receiptId, buildInspectPayload())
     
-    successMessage.value = 'Đã hoàn tất nhập kho thành công.'
+    successMessage.value = 'ÄÃ£ hoÃ n táº¥t nháº­p kho thÃ nh cÃ´ng.'
     await loadData()
   } catch (err) {
-    error.value = err.message || 'Lỗi khi hoàn tất phiếu nhập'
+    error.value = err.message || 'Lá»—i khi hoÃ n táº¥t phiáº¿u nháº­p'
   } finally {
     submitting.value = false
   }
@@ -278,28 +367,28 @@ async function handleSaveDiscrepancyReport() {
   successMessage.value = ''
   try {
     if (!hasDiscrepancy.value) {
-      error.value = 'Không có chênh lệch để lập biên bản.'
+      error.value = 'KhÃ´ng cÃ³ chÃªnh lá»‡ch Ä‘á»ƒ láº­p biÃªn báº£n.'
       return
     }
     const invalidItem = findInvalidDiscrepancyItem()
     if (invalidItem) {
-      error.value = `Vui lòng nhập lý do và hướng xử lý cho "${invalidItem.productName}".`
+      error.value = `Vui lÃ²ng nháº­p lÃ½ do vÃ  hÆ°á»›ng xá»­ lÃ½ cho "${invalidItem.productName}".`
       return
     }
     await inspectReceipt(props.receiptId, buildInspectPayload())
     await createDiscrepancyReport(props.receiptId, buildDiscrepancyPayload())
     discrepancyReportSaved.value = true
     savedDiscrepancySignature.value = currentDiscrepancySignature.value
-    successMessage.value = 'Đã lưu biên bản chênh lệch. Bạn có thể hoàn tất nhập kho theo số lượng thực nhận.'
+    successMessage.value = 'ÄÃ£ lÆ°u biÃªn báº£n chÃªnh lá»‡ch. Báº¡n cÃ³ thá»ƒ hoÃ n táº¥t nháº­p kho theo sá»‘ lÆ°á»£ng thá»±c nháº­n.'
   } catch (err) {
-    error.value = err.message || 'Không thể lưu biên bản chênh lệch.'
+    error.value = err.message || 'KhÃ´ng thá»ƒ lÆ°u biÃªn báº£n chÃªnh lá»‡ch.'
   } finally {
     savingDiscrepancy.value = false
   }
 }
 
 function formatCurrency(value) {
-  if (value == null) return '0 ₫'
+  if (value == null) return '0 â‚«'
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
 }
 
@@ -343,10 +432,10 @@ async function handleExport(format) {
   if (format === 'print') {
     printWindow = window.open('', '_blank')
     if (!printWindow) {
-      error.value = 'Không thể mở bản in. Vui lòng cho phép trình duyệt hiển thị popup.'
+      error.value = 'KhÃ´ng thá»ƒ má»Ÿ báº£n in. Vui lÃ²ng cho phÃ©p trÃ¬nh duyá»‡t hiá»ƒn thá»‹ popup.'
       return
     }
-    printWindow.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:20px;">Đang tải bản in PDF...</p>')
+    printWindow.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:20px;">Äang táº£i báº£n in PDF...</p>')
   }
 
   exporting.value = true
@@ -354,11 +443,11 @@ async function handleExport(format) {
     if (format === 'pdf') {
       const response = await exportImportReceiptPdf(props.receiptId)
       downloadBlobResponse(response, `phieu-nhap-${receipt.value?.code || props.receiptId}.pdf`)
-      successMessage.value = 'Xuất phiếu PDF thành công.'
+      successMessage.value = 'Xuáº¥t phiáº¿u PDF thÃ nh cÃ´ng.'
     } else if (format === 'excel') {
       const response = await exportImportReceiptExcel(props.receiptId)
       downloadBlobResponse(response, `phieu-nhap-${receipt.value?.code || props.receiptId}.xlsx`)
-      successMessage.value = 'Xuất file Excel thành công.'
+      successMessage.value = 'Xuáº¥t file Excel thÃ nh cÃ´ng.'
     } else if (format === 'print') {
       const response = await exportImportReceiptPdf(props.receiptId)
       setPrintWindowBlob(printWindow, response)
@@ -367,8 +456,8 @@ async function handleExport(format) {
     if (printWindow) {
       printWindow.close()
     }
-    const actionLabel = format === 'pdf' ? 'xuất phiếu PDF' : format === 'excel' ? 'xuất file Excel' : 'mở bản in'
-    error.value = err.message || `Không thể ${actionLabel}.`
+    const actionLabel = format === 'pdf' ? 'xuáº¥t phiáº¿u PDF' : format === 'excel' ? 'xuáº¥t file Excel' : 'má»Ÿ báº£n in'
+    error.value = err.message || `KhÃ´ng thá»ƒ ${actionLabel}.`
   } finally {
     exporting.value = false
   }
@@ -391,10 +480,10 @@ watch(() => props.receiptId, loadData, { immediate: true })
       {{ successMessage }}
     </v-alert>
 
-    <!-- Thông tin chung -->
+    <!-- ThÃ´ng tin chung -->
     <v-card class="mb-6 rounded-lg elevation-1" border>
       <v-card-title class="font-weight-bold d-flex align-center py-3 px-4">
-        <span>Phiếu Nhập: {{ receipt.code }}</span>
+        <span>Phiáº¿u Nháº­p: {{ receipt.code }}</span>
         <v-spacer></v-spacer>
         <v-chip :color="statusColor" class="font-weight-medium mr-2">{{ statusLabel }}</v-chip>
         <v-menu transition="slide-y-transition">
@@ -409,13 +498,13 @@ watch(() => props.receiptId, loadData, { immediate: true })
               size="small"
               class="font-weight-medium text-capitalize ml-2"
             >
-              Xuất phiếu
+              Xuáº¥t phiáº¿u
             </v-btn>
           </template>
           <v-list density="compact" nav class="py-1">
-            <v-list-item prepend-icon="mdi-printer" title="In phiếu" @click="handleExport('print')" />
-            <v-list-item prepend-icon="mdi-file-pdf-box" title="Xuất PDF" @click="handleExport('pdf')" />
-            <v-list-item prepend-icon="mdi-file-excel-box" title="Xuất Excel" @click="handleExport('excel')" />
+            <v-list-item prepend-icon="mdi-printer" title="In phiáº¿u" @click="handleExport('print')" />
+            <v-list-item prepend-icon="mdi-file-pdf-box" title="Xuáº¥t PDF" @click="handleExport('pdf')" />
+            <v-list-item prepend-icon="mdi-file-excel-box" title="Xuáº¥t Excel" @click="handleExport('excel')" />
           </v-list>
         </v-menu>
       </v-card-title>
@@ -423,42 +512,46 @@ watch(() => props.receiptId, loadData, { immediate: true })
         <!-- Status Helper Description -->
         <div class="text-subtitle-2 text-grey-darken-2 mb-4 bg-grey-lighten-4 pa-3 rounded-lg border-left-brand">
           <v-icon start size="small" color="primary">mdi-information-outline</v-icon>
-          <strong>Trạng thái:</strong> {{ statusHelpers[receipt.status] || 'Trạng thái không xác định.' }}
+          <strong>Tráº¡ng thÃ¡i:</strong> {{ statusHelpers[receipt.status] || 'Tráº¡ng thÃ¡i khÃ´ng xÃ¡c Ä‘á»‹nh.' }}
         </div>
 
         <v-row>
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">Kho hàng</div>
+            <div class="text-caption text-grey">Kho hÃ ng</div>
             <div class="font-weight-medium text-body-1">{{ receipt.warehouseName || '-' }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">Nhà cung cấp</div>
+            <div class="text-caption text-grey">NhÃ  cung cáº¥p</div>
             <div class="font-weight-medium text-body-1">{{ receipt.supplierName || '-' }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">Tổng tiền</div>
+            <div class="text-caption text-grey">Tá»•ng tiá»n</div>
             <div class="font-weight-bold text-body-1 text-primary">{{ formatCurrency(receipt.totalAmount) }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">Ngày tạo</div>
+            <div class="text-caption text-grey">NgÃ y táº¡o</div>
             <div class="font-weight-medium text-body-1">{{ formatDate(receipt.createdAt) }}</div>
           </v-col>
         </v-row>
       </v-card-text>
-      <v-card-actions v-if="receipt.status === 'CHO_HANG_VE' && canProcessReceipt" class="bg-grey-lighten-4 pa-4 border-top">
+      <v-card-actions v-if="receipt.status === 'CHO_HANG_VE' && (canArrival || canCancelLate)" class="bg-grey-lighten-4 pa-4 border-top">
         <v-spacer></v-spacer>
-        <v-btn color="primary" variant="flat" :loading="submitting" @click="handleArrival">
+        <v-btn v-if="canCancelLate" color="error" variant="text" :loading="cancelLateState.submitting" @click="openCancelLateModal">
+          <v-icon start>mdi-cancel</v-icon>
+          Há»§y Phiáº¿u Nháº­p
+        </v-btn>
+        <v-btn v-if="canProcessReceipt" color="primary" variant="flat" :loading="submitting" @click="handleArrival">
           <v-icon start>mdi-truck-check</v-icon>
-          Xác Nhận Hàng Về
+          XÃ¡c Nháº­n HÃ ng Vá»
         </v-btn>
       </v-card-actions>
     </v-card>
 
-    <!-- Kiểm hàng thực tế (khi status = CHO_KIEM_HANG) -->
+    <!-- Kiá»ƒm hÃ ng thá»±c táº¿ (khi status = CHO_KIEM_HANG) -->
     <v-card v-if="receipt.status === 'CHO_KIEM_HANG' && canProcessReceipt" class="mb-6 rounded-lg elevation-1 border-primary" border>
       <v-card-title class="bg-primary text-white d-flex align-center py-3">
         <v-icon start>mdi-clipboard-check</v-icon>
-        Bước 2: Kiểm Hàng Thực Tế
+        BÆ°á»›c 2: Kiá»ƒm HÃ ng Thá»±c Táº¿
       </v-card-title>
       <v-card-text class="pt-4">
         <!-- Desktop view table -->
@@ -466,11 +559,11 @@ watch(() => props.receiptId, loadData, { immediate: true })
           <v-table hover v-if="inspectItems.length > 0">
             <thead>
               <tr>
-                <th class="text-left">Sản phẩm</th>
-                <th class="text-center" width="120">SL Gốc</th>
-                <th class="text-center" width="150">Thực nhận</th>
-                <th class="text-left" width="200">Tình trạng</th>
-                <th class="text-left" width="200">Hạn sử dụng</th>
+                <th class="text-left">Sáº£n pháº©m</th>
+                <th class="text-center" width="120">SL Gá»‘c</th>
+                <th class="text-center" width="150">Thá»±c nháº­n</th>
+                <th class="text-left" width="200">TÃ¬nh tráº¡ng</th>
+                <th class="text-left" width="200">Háº¡n sá»­ dá»¥ng</th>
               </tr>
             </thead>
             <tbody>
@@ -523,13 +616,13 @@ watch(() => props.receiptId, loadData, { immediate: true })
                class="mb-3 pa-3 rounded-lg border"
                :class="item.actualReceivedQuantity !== item.expectedQuantity || hasPhysicalIssue(item.physicalStatus) ? 'bg-red-lighten-5 border-error' : 'bg-grey-lighten-5'">
             <div class="font-weight-bold text-subtitle-1">{{ item.productName }}</div>
-            <div class="text-caption text-grey mb-3">SKU: {{ item.productCode }} | Yêu cầu: {{ item.expectedQuantity }} {{ item.unitName }}</div>
+            <div class="text-caption text-grey mb-3">SKU: {{ item.productCode }} | YÃªu cáº§u: {{ item.expectedQuantity }} {{ item.unitName }}</div>
 
             <v-row class="ma-0">
               <v-col cols="12" class="pa-1">
                 <v-text-field
                   v-model.number="item.actualReceivedQuantity"
-                  label="Số lượng thực nhận"
+                  label="Sá»‘ lÆ°á»£ng thá»±c nháº­n"
                   type="number"
                   min="0"
                   density="compact"
@@ -542,7 +635,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
                 <v-select
                   v-model="item.physicalStatus"
                   :items="physicalStatusOptions"
-                  label="Tình trạng"
+                  label="TÃ¬nh tráº¡ng"
                   density="compact"
                   variant="outlined"
                   hide-details
@@ -552,7 +645,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
               <v-col cols="6" class="pa-1">
                 <v-text-field
                   v-model="item.expiryDate"
-                  label="Hạn sử dụng"
+                  label="Háº¡n sá»­ dá»¥ng"
                   type="date"
                   density="compact"
                   variant="outlined"
@@ -566,29 +659,29 @@ watch(() => props.receiptId, loadData, { immediate: true })
         </div>
 
         <v-alert v-if="inspectItems.length === 0" type="info" variant="tonal" class="mt-2">
-          Không có sản phẩm nào để kiểm tra.
+          KhÃ´ng cÃ³ sáº£n pháº©m nÃ o Ä‘á»ƒ kiá»ƒm tra.
         </v-alert>
       </v-card-text>
     </v-card>
 
-    <!-- Biên bản chênh lệch (nếu có lệch) -->
+    <!-- BiÃªn báº£n chÃªnh lá»‡ch (náº¿u cÃ³ lá»‡ch) -->
     <v-card v-if="receipt.status === 'CHO_KIEM_HANG' && hasDiscrepancy && canProcessReceipt" class="mb-6 rounded-lg elevation-1 border-error" border>
       <v-card-title class="bg-error text-white d-flex align-center py-3">
         <v-icon start>mdi-alert</v-icon>
-        Biên Bản Chênh Lệch
+        BiÃªn Báº£n ChÃªnh Lá»‡ch
       </v-card-title>
       <v-card-text class="pt-4">
         <v-alert type="warning" variant="tonal" class="mb-4">
-          Có chênh lệch giữa số lượng thực nhận và số lượng trên phiếu. Vui lòng ghi lý do/hướng xử lý và lưu biên bản trước khi hoàn tất.
+          CÃ³ chÃªnh lá»‡ch giá»¯a sá»‘ lÆ°á»£ng thá»±c nháº­n vÃ  sá»‘ lÆ°á»£ng trÃªn phiáº¿u. Vui lÃ²ng ghi lÃ½ do/hÆ°á»›ng xá»­ lÃ½ vÃ  lÆ°u biÃªn báº£n trÆ°á»›c khi hoÃ n táº¥t.
         </v-alert>
 
         <v-alert v-if="isDiscrepancyReportCurrent" type="success" variant="tonal" class="mb-4">
-          Đã lưu biên bản chênh lệch. Bạn có thể hoàn tất nhập kho theo số lượng thực nhận.
+          ÄÃ£ lÆ°u biÃªn báº£n chÃªnh lá»‡ch. Báº¡n cÃ³ thá»ƒ hoÃ n táº¥t nháº­p kho theo sá»‘ lÆ°á»£ng thá»±c nháº­n.
         </v-alert>
 
         <v-textarea
           v-model="discrepancyNote"
-          label="Ghi chú tổng quát biên bản"
+          label="Ghi chÃº tá»•ng quÃ¡t biÃªn báº£n"
           variant="outlined"
           rows="2"
           class="mb-4"
@@ -597,13 +690,13 @@ watch(() => props.receiptId, loadData, { immediate: true })
         <div v-for="item in discrepancyItems" :key="item.productId" class="mb-4 pa-4 bg-grey-lighten-4 rounded">
           <div class="font-weight-bold mb-2">
             {{ item.productName }}
-            <v-chip size="small" color="error" class="ml-2">Lệch: {{ item.actualReceivedQuantity - item.expectedQuantity }} {{ item.unitName }}</v-chip>
+            <v-chip size="small" color="error" class="ml-2">Lá»‡ch: {{ item.actualReceivedQuantity - item.expectedQuantity }} {{ item.unitName }}</v-chip>
           </div>
           <v-row>
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="item.reason"
-                label="Lý do chênh lệch"
+                label="LÃ½ do chÃªnh lá»‡ch"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -612,7 +705,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="item.action"
-                label="Hướng xử lý đề xuất"
+                label="HÆ°á»›ng xá»­ lÃ½ Ä‘á» xuáº¥t"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -628,14 +721,26 @@ watch(() => props.receiptId, loadData, { immediate: true })
             @click="handleSaveDiscrepancyReport"
           >
             <v-icon start>mdi-content-save-alert</v-icon>
-            Lưu biên bản chênh lệch
+            LÆ°u biÃªn báº£n chÃªnh lá»‡ch
           </v-btn>
         </div>
       </v-card-text>
     </v-card>
 
-    <!-- Nút Action Cuối (CHO_KIEM_HANG) -->
-    <div v-if="receipt.status === 'CHO_KIEM_HANG' && canProcessReceipt" class="d-flex justify-end mb-6">
+    <!-- NÃºt Action Cuá»‘i (CHO_KIEM_HANG) -->
+    <div v-if="receipt.status === 'CHO_KIEM_HANG' && (canProcessReceipt || canCancelLate)" class="d-flex justify-end mb-6">
+      <v-btn
+        v-if="canCancelLate"
+        color="error"
+        size="large"
+        variant="text"
+        class="mr-4"
+        :loading="cancelLateState.submitting"
+        @click="openCancelLateModal"
+      >
+        <v-icon start>mdi-cancel</v-icon>
+        Há»§y Phiáº¿u Nháº­p
+      </v-btn>
       <v-btn
         color="primary"
         size="large"
@@ -645,26 +750,26 @@ watch(() => props.receiptId, loadData, { immediate: true })
         @click="handleComplete"
       >
         <v-icon start>mdi-check-circle</v-icon>
-        Hoàn Tất Nhập Kho
+        HoÃ n Táº¥t Nháº­p Kho
       </v-btn>
     </div>
 
-    <!-- Chỉ xem danh sách sản phẩm nếu không ở trạng thái cần action -->
+    <!-- Chá»‰ xem danh sÃ¡ch sáº£n pháº©m náº¿u khÃ´ng á»Ÿ tráº¡ng thÃ¡i cáº§n action -->
     <v-card v-if="receipt.status !== 'CHO_KIEM_HANG' || !canProcessReceipt" class="mb-6 rounded-lg elevation-1" border>
       <v-card-title class="font-weight-bold bg-grey-lighten-4 py-3">
-        Danh sách sản phẩm
+        Danh sÃ¡ch sáº£n pháº©m
       </v-card-title>
       <v-card-text class="pa-0">
         <v-table>
           <thead>
             <tr>
-              <th class="text-left">Sản phẩm</th>
-              <th class="text-center">SL trên phiếu</th>
-              <th class="text-center">SL thực nhận</th>
-              <th class="text-center">Chênh lệch</th>
-              <th class="text-right">Đơn giá</th>
-              <th class="text-right">Thành tiền trên phiếu</th>
-              <th class="text-right">Giá trị thực nhận</th>
+              <th class="text-left">Sáº£n pháº©m</th>
+              <th class="text-center">SL trÃªn phiáº¿u</th>
+              <th class="text-center">SL thá»±c nháº­n</th>
+              <th class="text-center">ChÃªnh lá»‡ch</th>
+              <th class="text-right">ÄÆ¡n giÃ¡</th>
+              <th class="text-right">ThÃ nh tiá»n trÃªn phiáº¿u</th>
+              <th class="text-right">GiÃ¡ trá»‹ thá»±c nháº­n</th>
             </tr>
           </thead>
           <tbody>
@@ -673,9 +778,9 @@ watch(() => props.receiptId, loadData, { immediate: true })
                 <div class="font-weight-bold">{{ item.productName }}</div>
                 <div class="text-caption text-grey">{{ item.productCode }}</div>
               </td>
-              <td class="text-center font-weight-medium">{{ item.quantity }} {{ item.unitName || 'Cái' }}</td>
+              <td class="text-center font-weight-medium">{{ item.quantity }} {{ item.unitName || 'CÃ¡i' }}</td>
               <td class="text-center font-weight-medium">
-                <span v-if="hasActualReceivedQuantity(item)">{{ item.actualReceivedQuantity }} {{ item.unitName || 'Cái' }}</span>
+                <span v-if="hasActualReceivedQuantity(item)">{{ item.actualReceivedQuantity }} {{ item.unitName || 'CÃ¡i' }}</span>
                 <span v-else>-</span>
               </td>
               <td class="text-center">
@@ -685,7 +790,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
                   :color="getDiscrepancyQuantity(item) > 0 ? 'warning' : 'error'"
                   variant="tonal"
                 >
-                  {{ formatDiscrepancy(item) }} {{ item.unitName || 'Cái' }}
+                  {{ formatDiscrepancy(item) }} {{ item.unitName || 'CÃ¡i' }}
                 </v-chip>
                 <span v-else>{{ formatDiscrepancy(item) }}</span>
               </td>
@@ -701,15 +806,15 @@ watch(() => props.receiptId, loadData, { immediate: true })
       </v-card-text>
     </v-card>
 
-    <!-- Lịch sử phê duyệt timeline trực tiếp trên trang -->
+    <!-- Lá»‹ch sá»­ phÃª duyá»‡t timeline trá»±c tiáº¿p trÃªn trang -->
     <v-card class="mb-6 rounded-lg elevation-1" border>
       <v-card-title class="font-weight-bold bg-grey-lighten-4 py-3">
         <v-icon start>mdi-history</v-icon>
-        Lịch sử phê duyệt
+        Lá»‹ch sá»­ phÃª duyá»‡t
       </v-card-title>
       <v-card-text class="pt-4">
         <div v-if="historyList.length === 0" class="text-grey italic text-body-2 text-center py-4">
-          Chưa có lịch sử phê duyệt nào cho phiếu này.
+          ChÆ°a cÃ³ lá»‹ch sá»­ phÃª duyá»‡t nÃ o cho phiáº¿u nÃ y.
         </div>
         <div v-else class="history-timeline">
           <div v-for="(item, index) in historyList" :key="item.id" class="history-item mb-4 d-flex align-start">
@@ -724,10 +829,10 @@ watch(() => props.receiptId, loadData, { immediate: true })
                 <span class="text-caption text-grey">{{ formatDate(item.createdAt) }}</span>
               </div>
               <div class="text-body-2 mt-1">
-                <strong>Người thực hiện:</strong> {{ item.actorName || 'Hệ thống' }}
+                <strong>NgÆ°á»i thá»±c hiá»‡n:</strong> {{ item.actorName || 'Há»‡ thá»‘ng' }}
               </div>
               <div v-if="item.note" class="text-body-2 text-error mt-1 italic pl-3 border-left-error">
-                Lý do: {{ item.note }}
+                LÃ½ do: {{ item.note }}
               </div>
             </div>
           </div>
@@ -742,9 +847,38 @@ watch(() => props.receiptId, loadData, { immediate: true })
     </v-alert>
     <v-btn color="primary" @click="loadData">
       <v-icon start>mdi-reload</v-icon>
-      Tải lại
+      Táº£i láº¡i
     </v-btn>
   </div>
+
+  <v-dialog v-model="cancelLateState.open" max-width="500px" persistent>
+    <v-card>
+      <v-card-title class="text-h6 pt-4 pb-2 px-6">
+        Há»§y phiáº¿u nháº­p
+        <v-btn icon="mdi-close" variant="text" size="small" class="float-right" :disabled="cancelLateState.submitting" @click="closeCancelLateModal"></v-btn>
+      </v-card-title>
+      <v-card-text class="px-6 pb-2">
+        <p class="mb-4 text-body-2 text-grey-darken-1">LÃ½ do há»§y <span class="text-error">*</span></p>
+        <v-textarea
+          v-model="cancelLateState.reason"
+          rows="4"
+          variant="outlined"
+          density="comfortable"
+          placeholder="Nháº­p lÃ½ do há»§y..."
+          :error-messages="cancelLateState.error ? [cancelLateState.error] : []"
+          @update:model-value="cancelLateState.error = ''"
+        ></v-textarea>
+        <div class="d-flex justify-end mt-1 text-caption text-grey">
+          {{ cancelLateState.reason.length }}/500
+        </div>
+      </v-card-text>
+      <v-card-actions class="px-6 pb-4">
+        <v-spacer></v-spacer>
+        <v-btn color="grey-darken-1" variant="text" :disabled="cancelLateState.submitting" @click="closeCancelLateModal">Há»§y</v-btn>
+        <v-btn color="error" variant="flat" :loading="cancelLateState.submitting" @click="confirmCancelLate">XÃ¡c nháº­n há»§y</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <style scoped>
@@ -762,3 +896,4 @@ watch(() => props.receiptId, loadData, { immediate: true })
   position: relative;
 }
 </style>
+

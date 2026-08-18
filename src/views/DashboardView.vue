@@ -11,7 +11,7 @@ import {
 } from "../services/inventoryService";
 import { getPendingApprovals } from "../services/importReceiptService";
 import { getProducts } from "../services/productService";
-import { canAccessRoute } from "../services/permissionService";
+import { canAccessRoute, canCreateImportReceipt, canCreateExportReceipt } from "../services/permissionService";
 import { getWarehouses } from "../services/warehouseService";
 import {
   getDashboardOverview,
@@ -164,12 +164,29 @@ const hasDashboardData = computed(() => {
 });
 
 const visibleQuickActions = computed(() => {
-  const actions = [
-    { title: "Tạo phiếu nhập", icon: "mdi-tray-arrow-down", route: "/stock-in/create" },
-    { title: "Tạo phiếu xuất", icon: "mdi-tray-arrow-up", route: "/stock-out/create" },
-    { title: "Kiểm kê kho", icon: "mdi-clipboard-check-outline", route: "/inventory-counts" },
-    { title: "Import Excel", icon: "mdi-file-excel-outline", route: "/import-excel" }
-  ];
+  const actions = [];
+  const role = authStore.currentRole;
+
+  if (role === "ADMIN") {
+    actions.push({ title: "Tạo phiếu nhập", icon: "mdi-tray-arrow-down", route: "/stock-in/create" });
+    actions.push({ title: "Tạo phiếu xuất", icon: "mdi-tray-arrow-up", route: "/stock-out/create" });
+    actions.push({ title: "Duyệt phiếu nhập", icon: "mdi-check-decagram-outline", route: "/approvals" });
+    actions.push({ title: "Duyệt phiếu xuất", icon: "mdi-file-clock-outline", route: "/pending-export-approvals" });
+    actions.push({ title: "Import Excel", icon: "mdi-file-excel-outline", route: "/import-excel" });
+  } else if (role === "MANAGER") {
+    actions.push({ title: "Duyệt phiếu nhập", icon: "mdi-check-decagram-outline", route: "/approvals" });
+    actions.push({ title: "Duyệt phiếu xuất", icon: "mdi-file-clock-outline", route: "/pending-export-approvals" });
+    actions.push({ title: "Phiếu nhập kho", icon: "mdi-tray-arrow-down", route: "/stock-in" });
+    actions.push({ title: "Phiếu xuất kho", icon: "mdi-tray-arrow-up", route: "/stock-out" });
+    actions.push({ title: "Import Excel", icon: "mdi-file-excel-outline", route: "/import-excel" });
+  } else if (role === "EMPLOYEE") {
+    actions.push({ title: "Tạo phiếu nhập", icon: "mdi-tray-arrow-down", route: "/stock-in/create" });
+    actions.push({ title: "Tạo phiếu xuất", icon: "mdi-tray-arrow-up", route: "/stock-out/create" });
+    actions.push({ title: "Phiếu nhập của tôi", icon: "mdi-tray-arrow-down", route: "/stock-in" });
+    actions.push({ title: "Phiếu xuất của tôi", icon: "mdi-tray-arrow-up", route: "/stock-out" });
+    actions.push({ title: "Import Excel", icon: "mdi-file-excel-outline", route: "/import-excel" });
+  }
+
   return actions.filter(act => canAccessRoute(act.route));
 });
 

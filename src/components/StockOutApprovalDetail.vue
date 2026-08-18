@@ -62,14 +62,33 @@ const canApprove = computed(() => {
   );
 });
 
+const isReceiptOwner = computed(() => {
+  if (!receipt.value) return false
+  const currentUser = authStore.currentUser
+  if (!currentUser) return false
+
+  const creatorName = receipt.value.createdByName || receipt.value.createdBy || receipt.value.creatorName || receipt.value.creator
+  const creatorId = receipt.value.createdById || receipt.value.creatorId || receipt.value.employeeId
+
+  const matchByName = creatorName && (creatorName === currentUser.fullName || creatorName === currentUser.email)
+  const matchById = creatorId && String(creatorId) === String(currentUser.employeeId)
+
+  if (!creatorName && !creatorId) return true
+
+  return Boolean(matchByName || matchById)
+})
+
 const canComplete = computed(() => {
-  return (
-    ["ADMIN", "EMPLOYEE"].includes(authStore.currentRole) &&
-    !actionLoading.value &&
-    receipt.value &&
-    receipt.value.status === "DA_DUYET"
-  );
-});
+  if (actionLoading.value || !receipt.value || receipt.value.status !== "DA_DUYET") {
+    return false
+  }
+  const role = authStore.currentRole
+  if (role === 'ADMIN') return true
+  if (role === 'EMPLOYEE') {
+    return isReceiptOwner.value
+  }
+  return false
+})
 
 const canReject = computed(() => {
   return (

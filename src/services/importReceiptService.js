@@ -329,3 +329,13 @@ function friendlyImportReceiptErrorMessage(status, fallbackMessage) {
   if (status === 400) return 'Vui lòng kiểm tra lại dữ liệu.'
   return fallbackMessage || 'Thao tác thất bại, vui lòng thử lại.'
 }
+
+export async function cancelLateImportReceipt(receiptId, reason) {
+  try {
+    const { data } = await importReceiptClient.post(`/api/import-receipts/${receiptId}/cancel`, { reason }, { headers: getAuthorizationHeader() })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể hủy phiếu.')
+  }
+}
+

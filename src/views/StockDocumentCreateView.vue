@@ -15,7 +15,7 @@ import {
   updateEditable,
 } from '../services/importReceiptService'
 import { cancelExportReceipt, createExportReceipt, getExportReceipt, submitExportReceipt, updateExportReceipt } from '../services/exportReceiptService'
-import { getCurrentRoleCode } from '../services/authService'
+import { getCurrentRoleCode, getCurrentUser } from '../services/authService'
 
 const props = defineProps({
   type: { type: String, default: 'in' },
@@ -34,6 +34,8 @@ const receiptId = ref(props.id || '')
 const receiptStatus = ref('NHAP')
 const receiptVersion = ref(0)
 const rejectionReason = ref('')
+const receiptCreatedBy = ref('')
+const receiptCreatedById = ref('')
 const isDirty = ref(false)
 const isHydrating = ref(false)
 const confirmState = reactive({ open: false, action: '' })
@@ -86,8 +88,22 @@ const itemErrors = reactive({ productId: '', quantity: '', unitPrice: '' })
 const hasOperationalPermission = computed(() => ['ADMIN', 'EMPLOYEE'].includes(getCurrentRoleCode()))
 const isCreateMode = computed(() => props.mode === 'create')
 const isEditMode = computed(() => props.mode === 'edit')
+const isReceiptOwner = computed(() => {
+  if (isCreateMode.value) return true
+  const role = getCurrentRoleCode()
+  if (role === 'ADMIN') return true
+  const currentUser = getCurrentUser()
+  if (!currentUser) return false
+
+  const matchByName = receiptCreatedBy.value && (receiptCreatedBy.value === currentUser.fullName || receiptCreatedBy.value === currentUser.email)
+  const matchById = receiptCreatedById.value && String(receiptCreatedById.value) === String(currentUser.employeeId)
+
+  if (!receiptCreatedBy.value && !receiptCreatedById.value) return true
+
+  return Boolean(matchByName || matchById)
+})
 const isProcessing = computed(() => isSaving.value || isSubmitting.value || isCancelling.value)
-const isEditableStatus = computed(() => hasOperationalPermission.value && (isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI'))
+const isEditableStatus = computed(() => hasOperationalPermission.value && isReceiptOwner.value && (isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI'))
 const pageTitle = computed(() => {
   if (props.type === 'out') return isEditMode.value ? 'Sửa phiếu xuất kho' : 'Tạo phiếu xuất kho'
   return isEditMode.value ? 'Sửa phiếu nhập kho' : 'Tạo phiếu nhập kho'
@@ -97,9 +113,9 @@ const detailCount = computed(() => items.value.length)
 const hasValidItems = computed(() => items.value.length > 0 && items.value.every(item => {
   return item.productId && Number(item.quantity) > 0 && Number(item.unitPrice) >= 0
 }))
-const canSubmit = computed(() => hasOperationalPermission.value && receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value) && hasValidItems.value)
-const canCancel = computed(() => hasOperationalPermission.value && receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value))
-const canSave = computed(() => hasOperationalPermission.value && (isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI'))
+const canSubmit = computed(() => hasOperationalPermission.value && isReceiptOwner.value && receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value) && hasValidItems.value)
+const canCancel = computed(() => hasOperationalPermission.value && isReceiptOwner.value && receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value))
+const canSave = computed(() => hasOperationalPermission.value && isReceiptOwner.value && (isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI'))
 const isRejectedImportReceipt = computed(() => isEditMode.value && receiptStatus.value === 'TU_CHOI')
 const normalizedRejectionReason = computed(() => String(rejectionReason.value || '').trim())
 const rejectionReasonMessage = computed(() => normalizedRejectionReason.value || 'Chưa có lý do từ chối.')
@@ -194,6 +210,10 @@ async function loadReceiptDetail() {
   try {
     const receipt = props.type === 'out' ? await getExportReceipt(receiptId.value) : await getDetail(receiptId.value)
     hydrateReceipt(receipt)
+    if (!isReceiptOwner.value) {
+      router.replace(props.type === 'out' ? '/stock-out' : '/stock-in')
+      return
+    }
   } catch (error) {
     errorMessage.value = error.message || 'Không thể tải thông tin phiếu.'
     if (error.status === 401) router.replace('/login')
@@ -207,6 +227,8 @@ function hydrateReceipt(receipt) {
   receiptId.value = receipt.id || receiptId.value
   receiptStatus.value = receipt.status || 'NHAP'
   receiptVersion.value = receipt.version ?? receiptVersion.value
+  receiptCreatedBy.value = receipt.createdBy || receipt.createdByName || ''
+  receiptCreatedById.value = receipt.createdById || receipt.employeeId || ''
   if (Object.prototype.hasOwnProperty.call(receipt, 'rejectionReason')) {
     rejectionReason.value = receipt.rejectionReason || ''
   }
