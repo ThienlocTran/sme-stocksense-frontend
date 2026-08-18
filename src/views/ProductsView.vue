@@ -441,52 +441,82 @@ function formatCurrency(value) {
     </div>
   </div>
 
-  <DataTable
-    v-else-if="products.length > 0"
-    :columns="columns"
-    :rows="products"
-    min-width="1180px"
-    empty-text="Chưa có sản phẩm từ backend"
-  >
-    <template #price="{ value }">{{ formatCurrency(value) }}</template>
-    <template #status="{ value }"
-      ><StatusBadge :status="displayStatus(value)"
-    /></template>
-    <template v-if="canManage" #actions="{ row }">
-      <div class="actions">
-        <button
-          v-if="canManage"
-          class="btn btn-sm btn-primary"
-          type="button"
-          :disabled="isLoading || isSaving"
-          @click="openEditForm(row)"
-        >
-          <i class="mdi mdi-pencil-outline"></i>
-          Sửa
-        </button>
-        <button
-          v-if="canManage"
-          class="btn btn-sm"
-          type="button"
-          :disabled="isLoading || togglingId"
-          @click="requestStatus(row)"
-        >
-          <i
-            class="mdi"
-            :class="
-              row.status === 'HOAT_DONG'
-                ? 'mdi-block-helper'
-                : 'mdi-check-circle-outline'
-            "
-          ></i>
-          {{ row.status === "HOAT_DONG" ? "Ngừng" : "Kích hoạt" }}
-        </button>
-      </div>
-    </template>
-  </DataTable>
+  <!-- Table Summary -->
+  <div v-if="products.length > 0 && !isLoading" class="table-summary">
+    <strong>{{ totalElements }}</strong> sản phẩm được tìm thấy
+  </div>
+
+  <div class="product-desktop-table">
+    <DataTable
+      v-if="products.length > 0"
+      :columns="columns"
+      :rows="products"
+      min-width="1180px"
+      empty-text="Chưa có sản phẩm từ backend"
+    >
+      <template #code="{ value }">
+        <code class="sku-code">{{ value }}</code>
+      </template>
+      <template #sku="{ value }">
+        <code class="sku-code text-muted">{{ value || '—' }}</code>
+      </template>
+      <template #name="{ row }">
+        <div class="product-cell">
+          <div class="product-thumbnail">
+            <i class="mdi mdi-package-variant-closed"></i>
+          </div>
+          <div class="product-info">
+            <span class="product-name">{{ row.name }}</span>
+            <span class="product-sub" v-if="row.barcode">Barcode: {{ row.barcode }}</span>
+          </div>
+        </div>
+      </template>
+      <template #minStock="{ value, row }">
+        <span class="tabular-num">{{ value ?? 0 }}</span>
+        <span class="unit-label">{{ row.unit }}</span>
+      </template>
+      <template #price="{ value }">
+        <span class="tabular-num font-semibold text-slate-800">{{ formatCurrency(value) }}</span>
+      </template>
+      <template #status="{ value }">
+        <StatusBadge :status="displayStatus(value)" />
+      </template>
+      <template v-slot:actions="{ row }" v-if="canManage">
+        <div class="actions">
+          <button
+            v-if="canManage"
+            class="btn btn-sm btn-secondary btn-icon-only"
+            type="button"
+            title="Chỉnh sửa sản phẩm"
+            :disabled="isLoading || isSaving"
+            @click="openEditForm(row)"
+          >
+            <i class="mdi mdi-pencil-outline"></i>
+          </button>
+          <button
+            v-if="canManage"
+            class="btn btn-sm btn-icon-only"
+            type="button"
+            :title="row.status === 'HOAT_DONG' ? 'Ngừng hoạt động' : 'Kích hoạt'"
+            :disabled="isLoading || togglingId"
+            @click="requestStatus(row)"
+          >
+            <i
+              class="mdi"
+              :class="
+                row.status === 'HOAT_DONG'
+                  ? 'mdi-block-helper text-red-600'
+                  : 'mdi-check-circle-outline text-emerald-600'
+              "
+            ></i>
+          </button>
+        </div>
+      </template>
+    </DataTable>
+  </div>
 
   <EmptyState
-    v-else-if="!isLoading && !errorMessage"
+    v-if="!isLoading && !errorMessage && products.length === 0"
     title="Không có sản phẩm"
     description="Thử thay đổi bộ lọc hoặc thêm sản phẩm mới."
   />
@@ -798,5 +828,66 @@ function formatCurrency(value) {
   .modal-foot .btn {
     width: 100%;
   }
+}
+
+.table-summary {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.product-thumbnail {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.product-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.product-sub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.sku-code {
+  font-family: monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+.tabular-num {
+  font-variant-numeric: tabular-nums;
+}
+.unit-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-left: 4px;
+}
+.btn-icon-only {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
 }
 </style>
