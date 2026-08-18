@@ -619,11 +619,8 @@ function viewDocumentDetail(type, documentId) {
             </div>
             <h3 class="font-semibold text-zinc-800 text-sm mb-1">Chưa đủ dữ liệu hiển thị biểu đồ biến động</h3>
             <p class="text-xs text-zinc-500 max-w-md text-center">
-              Biểu đồ dòng chảy thời gian thực yêu cầu tổng hợp dữ liệu biến động hàng ngày từ backend. Tính năng này sẽ được kích hoạt sau khi Codex triển khai endpoint tổng hợp.
+              Biểu đồ dòng chảy thời gian thực yêu cầu tổng hợp dữ liệu biến động hàng ngày từ backend. Tính năng này sẽ được kích hoạt sau.
             </p>
-            <div class="codex-badge mt-3">
-              <code class="text-xs font-mono text-zinc-600">GET /api/dashboard/inventory-movement</code>
-            </div>
           </div>
         </section>
 
@@ -710,7 +707,7 @@ function viewDocumentDetail(type, documentId) {
             </div>
             <div class="analytical-placeholder-mini">
               <i class="mdi mdi-chart-donut text-2xl text-zinc-400 mb-2"></i>
-              <p class="text-xs text-zinc-500 text-center px-4">Yêu cầu Codex triển khai endpoint `/api/dashboard/stock-health` để hiển thị tỷ lệ SKU Khỏe / Sắp hết / Hết hàng.</p>
+              <p class="text-xs text-zinc-500 text-center px-4">Tính năng này sẽ được kích hoạt sau.</p>
             </div>
           </section>
 
@@ -722,7 +719,7 @@ function viewDocumentDetail(type, documentId) {
             </div>
             <div class="analytical-placeholder-mini">
               <i class="mdi mdi-chart-bar-horizontal text-2xl text-zinc-400 mb-2"></i>
-              <p class="text-xs text-zinc-500 text-center px-4">Yêu cầu Codex triển khai endpoint `/api/dashboard/warehouse-distribution` để hiển thị tỷ trọng tổng tồn kho.</p>
+              <p class="text-xs text-zinc-500 text-center px-4">Tính năng này sẽ được kích hoạt sau.</p>
             </div>
           </section>
         </div>
