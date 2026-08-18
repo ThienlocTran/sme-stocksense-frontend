@@ -4,10 +4,12 @@ import { useRoute } from 'vue-router'
 import { useRouter } from 'vue-router'
 import { changeOwnPassword, clearAuth, formatRole } from '../services/authService'
 import { useAuthStore } from '../stores/auth'
+import { useLayoutStore } from '../stores/layout'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const layoutStore = useLayoutStore()
 const currentUser = computed(() => authStore.currentUser)
 const currentUserRole = computed(() => formatRole(authStore.currentRole))
 const isLoggingOut = computed(() => route.path === '/login')
@@ -123,9 +125,14 @@ function applyPasswordBackendErrors(errors = {}) {
 
 <template>
   <header class="topbar">
-    <div>
-      <strong>{{ route.meta.title || 'SME StockSense' }}</strong>
-      <span>Doanh nghiệp SME duy nhất</span>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <button class="mobile-menu-btn" type="button" @click="layoutStore.toggleMobileSidebar" aria-label="Menu">
+        <i class="mdi mdi-menu"></i>
+      </button>
+      <div>
+        <strong>{{ route.meta.title || 'SME StockSense' }}</strong>
+        <span>Doanh nghiệp SME duy nhất</span>
+      </div>
     </div>
     <div class="topbar-actions">
       <div v-if="passwordSuccessMessage" class="password-success">
@@ -206,20 +213,54 @@ function applyPasswordBackendErrors(errors = {}) {
 </template>
 
 <style scoped>
-.topbar { height: 64px; position: sticky; top: 0; z-index: 10; background: rgba(243, 246, 250, .92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.topbar strong { display: block; font-size: 16px; }
-.topbar span { color: var(--muted); font-size: 13px; }
+.topbar { 
+  height: 64px; 
+  position: sticky; 
+  top: 0; 
+  z-index: 10; 
+  background: rgba(255, 255, 255, 0.92); 
+  backdrop-filter: blur(10px); 
+  border-bottom: 1px solid var(--color-border); 
+  padding: 12px 24px; 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  gap: 16px; 
+}
+.topbar strong { display: block; font-size: 16px; color: var(--color-text-primary); }
+.topbar span { color: var(--color-text-secondary); font-size: 13px; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
-.password-success { display: inline-flex; align-items: center; gap: 6px; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 7px 10px; font-size: 13px; font-weight: 700; }
+.password-success { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px; 
+  color: var(--color-success); 
+  background: var(--color-primary-soft); 
+  border: 1px solid rgba(22, 130, 93, 0.16); 
+  border-radius: 8px; 
+  padding: 7px 10px; 
+  font-size: 13px; 
+  font-weight: 700; 
+}
 .user-chip { min-width: 150px; }
-.user-chip strong { font-size: 14px; line-height: 18px; }
-.user-chip span { display: block; line-height: 18px; }
+.user-chip strong { font-size: 14px; line-height: 18px; color: var(--color-text-primary); }
+.user-chip span { display: block; line-height: 18px; color: var(--color-text-secondary); }
 .password-modal { width: min(520px, 100%); }
 .password-form { margin: 0; }
-.modal-desc { margin: 4px 0 0; color: var(--muted); }
-.password-alert { display: flex; align-items: center; gap: 10px; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; font-weight: 600; }
-.field > span { color: #374151; font-weight: 600; }
-.field-error { color: var(--danger); font-weight: 600; line-height: 18px; }
+.modal-desc { margin: 4px 0 0; color: var(--color-text-secondary); }
+.password-alert { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  color: var(--color-danger); 
+  background: #fef2f2; 
+  border: 1px solid rgba(194, 65, 59, 0.16); 
+  border-radius: 8px; 
+  padding: 10px 12px; 
+  font-weight: 600; 
+}
+.field > span { color: var(--color-text-primary); font-weight: 600; }
+.field-error { color: var(--color-danger); font-weight: 600; line-height: 18px; }
 .mdi-spin { animation: spin 0.8s linear infinite; }
 
 @keyframes spin {

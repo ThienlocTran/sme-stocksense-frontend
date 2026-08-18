@@ -37,13 +37,14 @@ const transactionTypeOptions = [
 ];
 
 const columns = [
-  { key: "productCode", label: "Mã SP", class: "cell-compact" },
-  { key: "productName", label: "Tên sản phẩm", class: "cell-long" },
-  { key: "warehouseName", label: "Kho", class: "cell-medium" },
-  { key: "transactionType", label: "Loại giao dịch", class: "cell-nowrap" },
-  { key: "delta", label: "Biến động", class: "cell-compact" },
-  { key: "createdByName", label: "Người thực hiện", class: "cell-medium" },
   { key: "createdAt", label: "Ngày tạo", class: "cell-nowrap" },
+  { key: "transactionType", label: "Loại giao dịch", class: "cell-nowrap" },
+  { key: "product", label: "Sản phẩm", class: "cell-long" },
+  { key: "warehouseName", label: "Kho hàng", class: "cell-medium" },
+  { key: "delta", label: "Biến động", class: "cell-compact text-right" },
+  { key: "transition", label: "Trước → Sau", class: "cell-compact text-right tabular-num" },
+  { key: "reference", label: "Chứng từ / Ghi chú", class: "cell-medium" },
+  { key: "createdByName", label: "Người thực hiện", class: "cell-medium" },
 ];
 
 const hasActiveFilters = computed(() => {
@@ -58,6 +59,15 @@ const hasActiveFilters = computed(() => {
 
 const hasPreviousPage = computed(() => page.value > 0);
 const hasNextPage = computed(() => page.value + 1 < totalPages.value);
+
+// KPI stats calculated dynamically based on currently loaded transactions page
+const inboundCount = computed(() => {
+  return transactions.value.filter(t => ['NHAP_KHO', 'NHAP_DAU_KY', 'DIEU_CHINH_TANG'].includes(t.transactionType)).length;
+});
+
+const outboundCount = computed(() => {
+  return transactions.value.filter(t => ['XUAT_KHO', 'DIEU_CHINH_GIAM'].includes(t.transactionType)).length;
+});
 
 onMounted(async () => {
   await loadDropdowns();
@@ -163,103 +173,267 @@ function nextPage() {
   page.value += 1;
   fetchTransactions();
 }
+
+function viewDocumentDetail(type, documentId) {
+  const path = type === 'in' ? `/stock-in/${documentId}` : `/stock-out/${documentId}`;
+  router.push(path);
+}
 </script>
 
 <template>
-  <PageHeader
-    title="Lịch sử giao dịch kho"
-    description="Xem lịch sử biến động kho theo sản phẩm, kho và thời gian."
-  />
-
-  <SearchFilterBar
-    v-model="searchDraft"
-    placeholder="Tìm theo mã SP, tên sản phẩm hoặc người thực hiện"
-    @keyup.enter="applySearch"
-  >
-    <select v-model="filters.transactionType" class="select" :disabled="isLoading" @change="applyFilter">
-      <option v-for="option in transactionTypeOptions" :key="option.value" :value="option.value">
-        {{ option.label }}
-      </option>
-    </select>
-
-    <select v-model="filters.warehouseId" class="select" :disabled="isLoadingDropdowns || isLoading" @change="applyFilter">
-      <option value="">{{ isLoadingDropdowns ? "Đang tải kho..." : "Tất cả kho" }}</option>
-      <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-        {{ displayWarehouseOption(warehouse) }}
-      </option>
-    </select>
-
-    <input
-      v-model="filters.from"
-      type="datetime-local"
-      class="input"
-      :disabled="isLoading"
-      @change="applyFilter"
-      aria-label="Từ ngày"
+  <div class="page-container page-shell">
+    <PageHeader
+      title="Lịch sử giao dịch kho"
+      description="Xem chi tiết lịch sử biến động kho theo từng sản phẩm, kho hàng và thời gian thực tế."
     />
 
-    <input
-      v-model="filters.to"
-      type="datetime-local"
-      class="input"
-      :disabled="isLoading"
-      @change="applyFilter"
-      aria-label="Đến ngày"
-    />
-
-    <div class="filter-actions">
-      <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
-        <i class="mdi mdi-magnify"></i>
-        Tìm kiếm
-      </button>
-      <button v-if="hasActiveFilters" class="btn btn-ghost" type="button" :disabled="isLoading" @click="clearFilters">
-        <i class="mdi mdi-filter-remove-outline"></i>
-        Xóa lọc
-      </button>
+    <!-- KPI Summary Cards -->
+    <div class="summary-metrics-grid animate-in fade-in duration-200">
+      <div class="metric-card card card-pad">
+        <span class="metric-label">Tổng số giao dịch</span>
+        <span class="metric-value text-blue-600 font-semibold">{{ totalElements }}</span>
+      </div>
+      <div class="metric-card card card-pad bg-emerald-50/50">
+        <span class="metric-label">Số giao dịch nhập kho (trên trang)</span>
+        <span class="metric-value text-emerald-600 font-semibold">{{ inboundCount }}</span>
+      </div>
+      <div class="metric-card card card-pad bg-zinc-50/55">
+        <span class="metric-label">Số giao dịch xuất kho (trên trang)</span>
+        <span class="metric-value text-zinc-700 font-semibold">{{ outboundCount }}</span>
+      </div>
     </div>
-  </SearchFilterBar>
 
-  <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
+    <!-- Filters Bar -->
+    <SearchFilterBar
+      v-model="searchDraft"
+      placeholder="Tìm theo mã SP, tên sản phẩm hoặc người thực hiện"
+      @keyup.enter="applySearch"
+    >
+      <select v-model="filters.transactionType" class="select" :disabled="isLoading" @change="applyFilter">
+        <option v-for="option in transactionTypeOptions" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </option>
+      </select>
 
-  <div v-if="isLoading" class="inventory-loading card card-pad">
-    <i class="mdi mdi-loading mdi-spin"></i>
-    <span>Đang tải lịch sử giao dịch kho...</span>
-  </div>
+      <select v-model="filters.warehouseId" class="select" :disabled="isLoadingDropdowns || isLoading" @change="applyFilter">
+        <option value="">{{ isLoadingDropdowns ? "Đang tải kho..." : "Tất cả kho" }}</option>
+        <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
+          {{ displayWarehouseOption(warehouse) }}
+        </option>
+      </select>
 
-  <DataTable v-else-if="transactions.length > 0" :columns="columns" :rows="transactions" min-width="1080px">
-    <template #transactionType="{ row }">
-      <StatusBadge :status="getTransactionTypeLabel(row.transactionType)" />
-    </template>
-    <template #delta="{ row }">
-      <span :class="Number(getDelta(row)) >= 0 ? 'delta-up' : 'delta-down'">{{ getDelta(row) }}</span>
-    </template>
-    <template #warehouseName="{ row }">{{ displayWarehouseName(row) }}</template>
-    <template #createdAt="{ value }">{{ formatDate(value) }}</template>
-  </DataTable>
+      <div class="date-filter-group">
+        <input
+          v-model="filters.from"
+          type="datetime-local"
+          class="input"
+          :disabled="isLoading"
+          @change="applyFilter"
+          aria-label="Từ ngày"
+        />
+        <span class="date-range-sep">to</span>
+        <input
+          v-model="filters.to"
+          type="datetime-local"
+          class="input"
+          :disabled="isLoading"
+          @change="applyFilter"
+          aria-label="Đến ngày"
+        />
+      </div>
 
-  <EmptyState
-    v-else-if="!isLoading && !errorMessage"
-    title="Không có giao dịch kho"
-    description="Thử thay đổi bộ lọc hoặc kiểm tra dữ liệu."
-  />
+      <div class="filter-actions">
+        <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
+          <i class="mdi mdi-magnify"></i>
+          Tìm kiếm
+        </button>
+        <button v-if="hasActiveFilters" class="btn btn-ghost" type="button" :disabled="isLoading" @click="clearFilters">
+          <i class="mdi mdi-filter-remove-outline"></i>
+          Xóa lọc
+        </button>
+      </div>
+    </SearchFilterBar>
 
-  <div v-if="transactions.length > 0" class="pagination-bar card card-pad">
-    <span class="muted">{{ totalElements }} bản ghi</span>
-    <div class="pagination-actions">
-      <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage || isLoading" @click="previousPage">
-        <i class="mdi mdi-chevron-left"></i>
-        Trước
-      </button>
-      <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
-      <button class="btn btn-sm" type="button" :disabled="!hasNextPage || isLoading" @click="nextPage">
-        Sau
-        <i class="mdi mdi-chevron-right"></i>
-      </button>
+    <!-- Error box -->
+    <p v-if="errorMessage" class="error-alert card card-pad">
+      <i class="mdi mdi-alert-circle text-lg"></i>
+      <span>{{ errorMessage }}</span>
+    </p>
+
+    <!-- Loading State -->
+    <div v-if="isLoading" class="loading-state card card-pad">
+      <i class="mdi mdi-loading mdi-spin text-2xl text-blue-600"></i>
+      <span>Đang tải lịch sử giao dịch kho...</span>
+    </div>
+
+    <!-- Main Content Container -->
+    <div v-else-if="transactions.length > 0">
+      <!-- Desktop Table -->
+      <div class="inventory-desktop-table animate-in fade-in duration-200">
+        <DataTable :columns="columns" :rows="transactions" min-width="1200px">
+          <template #createdAt="{ value }">
+            <span class="tabular-num text-xs">{{ formatDate(value) }}</span>
+          </template>
+          <template #transactionType="{ row }">
+            <StatusBadge :status="getTransactionTypeLabel(row.transactionType)" />
+          </template>
+          <template #product="{ row }">
+            <div class="product-cell">
+              <div class="product-thumbnail">
+                <i class="mdi mdi-package-variant-closed"></i>
+              </div>
+              <div class="product-info">
+                <span class="product-name font-semibold text-zinc-900">{{ row.productName }}</span>
+                <code class="sku-code text-xs w-fit">{{ row.productCode }}</code>
+              </div>
+            </div>
+          </template>
+          <template #warehouseName="{ row }">{{ displayWarehouseName(row) }}</template>
+          <template #delta="{ row }">
+            <span
+              :class="Number(getDelta(row)) >= 0 ? 'delta-up font-semibold' : 'delta-down-neutral font-medium'"
+            >
+              {{ getDelta(row) }}
+            </span>
+          </template>
+          <template #transition="{ row }">
+            <span class="text-zinc-500 font-medium">
+              {{ row.quantityBefore ?? 0 }} → {{ row.quantityAfter ?? 0 }}
+            </span>
+          </template>
+          <template #reference="{ row }">
+            <div class="reference-cell">
+              <template v-if="row.importReceiptId">
+                <span
+                  class="document-link"
+                  @click="viewDocumentDetail('in', row.importReceiptId)"
+                >
+                  <i class="mdi mdi-receipt-text-outline"></i> Phiếu nhập #{{ row.importReceiptId }}
+                </span>
+              </template>
+              <template v-else-if="row.exportReceiptId">
+                <span
+                  class="document-link"
+                  @click="viewDocumentDetail('out', row.exportReceiptId)"
+                >
+                  <i class="mdi mdi-receipt-text-send-outline"></i> Phiếu xuất #{{ row.exportReceiptId }}
+                </span>
+              </template>
+              <span v-else class="note-text">{{ row.note || '—' }}</span>
+            </div>
+          </template>
+        </DataTable>
+      </div>
+
+      <!-- Mobile List View -->
+      <div class="inventory-mobile-list animate-in fade-in duration-200">
+        <div v-for="row in transactions" :key="row.id" class="mobile-transaction-card card card-pad">
+          <div class="card-header-row">
+            <span class="transaction-date">{{ formatDate(row.createdAt) }}</span>
+            <StatusBadge :status="getTransactionTypeLabel(row.transactionType)" />
+          </div>
+
+          <div class="card-body-details">
+            <div class="detail-row">
+              <span class="detail-label">Sản phẩm</span>
+              <span class="detail-val text-zinc-900">{{ row.productName }} <code class="sku-code ml-1 text-xs">{{ row.productCode }}</code></span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Kho hàng</span>
+              <span class="detail-val">{{ displayWarehouseName(row) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Biến động</span>
+              <span
+                class="detail-val tabular-num font-semibold"
+                :class="Number(getDelta(row)) >= 0 ? 'text-emerald-600' : 'text-zinc-700'"
+              >
+                {{ getDelta(row) }} ({{ row.quantityBefore ?? 0 }} → {{ row.quantityAfter ?? 0 }})
+              </span>
+            </div>
+            <div class="detail-row" v-if="row.importReceiptId || row.exportReceiptId || row.note">
+              <span class="detail-label">Chứng từ gốc</span>
+              <span class="detail-val">
+                <template v-if="row.importReceiptId">
+                  <span class="document-link" @click="viewDocumentDetail('in', row.importReceiptId)">
+                    Phiếu nhập #{{ row.importReceiptId }}
+                  </span>
+                </template>
+                <template v-else-if="row.exportReceiptId">
+                  <span class="document-link" @click="viewDocumentDetail('out', row.exportReceiptId)">
+                    Phiếu xuất #{{ row.exportReceiptId }}
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="note-text">{{ row.note }}</span>
+                </template>
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Người thực hiện</span>
+              <span class="detail-val text-xs text-muted">{{ row.createdByName }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-bar card card-pad">
+        <span class="muted">{{ totalElements }} bản ghi</span>
+        <div class="pagination-actions">
+          <button
+            class="btn btn-sm"
+            type="button"
+            :disabled="!hasPreviousPage || isLoading"
+            @click="previousPage"
+          >
+            <i class="mdi mdi-chevron-left"></i>
+            Trước
+          </button>
+          <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
+          <button
+            class="btn btn-sm"
+            type="button"
+            :disabled="!hasNextPage || isLoading"
+            @click="nextPage"
+          >
+            Sau
+            <i class="mdi mdi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else>
+      <EmptyState
+        v-if="hasActiveFilters"
+        title="Không tìm thấy kết quả"
+        description="Không tìm thấy lịch sử giao dịch kho phù hợp với bộ lọc hiện tại."
+        icon="mdi-filter-off-outline"
+      />
+      <EmptyState
+        v-else
+        title="Chưa có giao dịch"
+        description="Hệ thống chưa ghi nhận bất kỳ giao dịch biến động kho nào."
+        icon="mdi-history"
+      />
     </div>
   </div>
 </template>
 
 <style scoped>
+.date-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-range-sep {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
 .filter-actions {
   display: flex;
   gap: 8px;
@@ -270,28 +444,139 @@ function nextPage() {
   min-width: 108px;
 }
 
-.inventory-loading {
-  min-height: 180px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 10px;
-  color: var(--muted);
-  font-weight: 700;
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
 }
 
-.mdi-spin {
-  animation: spin 0.8s linear infinite;
+.error-alert {
+  background: var(--color-danger-soft);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  color: var(--color-danger);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* KPI Summary Cards */
+.summary-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  transition: border-color 150ms ease;
+}
+
+.metric-card:hover {
+  border-color: var(--color-border-strong);
+}
+
+.metric-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.metric-value {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Table cells formatting */
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.product-thumbnail {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.product-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.sku-code {
+  font-family: monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
 }
 
 .delta-up {
-  color: #15803d;
-  font-weight: 800;
+  color: var(--color-success);
 }
 
-.delta-down {
-  color: #b91c1c;
-  font-weight: 800;
+.delta-down-neutral {
+  color: var(--color-text-primary);
+}
+
+.document-link {
+  color: var(--color-action-primary);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 150ms ease;
+}
+
+.document-link:hover {
+  color: var(--color-action-primary-hover);
+  text-decoration: underline;
+}
+
+.note-text {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.tabular-num {
+  font-variant-numeric: tabular-nums;
 }
 
 .pagination-bar {
@@ -310,45 +595,92 @@ function nextPage() {
 
 .page-indicator {
   font-weight: 600;
-  color: var(--text);
+  color: var(--color-text-primary);
   white-space: nowrap;
 }
 
-:deep(.badge.status-nhập-kho) {
-  background: #dcfce7;
-  color: #15803d;
+.date-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: span 2;
 }
 
-:deep(.badge.status-xuất-kho) {
-  background: #fee2e2;
-  color: #b91c1c;
+.date-filter-group .input {
+  flex: 1;
+  min-width: 120px;
 }
 
-:deep(.badge.status-nhập-đầu-kỳ),
-:deep(.badge.status-điều-chỉnh-tăng),
-:deep(.badge.status-điều-chỉnh-giảm) {
-  background: #fef3c7;
-  color: #b45309;
+.date-range-sep {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  padding: 0 4px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* Mobile transaction log responsive list */
+.inventory-mobile-list {
+  display: none;
 }
 
-@media (max-width: 900px) {
-  .filter-actions,
-  .filter-actions .btn {
-    width: 100%;
+@media (max-width: 1023px) {
+  .inventory-desktop-table {
+    display: none;
   }
-
-  .pagination-bar {
+  .inventory-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .mobile-transaction-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 10px;
+  }
+  .transaction-date {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .card-body-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+  }
+  .detail-label {
+    color: var(--color-text-secondary);
+  }
+  .detail-val {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+  }
+  .date-filter-group {
+    grid-column: span 1;
     flex-direction: column;
     align-items: stretch;
-    text-align: center;
+    width: 100%;
   }
-
-  .pagination-actions {
-    justify-content: center;
+  .date-range-sep {
+    text-align: center;
+    padding: 2px 0;
+  }
+  .filter-actions, .filter-actions .btn {
+    width: 100%;
   }
 }
 </style>

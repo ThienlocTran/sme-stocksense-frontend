@@ -441,22 +441,127 @@ function formatCurrency(value) {
     </div>
   </div>
 
-  <DataTable
-    v-else-if="products.length > 0"
-    :columns="columns"
-    :rows="products"
-    min-width="1180px"
-    empty-text="Chưa có sản phẩm từ backend"
-  >
-    <template #price="{ value }">{{ formatCurrency(value) }}</template>
-    <template #status="{ value }"
-      ><StatusBadge :status="displayStatus(value)"
-    /></template>
-    <template v-if="canManage" #actions="{ row }">
-      <div class="actions">
+  <!-- Table Summary -->
+  <div v-if="products.length > 0 && !isLoading" class="table-summary">
+    <strong>{{ totalElements }}</strong> sản phẩm được tìm thấy
+  </div>
+
+  <div class="product-desktop-table">
+    <DataTable
+      v-if="products.length > 0"
+      :columns="columns"
+      :rows="products"
+      min-width="1180px"
+      empty-text="Chưa có sản phẩm từ backend"
+    >
+      <template #code="{ value }">
+        <code class="sku-code">{{ value }}</code>
+      </template>
+      <template #sku="{ value }">
+        <code class="sku-code text-muted">{{ value || '—' }}</code>
+      </template>
+      <template #name="{ row }">
+        <div class="product-cell">
+          <div class="product-thumbnail">
+            <i class="mdi mdi-package-variant-closed"></i>
+          </div>
+          <div class="product-info">
+            <span class="product-name">{{ row.name }}</span>
+            <span class="product-sub" v-if="row.barcode">Barcode: {{ row.barcode }}</span>
+          </div>
+        </div>
+      </template>
+      <template #minStock="{ value, row }">
+        <span class="tabular-num">{{ value ?? 0 }}</span>
+        <span class="unit-label">{{ row.unit }}</span>
+      </template>
+      <template #price="{ value }">
+        <span class="tabular-num font-semibold text-slate-800">{{ formatCurrency(value) }}</span>
+      </template>
+      <template #status="{ value }">
+        <StatusBadge :status="displayStatus(value)" />
+      </template>
+      <template v-slot:actions="{ row }" v-if="canManage">
+        <div class="actions">
+          <button
+            v-if="canManage"
+            class="btn btn-sm btn-secondary btn-icon-only"
+            type="button"
+            title="Chỉnh sửa sản phẩm"
+            :disabled="isLoading || isSaving"
+            @click="openEditForm(row)"
+          >
+            <i class="mdi mdi-pencil-outline"></i>
+          </button>
+          <button
+            v-if="canManage"
+            class="btn btn-sm btn-icon-only"
+            type="button"
+            :title="row.status === 'HOAT_DONG' ? 'Ngừng hoạt động' : 'Kích hoạt'"
+            :disabled="isLoading || togglingId"
+            @click="requestStatus(row)"
+          >
+            <i
+              class="mdi"
+              :class="
+                row.status === 'HOAT_DONG'
+                  ? 'mdi-block-helper text-red-600'
+                  : 'mdi-check-circle-outline text-emerald-600'
+              "
+            ></i>
+          </button>
+        </div>
+      </template>
+    </DataTable>
+  </div>
+
+  <div class="product-mobile-list" v-if="products.length > 0">
+    <div v-for="row in products" :key="row.id" class="product-mobile-card card card-pad">
+      <div class="product-mobile-card__header">
+        <div class="product-cell">
+          <div class="product-thumbnail">
+            <i class="mdi mdi-package-variant-closed"></i>
+          </div>
+          <div class="product-info">
+            <span class="product-name">{{ row.name }}</span>
+            <code class="sku-code text-xs">{{ row.code }}</code>
+          </div>
+        </div>
+        <StatusBadge :status="displayStatus(row.status)" />
+      </div>
+
+      <div class="product-mobile-card__details">
+        <div class="detail-row">
+          <span class="detail-label">SKU</span>
+          <code class="sku-code text-muted text-xs">{{ row.sku || '—' }}</code>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Danh mục</span>
+          <span class="detail-val">{{ row.categoryName || '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Nhà cung cấp</span>
+          <span class="detail-val text-ellipsis">{{ row.partnerName || '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Giá / Đơn vị</span>
+          <span class="detail-val">
+            <strong class="text-slate-800">{{ formatCurrency(row.price) }}</strong>
+            <span class="text-muted text-xs"> / {{ row.unit }}</span>
+          </span>
+        </div>
+        <div class="detail-row" v-if="row.minStock !== null">
+          <span class="detail-label">Ngưỡng tối thiểu</span>
+          <span class="detail-val">
+            <span class="tabular-num">{{ row.minStock }}</span>
+            <span class="text-muted text-xs"> {{ row.unit }}</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="product-mobile-card__actions" v-if="canManage">
         <button
-          v-if="canManage"
-          class="btn btn-sm btn-primary"
+          class="btn btn-sm btn-secondary"
           type="button"
           :disabled="isLoading || isSaving"
           @click="openEditForm(row)"
@@ -465,7 +570,6 @@ function formatCurrency(value) {
           Sửa
         </button>
         <button
-          v-if="canManage"
           class="btn btn-sm"
           type="button"
           :disabled="isLoading || togglingId"
@@ -475,18 +579,18 @@ function formatCurrency(value) {
             class="mdi"
             :class="
               row.status === 'HOAT_DONG'
-                ? 'mdi-block-helper'
-                : 'mdi-check-circle-outline'
+                ? 'mdi-block-helper text-red-600'
+                : 'mdi-check-circle-outline text-emerald-600'
             "
           ></i>
-          {{ row.status === "HOAT_DONG" ? "Ngừng" : "Kích hoạt" }}
+          {{ row.status === 'HOAT_DONG' ? 'Ngừng' : 'Kích hoạt' }}
         </button>
       </div>
-    </template>
-  </DataTable>
+    </div>
+  </div>
 
   <EmptyState
-    v-else-if="!isLoading && !errorMessage"
+    v-if="!isLoading && !errorMessage && products.length === 0"
     title="Không có sản phẩm"
     description="Thử thay đổi bộ lọc hoặc thêm sản phẩm mới."
   />
@@ -540,103 +644,154 @@ function formatCurrency(value) {
         {{ saveErrorMessage }}
       </p>
 
-      <div class="form-grid">
-        <label
-          >Mã sản phẩm<input
-            v-model="form.code"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.code }}</small></label
-        >
-        <label
-          >Tên sản phẩm<input
-            v-model="form.name"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.name }}</small></label
-        >
-        <label
-          >SKU<input
-            v-model="form.sku"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.sku }}</small></label
-        >
-        <label
-          >Mã vạch<input
-            v-model="form.barcode"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.barcode }}</small></label
-        >
-        <label
-          >Đơn vị<input
-            v-model="form.unit"
-            class="input"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.unit }}</small></label
-        >
-        <label
-          >Đơn giá<input
-            v-model="form.price"
-            class="input"
-            type="number"
-            min="0"
-            step="0.01"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.price }}</small></label
-        >
-        <label
-          >Ngưỡng tối thiểu<input
-            v-model="form.minStock"
-            class="input"
-            type="number"
-            min="0"
-            :disabled="isSaving"
-          /><small class="field-error">{{ formErrors.minStock }}</small></label
-        >
-        <label
-          >Danh mục<select
-            v-model="form.categoryId"
-            class="select"
-            :disabled="isSaving"
-          >
-            <option value="">Không chọn</option>
-            <option
-              v-for="category in categories"
-              :key="category.id"
-              :value="category.id"
-            >
-              {{ category.name }}
-            </option></select
-          ><small class="field-error">{{ formErrors.categoryId }}</small></label
-        >
-        <label
-          >Nhà cung cấp<select
-            v-model="form.partnerId"
-            class="select"
-            :disabled="isSaving"
-          >
-            <option value="">Không chọn</option>
-            <option
-              v-for="supplier in suppliers"
-              :key="supplier.id"
-              :value="supplier.id"
-            >
-              {{ supplier.tenDoiTac }}
-            </option></select
-          ><small class="field-error">{{ formErrors.partnerId }}</small></label
-        >
-        <label v-if="isEditMode"
-          >Trạng thái<select
-            v-model="form.status"
-            class="select"
-            :disabled="isSaving"
-          >
-            <option value="HOAT_DONG">Đang hoạt động</option>
-            <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option></select
-          ><small class="field-error">{{ formErrors.status }}</small></label
-        >
+      <div class="form-sections">
+        <!-- Section 1: Thông tin cơ bản -->
+        <fieldset class="form-fieldset">
+          <legend class="form-legend">Thông tin cơ bản</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label class="field-label">Mã sản phẩm *</label>
+              <input
+                v-model="form.code"
+                class="input"
+                :class="{ 'input--error': formErrors.code }"
+                :disabled="isSaving || isEditMode"
+              />
+              <small class="field-error">{{ formErrors.code }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Tên sản phẩm *</label>
+              <input
+                v-model="form.name"
+                class="input"
+                :class="{ 'input--error': formErrors.name }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.name }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">SKU</label>
+              <input
+                v-model="form.sku"
+                class="input"
+                :class="{ 'input--error': formErrors.sku }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.sku }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Mã vạch</label>
+              <input
+                v-model="form.barcode"
+                class="input"
+                :class="{ 'input--error': formErrors.barcode }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.barcode }}</small>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Section 2: Phân loại & Giá cả -->
+        <fieldset class="form-fieldset">
+          <legend class="form-legend">Phân loại & Giá cả</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label class="field-label">Đơn vị *</label>
+              <input
+                v-model="form.unit"
+                class="input"
+                :class="{ 'input--error': formErrors.unit }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.unit }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Đơn giá *</label>
+              <input
+                v-model="form.price"
+                class="input"
+                type="number"
+                min="0"
+                step="0.01"
+                :class="{ 'input--error': formErrors.price }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.price }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Ngưỡng tối thiểu</label>
+              <input
+                v-model="form.minStock"
+                class="input"
+                type="number"
+                min="0"
+                :class="{ 'input--error': formErrors.minStock }"
+                :disabled="isSaving"
+              />
+              <small class="field-error">{{ formErrors.minStock }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Danh mục</label>
+              <select
+                v-model="form.categoryId"
+                class="select"
+                :class="{ 'input--error': formErrors.categoryId }"
+                :disabled="isSaving"
+              >
+                <option value="">Không chọn</option>
+                <option
+                  v-for="category in categories"
+                  :key="category.id"
+                  :value="category.id"
+                >
+                  {{ category.name }}
+                </option>
+              </select>
+              <small class="field-error">{{ formErrors.categoryId }}</small>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Nhà cung cấp</label>
+              <select
+                v-model="form.partnerId"
+                class="select"
+                :class="{ 'input--error': formErrors.partnerId }"
+                :disabled="isSaving"
+              >
+                <option value="">Không chọn</option>
+                <option
+                  v-for="supplier in suppliers"
+                  :key="supplier.id"
+                  :value="supplier.id"
+                >
+                  {{ supplier.tenDoiTac }}
+                </option>
+              </select>
+              <small class="field-error">{{ formErrors.partnerId }}</small>
+            </div>
+
+            <div class="field" v-if="isEditMode">
+              <label class="field-label">Trạng thái *</label>
+              <select
+                v-model="form.status"
+                class="select"
+                :class="{ 'input--error': formErrors.status }"
+                :disabled="isSaving"
+              >
+                <option value="HOAT_DONG">Đang hoạt động</option>
+                <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
+              </select>
+              <small class="field-error">{{ formErrors.status }}</small>
+            </div>
+          </div>
+        </fieldset>
       </div>
 
       <div class="modal-foot">
@@ -798,5 +953,167 @@ function formatCurrency(value) {
   .modal-foot .btn {
     width: 100%;
   }
+}
+
+.table-summary {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.product-thumbnail {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.product-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.product-sub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.sku-code {
+  font-family: monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+.tabular-num {
+  font-variant-numeric: tabular-nums;
+}
+.unit-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-left: 4px;
+}
+.btn-icon-only {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.product-mobile-list {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .product-desktop-table {
+    display: none;
+  }
+  .product-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .product-mobile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+  .product-mobile-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 12px;
+  }
+  .product-mobile-card__details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .detail-label {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+  }
+  .detail-val {
+    color: var(--color-text-primary);
+    font-weight: 600;
+  }
+  .text-ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+  .product-mobile-card__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    border-top: 1px solid var(--color-border);
+    padding-top: 12px;
+  }
+  .product-mobile-card__actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+.form-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.form-fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 18px;
+  margin: 0;
+}
+.form-legend {
+  padding: 0 8px;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.input--error {
+  border-color: var(--color-danger) !important;
+  background-color: #fdf2f2 !important;
 }
 </style>

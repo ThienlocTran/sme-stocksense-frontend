@@ -189,7 +189,7 @@ async function loadReceiptDetail() {
     const receipt = props.type === 'out' ? await getExportReceipt(receiptId.value) : await getDetail(receiptId.value)
     hydrateReceipt(receipt)
   } catch (error) {
-    errorMessage.value = error.message || 'Không thể tải thông tin phiếu nhập.'
+    errorMessage.value = error.message || 'Không thể tải thông tin phiếu.'
     if (error.status === 401) router.replace('/login')
   } finally {
     await markHydrationComplete()
@@ -254,7 +254,7 @@ function validateForm() {
   let isValid = true
 
   if (!form.warehouseId) {
-    formErrors.warehouseId = 'Vui lòng chọn kho nhập.'
+    formErrors.warehouseId = `Vui lòng chọn kho ${props.type === 'out' ? 'xuất' : 'nhập'}.`
     isValid = false
   }
 
@@ -337,7 +337,7 @@ async function handleSaveDraft() {
   if (!canSave.value) return
 
   if (!validateForm()) {
-    errorMessage.value = 'Vui lòng kiểm tra lại thông tin phiếu nhập.'
+    errorMessage.value = 'Vui lòng kiểm tra lại thông tin phiếu.'
     return
   }
 
@@ -371,7 +371,7 @@ async function handleSaveDraft() {
     await applySavedReceipt(savedReceipt)
     successMessage.value = receiptStatus.value === 'TU_CHOI'
       ? 'Đã lưu thay đổi. Bạn có thể gửi duyệt lại phiếu này.'
-      : 'Lưu nháp phiếu nhập thành công.'
+      : 'Lưu nháp phiếu thành công.'
 
     if (isCreateMode.value) {
       scheduleRedirectToList(1500)
@@ -396,7 +396,7 @@ async function handleSaveDraft() {
 
 function handleSubmitForApproval() {
   if (!canSubmit.value) {
-    errorMessage.value = 'Phiếu nhập cần có ít nhất một sản phẩm hợp lệ trước khi gửi duyệt.'
+    errorMessage.value = 'Phiếu cần có ít nhất một sản phẩm hợp lệ trước khi gửi duyệt.'
     return
   }
   if (isDirty.value) {
@@ -464,7 +464,7 @@ async function confirmCancelDraft() {
   try {
     const receipt = props.type === 'out' ? await cancelExportReceipt(receiptId.value) : await cancelDraft(receiptId.value)
     if (receipt) await applySavedReceipt(receipt)
-    successMessage.value = 'Hủy phiếu nhập thành công.'
+    successMessage.value = 'Hủy phiếu thành công.'
     scheduleRedirectToList(1200)
   } catch (error) {
     if (error.status === 401) {
@@ -482,8 +482,8 @@ function goBack() {
 }
 
 function formatCurrency(value) {
-  if (value === null || value === undefined) return '0'
-  return Number(value || 0).toLocaleString('vi-VN')
+  if (value === null || value === undefined) return '0 ₫'
+  return Number(value || 0).toLocaleString('vi-VN') + ' ₫'
 }
 
 function confirmTitle() {
@@ -492,8 +492,8 @@ function confirmTitle() {
 
 function confirmMessage() {
   return confirmState.action === 'cancel'
-    ? 'Hủy phiếu nhập này?'
-    : 'Gửi duyệt phiếu nhập này?'
+    ? `Hủy phiếu ${props.type === 'out' ? 'xuất' : 'nhập'} này?`
+    : `Gửi duyệt phiếu ${props.type === 'out' ? 'xuất' : 'nhập'} này?`
 }
 
 function confirmText() {
@@ -525,19 +525,20 @@ function confirmText() {
       <span>Đang tải dữ liệu...</span>
     </div>
 
-    <form v-if="!isLoading" class="import-receipt-form" @submit.prevent="handleSaveDraft">
-      <div v-if="isRejectedImportReceipt" class="import-receipt-form__alert import-receipt-form__alert--info">
+    <form v-if="!isLoading" class="import-receipt-form pb-16" @submit.prevent="handleSaveDraft">
+      <div v-if="isRejectedImportReceipt" class="import-receipt-form__alert import-receipt-form__alert--error">
         <i class="mdi mdi-information-outline"></i>
         <div>
-          <p class="import-receipt-form__rejection-title">Phiếu nhập đã bị từ chối.</p>
+          <p class="import-receipt-form__rejection-title">Phiếu đã bị từ chối phê duyệt.</p>
           <p class="import-receipt-form__rejection-reason">
-            <template v-if="normalizedRejectionReason">Lý do: {{ rejectionReasonMessage }}</template>
+            <template v-if="normalizedRejectionReason">Lý do từ chối: {{ rejectionReasonMessage }}</template>
             <template v-else>{{ rejectionReasonMessage }}</template>
           </p>
-          <p class="import-receipt-form__rejection-reason">Vui lòng chỉnh sửa thông tin và lưu lại.</p>
+          <p class="import-receipt-form__rejection-reason mt-1">Vui lòng chỉnh sửa thông tin và lưu lại.</p>
         </div>
       </div>
 
+      <!-- Section: Thông tin chung -->
       <section class="import-receipt-form__section">
         <h3 class="import-receipt-form__section-title">Thông tin chung</h3>
 
@@ -567,7 +568,7 @@ function confirmText() {
               :class="{ 'import-receipt-form__select--error': formErrors.supplierId || errorState.suppliers }"
               :disabled="isProcessing || !isEditableStatus || suppliers.length === 0"
             >
-              <option :value="null" disabled>{{ suppliers.length === 0 ? 'Không có nhà cung cấp' : 'Chọn nhà cung cấp' }}</option>
+              <option :value="null" disabled>{{ suppliers.length === 0 ? 'Không có' : 'Chọn' }}</option>
               <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
                 {{ supplier.tenDoiTac }}
               </option>
@@ -590,6 +591,7 @@ function confirmText() {
         </div>
       </section>
 
+      <!-- Section: Thêm sản phẩm -->
       <section class="import-receipt-form__section">
         <h3 class="import-receipt-form__section-title">Thêm sản phẩm</h3>
 
@@ -654,90 +656,151 @@ function confirmText() {
 
           <div class="import-receipt-form__field" style="grid-column: 1 / -1; justify-self: end">
             <button class="btn btn-primary" type="button" :disabled="isProcessing || !isEditableStatus" @click="addItem">
-              <i class="mdi mdi-plus"></i>
-              Thêm sản phẩm
+              <i class="mdi mdi-plus"></i> Thêm sản phẩm
             </button>
           </div>
         </div>
       </section>
 
-      <section v-if="items.length > 0" class="import-receipt-form__section">
+      <!-- Section: Danh sách sản phẩm -->
+      <section class="import-receipt-form__section">
         <h3 class="import-receipt-form__section-title">Danh sách sản phẩm ({{ detailCount }} dòng)</h3>
 
-        <table class="import-receipt-form__items-table">
-          <thead>
-            <tr>
-              <th style="width: 50px; text-align: center">STT</th>
-              <th>Mã SP</th>
-              <th>Tên sản phẩm</th>
-              <th style="text-align: right">Số lượng</th>
-              <th v-if="type === 'out'" style="text-align: right">Tồn hiện tại</th>
-              <th style="text-align: right">Đơn giá</th>
-              <th style="text-align: right">Thành tiền</th>
-              <th>Ghi chú</th>
-              <th style="width: 80px"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, index) in items" :key="index">
-              <td style="text-align: center">{{ index + 1 }}</td>
-              <td>{{ item.productCode }}</td>
-              <td>{{ item.productName }}</td>
-              <td style="text-align: right">{{ item.quantity }}</td>
-              <td v-if="type === 'out'" style="text-align: right">
-                {{ item.availableStock ?? '-' }}
-                <span v-if="item.exceedsAvailableStock" class="text-danger"> (vượt tồn)</span>
-              </td>
-              <td style="text-align: right">{{ formatCurrency(item.unitPrice) }}</td>
-              <td style="text-align: right; font-weight: 600">{{ formatCurrency(item.lineTotal) }}</td>
-              <td>{{ item.note || '-' }}</td>
-              <td>
-                <button class="btn btn-sm btn-danger" type="button" :disabled="isProcessing || !isEditableStatus" @click="removeItem(index)">
+        <!-- Desktop view table -->
+        <div class="hidden md:block">
+          <table v-if="items.length > 0" class="import-receipt-form__items-table">
+            <thead>
+              <tr>
+                <th style="width: 50px; text-align: center">STT</th>
+                <th>Mã SP</th>
+                <th>Tên sản phẩm</th>
+                <th style="text-align: right">Số lượng</th>
+                <th v-if="type === 'out'" style="text-align: right">Tồn hiện tại</th>
+                <th style="text-align: right">Đơn giá</th>
+                <th style="text-align: right">Thành tiền</th>
+                <th>Ghi chú</th>
+                <th style="width: 80px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, index) in items" :key="index">
+                <td style="text-align: center">{{ index + 1 }}</td>
+                <td>{{ item.productCode }}</td>
+                <td>{{ item.productName }}</td>
+                <td style="text-align: right; font-weight: 600">{{ item.quantity }}</td>
+                <td v-if="type === 'out'" style="text-align: right">
+                  <span :class="{ 'text-danger font-bold': item.exceedsAvailableStock }">
+                    {{ item.availableStock ?? '-' }}
+                  </span>
+                  <span v-if="item.exceedsAvailableStock" class="text-danger block text-xxs font-normal"> (vượt tồn)</span>
+                </td>
+                <td style="text-align: right">{{ formatCurrency(item.unitPrice) }}</td>
+                <td style="text-align: right; font-weight: 700" class="text-primary">{{ formatCurrency(item.lineTotal) }}</td>
+                <td>{{ item.note || '-' }}</td>
+                <td>
+                  <button class="btn btn-sm btn-danger" type="button" :disabled="isProcessing || !isEditableStatus" @click="removeItem(index)">
+                    <i class="mdi mdi-delete-outline"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="import-receipt-form__summary-row">
+                <td :colspan="type === 'out' ? 4 : 3" style="text-align: right; font-weight: 600">Tổng cộng:</td>
+                <td style="text-align: right; font-weight: 700">{{ totalQuantity }}</td>
+                <td style="text-align: right; font-weight: 700; font-size: 16px" class="import-receipt-form__summary-total">
+                  {{ formatCurrency(totalAmountPreview) }}
+                </td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+          <div v-else class="import-receipt-form__empty">
+            <i class="mdi mdi-package-variant-closed" style="font-size: 48px; color: #cbd5e1"></i>
+            <p>Chưa có sản phẩm nào được thêm vào phiếu.</p>
+            <p class="muted">Thêm sản phẩm từ phần bên trên để bắt đầu.</p>
+          </div>
+        </div>
+
+        <!-- Mobile view cards -->
+        <div class="block md:hidden space-y-3">
+          <div v-if="items.length > 0" class="space-y-3">
+            <div v-for="(item, index) in items" :key="index" class="p-3 border border-gray-200 rounded-lg bg-slate-50 space-y-2 relative">
+              <div class="between pr-8">
+                <div class="font-bold text-sm text-text">{{ item.productName }}</div>
+                <button class="btn btn-sm btn-icon btn-danger absolute top-2 right-2" type="button" :disabled="isProcessing || !isEditableStatus" @click="removeItem(index)">
                   <i class="mdi mdi-delete-outline"></i>
                 </button>
-              </td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="import-receipt-form__summary-row">
-              <td colspan="3" style="text-align: right; font-weight: 600">Tổng cộng:</td>
-              <td style="text-align: right; font-weight: 700">{{ totalQuantity }}</td>
-              <td colspan="1"></td>
-              <td style="text-align: right; font-weight: 700; font-size: 16px" class="import-receipt-form__summary-total">
-                {{ formatCurrency(totalAmountPreview) }}
-              </td>
-              <td colspan="2"></td>
-            </tr>
-          </tfoot>
-        </table>
-      </section>
-
-      <section v-else class="import-receipt-form__section">
-        <h3 class="import-receipt-form__section-title">Danh sách sản phẩm (0 dòng)</h3>
-        <div class="import-receipt-form__empty">
-          <i class="mdi mdi-package-variant-closed" style="font-size: 48px; color: #cbd5e1"></i>
-          <p>Chưa có sản phẩm nào được thêm vào {{ type === 'out' ? 'phiếu xuất' : 'phiếu nhập' }}.</p>
-          <p class="muted">Thêm sản phẩm từ phần bên trên để bắt đầu.</p>
+              </div>
+              <div class="text-xs text-muted">SKU: {{ item.productCode }}</div>
+              
+              <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+                <div>
+                  <span class="text-muted block text-xxs uppercase font-semibold">Số lượng</span>
+                  <span class="font-semibold">{{ item.quantity }}</span>
+                </div>
+                <div v-if="type === 'out'">
+                  <span class="text-muted block text-xxs uppercase font-semibold">Tồn hiện tại</span>
+                  <span class="font-semibold" :class="{'text-danger font-bold': item.exceedsAvailableStock}">
+                    {{ item.availableStock ?? '-' }}
+                    <span v-if="item.exceedsAvailableStock" class="block text-xxs text-danger font-normal">(vượt tồn)</span>
+                  </span>
+                </div>
+                <div>
+                  <span class="text-muted block text-xxs uppercase font-semibold">Đơn giá</span>
+                  <span>{{ formatCurrency(item.unitPrice) }}</span>
+                </div>
+                <div>
+                  <span class="text-muted block text-xxs uppercase font-semibold">Thành tiền</span>
+                  <span class="font-bold text-primary">{{ formatCurrency(item.lineTotal) }}</span>
+                </div>
+              </div>
+              
+              <div v-if="item.note" class="text-xs text-muted border-t border-gray-200 pt-2 mt-1">
+                <strong>Ghi chú dòng:</strong> {{ item.note }}
+              </div>
+            </div>
+            
+            <div class="bg-blue-50 p-3 rounded-lg flex justify-between items-center text-sm font-bold text-primary">
+              <span>Tổng cộng ({{ totalQuantity }} SP):</span>
+              <span>{{ formatCurrency(totalAmountPreview) }}</span>
+            </div>
+          </div>
+          
+          <div v-else class="import-receipt-form__empty">
+            <i class="mdi mdi-package-variant-closed" style="font-size: 48px; color: #cbd5e1"></i>
+            <p>Chưa có sản phẩm nào được thêm vào phiếu.</p>
+            <p class="muted">Thêm sản phẩm từ phần bên trên để bắt đầu.</p>
+          </div>
         </div>
       </section>
 
-      <div class="import-receipt-form__actions">
-        <button class="btn btn-ghost" type="button" :disabled="isProcessing" @click="goBack">Quay lại</button>
-        <button v-if="canCancel" class="btn btn-danger" type="button" :disabled="isProcessing" @click="handleCancelDraft">
-          <i v-if="isCancelling" class="mdi mdi-loading mdi-spin"></i>
-          <i v-else class="mdi mdi-cancel"></i>
-          {{ isCancelling ? 'Đang hủy...' : 'Hủy' }}
-        </button>
-        <button v-if="canSubmit" class="btn btn-ghost" type="button" :disabled="isProcessing" @click="handleSubmitForApproval">
-          <i v-if="isSubmitting" class="mdi mdi-loading mdi-spin"></i>
-          <i v-else class="mdi mdi-send-outline"></i>
-          {{ isSubmitting ? 'Đang gửi...' : submitButtonLabel() }}
-        </button>
-        <button v-if="canSave" class="btn btn-primary" type="submit" :disabled="isProcessing">
-          <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
-          <i v-else class="mdi mdi-content-save-outline"></i>
-          {{ isSaving ? 'Đang lưu...' : (receiptStatus === 'TU_CHOI' ? 'Lưu thay đổi' : 'Lưu nháp') }}
-        </button>
+      <!-- Sticky Action Footer -->
+      <div class="sticky-footer border-t border-gray-200 bg-white p-4 flex items-center justify-between shadow-lg sticky bottom-0 z-10 rounded-b-xl">
+        <div class="text-sm font-semibold text-text hidden sm:block">
+          {{ items.length }} mặt hàng · Tổng số lượng: {{ totalQuantity }} · Tổng tiền: <span class="text-primary font-bold">{{ formatCurrency(totalAmountPreview) }}</span>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button class="btn btn-ghost" type="button" :disabled="isProcessing" @click="goBack">Quay lại</button>
+          
+          <button v-if="canCancel" class="btn btn-danger" type="button" :disabled="isProcessing" @click="handleCancelDraft">
+            <i v-if="isCancelling" class="mdi mdi-loading mdi-spin"></i>
+            <i v-else class="mdi mdi-cancel"></i>
+            {{ isCancelling ? 'Đang hủy...' : 'Hủy' }}
+          </button>
+          
+          <button v-if="canSubmit" class="btn btn-secondary" type="button" :disabled="isProcessing" @click="handleSubmitForApproval">
+            <i v-if="isSubmitting" class="mdi mdi-loading mdi-spin"></i>
+            <i v-else class="mdi mdi-send-outline"></i>
+            {{ isSubmitting ? 'Đang gửi...' : submitButtonLabel() }}
+          </button>
+          
+          <button v-if="canSave" class="btn btn-primary" type="submit" :disabled="isProcessing">
+            <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
+            <i v-else class="mdi mdi-content-save-outline"></i>
+            {{ isSaving ? 'Đang lưu...' : (receiptStatus === 'TU_CHOI' ? 'Lưu thay đổi' : 'Lưu nháp') }}
+          </button>
+        </div>
       </div>
     </form>
 
@@ -751,7 +814,6 @@ function confirmText() {
       @confirm="confirmDraftAction"
     />
   </template>
-
 </template>
 
 <style scoped>
@@ -765,5 +827,18 @@ function confirmText() {
   to {
     transform: rotate(360deg);
   }
+}
+
+.sticky-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 24px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.text-xxs {
+  font-size: 10px;
 }
 </style>

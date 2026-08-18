@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
 import SearchFilterBar from "../components/SearchFilterBar.vue";
@@ -11,25 +11,37 @@ import { getWarehouses } from "../services/warehouseService";
 import { getWarehouseStatusLabel } from "../constants/warehouseOptions";
 
 const router = useRouter();
+const route = useRoute();
 const inventoryItems = ref([]);
 const warehouses = ref([]);
 const isLoading = ref(false);
 const isLoadingDropdowns = ref(false);
 const errorMessage = ref("");
-const searchDraft = ref("");
+const searchDraft = ref(route.query.keyword ? String(route.query.keyword) : "");
+
+watch(
+  () => route.query,
+  (newQuery) => {
+    searchDraft.value = newQuery.keyword ? String(newQuery.keyword) : "";
+    filters.warehouseId = newQuery.warehouseId ? String(newQuery.warehouseId) : "";
+    page.value = 0;
+    fetchInventory();
+  },
+  { deep: true }
+);
 const page = ref(0);
 const size = ref(20);
 const totalPages = ref(0);
 const totalElements = ref(0);
 const filters = reactive({
-  warehouseId: "",
+  warehouseId: route.query.warehouseId ? String(route.query.warehouseId) : "",
   stockStatus: "",
   warehouseStatus: "",
   productStatus: "",
 });
 
 const inventoryStatusOptions = [
-  { value: "OUT_OF_STOCK", label: "Thiếu hàng" },
+  { value: "OUT_OF_STOCK", label: "Hết hàng" },
   { value: "LOW_STOCK", label: "Sắp hết" },
   { value: "NORMAL", label: "Đủ hàng" },
   { value: "OVER_STOCK", label: "Thừa hàng" },
@@ -37,16 +49,13 @@ const inventoryStatusOptions = [
 
 const columns = [
   { key: "productCode", label: "Mã SP", class: "cell-compact" },
-  { key: "productName", label: "Tên sản phẩm", class: "cell-long" },
-  { key: "barcode", label: "Mã vạch", class: "cell-nowrap" },
-  { key: "warehouse", label: "Kho", class: "cell-medium" },
-  { key: "currentQuantity", label: "Tồn hiện tại", class: "cell-compact" },
-  { key: "minStock", label: "Ngưỡng tối thiểu", class: "cell-compact" },
-  { key: "maxStock", label: "Ngưỡng tối đa", class: "cell-compact" },
+  { key: "productName", label: "Sản phẩm", class: "cell-long" },
+  { key: "warehouse", label: "Kho hàng", class: "cell-medium" },
+  { key: "currentQuantity", label: "Tồn thực tế / Tối thiểu", class: "cell-medium text-right" },
   { key: "status", label: "Trạng thái tồn", class: "cell-nowrap" },
   { key: "warehouseStatus", label: "Trạng thái kho", class: "cell-nowrap" },
   { key: "productStatus", label: "Trạng thái SP", class: "cell-nowrap" },
-  { key: "lastUpdatedAt", label: "Cập nhật lần cuối", class: "cell-nowrap" },
+  { key: "lastUpdatedAt", label: "Cập nhật", class: "cell-nowrap" },
 ];
 
 const hasPreviousPage = computed(() => page.value > 0);
@@ -161,6 +170,22 @@ function formatDate(value) {
 <template>
   <PageHeader title="Tồn kho" description="Danh sách tồn kho theo sản phẩm và kho." />
 
+  <!-- Inventory Summary Metrics -->
+  <div v-if="!isLoading && inventoryItems.length > 0" class="inventory-summary">
+    <div class="summary-card card card-pad">
+      <span class="summary-label">Tổng bản ghi tồn kho</span>
+      <strong class="summary-val text-blue-600">{{ totalElements }}</strong>
+    </div>
+    <div class="summary-card card card-pad">
+      <span class="summary-label">Bản ghi trên trang</span>
+      <strong class="summary-val">{{ inventoryItems.length }}</strong>
+    </div>
+    <div class="summary-card card card-pad">
+      <span class="summary-label">Kho hàng đang theo dõi</span>
+      <strong class="summary-val text-emerald-600">{{ warehouses.length }}</strong>
+    </div>
+  </div>
+
   <SearchFilterBar
     v-model="searchDraft"
     placeholder="Tìm theo mã sản phẩm, tên sản phẩm, mã vạch"
@@ -211,19 +236,101 @@ function formatDate(value) {
     <span>Đang tải dữ liệu tồn kho...</span>
   </div>
 
-  <DataTable
-    v-else-if="inventoryItems.length > 0"
-    :columns="columns"
-    :rows="inventoryItems"
-    min-width="1360px"
-    empty-text="Không có dữ liệu tồn kho phù hợp"
-  >
-    <template #warehouse="{ row }">{{ displayWarehouseName(row) }}</template>
-    <template #status="{ value }"><StatusBadge :status="getInventoryStatusLabel(value)" /></template>
-    <template #warehouseStatus="{ value }"><StatusBadge :status="getWarehouseStatusLabel(value)" /></template>
-    <template #productStatus="{ value }"><StatusBadge :status="value === 'HOAT_DONG' ? 'Đang hoạt động' : 'Ngừng hoạt động'" /></template>
-    <template #lastUpdatedAt="{ value }">{{ formatDate(value) }}</template>
-  </DataTable>
+  <div class="inventory-desktop-table">
+    <DataTable
+      v-if="inventoryItems.length > 0"
+      :columns="columns"
+      :rows="inventoryItems"
+      min-width="1200px"
+      empty-text="Không có dữ liệu tồn kho phù hợp"
+    >
+      <template #productCode="{ value }">
+        <code class="sku-code">{{ value }}</code>
+      </template>
+      <template #productName="{ row }">
+        <div class="product-cell">
+          <div class="product-thumbnail">
+            <i class="mdi mdi-package-variant-closed"></i>
+          </div>
+          <div class="product-info">
+            <span class="product-name">{{ row.productName }}</span>
+            <span class="product-sub" v-if="row.barcode">Barcode: {{ row.barcode }}</span>
+          </div>
+        </div>
+      </template>
+      <template #warehouse="{ row }">
+        <div class="warehouse-cell">
+          <span class="warehouse-name">{{ row.warehouse }}</span>
+          <code class="sku-code text-muted text-xs" v-if="row.warehouseCode">{{ row.warehouseCode }}</code>
+        </div>
+      </template>
+      <template #currentQuantity="{ value, row }">
+        <div class="quantity-cell">
+          <span class="tabular-num font-semibold text-slate-800" :class="{ 'text-red-600 font-bold': row.status === 'OUT_OF_STOCK', 'text-amber-600 font-bold': row.status === 'LOW_STOCK' }">
+            {{ value ?? 0 }}
+          </span>
+          <span class="threshold-hint" v-if="row.minStock !== null">/ tối thiểu {{ row.minStock }}</span>
+        </div>
+      </template>
+      <template #status="{ value }">
+        <StatusBadge :status="getInventoryStatusLabel(value)" />
+      </template>
+      <template #warehouseStatus="{ value }">
+        <StatusBadge :status="getWarehouseStatusLabel(value)" />
+      </template>
+      <template #productStatus="{ value }">
+        <StatusBadge :status="value === 'HOAT_DONG' ? 'Đang hoạt động' : 'Ngừng hoạt động'" />
+      </template>
+      <template #lastUpdatedAt="{ value }">
+        <span class="tabular-num text-xs">{{ formatDate(value) }}</span>
+      </template>
+    </DataTable>
+  </div>
+
+  <div class="inventory-mobile-list" v-if="inventoryItems.length > 0">
+    <div v-for="row in inventoryItems" :key="row.id || row.productCode" class="inventory-mobile-card card card-pad">
+      <div class="inventory-mobile-card__header">
+        <div class="product-cell">
+          <div class="product-thumbnail">
+            <i class="mdi mdi-package-variant-closed"></i>
+          </div>
+          <div class="product-info">
+            <span class="product-name">{{ row.productName }}</span>
+            <code class="sku-code text-xs">{{ row.productCode }}</code>
+          </div>
+        </div>
+        <StatusBadge :status="getInventoryStatusLabel(row.status)" />
+      </div>
+
+      <div class="inventory-mobile-card__details">
+        <div class="detail-row" v-if="row.warehouse">
+          <span class="detail-label">Kho hàng</span>
+          <span class="detail-val">
+            {{ row.warehouse }}
+            <code class="sku-code text-xs text-muted ml-1" v-if="row.warehouseCode">{{ row.warehouseCode }}</code>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Tồn hiện tại</span>
+          <span class="detail-val">
+            <span class="tabular-num font-semibold text-slate-800" :class="{ 'text-red-600 font-bold': row.status === 'OUT_OF_STOCK', 'text-amber-600 font-bold': row.status === 'LOW_STOCK' }">
+              {{ row.currentQuantity ?? 0 }}
+            </span>
+          </span>
+        </div>
+        <div class="detail-row" v-if="row.minStock !== null">
+          <span class="detail-label">Ngưỡng tối thiểu</span>
+          <span class="detail-val">
+            <span class="tabular-num">{{ row.minStock }}</span>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Cập nhật</span>
+          <span class="detail-val text-xs text-muted">{{ formatDate(row.lastUpdatedAt) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <EmptyState
     v-else-if="!isLoading && !errorMessage"
@@ -310,6 +417,157 @@ function formatDate(value) {
 
   .pagination-actions {
     justify-content: center;
+  }
+}
+
+/* Redesigned Inventory Styles */
+.inventory-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.summary-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+.summary-val {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.product-thumbnail {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.product-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+.product-sub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.sku-code {
+  font-family: monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+.tabular-num {
+  font-variant-numeric: tabular-nums;
+}
+.warehouse-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.warehouse-name {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+.quantity-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.threshold-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.text-red-600 {
+  color: var(--color-danger);
+}
+.text-amber-600 {
+  color: var(--color-warning);
+}
+.ml-1 {
+  margin-left: 4px;
+}
+
+/* Mobile responsive layout */
+.inventory-mobile-list {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .inventory-desktop-table {
+    display: none;
+  }
+  .inventory-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .inventory-mobile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+  .inventory-mobile-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 12px;
+  }
+  .inventory-mobile-card__details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .detail-label {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+  }
+  .detail-val {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
   }
 }
 </style>

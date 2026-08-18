@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, ref, reactive, watch, onBeforeUnmount } from "vue";
 import { useAuthStore } from "../stores/auth";
 import {
   approveExportReceipt,
@@ -7,7 +7,15 @@ import {
   rejectExportReceipt,
   completeExportReceipt,
 } from "../services/stockOutApprovalService";
+import {
+  getExportReceiptHistory,
+  exportExportReceiptPdf,
+  exportExportReceiptExcel,
+} from "../services/exportReceiptService";
+import { downloadBlobResponse, setPrintWindowBlob } from "../utils/downloadHelper";
 import EmptyState from "./EmptyState.vue";
+import ConfirmDialog from "./ConfirmDialog.vue";
+import StatusBadge from "./StatusBadge.vue";
 
 const props = defineProps({
   receiptId: {
@@ -24,6 +32,7 @@ let loadDetailRequestId = 0;
 const actionMessage = ref("");
 const actionError = ref("");
 const actionLoading = ref(false);
+const historyList = ref([]);
 const rejectState = ref({
   open: false,
   reason: "",
@@ -31,6 +40,14 @@ const rejectState = ref({
   submitting: false,
 });
 const REJECT_REASON_MAX = 500;
+
+const confirmState = reactive({
+  open: false,
+  title: "",
+  message: "",
+  confirmText: "Xác nhận",
+  action: "",
+});
 
 const canManageApproval = computed(() =>
   ["ADMIN", "MANAGER"].includes(authStore.currentRole),
@@ -77,6 +94,7 @@ async function loadDetail() {
     receipt.value = null;
     error.value = "";
     loading.value = false;
+    historyList.value = [];
     return;
   }
 
@@ -84,6 +102,7 @@ async function loadDetail() {
   loading.value = true;
   error.value = "";
   receipt.value = null;
+  historyList.value = [];
 
   try {
     const detail = await getPendingExportApprovalDetail(
@@ -91,6 +110,13 @@ async function loadDetail() {
     );
     if (requestId !== loadDetailRequestId) return;
     receipt.value = detail;
+
+    // Load history
+    try {
+      historyList.value = await getExportReceiptHistory(String(props.receiptId));
+    } catch (histErr) {
+      console.error("Failed to load export history", histErr);
+    }
   } catch (err) {
     if (requestId !== loadDetailRequestId) return;
     error.value = err.message || "Không thể tải chi tiết phiếu xuất.";
@@ -101,48 +127,44 @@ async function loadDetail() {
   }
 }
 
-async function handleApprove() {
+function triggerApproveConfirm() {
   if (!canApprove.value) return;
-
-  const confirmed = window.confirm(
-    `Duyệt phiếu ${receipt.value?.code || props.receiptId} này?`,
-  );
-  if (!confirmed) return;
-
-  actionLoading.value = true;
-  actionMessage.value = "";
-  actionError.value = "";
-
-  try {
-    const approvedReceipt = await approveExportReceipt(String(props.receiptId));
-    receipt.value = approvedReceipt;
-    actionMessage.value = `Đã duyệt phiếu thành công cho phiếu ${approvedReceipt?.code || props.receiptId}.`;
-  } catch (err) {
-    actionError.value = err.message || "Không thể duyệt phiếu xuất.";
-  } finally {
-    actionLoading.value = false;
-  }
+  confirmState.title = "Xác nhận duyệt";
+  confirmState.message = `Duyệt phiếu xuất kho ${receipt.value?.code || props.receiptId} này?`;
+  confirmState.confirmText = "Duyệt phiếu";
+  confirmState.action = "approve";
+  confirmState.open = true;
 }
 
-async function handleComplete() {
+function triggerCompleteConfirm() {
   if (!canComplete.value) return;
+  confirmState.title = "Xác nhận hoàn tất";
+  confirmState.message = `Hoàn tất xuất kho cho phiếu ${receipt.value?.code || props.receiptId} này?`;
+  confirmState.confirmText = "Hoàn tất";
+  confirmState.action = "complete";
+  confirmState.open = true;
+}
 
-  const confirmed = window.confirm(
-    `Hoàn tất xuất kho cho phiếu ${receipt.value?.code || props.receiptId} này?`,
-  );
-  if (!confirmed) return;
-
+async function executeConfirmedAction() {
+  confirmState.open = false;
   actionLoading.value = true;
   actionMessage.value = "";
   actionError.value = "";
 
   try {
-    const completedReceipt = await completeExportReceipt(String(props.receiptId));
-    receipt.value = completedReceipt;
-    actionMessage.value = `Hoàn tất xuất kho thành công cho phiếu ${completedReceipt?.code || props.receiptId}.`;
-    await loadDetail();
+    if (confirmState.action === "approve") {
+      const approvedReceipt = await approveExportReceipt(String(props.receiptId));
+      receipt.value = approvedReceipt;
+      actionMessage.value = `Đã duyệt phiếu thành công cho phiếu ${approvedReceipt?.code || props.receiptId}.`;
+      await loadDetail();
+    } else if (confirmState.action === "complete") {
+      const completedReceipt = await completeExportReceipt(String(props.receiptId));
+      receipt.value = completedReceipt;
+      actionMessage.value = `Hoàn tất xuất kho thành công cho phiếu ${completedReceipt?.code || props.receiptId}.`;
+      await loadDetail();
+    }
   } catch (err) {
-    actionError.value = err.message || "Không thể hoàn tất phiếu xuất.";
+    actionError.value = err.message || "Không thể thực hiện hành động.";
   } finally {
     actionLoading.value = false;
   }
@@ -199,6 +221,7 @@ async function confirmReject() {
       submitting: false,
     };
     actionMessage.value = `Đã từ chối phiếu ${rejectedReceipt?.code || props.receiptId} thành công.`;
+    await loadDetail();
   } catch (err) {
     rejectState.value.submitting = false;
     rejectState.value.error = err.message || "Không thể từ chối phiếu xuất.";
@@ -231,12 +254,108 @@ function formatStatus(status) {
   return statusMap[status] || status || "-";
 }
 
+const statusHelpers = {
+  CHO_DUYET: "Chờ duyệt - phiếu xuất đang chờ quản lý xem duyệt.",
+  DA_DUYET: "Đã duyệt - đã được duyệt phê chuẩn, chờ thủ kho xuất hàng thực tế.",
+  HOAN_THANH: "Hoàn thành - hàng hóa đã được xuất kho thành công.",
+  TU_CHOI: "Từ chối - yêu cầu xuất kho bị từ chối.",
+  DA_HUY: "Đã hủy - phiếu xuất kho đã được hủy bỏ.",
+};
+
+const ACTION_LABELS = {
+  GUI_DUYET: "Gửi duyệt",
+  DUYET_CAP_1: "Duyệt cấp 1",
+  DUYET_CAP_2: "Duyệt cấp 2",
+  TU_CHOI: "Từ chối",
+  HUY: "Hủy phiếu",
+};
+const ACTION_ICONS = {
+  GUI_DUYET: "📤",
+  DUYET_CAP_1: "✅",
+  DUYET_CAP_2: "✅",
+  TU_CHOI: "❌",
+  HUY: "🚫",
+};
+const ACTION_CLASSES = {
+  GUI_DUYET: "actor-submit",
+  DUYET_CAP_1: "actor-approve",
+  DUYET_CAP_2: "actor-approve",
+  TU_CHOI: "actor-reject",
+  HUY: "actor-cancel",
+};
+
+function getHistoryActionLabel(action) {
+  return ACTION_LABELS[action] || action;
+}
+function getHistoryActionIcon(action) {
+  return ACTION_ICONS[action] || "📌";
+}
+function getHistoryActionClass(action) {
+  return ACTION_CLASSES[action] || "actor-default";
+}
+
 function approveButtonLabel() {
   if (actionLoading.value) return "Đang duyệt...";
   if (receipt.value?.approvalLevelLabel)
     return `Duyệt ${receipt.value.approvalLevelLabel.toLowerCase()}`;
   return "Duyệt";
 }
+
+const exporting = ref(false);
+const exportDropdownOpen = ref(false);
+
+const closeDropdown = (e) => {
+  if (!e.target.closest(".export-dropdown-container")) {
+    exportDropdownOpen.value = false;
+  }
+};
+
+window.addEventListener("click", closeDropdown);
+onBeforeUnmount(() => {
+  window.removeEventListener("click", closeDropdown);
+});
+
+async function handleExport(format) {
+  if (exporting.value) return;
+  actionError.value = "";
+  actionMessage.value = "";
+  exportDropdownOpen.value = false;
+
+  let printWindow = null;
+  if (format === "print") {
+    printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      actionError.value = "Không thể mở bản in. Vui lòng cho phép trình duyệt hiển thị popup.";
+      return;
+    }
+    printWindow.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:20px;">Đang tải bản in PDF...</p>');
+  }
+
+  exporting.value = true;
+  try {
+    if (format === "pdf") {
+      const response = await exportExportReceiptPdf(props.receiptId);
+      downloadBlobResponse(response, `phieu-xuat-${receipt.value?.code || props.receiptId}.pdf`);
+      actionMessage.value = "Xuất phiếu PDF thành công.";
+    } else if (format === "excel") {
+      const response = await exportExportReceiptExcel(props.receiptId);
+      downloadBlobResponse(response, `phieu-xuat-${receipt.value?.code || props.receiptId}.xlsx`);
+      actionMessage.value = "Xuất file Excel thành công.";
+    } else if (format === "print") {
+      const response = await exportExportReceiptPdf(props.receiptId);
+      setPrintWindowBlob(printWindow, response);
+    }
+  } catch (err) {
+    if (printWindow) {
+      printWindow.close();
+    }
+    const actionLabel = format === "pdf" ? "xuất phiếu PDF" : format === "excel" ? "xuất file Excel" : "mở bản in";
+    actionError.value = err.message || `Không thể ${actionLabel}.`;
+  } finally {
+    exporting.value = false;
+  }
+}
+
 
 watch(
   () => props.receiptId,
@@ -273,6 +392,18 @@ watch(
   </div>
 
   <div v-else class="stack">
+    <!-- Status Helper Alert -->
+    <div class="status-helper-alert card card-pad">
+      <div class="row">
+        <i class="mdi mdi-information-outline info-icon"></i>
+        <div>
+          <span class="strong text-sm">Trạng thái hiện tại: </span>
+          <span class="text-sm text-text">{{ statusHelpers[receipt.status] || 'Trạng thái không rõ.' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thông tin chung -->
     <div class="card card-pad">
       <div class="between">
         <div>
@@ -281,7 +412,57 @@ watch(
             Kiểm tra toàn bộ thông tin trước khi quyết định duyệt hoặc từ chối.
           </p>
         </div>
-        <span class="status-pill">{{ formatStatus(receipt.status) }}</span>
+        <div class="row">
+          <StatusBadge :status="formatStatus(receipt.status)" />
+          
+          <div class="export-dropdown-container relative inline-block text-left">
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="exporting"
+              @click="exportDropdownOpen = !exportDropdownOpen"
+            >
+              <i class="mdi mdi-export-variant"></i>
+              <span>Xuất phiếu</span>
+              <i class="mdi mdi-chevron-down"></i>
+            </button>
+            <div
+              v-if="exportDropdownOpen"
+              class="absolute right-0 mt-1 w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 border border-gray-200"
+              style="right: 0;"
+            >
+              <div class="py-1 flex flex-col items-stretch">
+                <button
+                  type="button"
+                  class="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100 text-slate-800 cursor-pointer"
+                  style="border: none; background: none; justify-content: flex-start; box-shadow: none; font-weight: 500; text-align: left; padding: 8px 16px; border-radius: 0;"
+                  @click="handleExport('print')"
+                >
+                  <i class="mdi mdi-printer mr-2 text-slate-500" style="font-size: 16px;"></i>
+                  In phiếu
+                </button>
+                <button
+                  type="button"
+                  class="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100 text-slate-800 cursor-pointer"
+                  style="border: none; background: none; justify-content: flex-start; box-shadow: none; font-weight: 500; text-align: left; padding: 8px 16px; border-radius: 0;"
+                  @click="handleExport('pdf')"
+                >
+                  <i class="mdi mdi-file-pdf-box mr-2 text-slate-500" style="font-size: 16px;"></i>
+                  Xuất PDF
+                </button>
+                <button
+                  type="button"
+                  class="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100 text-slate-800 cursor-pointer"
+                  style="border: none; background: none; justify-content: flex-start; box-shadow: none; font-weight: 500; text-align: left; padding: 8px 16px; border-radius: 0;"
+                  @click="handleExport('excel')"
+                >
+                  <i class="mdi mdi-file-excel-box mr-2 text-slate-500" style="font-size: 16px;"></i>
+                  Xuất Excel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="detail-grid">
@@ -316,6 +497,7 @@ watch(
       </div>
     </div>
 
+    <!-- Danh sách sản phẩm -->
     <div class="card card-pad">
       <div class="between">
         <div>
@@ -326,7 +508,7 @@ watch(
         </div>
         <span v-if="overstockItems.length" class="warning-pill">
           <i class="mdi mdi-alert-outline"></i>
-          Có {{ overstockItems.length }} mặt hàng vượt tồn
+          Có {{ overstockItems.length }} mặt hàng vượt tồn kho
         </span>
       </div>
 
@@ -337,8 +519,8 @@ watch(
               <th>Mã sản phẩm</th>
               <th>Tên sản phẩm</th>
               <th>Đơn vị</th>
-              <th>Số lượng xuất</th>
-              <th>Tồn hiện tại</th>
+              <th style="text-align: right">Số lượng xuất</th>
+              <th style="text-align: right">Tồn hiện tại</th>
             </tr>
           </thead>
           <tbody>
@@ -358,18 +540,20 @@ watch(
                 <div class="product-name">{{ item.productName || "-" }}</div>
               </td>
               <td>{{ item.unitName || "-" }}</td>
-              <td class="quantity-cell">
+              <td style="text-align: right; font-weight: 700;">
                 <span>{{ item.exportQuantity ?? "-" }}</span>
               </td>
-              <td class="quantity-cell">
+              <td style="text-align: right; font-weight: 700;" :class="{ 'text-danger': Number(item.exportQuantity || 0) > Number(item.currentStock || 0) }">
                 <span>{{ item.currentStock ?? "-" }}</span>
-                <i
+                <span
                   v-if="
                     Number(item.exportQuantity || 0) >
                     Number(item.currentStock || 0)
                   "
-                  class="mdi mdi-alert-circle-outline warning-icon"
-                ></i>
+                  class="warning-text block text-xxs font-normal text-danger"
+                >
+                  [Không đủ tồn kho]
+                </span>
               </td>
             </tr>
           </tbody>
@@ -377,13 +561,44 @@ watch(
       </div>
     </div>
 
+    <!-- Lịch sử phê duyệt -->
+    <div class="card card-pad">
+      <h3 class="section-title mb-4">Lịch sử phê duyệt</h3>
+      <div v-if="historyList.length === 0" class="muted italic text-center py-4">
+        Chưa có lịch sử phê duyệt cho phiếu này.
+      </div>
+      <div v-else class="approval-timeline">
+        <div 
+          v-for="item in historyList" 
+          :key="item.id" 
+          class="timeline-row flex items-start gap-4 mb-4 pl-4 relative"
+        >
+          <div class="timeline-badge-icon flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-gray-200">
+            <span>{{ getHistoryActionIcon(item.action) }}</span>
+          </div>
+          <div class="timeline-body flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-sm text-text">{{ getHistoryActionLabel(item.action) }}</span>
+              <span class="text-xs text-muted">{{ formatDate(item.createdAt) }}</span>
+            </div>
+            <div class="text-sm text-slate-700 mt-1">
+              <strong>Người thực hiện:</strong> {{ item.actorName || 'Không rõ' }}
+            </div>
+            <div v-if="item.note" class="text-sm text-danger mt-1 italic pl-2 border-l-2 border-red-500 bg-red-50 p-1.5 rounded">
+              Lý do: {{ item.note }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hành động -->
     <div class="card card-pad">
       <div class="between">
         <div>
           <h3 class="section-title">Hành động</h3>
           <p class="muted">
-            Duyệt phiếu tại cấp hiện tại và cập nhật lại dữ liệu sau khi thành
-            công.
+            Duyệt hoặc từ chối phiếu xuất này dựa trên vai trò của bạn.
           </p>
         </div>
       </div>
@@ -400,17 +615,18 @@ watch(
         class="rejection-card"
       >
         <div class="detail-label">Lý do từ chối</div>
-        <div class="detail-value">{{ receipt.rejectionReason }}</div>
+        <div class="detail-value text-danger">{{ receipt.rejectionReason }}</div>
       </div>
 
       <div class="actions-row">
         <button
           v-if="receipt?.status === 'CHO_DUYET'"
-          class="btn btn-primary"
+          class="btn btn-success"
           type="button"
           :disabled="!canApprove"
-          @click="handleApprove"
+          @click="triggerApproveConfirm"
         >
+          <i class="mdi mdi-check-circle"></i>
           {{ approveButtonLabel() }}
         </button>
         <button
@@ -420,6 +636,7 @@ watch(
           :disabled="!canReject"
           @click="openRejectModal"
         >
+          <i class="mdi mdi-close-circle"></i>
           {{ rejectState.submitting ? "Đang gửi..." : "Từ chối" }}
         </button>
         <button
@@ -427,20 +644,32 @@ watch(
           class="btn btn-success"
           type="button"
           :disabled="!canComplete"
-          @click="handleComplete"
+          @click="triggerCompleteConfirm"
         >
+          <i class="mdi mdi-check-all"></i>
           {{ actionLoading ? "Đang hoàn tất..." : "Hoàn tất xuất kho" }}
         </button>
       </div>
 
       <p v-if="receipt?.status === 'CHO_DUYET' && !canManageApproval" class="muted mt-2">
-        Bạn hiện không có quyền thực hiện hành động này.
+        Bạn hiện không có quyền thực hiện duyệt hoặc từ chối.
       </p>
       <p v-if="receipt?.status === 'DA_DUYET' && !['ADMIN', 'EMPLOYEE'].includes(authStore.currentRole)" class="muted mt-2">
         Chỉ Admin hoặc Nhân viên kho được hoàn tất xuất kho.
       </p>
     </div>
   </div>
+
+  <ConfirmDialog
+    :open="confirmState.open"
+    :title="confirmState.title"
+    :message="confirmState.message"
+    :confirm-text="confirmState.confirmText"
+    :loading="actionLoading"
+    :danger="confirmState.action === 'reject'"
+    @cancel="confirmState.open = false"
+    @confirm="executeConfirmedAction"
+  />
 
   <div v-if="rejectState.open" class="modal-backdrop">
     <div class="modal small-modal">
@@ -506,6 +735,16 @@ watch(
   gap: 16px;
 }
 
+.status-helper-alert {
+  border-left: 4px solid var(--color-primary, #2563EB);
+  background: var(--color-surface);
+}
+
+.info-icon {
+  font-size: 20px;
+  color: var(--color-primary, #2563EB);
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -534,17 +773,6 @@ watch(
 .detail-value {
   font-weight: 700;
   color: var(--text);
-}
-
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-weight: 700;
 }
 
 .warning-pill {
@@ -583,11 +811,6 @@ watch(
   background: #fef2f2;
 }
 
-.quantity-cell {
-  font-weight: 700;
-  color: var(--text);
-}
-
 .product-code {
   color: var(--muted);
   font-size: 12px;
@@ -595,11 +818,6 @@ watch(
 
 .product-name {
   font-weight: 700;
-}
-
-.warning-icon {
-  margin-left: 6px;
-  color: var(--danger);
 }
 
 .actions-row {
@@ -667,5 +885,23 @@ watch(
   color: var(--muted);
   font-size: 12px;
   margin-left: auto;
+}
+
+.approval-timeline {
+  position: relative;
+}
+
+.timeline-row::before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  top: 32px;
+  bottom: -20px;
+  width: 2px;
+  background: var(--color-border);
+}
+
+.timeline-row:last-child::before {
+  display: none;
 }
 </style>

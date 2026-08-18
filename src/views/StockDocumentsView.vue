@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import DataTable from '../components/DataTable.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import StatusBadge from '../components/StatusBadge.vue'
 import ImportReceiptHistoryModal from '../components/ImportReceiptHistoryModal.vue'
 import { getCurrentRoleCode } from '../services/authService'
 import { cancelDraft, getImportReceipts, getMyImportReceipts, submitForApproval } from '../services/importReceiptService'
@@ -48,7 +49,7 @@ const currentRole = computed(() => getCurrentRoleCode())
 const isOut = computed(() => props.type === 'out')
 const canCreateImportReceipt = computed(() => currentRole.value === 'ADMIN' || currentRole.value === 'EMPLOYEE')
 const pageTitle = computed(() => `${isOut.value ? 'Phiếu xuất' : 'Phiếu nhập'}${currentRole.value === 'EMPLOYEE' ? ' của tôi' : ' kho'}`)
-const pageDescription = computed(() => `Danh sách phiếu ${isOut.value ? 'xuất' : 'nhập'} kho từ API backend.`)
+const pageDescription = computed(() => `Danh sách phiếu ${isOut.value ? 'xuất' : 'nhập'} kho từ hệ thống.`)
 
 const columns = computed(() => [
   { key: 'code', label: 'Mã phiếu' },
@@ -77,7 +78,27 @@ const statusLabels = {
   ...Object.fromEntries(statusOptions.map(status => [status.value, status.label])),
 }
 
-onMounted(fetchReceipts)
+const statusHelpers = {
+  NHAP: 'Bản nháp - chưa gửi phê duyệt.',
+  CHO_DUYET: 'Đang chờ người có thẩm quyền phê duyệt.',
+  CHO_DUYET_CAP_1: 'Chờ duyệt cấp 1 - đang chờ xử lý.',
+  CHO_DUYET_CAP_2: 'Chờ duyệt cấp 2 - chờ quản lý cấp cao.',
+  DA_DUYET: 'Đã duyệt - phiếu được chấp nhận, chờ xử lý kho.',
+  CHO_HANG_VE: 'Chờ hàng về - phiếu đã duyệt, chờ giao hàng.',
+  CHO_KIEM_HANG: 'Chờ kiểm hàng - vui lòng kiểm kê thực tế.',
+  HOAN_THANH: 'Hoàn thành - hàng đã nhập/xuất kho thành công.',
+  TU_CHOI: 'Từ chối - vui lòng kiểm tra lý do và chỉnh sửa.',
+  HUY: 'Đã hủy - phiếu không còn hiệu lực.',
+}
+
+onMounted(() => {
+  fetchReceipts()
+  window.addEventListener('click', handleWindowClick)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleWindowClick)
+})
 
 watch(() => props.type, () => { page.value = 0; fetchReceipts() })
 
@@ -147,6 +168,20 @@ function goEdit(receipt) {
 
 function goDetail(receipt) {
   router.push(`${isOut.value ? '/stock-out' : '/stock-in'}/${receipt.id}`)
+}
+
+// Action dropdown toggle
+const activeActionMenuRowId = ref(null)
+function toggleActionMenu(rowId) {
+  activeActionMenuRowId.value = activeActionMenuRowId.value === rowId ? null : rowId
+}
+function closeActionMenu() {
+  activeActionMenuRowId.value = null
+}
+function handleWindowClick(event) {
+  if (!event.target.closest('.dropdown-wrapper')) {
+    closeActionMenu()
+  }
 }
 
 function handleSubmit(receipt) {
@@ -226,16 +261,13 @@ function isActionRunning(receipt, action) {
   return actionState.receiptId === receipt.id && actionState.action === action
 }
 
+// Check action loading without specifying action type
 function isAnyActionRunning(receipt) {
   return actionState.receiptId === receipt.id
 }
 
 function statusLabel(status) {
   return statusLabels[status] || status || '-'
-}
-
-function statusClass(status) {
-  return `status-${String(status || 'unknown').toLowerCase().replaceAll('_', '-')}`
 }
 
 function hasRejectionReason(receipt) {
@@ -258,6 +290,7 @@ function canSubmitImportReceipt(status) {
   return status === 'NHAP' || status === 'TU_CHOI'
 }
 
+// Map TU_CHOI to 'Gửi duyệt lại' or 'Gửi duyệt'
 function submitLabel(status) {
   return status === 'TU_CHOI' ? 'Gửi duyệt lại' : 'Gửi duyệt'
 }
@@ -265,14 +298,6 @@ function submitLabel(status) {
 function canCancelImportReceipt(status) {
   if (!['ADMIN', 'EMPLOYEE'].includes(currentRole.value)) return false
   return status === 'NHAP'
-}
-
-function hasWorkflowAction(status) {
-  return canEditImportReceipt(status) || canSubmitImportReceipt(status) || canCancelImportReceipt(status)
-}
-
-function canViewImportReceipt(status) {
-  return currentRole.value === 'MANAGER' || !hasWorkflowAction(status)
 }
 
 function formatDate(value) {
@@ -284,7 +309,7 @@ function formatDate(value) {
 
 function formatCurrency(value) {
   if (value === null || value === undefined) return '-'
-  return Number(value || 0).toLocaleString('vi-VN') + ' đ'
+  return Number(value || 0).toLocaleString('vi-VN') + ' ₫'
 }
 
 function confirmTitle() {
@@ -303,77 +328,190 @@ function confirmText() {
 </script>
 
 <template>
-    <PageHeader :title="pageTitle" :description="pageDescription">
-      <button v-if="canCreateImportReceipt" class="btn btn-primary" type="button" @click="goCreate"><i class="mdi mdi-plus"></i>Tạo phiếu</button>
-    </PageHeader>
+  <PageHeader :title="pageTitle" :description="pageDescription">
+    <button v-if="canCreateImportReceipt" class="btn btn-primary" type="button" @click="goCreate">
+      <i class="mdi" :class="isOut ? 'mdi-tray-arrow-up' : 'mdi-tray-arrow-down'"></i> Tạo phiếu
+    </button>
+  </PageHeader>
 
-    <div class="filter-bar card card-pad">
-      <select v-model="filters.status" class="select" @change="applyFilter">
+  <div class="filter-bar card card-pad">
+    <div class="flex items-center gap-3">
+      <select v-model="filters.status" class="select max-w-xs" @change="applyFilter">
         <option value="">Tất cả trạng thái</option>
         <option v-for="status in statusOptions" :key="status.value" :value="status.value">{{ status.label }}</option>
       </select>
       <button class="btn btn-ghost" type="button" @click="clearFilters">Xóa lọc</button>
     </div>
+  </div>
 
-    <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
-    <p v-if="actionErrorMessage" class="form-alert form-alert-error">{{ actionErrorMessage }}</p>
-    <p v-if="actionMessage" class="form-alert form-alert-info">{{ actionMessage }}</p>
-    <p v-if="isLoading" class="muted loading-line">Đang tải danh sách phiếu...</p>
+  <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
+  <p v-if="actionErrorMessage" class="form-alert form-alert-error">{{ actionErrorMessage }}</p>
+  <p v-if="actionMessage" class="form-alert form-alert-info">{{ actionMessage }}</p>
+  <p v-if="isLoading" class="muted loading-line">Đang tải danh sách phiếu...</p>
 
-    <DataTable :columns="columns" :rows="receipts" empty-text="Chưa có phiếu nhập từ backend">
+  <!-- Desktop Table view -->
+  <div class="hidden md:block">
+    <DataTable :columns="columns" :rows="receipts" :empty-text="`Chưa có phiếu ${isOut ? 'xuất' : 'nhập'} kho.`">
       <template #warehouseName="{ value }">{{ value || '-' }}</template>
       <template #supplierName="{ value }">{{ value || '-' }}</template>
       <template #partnerName="{ value }">{{ value || '-' }}</template>
       <template #createdAt="{ value }">{{ formatDate(value) }}</template>
       <template #status="{ row, value }">
-        <span class="badge" :class="statusClass(value)">{{ statusLabel(value) }}</span>
-        <p v-if="value === 'TU_CHOI'" class="import-receipt-list__rejection-reason">
-          {{ rejectionReasonText(row) }}
-        </p>
+        <div class="status-cell-wrapper">
+          <StatusBadge :status="statusLabel(value)" />
+          <span class="status-helper-text mt-1">{{ statusHelpers[value] }}</span>
+          <p v-if="value === 'TU_CHOI'" class="import-receipt-list__rejection-reason mt-1">
+            {{ rejectionReasonText(row) }}
+          </p>
+        </div>
       </template>
       <template #totalAmount="{ value }">{{ formatCurrency(value) }}</template>
       <template #actions="{ row }">
-        <div class="actions">
-          <button v-if="canEditImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="goEdit(row)">Sửa</button>
-          <button v-if="canSubmitImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="handleSubmit(row)">
-            {{ isActionRunning(row, 'submit') ? 'Đang gửi...' : submitLabel(row.status) }}
-          </button>
-          <button v-if="canCancelImportReceipt(row.status)" class="btn btn-sm" type="button" :disabled="isAnyActionRunning(row)" @click="handleCancel(row)">
-            {{ isActionRunning(row, 'cancel') ? 'Đang hủy...' : 'Hủy' }}
-          </button>
-          <button v-if="canViewImportReceipt(row.status)" class="btn btn-sm" type="button" @click="goDetail(row)">Xem</button>
-          <button class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="openHistory(row)">Lịch sử</button>
+        <div class="action-dropdown-container">
+          <button class="btn btn-sm btn-secondary" type="button" @click="goDetail(row)">Xem</button>
+          
+          <div class="dropdown-wrapper">
+            <button 
+              class="btn btn-sm btn-icon" 
+              type="button" 
+              :disabled="isAnyActionRunning(row)"
+              @click.stop="toggleActionMenu(row.id)"
+            >
+              <i class="mdi mdi-dots-horizontal"></i>
+            </button>
+            
+            <div v-if="activeActionMenuRowId === row.id" class="dropdown-menu">
+              <button 
+                v-if="canEditImportReceipt(row.status)" 
+                class="dropdown-item" 
+                type="button" 
+                :disabled="isAnyActionRunning(row)" 
+                @click="goEdit(row); closeActionMenu()"
+              >
+                <i class="mdi mdi-pencil-outline"></i> Sửa
+              </button>
+              <button 
+                v-if="canSubmitImportReceipt(row.status)" 
+                class="dropdown-item" 
+                type="button" 
+                :disabled="isAnyActionRunning(row)" 
+                @click="handleSubmit(row); closeActionMenu()"
+              >
+                <i class="mdi mdi-send-outline"></i> {{ submitLabel(row.status) }}
+              </button>
+              <button 
+                v-if="canCancelImportReceipt(row.status)" 
+                class="dropdown-item" 
+                type="button" 
+                :disabled="isAnyActionRunning(row)" 
+                @click="handleCancel(row); closeActionMenu()"
+              >
+                <i class="mdi mdi-cancel"></i> Hủy
+              </button>
+              <button 
+                class="dropdown-item" 
+                type="button" 
+                :disabled="isAnyActionRunning(row)" 
+                @click="openHistory(row); closeActionMenu()"
+              >
+                <i class="mdi mdi-history"></i> Lịch sử
+              </button>
+            </div>
+          </div>
         </div>
       </template>
     </DataTable>
+  </div>
 
-    <div class="pagination-bar card card-pad">
-      <span class="muted">{{ totalElements }} phiếu {{ isOut ? 'xuất' : 'nhập' }}</span>
-      <div class="pagination-actions">
-        <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage" @click="previousPage">Trước</button>
-        <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
-        <button class="btn btn-sm" type="button" :disabled="!hasNextPage" @click="nextPage">Sau</button>
+  <!-- Mobile Responsive cards list -->
+  <div class="block md:hidden space-y-4">
+    <div v-if="receipts.length === 0" class="card card-pad text-center muted py-8">
+      Chưa có phiếu {{ isOut ? 'xuất' : 'nhập' }} nào phù hợp với bộ lọc.
+    </div>
+    <div v-else v-for="row in receipts" :key="row.id" class="card card-pad relative space-y-3">
+      <div class="between">
+        <button class="text-link font-bold text-base text-primary" type="button" @click="goDetail(row)">
+          {{ row.code }}
+        </button>
+        <StatusBadge :status="statusLabel(row.status)" />
+      </div>
+      
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <span class="text-muted block text-xs uppercase font-semibold">Kho</span>
+          <span class="font-medium text-text">{{ row.warehouseName || '-' }}</span>
+        </div>
+        <div>
+          <span class="text-muted block text-xs uppercase font-semibold">
+            {{ isOut ? 'Đối tác' : 'Nhà cung cấp' }}
+          </span>
+          <span class="font-medium text-text">
+            {{ isOut ? row.partnerName : row.supplierName || '-' }}
+          </span>
+        </div>
+        <div>
+          <span class="text-muted block text-xs uppercase font-semibold">Ngày tạo</span>
+          <span class="font-medium text-text">{{ formatDate(row.createdAt) }}</span>
+        </div>
+        <div>
+          <span class="text-muted block text-xs uppercase font-semibold">Tổng tiền</span>
+          <span class="font-bold text-danger">{{ formatCurrency(row.totalAmount) }}</span>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 mt-1 italic">
+        {{ statusHelpers[row.status] }}
+      </div>
+
+      <div v-if="row.status === 'TU_CHOI'" class="import-receipt-list__rejection-reason text-xs bg-red-50 p-2 rounded text-red-700">
+        {{ rejectionReasonText(row) }}
+      </div>
+
+      <div class="border-t border-gray-100 pt-3 flex justify-end gap-2">
+        <button class="btn btn-sm btn-secondary" type="button" @click="goDetail(row)">Xem</button>
+        <button v-if="canEditImportReceipt(row.status)" class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="goEdit(row)">
+          Sửa
+        </button>
+        <button v-if="canSubmitImportReceipt(row.status)" class="btn btn-sm btn-primary" type="button" :disabled="isAnyActionRunning(row)" @click="handleSubmit(row)">
+          {{ isActionRunning(row, 'submit') ? 'Đang gửi...' : submitLabel(row.status) }}
+        </button>
+        <button v-if="canCancelImportReceipt(row.status)" class="btn btn-sm btn-danger" type="button" :disabled="isAnyActionRunning(row)" @click="handleCancel(row)">
+          Hủy
+        </button>
+        <button class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="openHistory(row)">
+          Lịch sử
+        </button>
       </div>
     </div>
+  </div>
 
-    <!-- Modal Lịch sử duyệt -->
-    <ImportReceiptHistoryModal
-      v-if="historyState.open"
-      :receipt-id="historyState.receiptId"
-      :receipt-code="historyState.receiptCode"
-      :document-type="type"
-      @close="closeHistory"
-    />
+  <div class="pagination-bar card card-pad">
+    <span class="muted">{{ totalElements }} phiếu {{ isOut ? 'xuất' : 'nhập' }}</span>
+    <div class="pagination-actions">
+      <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage" @click="previousPage">Trước</button>
+      <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
+      <button class="btn btn-sm" type="button" :disabled="!hasNextPage" @click="nextPage">Sau</button>
+    </div>
+  </div>
 
-    <ConfirmDialog
-      :open="confirmState.open"
-      :title="confirmTitle()"
-      :message="confirmMessage()"
-      :confirm-text="confirmText()"
-      :danger="confirmState.action === 'cancel'"
-      @cancel="closeConfirmDialog"
-      @confirm="confirmAction"
-    />
+  <!-- Modal Lịch sử duyệt -->
+  <ImportReceiptHistoryModal
+    v-if="historyState.open"
+    :receipt-id="historyState.receiptId"
+    :receipt-code="historyState.receiptCode"
+    :document-type="type"
+    @close="closeHistory"
+  />
+
+  <ConfirmDialog
+    :open="confirmState.open"
+    :title="confirmTitle()"
+    :message="confirmMessage()"
+    :confirm-text="confirmText()"
+    :danger="confirmState.action === 'cancel'"
+    @cancel="closeConfirmDialog"
+    @confirm="confirmAction"
+  />
 </template>
 
 <style scoped>
@@ -383,17 +521,85 @@ function confirmText() {
 .form-alert { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; line-height: 20px; }
 .form-alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .form-alert-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-.badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 800; white-space: nowrap; background: #f1f5f9; color: #475569; }
-.status-nhap, .status-huy { background: #f1f5f9; color: #475569; }
-.status-cho-duyet, .status-cho-duyet-cap-1, .status-cho-duyet-cap-2, .status-cho-hang-ve, .status-cho-kiem-hang { background: #fef3c7; color: #b45309; }
-.status-da-duyet { background: #eff6ff; color: #1d4ed8; }
-.status-tu-choi { background: #fee2e2; color: #b91c1c; }
-.status-hoan-thanh { background: #dcfce7; color: #15803d; }
 .pagination-bar { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pagination-actions { display: flex; align-items: center; gap: 10px; }
 .page-indicator { color: var(--muted); font-weight: 600; }
+
+.status-cell-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.status-helper-text {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+}
+
+.action-dropdown-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  z-index: 50;
+  min-width: 160px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-item {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 13px;
+  text-align: left;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-primary);
+  transition: background-color 150ms ease;
+  cursor: pointer;
+}
+
+.dropdown-item:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.dropdown-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.text-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+.text-link:hover {
+  text-decoration: underline;
+}
 
 @media (max-width: 640px) {
   .pagination-bar { align-items: flex-start; flex-direction: column; }

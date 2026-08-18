@@ -32,19 +32,19 @@ const badgeClass = computed(() => {
   font-weight: 700;
   white-space: nowrap;
   letter-spacing: 0.01em;
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
 }
 
 .status-nháp,
 .status-đã-hủy,
 .status-hủy,
 .status-tạm-khóa {
-  background: #f1f5f9;
-  color: #475569;
-  border-color: rgba(148, 163, 184, 0.2);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-strong);
 }
 
 .status-chờ-duyệt,
@@ -57,25 +57,26 @@ const badgeClass = computed(() => {
 .status-điều-chỉnh-tăng,
 .status-điều-chỉnh-giảm,
 .status-đang-kiểm-kê {
-  background: #fff7ed;
-  color: #b45309;
-  border-color: rgba(245, 158, 11, 0.16);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .status-đã-duyệt {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-color: rgba(37, 99, 235, 0.16);
+  background: var(--color-info-soft);
+  color: var(--color-info);
+  border-color: rgba(2, 132, 199, 0.2);
 }
 
 .status-từ-chối,
 .status-thiếu-hàng,
+.status-hết-hàng,
 .status-cao,
 .status-khẩn-cấp,
 .status-xuất-kho {
-  background: #fef2f2;
-  color: #b91c1c;
-  border-color: rgba(220, 38, 38, 0.16);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 .status-hoàn-thành,
@@ -86,55 +87,64 @@ const badgeClass = computed(() => {
 .status-đang-bán,
 .status-nhập-kho,
 .status-đã-chốt {
-  background: #ecfdf3;
-  color: #15803d;
-  border-color: rgba(22, 163, 74, 0.16);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  border-color: rgba(22, 130, 93, 0.2);
 }
 
 .status-tạm-ngưng,
 .status-ngừng-hoạt-động,
 .status-thừa-hàng {
-  background: #e2e8f0;
-  color: #334155;
-  border-color: rgba(148, 163, 184, 0.2);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .status-open {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 .status-viewed {
-  background: #fff7ed;
-  color: #b45309;
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .status-processed {
-  background: #ecfdf3;
-  color: #15803d;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  border-color: rgba(22, 130, 93, 0.2);
 }
 
 .severity-critical {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: rgba(220, 38, 38, 0.16);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-color: rgba(220, 38, 38, 0.2);
+}
+
+.severity-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .severity-high {
-  background: #fff7ed;
-  color: #ea580c;
-  border-color: rgba(234, 88, 12, 0.16);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .severity-medium {
-  background: #fff7ed;
-  color: #d97706;
-  border-color: rgba(217, 119, 6, 0.16);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .severity-low {
-  background: #eff6ff;
-  color: #2563eb;
-  border-color: rgba(37, 99, 235, 0.16);
+  background: var(--color-info-soft);
+  color: var(--color-info);
+  border-color: rgba(2, 132, 199, 0.2);
 }
 </style>

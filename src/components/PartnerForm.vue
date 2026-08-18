@@ -1,193 +1,6 @@
-<template>
-  <v-dialog 
-    v-model="isOpen" 
-    max-width="600" 
-    persistent
-    class="rounded-2xl"
-  >
-    <v-card class="rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-      <!-- Title Bar -->
-      <v-card-title class="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-        <div class="flex items-center gap-2">
-          <div class="p-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400">
-            <i class="mdi" :class="isEdit ? 'mdi-pencil-outline' : 'mdi-plus-circle-outline'"></i>
-          </div>
-          <span class="text-lg font-bold text-slate-800 dark:text-white">
-            {{ isEdit ? 'Cập nhật đối tác' : 'Thêm đối tác mới' }}
-          </span>
-        </div>
-        <v-btn
-          icon
-          variant="text"
-          density="comfortable"
-          color="slate-500"
-          @click="closeForm"
-        >
-          <i class="mdi mdi-close text-xl"></i>
-        </v-btn>
-      </v-card-title>
-
-      <!-- Form Content -->
-      <v-card-text class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-        <!-- Error alert if any -->
-        <v-alert
-          v-if="errorMessage"
-          type="error"
-          variant="tonal"
-          closable
-          class="rounded-xl mb-4"
-          @click:close="errorMessage = ''"
-        >
-          {{ errorMessage }}
-        </v-alert>
-
-        <form @submit.prevent="submitForm" class="space-y-4">
-          <!-- Tên đối tác (Required) -->
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Tên đối tác <span class="text-rose-500">*</span>
-            </label>
-            <input
-              v-model="form.tenDoiTac"
-              type="text"
-              placeholder="Nhập tên đối tác (Ví dụ: Công ty TNHH Song Hân)"
-              class="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800 dark:text-slate-100"
-              :class="errors.tenDoiTac ? 'border-rose-500 focus:border-rose-500' : 'border-slate-200 dark:border-slate-700 focus:border-violet-500'"
-              @input="clearError('tenDoiTac')"
-            />
-            <span v-if="errors.tenDoiTac" class="text-xs text-rose-500 mt-1 block">
-              {{ errors.tenDoiTac }}
-            </span>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Loại đối tác (Required) -->
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Loại đối tác <span class="text-rose-500">*</span>
-              </label>
-              <!-- Ghi chú ngắn: loại đối tác chỉ nhận 3 giá trị theo rule backend (NHA_CUNG_CAP, KHACH_HANG, CA_HAI) -->
-              <select
-                v-model="form.loaiDoiTac"
-                class="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800 dark:text-slate-100"
-                :class="errors.loaiDoiTac ? 'border-rose-500 focus:border-rose-500' : 'border-slate-200 dark:border-slate-700 focus:border-violet-500'"
-                @change="clearError('loaiDoiTac')"
-              >
-                <option value="" disabled>-- Chọn loại đối tác --</option>
-                <option value="NHA_CUNG_CAP">Nhà cung cấp (NHA_CUNG_CAP)</option>
-                <option value="KHACH_HANG">Khách hàng (KHACH_HANG)</option>
-                <option value="CA_HAI">Cả hai (CA_HAI)</option>
-              </select>
-              <span v-if="errors.loaiDoiTac" class="text-xs text-rose-500 mt-1 block">
-                {{ errors.loaiDoiTac }}
-              </span>
-            </div>
-
-            <!-- Trạng thái hoạt động -->
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Trạng thái <span class="text-rose-500">*</span>
-              </label>
-              <select
-                v-model="form.trangThai"
-                class="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800 dark:text-slate-100 focus:border-violet-500"
-              >
-                <option value="HOAT_DONG">Đang hoạt động</option>
-                <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Người liên hệ -->
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Người liên hệ
-              </label>
-              <input
-                v-model="form.nguoiLienHe"
-                type="text"
-                placeholder="Nhập tên người đại diện liên hệ"
-                class="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800 dark:text-slate-100 focus:border-violet-500"
-              />
-            </div>
-
-            <!-- Số điện thoại -->
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Số điện thoại
-              </label>
-              <input
-                v-model="form.soDienThoai"
-                type="text"
-                placeholder="Ví dụ: 0912345678"
-                class="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800 dark:text-slate-100 focus:border-violet-500"
-              />
-            </div>
-          </div>
-
-          <!-- Email -->
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Email
-            </label>
-            <input
-              v-model="form.email"
-              type="text"
-              placeholder="nhanvien@doitac.com"
-              class="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800 dark:text-slate-100"
-              :class="errors.email ? 'border-rose-500 focus:border-rose-500' : 'border-slate-200 dark:border-slate-700 focus:border-violet-500'"
-              @input="clearError('email')"
-            />
-            <span v-if="errors.email" class="text-xs text-rose-500 mt-1 block">
-              {{ errors.email }}
-            </span>
-          </div>
-
-          <!-- Địa chỉ -->
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Địa chỉ
-            </label>
-            <textarea
-              v-model="form.diaChi"
-              rows="3"
-              placeholder="Nhập địa chỉ trụ sở/kho của đối tác"
-              class="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 text-slate-800 dark:text-slate-100 focus:border-violet-500 resize-none"
-            ></textarea>
-          </div>
-        </form>
-      </v-card-text>
-
-      <!-- Actions Footer -->
-      <v-card-actions class="p-6 border-t border-slate-100 dark:border-slate-800 justify-end gap-3 bg-slate-50/50 dark:bg-slate-900/50">
-        <v-btn
-          variant="outlined"
-          rounded="xl"
-          class="text-none font-semibold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-          @click="closeForm"
-          :disabled="submitting"
-        >
-          Hủy bỏ
-        </v-btn>
-        <v-btn
-          color="primary"
-          rounded="xl"
-          class="text-none font-semibold px-6 bg-violet-600 border-none shadow-md"
-          @click="submitForm"
-          :loading="submitting"
-        >
-          Lưu thông tin
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
-</template>
-
 <script setup>
 import { ref, watch, computed } from 'vue'
-import axios from 'axios'
-import { useAuthStore } from '../stores/auth'
+import { createPartner, updatePartner } from '../services/partnerService'
 
 const props = defineProps({
   modelValue: {
@@ -201,8 +14,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'saved'])
-const authStore = useAuthStore()
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 // State
 const isOpen = computed({
@@ -215,6 +26,7 @@ const submitting = ref(false)
 const errorMessage = ref('')
 
 const form = ref({
+  maDoiTac: '',
   tenDoiTac: '',
   loaiDoiTac: '',
   nguoiLienHe: '',
@@ -225,17 +37,19 @@ const form = ref({
 })
 
 const errors = ref({
+  maDoiTac: '',
   tenDoiTac: '',
   loaiDoiTac: '',
   email: ''
 })
 
-// Đồng bộ hóa dữ liệu form khi mở hoặc chỉnh sửa đối tác
+// Sync form data when dialog opens
 watch(() => props.modelValue, (open) => {
   if (open) {
     resetValidation()
     if (props.partner) {
       form.value = {
+        maDoiTac: props.partner.maDoiTac || '',
         tenDoiTac: props.partner.tenDoiTac || '',
         loaiDoiTac: props.partner.loaiDoiTac || '',
         nguoiLienHe: props.partner.nguoiLienHe || '',
@@ -246,6 +60,7 @@ watch(() => props.modelValue, (open) => {
       }
     } else {
       form.value = {
+        maDoiTac: '',
         tenDoiTac: '',
         loaiDoiTac: '',
         nguoiLienHe: '',
@@ -265,13 +80,14 @@ const clearError = (field) => {
 const resetValidation = () => {
   errorMessage.value = ''
   errors.value = {
+    maDoiTac: '',
     tenDoiTac: '',
     loaiDoiTac: '',
     email: ''
   }
 }
 
-// Kiểm tra validate client-side trước khi gửi
+// Client-side validation
 const validateForm = () => {
   let isValid = true
   resetValidation()
@@ -301,51 +117,51 @@ const closeForm = () => {
   isOpen.value = false
 }
 
-// Gửi form lưu dữ liệu
+// Submit form data to service
 const submitForm = async () => {
   if (!validateForm()) return
 
   submitting.value = true
   errorMessage.value = ''
 
-  try {
-    const config = {}
-    if (authStore.token) {
-      config.headers = { Authorization: `Bearer ${authStore.token}` }
-    }
+  const payload = {
+    tenDoiTac: form.value.tenDoiTac.trim(),
+    loaiDoiTac: form.value.loaiDoiTac,
+    nguoiLienHe: form.value.nguoiLienHe.trim() || null,
+    soDienThoai: form.value.soDienThoai.trim() || null,
+    email: form.value.email.trim() || null,
+    diaChi: form.value.diaChi.trim() || null,
+    trangThai: form.value.trangThai
+  }
 
+  // Include maDoiTac on create if provided
+  if (!isEdit.value) {
+    payload.maDoiTac = form.value.maDoiTac.trim() || null
+  }
+
+  try {
     let response
     if (isEdit.value) {
-      response = await axios.put(`${API_BASE_URL}/api/partners/${props.partner.id}`, form.value, config)
+      response = await updatePartner(props.partner.id, payload)
     } else {
-      response = await axios.post(`${API_BASE_URL}/api/partners`, form.value, config)
+      response = await createPartner(payload)
     }
 
-    emit('saved', response.data)
+    emit('saved', response)
     closeForm()
   } catch (error) {
     console.error('Lỗi khi lưu đối tác:', error)
-    if (error.response) {
-      const status = error.response.status
-      if (status === 400 && error.response.data && error.response.data.errors) {
-        // Ánh xạ lỗi validate từ Spring Boot backend
-        const backendErrors = error.response.data.errors
-        Object.keys(backendErrors).forEach(field => {
-          if (field in errors.value) {
-            errors.value[field] = backendErrors[field]
-          } else {
-            errorMessage.value = backendErrors[field]
-          }
-        })
-      } else if (status === 403) {
-        errorMessage.value = 'Không có quyền thực hiện thao tác này.'
-      } else if (error.response.data && error.response.data.message) {
-        errorMessage.value = error.response.data.message
-      } else {
-        errorMessage.value = 'Đã xảy ra lỗi không xác định từ phía máy chủ.'
-      }
+    if (error.errors) {
+      const backendErrors = error.errors
+      Object.keys(backendErrors).forEach(field => {
+        if (field in errors.value) {
+          errors.value[field] = backendErrors[field]
+        } else {
+          errorMessage.value = backendErrors[field]
+        }
+      })
     } else {
-      errorMessage.value = 'Không thể kết nối đến máy chủ. Vui lòng thử lại.'
+      errorMessage.value = error.message || 'Không thể kết nối đến máy chủ. Vui lòng thử lại.'
     }
   } finally {
     submitting.value = false
@@ -353,13 +169,201 @@ const submitForm = async () => {
 }
 </script>
 
+<template>
+  <div v-if="isOpen" class="modal-backdrop" @click.self="closeForm">
+    <div class="modal partner-modal">
+      <form @submit.prevent="submitForm" class="partner-form">
+        <div class="modal-head between">
+          <div>
+            <h2 class="section-title">{{ isEdit ? 'Cập nhật đối tác' : 'Thêm đối tác mới' }}</h2>
+            <p class="modal-subtitle">
+              {{ isEdit ? 'Cập nhật thông tin chi tiết của đối tác.' : 'Tạo đối tác mới với các thông tin cơ bản.' }}
+            </p>
+          </div>
+          <button class="btn btn-icon" type="button" :disabled="submitting" aria-label="Đóng" @click="closeForm">
+            <i class="mdi mdi-close"></i>
+          </button>
+        </div>
+
+        <div class="modal-body grid grid-2">
+          <div v-if="errorMessage" class="partner-form-alert">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <span>{{ errorMessage }}</span>
+          </div>
+
+          <!-- Tên đối tác (Required) -->
+          <label class="field col-span-2">
+            <span>Tên đối tác <span class="text-rose-500">*</span></span>
+            <input
+              v-model="form.tenDoiTac"
+              type="text"
+              placeholder="Nhập tên đối tác (Ví dụ: Công ty TNHH Song Hân)"
+              class="input"
+              :class="{ 'border-rose-500 focus:border-rose-500': errors.tenDoiTac }"
+              :disabled="submitting"
+              @input="clearError('tenDoiTac')"
+            />
+            <small v-if="errors.tenDoiTac" class="field-error">{{ errors.tenDoiTac }}</small>
+          </label>
+
+          <!-- Mã đối tác (Optional on Create, Readonly on Edit) -->
+          <label class="field">
+            <span>Mã đối tác</span>
+            <input
+              v-model="form.maDoiTac"
+              type="text"
+              placeholder="Tự động sinh nếu để trống"
+              class="input"
+              :class="{ 'border-rose-500 focus:border-rose-500': errors.maDoiTac }"
+              :disabled="isEdit || submitting"
+              @input="clearError('maDoiTac')"
+            />
+            <small v-if="errors.maDoiTac" class="field-error">{{ errors.maDoiTac }}</small>
+          </label>
+
+          <!-- Loại đối tác (Required) -->
+          <label class="field">
+            <span>Loại đối tác <span class="text-rose-500">*</span></span>
+            <select
+              v-model="form.loaiDoiTac"
+              class="select"
+              :class="{ 'border-rose-500 focus:border-rose-500': errors.loaiDoiTac }"
+              :disabled="submitting"
+              @change="clearError('loaiDoiTac')"
+            >
+              <option value="" disabled>-- Chọn loại đối tác --</option>
+              <option value="NHA_CUNG_CAP">Nhà cung cấp</option>
+              <option value="KHACH_HANG">Khách hàng</option>
+              <option value="CA_HAI">Cả hai</option>
+            </select>
+            <small v-if="errors.loaiDoiTac" class="field-error">{{ errors.loaiDoiTac }}</small>
+          </label>
+
+          <!-- Người liên hệ -->
+          <label class="field">
+            <span>Người liên hệ</span>
+            <input
+              v-model="form.nguoiLienHe"
+              type="text"
+              placeholder="Người đại diện liên hệ"
+              class="input"
+              :disabled="submitting"
+            />
+          </label>
+
+          <!-- Số điện thoại -->
+          <label class="field">
+            <span>Số điện thoại</span>
+            <input
+              v-model="form.soDienThoai"
+              type="text"
+              placeholder="Ví dụ: 0912345678"
+              class="input"
+              :disabled="submitting"
+            />
+          </label>
+
+          <!-- Email -->
+          <label class="field col-span-2">
+            <span>Email</span>
+            <input
+              v-model="form.email"
+              type="text"
+              placeholder="nhanvien@doitac.com"
+              class="input"
+              :class="{ 'border-rose-500 focus:border-rose-500': errors.email }"
+              :disabled="submitting"
+              @input="clearError('email')"
+            />
+            <small v-if="errors.email" class="field-error">{{ errors.email }}</small>
+          </label>
+
+          <!-- Trạng thái -->
+          <label class="field col-span-2">
+            <span>Trạng thái <span class="text-rose-500">*</span></span>
+            <select v-model="form.trangThai" class="select" :disabled="submitting">
+              <option value="HOAT_DONG">Đang hoạt động</option>
+              <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
+            </select>
+          </label>
+
+          <!-- Địa chỉ -->
+          <label class="field col-span-2">
+            <span>Địa chỉ</span>
+            <textarea
+              v-model="form.diaChi"
+              rows="2"
+              placeholder="Địa chỉ trụ sở/kho đối tác"
+              class="textarea"
+              :disabled="submitting"
+            ></textarea>
+          </label>
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn btn-ghost" type="button" :disabled="submitting" @click="closeForm">Hủy bỏ</button>
+          <button class="btn btn-primary" type="submit" :disabled="submitting">
+            <i v-if="submitting" class="mdi mdi-loading mdi-spin"></i>
+            {{ submitting ? 'Đang lưu' : 'Lưu thông tin' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 1em;
-  padding-right: 2.5rem;
+.partner-modal {
+  width: min(600px, 100%);
+}
+.partner-form {
+  margin: 0;
+}
+.modal-subtitle {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+.partner-form-alert {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 600;
+}
+.field > span {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.field-error {
+  color: var(--color-danger);
+  font-weight: 600;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.col-span-2 {
+  grid-column: span 2 / span 2;
+}
+.mdi-spin {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 639px) {
+  .col-span-2 {
+    grid-column: span 1 / span 1;
+  }
+  .modal-body {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

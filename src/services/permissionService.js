@@ -5,6 +5,8 @@ const MASTER_DATA_VIEW_ROLES = ['ADMIN', 'MANAGER', 'EMPLOYEE']
 const IMPORT_RECEIPT_PROCESS_ROLES = ['ADMIN', 'EMPLOYEE']
 const EMPLOYEE_MANAGE_ROLES = ['ADMIN']
 const EXCEL_IMPORT_ROLES = ['ADMIN', 'EMPLOYEE']
+const FORECAST_VIEW_ROLES = ['ADMIN', 'MANAGER', 'EMPLOYEE']
+const FORECAST_RUN_ROLES = ['ADMIN', 'MANAGER']
 
 function resolveRole(role) {
   return normalizeRole(role) || getCurrentRoleCode()
@@ -43,6 +45,18 @@ export function canManageInventoryCounts(role) {
   return ['ADMIN', 'MANAGER'].includes(resolvedRole)
 }
 
+export function canViewForecast(role) {
+  return FORECAST_VIEW_ROLES.includes(resolveRole(role))
+}
+
+export function canRunForecast(role) {
+  return FORECAST_RUN_ROLES.includes(resolveRole(role))
+}
+
+export function canSeedForecastHistory(role) {
+  return resolveRole(role) === 'ADMIN'
+}
+
 export function canAccessRoute(path, role) {
   const resolvedRole = resolveRole(role)
 
@@ -64,6 +78,10 @@ export function canAccessRoute(path, role) {
 
   if (path === '/products' || path === '/warehouses' || path === '/inventory' || path === '/alerts' || path === '/inventory-counts' || /^\/inventory-counts\/[^/]+$/.test(path)) {
     return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
+  }
+
+  if (path === '/forecast') {
+    return canViewForecast(resolvedRole)
   }
 
   if (/^\/stock-in\/[^/]+$/.test(path)) {

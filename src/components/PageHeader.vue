@@ -25,4 +25,14 @@ defineProps({
   display: grid;
   gap: 4px;
 }
+@media (max-width: 639px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .page-header :deep(.btn) {
+    width: 100%;
+  }
+}
 </style>
