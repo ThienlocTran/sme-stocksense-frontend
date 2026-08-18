@@ -77,11 +77,6 @@ const menuSections = [
         icon: "mdi-account-group-outline",
       },
       {
-        label: "Người dùng",
-        to: "/users",
-        icon: "mdi-account-cog-outline",
-      },
-      {
         label: "Import Excel",
         to: "/import-excel",
         icon: "mdi-file-excel-outline",
