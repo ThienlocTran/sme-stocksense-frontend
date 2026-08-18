@@ -68,7 +68,11 @@ router.beforeEach(to => {
 
   if (isAuthRoute && authenticated) return '/dashboard'
 
-  if (!canAccessRoute(to.path, getCurrentRoleCode())) return '/dashboard'
+  if (!canAccessRoute(to.path, getCurrentRoleCode())) {
+    if (to.path.startsWith('/stock-in')) return '/stock-in'
+    if (to.path.startsWith('/stock-out')) return '/stock-out'
+    return '/dashboard'
+  }
   return true
 })
 

@@ -84,6 +84,10 @@ export function canAccessRoute(path, role) {
     return canViewForecast(resolvedRole)
   }
 
+  if (/^\/stock-(in|out)\/(?:create|[^/]+\/edit)$/.test(path)) {
+    return ['ADMIN', 'EMPLOYEE'].includes(resolvedRole)
+  }
+
   if (/^\/stock-in\/[^/]+$/.test(path)) {
     // MANAGER cần xem chi tiết phiếu nhập để duyệt/từ chối
     return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
@@ -91,10 +95,6 @@ export function canAccessRoute(path, role) {
 
   if (/^\/stock-out\/[^/]+$/.test(path)) {
     return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
-  }
-
-  if (/^\/stock-(in|out)\/(?:create|[^/]+\/edit)$/.test(path)) {
-    return ['ADMIN', 'EMPLOYEE'].includes(resolvedRole)
   }
 
   return true

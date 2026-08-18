@@ -15,6 +15,7 @@ import {
   updateEditable,
 } from '../services/importReceiptService'
 import { cancelExportReceipt, createExportReceipt, getExportReceipt, submitExportReceipt, updateExportReceipt } from '../services/exportReceiptService'
+import { getCurrentRoleCode } from '../services/authService'
 
 const props = defineProps({
   type: { type: String, default: 'in' },
@@ -82,10 +83,11 @@ const items = ref([])
 const formErrors = reactive({ warehouseId: '', supplierId: '', note: '' })
 const itemErrors = reactive({ productId: '', quantity: '', unitPrice: '' })
 
+const hasOperationalPermission = computed(() => ['ADMIN', 'EMPLOYEE'].includes(getCurrentRoleCode()))
 const isCreateMode = computed(() => props.mode === 'create')
 const isEditMode = computed(() => props.mode === 'edit')
 const isProcessing = computed(() => isSaving.value || isSubmitting.value || isCancelling.value)
-const isEditableStatus = computed(() => isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI')
+const isEditableStatus = computed(() => hasOperationalPermission.value && (isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI'))
 const pageTitle = computed(() => {
   if (props.type === 'out') return isEditMode.value ? 'Sửa phiếu xuất kho' : 'Tạo phiếu xuất kho'
   return isEditMode.value ? 'Sửa phiếu nhập kho' : 'Tạo phiếu nhập kho'
@@ -95,9 +97,9 @@ const detailCount = computed(() => items.value.length)
 const hasValidItems = computed(() => items.value.length > 0 && items.value.every(item => {
   return item.productId && Number(item.quantity) > 0 && Number(item.unitPrice) >= 0
 }))
-const canSubmit = computed(() => receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value) && hasValidItems.value)
-const canCancel = computed(() => receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value))
-const canSave = computed(() => isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI')
+const canSubmit = computed(() => hasOperationalPermission.value && receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value) && hasValidItems.value)
+const canCancel = computed(() => hasOperationalPermission.value && receiptId.value && ['NHAP', 'TU_CHOI'].includes(receiptStatus.value))
+const canSave = computed(() => hasOperationalPermission.value && (isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI'))
 const isRejectedImportReceipt = computed(() => isEditMode.value && receiptStatus.value === 'TU_CHOI')
 const normalizedRejectionReason = computed(() => String(rejectionReason.value || '').trim())
 const rejectionReasonMessage = computed(() => normalizedRejectionReason.value || 'Chưa có lý do từ chối.')
@@ -111,6 +113,10 @@ const totalAmountPreview = computed(() => {
 })
 
 onMounted(async () => {
+  if (!hasOperationalPermission.value) {
+    router.replace(props.type === 'out' ? '/stock-out' : '/stock-in')
+    return
+  }
   await loadDropdowns()
   if (isEditMode.value) await loadReceiptDetail()
   isDirty.value = false
