@@ -37,34 +37,47 @@ const warehouseCountFailed = ref(false);
 const warningCountFailed = ref(false);
 const stockTotalFailed = ref(false);
 
-const chartOptions = computed(() => ({
-  chart: {
-    type: "bar",
-    toolbar: { show: false },
-  },
-  plotOptions: {
-    bar: {
-      horizontal: false,
-      borderRadius: 8,
-      columnWidth: "56%",
+const chartOptions = computed(() => {
+  let primary = "#176B5B";
+  let warning = "#D88A13";
+  let danger = "#C2413B";
+  
+  if (typeof window !== "undefined") {
+    const rootStyle = getComputedStyle(document.documentElement);
+    primary = rootStyle.getPropertyValue('--color-primary').trim() || primary;
+    warning = rootStyle.getPropertyValue('--color-warning').trim() || warning;
+    danger = rootStyle.getPropertyValue('--color-danger').trim() || danger;
+  }
+  
+  return {
+    chart: {
+      type: "bar",
+      toolbar: { show: false },
     },
-  },
-  dataLabels: { enabled: false },
-  xaxis: {
-    categories: chartCategories.value,
-  },
-  yaxis: {
-    labels: {
-      formatter: (value) => new Intl.NumberFormat("vi-VN").format(value),
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        borderRadius: 8,
+        columnWidth: "56%",
+      },
     },
-  },
-  colors: ["#3b82f6", "#f59e0b", "#ef4444"],
-  tooltip: {
-    y: {
-      formatter: (value) => new Intl.NumberFormat("vi-VN").format(value),
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: chartCategories.value,
     },
-  },
-}));
+    yaxis: {
+      labels: {
+        formatter: (value) => new Intl.NumberFormat("vi-VN").format(value),
+      },
+    },
+    colors: [primary, warning, danger],
+    tooltip: {
+      y: {
+        formatter: (value) => new Intl.NumberFormat("vi-VN").format(value),
+      },
+    },
+  };
+});
 
 const canSeeImportApprovals = computed(() => canAccessRoute("/approvals"));
 const canSeeExportApprovals = computed(() =>
@@ -565,7 +578,7 @@ function openRoute(path) {
 <template>
   <PageHeader
     title="Tổng quan"
-    description="Tóm tắt hoạt động kho hàng và các việc cần xử lý."
+    description="Theo dõi tình trạng tồn kho và các công việc cần xử lý."
   />
 
   <div v-if="dashboardAlertMessage" class="dashboard-alert">
@@ -583,756 +596,423 @@ function openRoute(path) {
     </button>
   </div>
 
-  <div class="dashboard-grid">
-    <section class="card card-pad dashboard-panel dashboard-panel--wide">
-      <div class="section-head section-head--split">
-        <div>
-          <p class="eyebrow">KPI</p>
-          <h2 class="section-title">Tổng quan vận hành</h2>
-          <p class="section-help">
-            Theo dõi số liệu chính và xu hướng làm việc trong một góc nhìn dễ
-            đọc.
-          </p>
-        </div>
-        <div class="section-head__meta">
-          <span class="pill">{{
-            isLoading ? "Đang tải..." : "Cập nhật gần đây"
-          }}</span>
-        </div>
-      </div>
-
-      <div class="kpi-summary">
-        <div class="kpi-summary__item">
-          <span class="kpi-summary__label">Phân nhóm</span>
-          <strong>{{
-            canSeeWarnings ? "Vận hành & cảnh báo" : "Vận hành"
-          }}</strong>
-        </div>
-        <div class="kpi-summary__item">
-          <span class="kpi-summary__label">Truy cập nhanh</span>
-          <strong>{{ visibleQuickAccess.length }} mục</strong>
-        </div>
-      </div>
-
-      <div
-        v-if="isLoading"
-        class="kpi-grid"
-        :class="{ 'kpi-grid--two-columns': !canSeeWarnings }"
-      >
-        <article
-          v-for="index in visibleKpiCardCount"
-          :key="index"
-          class="kpi-card kpi-card--loading"
-        >
-          <div class="kpi-card__icon"></div>
+  <div class="dashboard-wrapper">
+    <!-- Row 1: KPI Row -->
+    <div class="kpi-row" v-if="hasDashboardData || isLoading">
+      <template v-if="isLoading">
+        <article v-for="index in visibleKpiCardCount" :key="index" class="kpi-card kpi-card--loading">
           <div class="kpi-card__body">
             <div class="kpi-label skeleton"></div>
             <div class="metric skeleton"></div>
           </div>
         </article>
-      </div>
-
+      </template>
       <template v-else>
-        <div
-          v-if="errorMessage && !hasDashboardData"
-          class="state-card state-card--error"
-        >
-          <div class="state-card__icon">
-            <i class="mdi mdi-alert-circle-outline"></i>
+        <article v-if="canSeeProducts" class="kpi-card" @click="openRoute('/products')" role="button" tabindex="0">
+          <div class="kpi-card__header">
+            <span class="kpi-label">Tổng sản phẩm</span>
+            <i class="mdi mdi-package-variant-closed kpi-card__icon"></i>
           </div>
-          <div class="state-card__body">
-            <h3>Không thể tải dữ liệu tổng quan</h3>
-            <p>Vui lòng thử lại sau hoặc kiểm tra kết nối backend.</p>
-          </div>
-          <button
-            class="retry-button retry-button--inline"
-            type="button"
-            :disabled="isLoading"
-            @click="retryDashboardLoad"
-          >
-            Thử lại
-          </button>
-        </div>
+          <div class="metric">{{ productCountFailed ? "Không thể tải" : formatNumber(summary.products) }}</div>
+        </article>
 
-        <div v-else-if="!hasDashboardData" class="state-card state-card--empty">
-          <div class="state-card__icon">
-            <i class="mdi mdi-view-dashboard-outline"></i>
+        <article v-if="canSeeWarehouses" class="kpi-card" @click="openRoute('/warehouses')" role="button" tabindex="0">
+          <div class="kpi-card__header">
+            <span class="kpi-label">Tổng kho hàng</span>
+            <i class="mdi mdi-warehouse kpi-card__icon"></i>
           </div>
-          <div class="state-card__body">
-            <h3>Chưa có dữ liệu tổng quan</h3>
-            <p>Hệ thống chưa có sản phẩm, kho hoặc tồn kho để hiển thị.</p>
-          </div>
-        </div>
+          <div class="metric">{{ warehouseCountFailed ? "Không thể tải" : formatNumber(summary.warehouses) }}</div>
+        </article>
 
-        <div
-          v-else
-          class="kpi-grid"
-          :class="{ 'kpi-grid--two-columns': !canSeeWarnings }"
-        >
-          <article v-if="canSeeProducts" class="kpi-card">
-            <div class="kpi-card__icon">
-              <i class="mdi mdi-package-variant-closed"></i>
-            </div>
+        <article v-if="canSeeWarnings" class="kpi-card" @click="openRoute('/inventory')" role="button" tabindex="0">
+          <div class="kpi-card__header">
+            <span class="kpi-label">Tổng tồn khả dụng</span>
+            <i class="mdi mdi-cube-outline kpi-card__icon"></i>
+          </div>
+          <div class="metric">{{ stockTotalFailed ? "Không thể tải" : formatNumber(summary.stock) }}</div>
+        </article>
+
+        <article v-if="canSeeWarnings" class="kpi-card" @click="openRoute('/alerts')" role="button" tabindex="0">
+          <div class="kpi-card__header">
+            <span class="kpi-label">Cảnh báo tồn kho</span>
+            <i class="mdi mdi-alert-circle-outline kpi-card__icon kpi-card__icon--danger" :class="{ 'text-red': summary.warnings > 0 }"></i>
+          </div>
+          <div class="metric" :class="{ 'text-red': summary.warnings > 0 }">{{ warningCountFailed ? "Không thể tải" : formatNumber(summary.warnings) }}</div>
+        </article>
+      </template>
+    </div>
+
+    <!-- Row 2: Grid Layout -->
+    <div class="dashboard-grid">
+      <!-- Main Column: Chart -->
+      <div class="dashboard-main-col">
+        <section class="card card-pad dashboard-panel--wide">
+          <div class="section-head between">
             <div>
-              <p class="kpi-label">Tổng sản phẩm</p>
-              <div v-if="productCountFailed" class="metric">Không thể tải</div>
-              <div v-else class="metric">
-                {{ formatNumber(summary.products) }}
-              </div>
+              <p class="eyebrow">Xu hướng</p>
+              <h2 class="section-title">Tổng quan tồn kho & duyệt phiếu</h2>
             </div>
-          </article>
+            <button class="btn btn-sm btn-secondary" type="button" @click="retryDashboardLoad" :disabled="isLoading">
+              <i class="mdi mdi-refresh" :class="{ 'mdi-spin': isLoading }"></i>
+              Làm mới
+            </button>
+          </div>
 
-          <article v-if="canSeeWarehouses" class="kpi-card">
-            <div class="kpi-card__icon kpi-card__icon--accent">
-              <i class="mdi mdi-warehouse"></i>
-            </div>
-            <div>
-              <p class="kpi-label">Tổng kho</p>
-              <div v-if="warehouseCountFailed" class="metric">
-                Không thể tải
-              </div>
-              <div v-else class="metric">
-                {{ formatNumber(summary.warehouses) }}
-              </div>
-            </div>
-          </article>
-
-          <article v-if="canSeeWarnings" class="kpi-card">
-            <div class="kpi-card__icon kpi-card__icon--warn">
-              <i class="mdi mdi-cube-outline"></i>
-            </div>
-            <div>
-              <p class="kpi-label">Tổng tồn</p>
-              <div v-if="stockTotalFailed" class="metric">Không thể tải</div>
-              <div v-else class="metric">{{ formatNumber(summary.stock) }}</div>
-            </div>
-          </article>
-
-          <article v-if="canSeeWarnings" class="kpi-card">
-            <div class="kpi-card__icon kpi-card__icon--success">
+          <div v-if="isLoading" class="state-card state-card--loading">
+            <div class="skeleton skeleton--line"></div>
+            <div class="skeleton skeleton--line skeleton--short"></div>
+          </div>
+          <div v-else-if="dashboardOverviewFailed" class="state-card state-card--error">
+            <div class="state-card__icon">
               <i class="mdi mdi-alert-circle-outline"></i>
             </div>
+            <div class="state-card__body">
+              <h3>Không thể tải biểu đồ</h3>
+              <p>Vui lòng kiểm tra lại kết nối đến máy chủ.</p>
+            </div>
+          </div>
+          <div v-else-if="dashboardOverview" class="dashboard-chart-wrapper">
+            <ApexCharts
+              type="bar"
+              :options="chartOptions"
+              :series="chartSeries"
+              height="320"
+            />
+          </div>
+          <div v-else class="state-card state-card--empty">
+            <div class="state-card__icon">
+              <i class="mdi mdi-chart-bar"></i>
+            </div>
+            <div class="state-card__body">
+              <h3>Chưa có dữ liệu biểu đồ</h3>
+              <p>Biểu đồ sẽ tự động hiển thị khi có dữ liệu vận hành.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Side Column: Insight, Cần chú ý, Quick links -->
+      <div class="dashboard-side-col">
+        <!-- StockSense Insight (Only visible if warnings/low stock exist) -->
+        <section class="insight-panel card" v-if="canSeeWarnings && !isLoading && summary.warnings > 0">
+          <div class="insight-header">
+            <i class="mdi mdi-lightbulb-on-outline"></i>
+            <h3>StockSense Insight</h3>
+          </div>
+          <div class="insight-body">
+            <p><strong>{{ summary.warnings }}</strong> mặt hàng hiện đang dưới mức tồn tối thiểu.</p>
+            <button class="btn btn-sm btn-ghost" @click="openRoute('/alerts')">Xem cảnh báo →</button>
+          </div>
+        </section>
+
+        <!-- Cần chú ý (Unified list) -->
+        <section class="card card-pad attention-panel">
+          <div class="section-head">
             <div>
-              <p class="kpi-label">Tổng cảnh báo</p>
-              <div v-if="warningCountFailed" class="metric">Không thể tải</div>
-              <div v-else class="metric">
-                {{ formatNumber(summary.warnings) }}
+              <p class="eyebrow">Nhiệm vụ</p>
+              <h2 class="section-title">Cần chú ý</h2>
+            </div>
+          </div>
+
+          <div v-if="isLoading" class="state-card state-card--loading">
+            <div class="skeleton skeleton--line"></div>
+          </div>
+          
+          <div v-else-if="!pendingImportItems.length && !pendingExportItems.length && !lowStockItems.length" class="state-card state-card--empty">
+            <div class="state-card__icon">
+              <i class="mdi mdi-check-circle-outline"></i>
+            </div>
+            <div class="state-card__body">
+              <h3>Mọi thứ đều ổn</h3>
+              <p>Không có phiếu chờ duyệt hoặc cảnh báo tồn thấp cần xử lý.</p>
+            </div>
+          </div>
+
+          <div v-else class="attention-list">
+            <!-- Low stock alerts -->
+            <div 
+              v-for="item in lowStockItems" 
+              :key="`low-${item.id}`" 
+              class="attention-item"
+              @click="openRoute('/alerts')"
+              role="button"
+              tabindex="0"
+            >
+              <div class="attention-item__main">
+                <span class="badge-tag badge-tag--danger">Tồn kho thấp</span>
+                <strong>{{ item.productName }}</strong>
+                <p>{{ item.warehouseName }} · Tồn: {{ item.available }} (Tối thiểu: {{ item.minStock }})</p>
               </div>
+              <i class="mdi mdi-chevron-right"></i>
             </div>
-          </article>
-        </div>
-      </template>
-    </section>
 
-    <section class="card card-pad dashboard-panel dashboard-panel--wide">
-      <div class="section-head between">
-        <div>
-          <p class="eyebrow">Chart</p>
-          <h2 class="section-title">Tổng quan chính</h2>
-        </div>
-        <button class="text-link" type="button" @click="retryDashboardLoad">
-          Làm mới
-        </button>
-      </div>
+            <!-- Pending imports -->
+            <div 
+              v-for="item in pendingImportItems" 
+              :key="`import-${item.id}`" 
+              class="attention-item"
+              @click="openRoute(item.route)"
+              role="button"
+              tabindex="0"
+            >
+              <div class="attention-item__main">
+                <span class="badge-tag badge-tag--warning">Nhập chờ duyệt</span>
+                <strong>{{ item.code }}</strong>
+                <p>{{ item.label }} · {{ item.subtitle }}</p>
+              </div>
+              <i class="mdi mdi-chevron-right"></i>
+            </div>
 
-      <div v-if="isLoading" class="state-card state-card--loading">
-        <div class="skeleton skeleton--line"></div>
-        <div class="skeleton skeleton--line skeleton--short"></div>
-      </div>
-      <div
-        v-else-if="dashboardOverviewFailed"
-        class="state-card state-card--error"
-      >
-        <div class="state-card__icon">
-          <i class="mdi mdi-alert-circle-outline"></i>
-        </div>
-        <div class="state-card__body">
-          <h3>Không thể tải dữ liệu biểu đồ</h3>
-          <p>Dữ liệu dashboard chưa được đồng bộ với backend.</p>
-        </div>
-        <button
-          class="retry-button retry-button--inline"
-          type="button"
-          @click="retryDashboardLoad"
-        >
-          Thử lại
-        </button>
-      </div>
-      <div v-else-if="dashboardOverview" class="dashboard-chart-card">
-        <ApexCharts
-          type="bar"
-          :options="chartOptions"
-          :series="chartSeries"
-          height="320"
-        />
-      </div>
-      <div v-else class="state-card state-card--empty">
-        <div class="state-card__icon">
-          <i class="mdi mdi-chart-bar"></i>
-        </div>
-        <div class="state-card__body">
-          <h3>Chưa có dữ liệu biểu đồ</h3>
-          <p>Biểu đồ sẽ hiển thị khi backend trả dữ liệu tổng quan.</p>
-        </div>
-      </div>
-    </section>
-
-    <div class="dashboard-section-grid">
-      <section
-        v-if="canSeeImportApprovals"
-        class="card card-pad dashboard-panel"
-      >
-        <div class="section-head between">
-          <div>
-            <p class="eyebrow">Pending</p>
-            <h2 class="section-title">Phiếu nhập chờ duyệt</h2>
+            <!-- Pending exports -->
+            <div 
+              v-for="item in pendingExportItems" 
+              :key="`export-${item.id}`" 
+              class="attention-item"
+              @click="openRoute(item.route)"
+              role="button"
+              tabindex="0"
+            >
+              <div class="attention-item__main">
+                <span class="badge-tag badge-tag--warning">Xuất chờ duyệt</span>
+                <strong>{{ item.code }}</strong>
+                <p>{{ item.label }} · {{ item.subtitle }}</p>
+              </div>
+              <i class="mdi mdi-chevron-right"></i>
+            </div>
           </div>
-          <button class="text-link" @click="openRoute('/approvals')">
-            Xem tất cả
-          </button>
-        </div>
+        </section>
 
-        <div v-if="isLoading" class="state-card state-card--loading">
-          <div class="skeleton skeleton--line"></div>
-          <div class="skeleton skeleton--line skeleton--short"></div>
-        </div>
-        <div
-          v-else-if="pendingImportFailed"
-          class="state-card state-card--error"
-        >
-          <div class="state-card__icon">
-            <i class="mdi mdi-alert-circle-outline"></i>
-          </div>
-          <div class="state-card__body">
-            <h3>Không thể tải dữ liệu</h3>
-            <p>Danh sách phiếu nhập chờ duyệt chưa cập nhật.</p>
-          </div>
-          <button
-            class="retry-button retry-button--inline"
-            type="button"
-            @click="retryDashboardLoad"
-          >
-            Thử lại
-          </button>
-        </div>
-        <div v-else-if="pendingImportItems.length" class="stack-list">
-          <div
-            v-for="item in pendingImportItems"
-            :key="`${item.label}-${item.id}`"
-            class="list-item"
-            @click="openRoute(item.route)"
-            role="button"
-            tabindex="0"
-            @keydown.enter.prevent="openRoute(item.route)"
-            @keydown.space.prevent="openRoute(item.route)"
-          >
+        <!-- Quick Access -->
+        <section class="card card-pad quick-access-panel">
+          <div class="section-head">
             <div>
-              <strong>{{ item.code }}</strong>
-              <p>{{ item.label }} · {{ item.subtitle }}</p>
+              <p class="eyebrow">Lối tắt</p>
+              <h2 class="section-title">Truy cập nhanh</h2>
             </div>
-            <span class="badge badge--warning">Chờ duyệt</span>
           </div>
-        </div>
-        <div v-else class="state-card state-card--empty">
-          <div class="state-card__icon">
-            <i class="mdi mdi-file-check-outline"></i>
+          <div v-if="visibleQuickAccess.length > 0" class="quick-links">
+            <button
+              v-for="item in visibleQuickAccess"
+              :key="item.title"
+              class="quick-link"
+              @click="openRoute(item.route)"
+            >
+              <i class="mdi" :class="item.icon"></i>
+              <span>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.description }}</small>
+              </span>
+            </button>
           </div>
-          <div class="state-card__body">
-            <h3>Không có phiếu nhập chờ duyệt</h3>
-            <p>Tất cả phiếu nhập cần xử lý đã được hoàn tất.</p>
-          </div>
-        </div>
-      </section>
-
-      <section
-        v-if="canSeeExportApprovals"
-        class="card card-pad dashboard-panel"
-      >
-        <div class="section-head between">
-          <div>
-            <p class="eyebrow">Pending</p>
-            <h2 class="section-title">Phiếu xuất chờ duyệt</h2>
-          </div>
-          <button
-            class="text-link"
-            @click="openRoute('/pending-export-approvals')"
-          >
-            Xem tất cả
-          </button>
-        </div>
-
-        <div v-if="isLoading" class="state-card state-card--loading">
-          <div class="skeleton skeleton--line"></div>
-          <div class="skeleton skeleton--line skeleton--short"></div>
-        </div>
-        <div
-          v-else-if="pendingExportFailed"
-          class="state-card state-card--error"
-        >
-          <div class="state-card__icon">
-            <i class="mdi mdi-alert-circle-outline"></i>
-          </div>
-          <div class="state-card__body">
-            <h3>Không thể tải dữ liệu</h3>
-            <p>Danh sách phiếu xuất chờ duyệt chưa cập nhật.</p>
-          </div>
-          <button
-            class="retry-button retry-button--inline"
-            type="button"
-            @click="retryDashboardLoad"
-          >
-            Thử lại
-          </button>
-        </div>
-        <div v-else-if="pendingExportItems.length" class="stack-list">
-          <div
-            v-for="item in pendingExportItems"
-            :key="`${item.label}-${item.id}`"
-            class="list-item"
-            @click="openRoute(item.route)"
-            role="button"
-            tabindex="0"
-            @keydown.enter.prevent="openRoute(item.route)"
-            @keydown.space.prevent="openRoute(item.route)"
-          >
-            <div>
-              <strong>{{ item.code }}</strong>
-              <p>{{ item.label }} · {{ item.subtitle }}</p>
+          <div v-else class="state-card state-card--empty">
+            <div class="state-card__body">
+              <p>Không có lối tắt phù hợp với vai trò của bạn.</p>
             </div>
-            <span class="badge badge--warning">Chờ duyệt</span>
           </div>
-        </div>
-        <div v-else class="state-card state-card--empty">
-          <div class="state-card__icon">
-            <i class="mdi mdi-file-export-outline"></i>
-          </div>
-          <div class="state-card__body">
-            <h3>Không có phiếu xuất chờ duyệt</h3>
-            <p>Tất cả phiếu xuất cần xử lý đã được hoàn tất.</p>
-          </div>
-        </div>
-      </section>
-
-      <section v-if="canSeeAlerts" class="card card-pad dashboard-panel">
-        <div class="section-head between">
-          <div>
-            <p class="eyebrow">Alerts</p>
-            <h2 class="section-title">Cảnh báo mở</h2>
-          </div>
-          <button class="text-link" @click="openRoute('/alerts')">
-            Xem chi tiết
-          </button>
-        </div>
-
-        <div v-if="isLoading" class="state-card state-card--loading">
-          <div class="skeleton skeleton--line"></div>
-          <div class="skeleton skeleton--line skeleton--short"></div>
-        </div>
-        <div v-else-if="lowStockFailed" class="state-card state-card--error">
-          <div class="state-card__icon">
-            <i class="mdi mdi-alert-circle-outline"></i>
-          </div>
-          <div class="state-card__body">
-            <h3>Không thể tải dữ liệu</h3>
-            <p>Danh sách cảnh báo tồn kho chưa cập nhật.</p>
-          </div>
-          <button
-            class="retry-button retry-button--inline"
-            type="button"
-            @click="retryDashboardLoad"
-          >
-            Thử lại
-          </button>
-        </div>
-        <div v-else-if="lowStockItems.length" class="stack-list">
-          <div
-            v-for="item in lowStockItems"
-            :key="item.id"
-            class="list-item"
-            @click="openRoute('/alerts')"
-            role="button"
-            tabindex="0"
-            @keydown.enter.prevent="openRoute('/alerts')"
-            @keydown.space.prevent="openRoute('/alerts')"
-          >
-            <div>
-              <strong>{{ item.productName }}</strong>
-              <p>{{ item.warehouseName }}</p>
-            </div>
-            <span class="muted">{{ item.available }}/{{ item.minStock }}</span>
-          </div>
-        </div>
-        <div v-else class="state-card state-card--empty">
-          <div class="state-card__icon">
-            <i class="mdi mdi-bell-outline"></i>
-          </div>
-          <div class="state-card__body">
-            <h3>Không có cảnh báo mở</h3>
-            <p>Hiện tại chưa có mặt hàng nào ở ngưỡng cảnh báo.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="card card-pad dashboard-panel">
-        <div class="section-head between">
-          <div>
-            <p class="eyebrow">Quick Access</p>
-            <h2 class="section-title">Truy cập nhanh</h2>
-          </div>
-        </div>
-
-        <div v-if="visibleQuickAccess.length > 0" class="quick-links">
-          <button
-            v-for="item in visibleQuickAccess"
-            :key="item.title"
-            class="quick-link"
-            @click="openRoute(item.route)"
-          >
-            <i class="mdi" :class="item.icon"></i>
-            <span>
-              <strong>{{ item.title }}</strong>
-              <small>{{ item.description }}</small>
-            </span>
-          </button>
-        </div>
-        <div v-else class="state-card state-card--empty">
-          <div class="state-card__icon">
-            <i class="mdi mdi-link-variant"></i>
-          </div>
-          <div class="state-card__body">
-            <h3>Không có mục truy cập nhanh</h3>
-            <p>Bạn không có quyền truy cập vào các mục nhanh hiện tại.</p>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.dashboard-grid {
+.dashboard-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.kpi-row {
   display: grid;
-  gap: 16px;
-}
-
-.dashboard-panel {
-  min-width: 0;
-}
-
-.dashboard-panel--wide {
-  grid-column: 1 / -1;
-}
-
-.dashboard-chart-card {
-  min-height: 340px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dashboard-section-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  grid-column: 1 / -1;
-}
-
-.section-head {
-  margin-bottom: 14px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.section-head--split {
-  align-items: flex-start;
-}
-
-.section-help {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-  max-width: 58ch;
-}
-
-.section-head__meta {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.eyebrow {
-  margin: 0 0 4px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.kpi-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.kpi-summary__item {
-  flex: 1 1 180px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-soft);
-}
-
-.kpi-summary__label {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.kpi-grid {
-  display: grid;
-  gap: 16px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.kpi-grid--two-columns {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .kpi-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
-}
-
-.kpi-card__icon {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: #dbeafe;
-  color: var(--primary);
-  font-size: 20px;
-  flex-shrink: 0;
+  padding: 18px 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100px;
 }
 
-.kpi-card__icon--accent {
-  background: #e0f2fe;
-  color: #0369a1;
+.kpi-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
 }
 
-.kpi-card__icon--warn {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.kpi-card__icon--success {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.kpi-card--loading {
-  min-height: 110px;
-}
-
-.kpi-card__body {
-  flex: 1;
+.kpi-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .kpi-label {
-  margin: 0 0 8px;
-  color: var(--muted);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.kpi-card__icon {
+  font-size: 20px;
+  color: var(--color-text-secondary);
+}
+
+.kpi-card__icon--danger {
+  color: var(--color-danger);
 }
 
 .metric {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-primary);
   margin: 0;
-  font-size: 24px;
-  line-height: 1.2;
 }
 
-.state-card {
+.text-red {
+  color: var(--color-danger) !important;
+}
+
+.kpi-card--loading {
+  background: var(--color-surface);
+  min-height: 100px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.dashboard-main-col, .dashboard-side-col {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--surface-soft);
+  gap: 24px;
 }
 
-.state-card--loading {
-  min-height: 112px;
+.dashboard-chart-wrapper {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.state-card--error {
-  border-color: #fecaca;
-  background: #fef2f2;
-}
-
-.state-card--empty {
-  border-style: dashed;
-  background: #f8fafc;
-}
-
-.state-card__icon {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
+.insight-panel {
+  background: var(--color-primary-soft);
+  border: 1px solid rgba(23, 107, 91, 0.2);
   border-radius: 10px;
-  background: #e2e8f0;
-  color: var(--slate);
+  padding: 16px;
+}
+
+.insight-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: var(--color-primary);
+}
+
+.insight-header i {
   font-size: 20px;
 }
 
-.state-card--error .state-card__icon {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.state-card__body h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
-  color: var(--text);
-}
-
-.state-card__body p {
+.insight-header h3 {
   margin: 0;
-  color: var(--muted);
-  line-height: 1.5;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.dashboard-alert {
+.insight-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.insight-body p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.attention-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
-  background: #fef2f2;
-  color: #991b1b;
-}
-
-.dashboard-alert__content strong {
-  display: block;
-  margin-bottom: 4px;
-}
-
-.dashboard-alert__content p {
-  margin: 0;
-  color: #7f1d1d;
-}
-
-.retry-button {
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 8px 14px;
-  background: var(--primary);
-  color: #fff;
-  font-weight: 700;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
   cursor: pointer;
-  min-height: 38px;
-  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.16);
+  transition: border-color 160ms ease, background-color 160ms ease;
 }
 
-.retry-button:hover {
-  background: var(--primary-dark);
+.attention-item:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
 }
 
-.retry-button:disabled {
-  opacity: 0.7;
-  cursor: progress;
-  box-shadow: none;
+.attention-item__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.retry-button--inline {
-  justify-self: start;
-}
-
-.badge {
+.badge-tag {
   display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 12px;
+  align-self: flex-start;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 700;
+  text-transform: uppercase;
 }
 
-.badge--warning {
-  background: #fef3c7;
-  color: #92400e;
+.badge-tag--danger {
+  background: #fdf2f2;
+  color: var(--color-danger);
 }
 
-.stack-list {
-  display: grid;
-  gap: 10px;
+.badge-tag--warning {
+  background: #fff9f0;
+  color: var(--color-warning);
 }
 
-.list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
+.attention-item__main strong {
+  font-size: 14px;
+  color: var(--color-text-primary);
 }
 
-.list-item:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
-}
-
-.list-item strong {
-  display: block;
-  margin-bottom: 2px;
-}
-
-.list-item p {
+.attention-item__main p {
   margin: 0;
-  color: var(--muted);
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 
-.text-link {
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--primary);
-  font-weight: 700;
+.attention-item i {
+  font-size: 20px;
+  color: var(--color-text-muted);
 }
 
 .quick-links {
   display: grid;
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
@@ -1342,25 +1022,22 @@ function openRoute(path) {
   gap: 12px;
   width: 100%;
   padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
   text-align: left;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+  transition: border-color 160ms ease, background-color 160ms ease;
+  cursor: pointer;
 }
 
 .quick-link:hover {
-  border-color: var(--primary);
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
-  transform: translateY(-1px);
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
 }
 
 .quick-link i {
   font-size: 20px;
-  color: var(--primary);
+  color: var(--color-primary);
 }
 
 .quick-link span {
@@ -1369,68 +1046,46 @@ function openRoute(path) {
   gap: 2px;
 }
 
+.quick-link strong {
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
 .quick-link small {
-  color: var(--muted);
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 
+/* Skeleton & Loading */
 .skeleton {
-  display: block;
-  height: 12px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg) 50%, var(--color-border) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.1s linear infinite;
-}
-
-.skeleton--line {
-  width: 100%;
-}
-
-.skeleton--short {
-  width: 60%;
-}
-
-.skeleton.metric {
-  width: 72px;
-  height: 24px;
-  margin-top: 6px;
+  animation: shimmer 1.2s linear infinite;
+  border-radius: 4px;
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (max-width: 1279px) {
+  .kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 1023px) {
-  .kpi-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .dashboard-section-grid {
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 639px) {
-  .kpi-grid {
+  .kpi-row {
     grid-template-columns: 1fr;
   }
-
-  .section-head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .dashboard-alert {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .list-item {
+  .insight-body {
     flex-direction: column;
     align-items: flex-start;
   }
