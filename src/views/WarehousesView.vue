@@ -56,18 +56,12 @@ const confirmMessage = computed(() =>
 );
 
 const columns = computed(() => {
-  const baseColumns = [
-    { key: "maKho", label: "Mã kho", class: "cell-compact" },
-    { key: "tenKho", label: "Tên kho" },
-    { key: "diaChi", label: "Địa chỉ" },
+  return [
+    { key: "tenKho", label: "Kho hàng", class: "cell-long" },
+    { key: "diaChi", label: "Địa chỉ", class: "cell-medium" },
     { key: "trangThai", label: "Trạng thái", class: "cell-nowrap" },
+    { key: "actions", label: "Thao tác", class: "cell-nowrap" },
   ];
-  return canManage.value
-    ? [
-        ...baseColumns,
-        { key: "actions", label: "Thao tác", class: "cell-nowrap" },
-      ]
-    : baseColumns;
 });
 
 const form = reactive(createEmptyForm());
@@ -360,48 +354,134 @@ function displayStatus(status) {
       </div>
     </div>
 
-    <DataTable
-      v-else-if="warehouses.length > 0"
-      :columns="columns"
-      :rows="warehouses"
-      min-width="900px"
-    >
-      <template #diaChi="{ value }">{{ value || "-" }}</template>
-      <template #trangThai="{ value }"
-        ><StatusBadge :status="displayStatus(value)"
-      /></template>
-      <template v-if="canManage" #actions="{ row }">
-        <div class="actions">
-          <button
-            class="btn btn-sm btn-primary"
-            type="button"
-            :disabled="isLoading || isSaving"
-            @click="openEditForm(row)"
-            title="Chỉnh sửa thông tin kho hàng"
-          >
-            <i class="mdi mdi-pencil-outline"></i>
-            Sửa
-          </button>
-          <button
-            class="btn btn-sm"
-            type="button"
-            :disabled="isLoading || isSaving || togglingId"
-            title="Ngừng hoạt động hoặc kích hoạt kho hàng"
-            @click="requestStatus(row)"
-          >
-            <i
-              class="mdi"
-              :class="
-                row.trangThai === 'HOAT_DONG'
-                  ? 'mdi-block-helper'
-                  : 'mdi-check-circle-outline'
-              "
-            ></i>
-            {{ row.trangThai === "HOAT_DONG" ? "Ngừng" : "Kích hoạt" }}
-          </button>
+    <div v-else-if="warehouses.length > 0" class="warehouse-container">
+      <div class="warehouse-desktop-table">
+        <DataTable
+          :columns="columns"
+          :rows="warehouses"
+          min-width="900px"
+        >
+          <template #tenKho="{ row }">
+            <div class="warehouse-cell">
+              <div class="warehouse-icon">
+                <i class="mdi mdi-store-24-hour"></i>
+              </div>
+              <div class="warehouse-info">
+                <span class="warehouse-name font-semibold text-slate-800">{{ row.tenKho }}</span>
+                <code class="sku-code text-xs text-slate-500">{{ row.maKho }}</code>
+              </div>
+            </div>
+          </template>
+          <template #diaChi="{ value }">{{ value || "-" }}</template>
+          <template #trangThai="{ value }">
+            <StatusBadge :status="displayStatus(value)" />
+          </template>
+          <template #actions="{ row }">
+            <div class="actions">
+              <RouterLink
+                :to="{ path: '/inventory', query: { warehouseId: row.id } }"
+                class="btn btn-sm btn-ghost"
+                title="Xem tồn kho tại đây"
+              >
+                <i class="mdi mdi-clipboard-list-outline"></i>
+                Xem tồn kho
+              </RouterLink>
+              <button
+                v-if="canManage"
+                class="btn btn-sm btn-primary"
+                type="button"
+                :disabled="isLoading || isSaving"
+                @click="openEditForm(row)"
+                title="Chỉnh sửa thông tin kho hàng"
+              >
+                <i class="mdi mdi-pencil-outline"></i>
+                Sửa
+              </button>
+              <button
+                v-if="canManage"
+                class="btn btn-sm btn-secondary"
+                type="button"
+                :disabled="isLoading || isSaving || togglingId"
+                title="Ngừng hoạt động hoặc kích hoạt kho hàng"
+                @click="requestStatus(row)"
+              >
+                <i
+                  class="mdi"
+                  :class="
+                    row.trangThai === 'HOAT_DONG'
+                      ? 'mdi-block-helper'
+                      : 'mdi-check-circle-outline'
+                  "
+                ></i>
+                {{ row.trangThai === "HOAT_DONG" ? "Ngừng" : "Kích hoạt" }}
+              </button>
+            </div>
+          </template>
+        </DataTable>
+      </div>
+
+      <div class="warehouse-mobile-list">
+        <div v-for="row in warehouses" :key="row.id" class="warehouse-mobile-card card card-pad">
+          <div class="warehouse-mobile-card__header">
+            <div class="warehouse-cell">
+              <div class="warehouse-icon">
+                <i class="mdi mdi-store-24-hour"></i>
+              </div>
+              <div class="warehouse-info">
+                <span class="warehouse-name font-semibold text-slate-800">{{ row.tenKho }}</span>
+                <code class="sku-code text-xs text-slate-500">{{ row.maKho }}</code>
+              </div>
+            </div>
+            <StatusBadge :status="displayStatus(row.trangThai)" />
+          </div>
+
+          <div class="warehouse-mobile-card__body" v-if="row.diaChi">
+            <span class="text-xs text-slate-500">Địa chỉ:</span>
+            <p class="text-sm font-medium text-slate-700">{{ row.diaChi }}</p>
+          </div>
+
+          <div class="warehouse-mobile-card__actions mt-2 pt-2 border-t border-slate-100 flex flex-wrap gap-2 justify-end">
+            <RouterLink
+              :to="{ path: '/inventory', query: { warehouseId: row.id } }"
+              class="btn btn-sm btn-ghost"
+              title="Xem tồn kho tại đây"
+            >
+              <i class="mdi mdi-clipboard-list-outline"></i>
+              Xem tồn
+            </RouterLink>
+            <button
+              v-if="canManage"
+              class="btn btn-sm btn-primary"
+              type="button"
+              :disabled="isLoading || isSaving"
+              @click="openEditForm(row)"
+              title="Chỉnh sửa thông tin kho hàng"
+            >
+              <i class="mdi mdi-pencil-outline"></i>
+              Sửa
+            </button>
+            <button
+              v-if="canManage"
+              class="btn btn-sm btn-secondary"
+              type="button"
+              :disabled="isLoading || isSaving || togglingId"
+              title="Ngừng hoạt động hoặc kích hoạt kho hàng"
+              @click="requestStatus(row)"
+            >
+              <i
+                class="mdi"
+                :class="
+                  row.trangThai === 'HOAT_DONG'
+                    ? 'mdi-block-helper'
+                    : 'mdi-check-circle-outline'
+                "
+              ></i>
+              {{ row.trangThai === "HOAT_DONG" ? "Ngừng" : "Kích hoạt" }}
+            </button>
+          </div>
         </div>
-      </template>
-    </DataTable>
+      </div>
+    </div>
 
     <EmptyState
       v-else-if="!isLoading && !errorMessage"
