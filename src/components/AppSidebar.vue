@@ -23,6 +23,11 @@ const menuSections = [
         icon: "mdi-package-variant-closed",
       },
       {
+        label: "Danh mục",
+        to: "/categories",
+        icon: "mdi-shape-outline",
+      },
+      {
         label: "Tồn kho",
         to: "/inventory",
         icon: "mdi-clipboard-list-outline",
