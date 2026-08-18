@@ -223,6 +223,31 @@ export async function completeImport(receiptId, payload) {
   }
 }
 
+export async function exportImportReceiptPdf(receiptId) {
+  try {
+    const response = await importReceiptClient.get(`/api/import-receipts/${receiptId}/export/pdf`, {
+      headers: getAuthorizationHeader(),
+      responseType: 'blob',
+    })
+    return response
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể xuất phiếu PDF.')
+  }
+}
+
+export async function exportImportReceiptExcel(receiptId) {
+  try {
+    const response = await importReceiptClient.get(`/api/import-receipts/${receiptId}/export/excel`, {
+      headers: getAuthorizationHeader(),
+      responseType: 'blob',
+    })
+    return response
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể xuất file Excel.')
+  }
+}
+
+
 export async function getWarehouses() {
   try {
     const { data } = await importReceiptClient.get('/api/warehouses', {

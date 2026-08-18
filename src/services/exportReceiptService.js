@@ -46,3 +46,38 @@ export const getExportReceiptHistory = id => request({
 
 export const completeExportReceipt = id => request({ method: 'put', url: `/api/export-receipts/${id}/complete` }, 'Không thể hoàn tất phiếu xuất.')
 
+export async function exportExportReceiptPdf(receiptId) {
+  try {
+    const response = await client.get(`/api/export-receipts/${receiptId}/export/pdf`, {
+      headers: getAuthorizationHeader(),
+      responseType: 'blob',
+    })
+    return response
+  } catch (error) {
+    if (error.response?.status === 401) clearAuth()
+    throw {
+      status: error.response?.status || 0,
+      message: error.response?.data?.message || 'Không thể xuất phiếu PDF.',
+      errors: error.response?.data?.errors || {},
+    }
+  }
+}
+
+export async function exportExportReceiptExcel(receiptId) {
+  try {
+    const response = await client.get(`/api/export-receipts/${receiptId}/export/excel`, {
+      headers: getAuthorizationHeader(),
+      responseType: 'blob',
+    })
+    return response
+  } catch (error) {
+    if (error.response?.status === 401) clearAuth()
+    throw {
+      status: error.response?.status || 0,
+      message: error.response?.data?.message || 'Không thể xuất file Excel.',
+      errors: error.response?.data?.errors || {},
+    }
+  }
+}
+
+
