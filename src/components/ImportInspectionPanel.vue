@@ -7,7 +7,8 @@ import {
   confirmArrival,
   inspectReceipt,
   createDiscrepancyReport,
-  completeImport
+  completeImport,
+  getImportReceiptHistory
 } from '../services/importReceiptService'
 
 const props = defineProps({
@@ -31,6 +32,9 @@ const inspectItems = ref([])
 const discrepancyNote = ref('')
 const discrepancyReportSaved = ref(false)
 const savedDiscrepancySignature = ref('')
+
+// Lịch sử phê duyệt
+const historyList = ref([])
 
 const authStore = useAuthStore()
 const canProcessReceipt = computed(() => {
@@ -76,8 +80,8 @@ const statusLabel = computed(() => {
   if (!receipt.value) return ''
   const labels = {
     NHAP: 'Bản nháp',
-    CHO_DUYET_CAP_1: 'Chờ duyệt',
-    CHO_DUYET_CAP_2: 'Chờ duyệt',
+    CHO_DUYET_CAP_1: 'Chờ duyệt cấp 1',
+    CHO_DUYET_CAP_2: 'Chờ duyệt cấp 2',
     CHO_HANG_VE: 'Chờ hàng về',
     CHO_KIEM_HANG: 'Chờ kiểm hàng',
     HOAN_THANH: 'Hoàn thành',
@@ -87,6 +91,49 @@ const statusLabel = computed(() => {
   return labels[receipt.value.status] || receipt.value.status
 })
 
+const statusHelpers = {
+  NHAP: 'Bản nháp - phiếu chưa được gửi phê duyệt.',
+  CHO_DUYET_CAP_1: 'Chờ duyệt cấp 1 - đang chờ quản lý kho cấp 1 xử lý.',
+  CHO_DUYET_CAP_2: 'Chờ duyệt cấp 2 - đang chờ quản lý kho cấp 2 xử lý.',
+  CHO_HANG_VE: 'Chờ hàng về - phiếu đã duyệt, đang chờ hàng giao đến kho.',
+  CHO_KIEM_HANG: 'Chờ kiểm hàng - hàng đã về kho, vui lòng thực hiện kiểm kê thực tế.',
+  HOAN_THANH: 'Hoàn thành - phiếu nhập kho đã hoàn tất và lưu kho thành công.',
+  TU_CHOI: 'Từ chối - phiếu bị từ chối phê duyệt. Vui lòng kiểm tra lý do và chỉnh sửa.',
+  HUY: 'Đã hủy - phiếu nhập kho đã bị hủy.'
+}
+
+const ACTION_LABELS = {
+  GUI_DUYET: 'Gửi duyệt',
+  DUYET_CAP_1: 'Duyệt cấp 1',
+  DUYET_CAP_2: 'Duyệt cấp 2',
+  TU_CHOI: 'Từ chối',
+  HUY: 'Hủy phiếu',
+}
+const ACTION_ICONS = {
+  GUI_DUYET: 'mdi-send-outline',
+  DUYET_CAP_1: 'mdi-check-circle-outline',
+  DUYET_CAP_2: 'mdi-check-decagram-outline',
+  TU_CHOI: 'mdi-close-circle-outline',
+  HUY: 'mdi-cancel',
+}
+const ACTION_COLORS = {
+  GUI_DUYET: 'info',
+  DUYET_CAP_1: 'success',
+  DUYET_CAP_2: 'success',
+  TU_CHOI: 'error',
+  HUY: 'grey',
+}
+
+function getHistoryActionLabel(action) {
+  return ACTION_LABELS[action] || action
+}
+function getHistoryActionIcon(action) {
+  return ACTION_ICONS[action] || 'mdi-circle-medium'
+}
+function getHistoryActionColor(action) {
+  return ACTION_COLORS[action] || 'grey'
+}
+
 const physicalStatusOptions = ['Tốt', 'Hư hỏng', 'Thiếu', 'Khác']
 
 let currentRequestId = 0
@@ -95,6 +142,7 @@ async function loadData() {
   const requestId = ++currentRequestId
   loading.value = true
   error.value = ''
+  historyList.value = []
   try {
     const data = await getDetail(props.receiptId)
     if (requestId !== currentRequestId) return
@@ -119,6 +167,13 @@ async function loadData() {
         reason: '',
         action: ''
       }))
+    }
+
+    // Load history
+    try {
+      historyList.value = await getImportReceiptHistory(props.receiptId)
+    } catch (histErr) {
+      console.error('Failed to load history:', histErr)
     }
   } catch (err) {
     if (requestId !== currentRequestId) return
@@ -293,28 +348,34 @@ watch(() => props.receiptId, loadData, { immediate: true })
 
     <!-- Thông tin chung -->
     <v-card class="mb-6 rounded-lg elevation-1" border>
-      <v-card-title class="font-weight-bold d-flex align-center">
+      <v-card-title class="font-weight-bold d-flex align-center py-3 px-4">
         <span>Phiếu Nhập: {{ receipt.code }}</span>
         <v-spacer></v-spacer>
         <v-chip :color="statusColor" class="font-weight-medium">{{ statusLabel }}</v-chip>
       </v-card-title>
-      <v-card-text>
+      <v-card-text class="pt-2 px-4 pb-4">
+        <!-- Status Helper Description -->
+        <div class="text-subtitle-2 text-grey-darken-2 mb-4 bg-grey-lighten-4 pa-3 rounded-lg border-left-brand">
+          <v-icon start size="small" color="primary">mdi-information-outline</v-icon>
+          <strong>Trạng thái:</strong> {{ statusHelpers[receipt.status] || 'Trạng thái không xác định.' }}
+        </div>
+
         <v-row>
           <v-col cols="12" sm="6" md="3">
             <div class="text-caption text-grey">Kho hàng</div>
-            <div class="font-weight-medium">{{ receipt.warehouseName || '-' }}</div>
+            <div class="font-weight-medium text-body-1">{{ receipt.warehouseName || '-' }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
             <div class="text-caption text-grey">Nhà cung cấp</div>
-            <div class="font-weight-medium">{{ receipt.supplierName || '-' }}</div>
+            <div class="font-weight-medium text-body-1">{{ receipt.supplierName || '-' }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
             <div class="text-caption text-grey">Tổng tiền</div>
-            <div class="font-weight-medium text-error">{{ formatCurrency(receipt.totalAmount) }}</div>
+            <div class="font-weight-bold text-body-1 text-primary">{{ formatCurrency(receipt.totalAmount) }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
             <div class="text-caption text-grey">Ngày tạo</div>
-            <div class="font-weight-medium">{{ formatDate(receipt.createdAt) }}</div>
+            <div class="font-weight-medium text-body-1">{{ formatDate(receipt.createdAt) }}</div>
           </v-col>
         </v-row>
       </v-card-text>
@@ -334,26 +395,75 @@ watch(() => props.receiptId, loadData, { immediate: true })
         Bước 2: Kiểm Hàng Thực Tế
       </v-card-title>
       <v-card-text class="pt-4">
-        <v-table hover v-if="inspectItems.length > 0">
-          <thead>
-            <tr>
-              <th class="text-left">Sản phẩm</th>
-              <th class="text-center" width="120">SL Gốc</th>
-              <th class="text-center" width="150">Thực nhận</th>
-              <th class="text-left" width="200">Tình trạng</th>
-              <th class="text-left" width="200">Hạn sử dụng</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in inspectItems" :key="item.productId" :class="{'bg-red-lighten-5': item.actualReceivedQuantity !== item.expectedQuantity || hasPhysicalIssue(item.physicalStatus)}">
-              <td>
-                <div class="font-weight-bold">{{ item.productName }}</div>
-                <div class="text-caption text-grey">{{ item.productCode }}</div>
-              </td>
-              <td class="text-center font-weight-bold">{{ item.expectedQuantity }} {{ item.unitName }}</td>
-              <td>
+        <!-- Desktop view table -->
+        <div class="hidden-sm-and-down">
+          <v-table hover v-if="inspectItems.length > 0">
+            <thead>
+              <tr>
+                <th class="text-left">Sản phẩm</th>
+                <th class="text-center" width="120">SL Gốc</th>
+                <th class="text-center" width="150">Thực nhận</th>
+                <th class="text-left" width="200">Tình trạng</th>
+                <th class="text-left" width="200">Hạn sử dụng</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in inspectItems" :key="item.productId" :class="{'bg-red-lighten-5': item.actualReceivedQuantity !== item.expectedQuantity || hasPhysicalIssue(item.physicalStatus)}">
+                <td>
+                  <div class="font-weight-bold">{{ item.productName }}</div>
+                  <div class="text-caption text-grey">{{ item.productCode }}</div>
+                </td>
+                <td class="text-center font-weight-bold">{{ item.expectedQuantity }} {{ item.unitName }}</td>
+                <td>
+                  <v-text-field
+                    v-model.number="item.actualReceivedQuantity"
+                    type="number"
+                    min="0"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    class="bg-white"
+                  ></v-text-field>
+                </td>
+                <td>
+                  <v-select
+                    v-model="item.physicalStatus"
+                    :items="physicalStatusOptions"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    class="bg-white"
+                  ></v-select>
+                </td>
+                <td>
+                  <v-text-field
+                    v-model="item.expiryDate"
+                    type="date"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    class="bg-white"
+                    clearable
+                  ></v-text-field>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </div>
+
+        <!-- Mobile stacked blocks -->
+        <div class="hidden-md-and-up">
+          <div v-for="item in inspectItems" :key="item.productId" 
+               class="mb-3 pa-3 rounded-lg border"
+               :class="item.actualReceivedQuantity !== item.expectedQuantity || hasPhysicalIssue(item.physicalStatus) ? 'bg-red-lighten-5 border-error' : 'bg-grey-lighten-5'">
+            <div class="font-weight-bold text-subtitle-1">{{ item.productName }}</div>
+            <div class="text-caption text-grey mb-3">SKU: {{ item.productCode }} | Yêu cầu: {{ item.expectedQuantity }} {{ item.unitName }}</div>
+
+            <v-row class="ma-0">
+              <v-col cols="12" class="pa-1">
                 <v-text-field
                   v-model.number="item.actualReceivedQuantity"
+                  label="Số lượng thực nhận"
                   type="number"
                   min="0"
                   density="compact"
@@ -361,20 +471,22 @@ watch(() => props.receiptId, loadData, { immediate: true })
                   hide-details
                   class="bg-white"
                 ></v-text-field>
-              </td>
-              <td>
+              </v-col>
+              <v-col cols="6" class="pa-1">
                 <v-select
                   v-model="item.physicalStatus"
                   :items="physicalStatusOptions"
+                  label="Tình trạng"
                   density="compact"
                   variant="outlined"
                   hide-details
                   class="bg-white"
                 ></v-select>
-              </td>
-              <td>
+              </v-col>
+              <v-col cols="6" class="pa-1">
                 <v-text-field
                   v-model="item.expiryDate"
+                  label="Hạn sử dụng"
                   type="date"
                   density="compact"
                   variant="outlined"
@@ -382,11 +494,12 @@ watch(() => props.receiptId, loadData, { immediate: true })
                   class="bg-white"
                   clearable
                 ></v-text-field>
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
-        <v-alert v-else type="info" variant="tonal" class="mt-2">
+              </v-col>
+            </v-row>
+          </div>
+        </div>
+
+        <v-alert v-if="inspectItems.length === 0" type="info" variant="tonal" class="mt-2">
           Không có sản phẩm nào để kiểm tra.
         </v-alert>
       </v-card-text>
@@ -521,6 +634,40 @@ watch(() => props.receiptId, loadData, { immediate: true })
         </v-table>
       </v-card-text>
     </v-card>
+
+    <!-- Lịch sử phê duyệt timeline trực tiếp trên trang -->
+    <v-card class="mb-6 rounded-lg elevation-1" border>
+      <v-card-title class="font-weight-bold bg-grey-lighten-4 py-3">
+        <v-icon start>mdi-history</v-icon>
+        Lịch sử phê duyệt
+      </v-card-title>
+      <v-card-text class="pt-4">
+        <div v-if="historyList.length === 0" class="text-grey italic text-body-2 text-center py-4">
+          Chưa có lịch sử phê duyệt nào cho phiếu này.
+        </div>
+        <div v-else class="history-timeline">
+          <div v-for="(item, index) in historyList" :key="item.id" class="history-item mb-4 d-flex align-start">
+            <div class="history-marker mr-3 mt-1">
+              <v-icon size="small" :color="getHistoryActionColor(item.action)">
+                {{ getHistoryActionIcon(item.action) }}
+              </v-icon>
+            </div>
+            <div class="history-info">
+              <div class="d-flex align-center flex-wrap">
+                <span class="font-weight-bold mr-2 text-body-2">{{ getHistoryActionLabel(item.action) }}</span>
+                <span class="text-caption text-grey">{{ formatDate(item.createdAt) }}</span>
+              </div>
+              <div class="text-body-2 mt-1">
+                <strong>Người thực hiện:</strong> {{ item.actorName || 'Hệ thống' }}
+              </div>
+              <div v-if="item.note" class="text-body-2 text-error mt-1 italic pl-3 border-left-error">
+                Lý do: {{ item.note }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </v-card-text>
+    </v-card>
   </div>
 
   <div v-else class="d-flex flex-column align-center my-8">
@@ -533,3 +680,19 @@ watch(() => props.receiptId, loadData, { immediate: true })
     </v-btn>
   </div>
 </template>
+
+<style scoped>
+.border-left-brand {
+  border-left: 4px solid var(--color-primary, #2563EB);
+}
+.border-left-error {
+  border-left: 3px solid var(--color-danger, #DC2626);
+}
+.history-timeline {
+  position: relative;
+  padding-left: 8px;
+}
+.history-item {
+  position: relative;
+}
+</style>
