@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
 import SearchFilterBar from "../components/SearchFilterBar.vue";
@@ -11,6 +11,7 @@ import { getWarehouses } from "../services/warehouseService";
 import { getWarehouseStatusLabel } from "../constants/warehouseOptions";
 
 const router = useRouter();
+const route = useRoute();
 const inventoryItems = ref([]);
 const warehouses = ref([]);
 const isLoading = ref(false);
@@ -22,7 +23,7 @@ const size = ref(20);
 const totalPages = ref(0);
 const totalElements = ref(0);
 const filters = reactive({
-  warehouseId: "",
+  warehouseId: route.query.warehouseId ? String(route.query.warehouseId) : "",
   stockStatus: "",
   warehouseStatus: "",
   productStatus: "",
