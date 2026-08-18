@@ -238,19 +238,24 @@ function formatDate(dateStr) {
           <!-- Row: Import type + Warehouse -->
           <div class="grid grid-2 gap-4">
             <div class="field">
-              <label>Loại import *</label>
+              <label class="field-label">Cấu hình kiểu nhập liệu *</label>
               <select
                 v-model="importType"
                 class="select"
                 :disabled="phase === 'validating' || phase === 'importing' || phase === 'done'"
               >
-                <option value="PRODUCT_ONLY">Chỉ sản phẩm (PRODUCT_ONLY)</option>
-                <option value="PRODUCT_WITH_OPENING_STOCK">Sản phẩm + tồn đầu kỳ</option>
+                <option value="PRODUCT_ONLY">Chỉ danh mục sản phẩm</option>
+                <option value="PRODUCT_WITH_OPENING_STOCK">Sản phẩm + tồn kho ban đầu</option>
               </select>
+              <span class="text-xs text-[var(--color-text-secondary)] mt-1 block">
+                {{ importType === 'PRODUCT_ONLY' 
+                  ? 'Nhập thông tin sản phẩm vào hệ thống, không thiết lập số lượng tồn kho ban đầu.' 
+                  : 'Nhập sản phẩm và số lượng hiện có tại thời điểm doanh nghiệp bắt đầu sử dụng StockSense.' }}
+              </span>
             </div>
 
             <div v-if="importType === 'PRODUCT_WITH_OPENING_STOCK'" class="field">
-              <label>Kho nhận hàng đầu kỳ</label>
+              <label class="field-label">Kho ghi nhận tồn ban đầu</label>
               <select
                 v-model="selectedWarehouseId"
                 class="select"
@@ -261,6 +266,9 @@ function formatDate(dateStr) {
                   {{ w.tenKho }} ({{ w.maKho }})
                 </option>
               </select>
+              <span class="text-xs text-[var(--color-text-secondary)] mt-1 block">
+                Số lượng tồn trong file sẽ được ghi nhận vào kho này nếu dòng dữ liệu không chỉ định kho riêng.
+              </span>
               <small v-if="isLoadingWarehouses" class="text-slate-400">Đang tải kho hàng...</small>
               <small v-if="warehouseError" class="text-red-600 font-semibold mt-1 block">{{ warehouseError }}</small>
             </div>
