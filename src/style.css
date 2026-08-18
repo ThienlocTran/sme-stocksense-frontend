@@ -13,14 +13,35 @@
   --color-border: #E2E8E5;
   --color-border-strong: #CBD5D1;
 
-  --color-primary: #176B5B;
-  --color-primary-hover: #125548;
-  --color-primary-soft: #E9F5F1;
+  /* Brand / Identity Color (Green/Teal) */
+  --color-brand: #176B5B;
+  --color-brand-hover: #125548;
+  --color-brand-soft: #E8F4F1;
 
+  /* Primary Action Color (Blue) */
+  --color-action-primary: #2563EB;
+  --color-action-primary-hover: #1D4ED8;
+  --color-action-primary-active: #1E40AF;
+  --color-action-primary-soft: #EFF6FF;
+  --color-action-primary-border: #BFDBFE;
+
+  /* Mapping primary action color */
+  --color-primary: var(--color-action-primary);
+  --color-primary-hover: var(--color-action-primary-hover);
+  --color-primary-soft: var(--color-action-primary-soft);
+
+  /* Semantic Colors */
   --color-success: #16825D;
-  --color-warning: #D88A13;
-  --color-danger: #C2413B;
-  --color-info: #3975D9;
+  --color-success-soft: #ECFDF5;
+  
+  --color-warning: #D97706;
+  --color-warning-soft: #FFF7ED;
+  
+  --color-danger: #DC2626;
+  --color-danger-soft: #FEF2F2;
+  
+  --color-info: #0284C7;
+  --color-info-soft: #F0F9FF;
 
   /* Legacy variables mapped to new design system tokens */
   --bg: var(--color-bg);

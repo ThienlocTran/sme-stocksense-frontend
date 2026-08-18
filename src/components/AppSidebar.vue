@@ -178,7 +178,7 @@ const visibleSections = computed(() =>
   width: 38px;
   height: 38px;
   border-radius: 8px;
-  background: var(--color-primary);
+  background: var(--color-brand);
   display: grid;
   place-items: center;
   color: #fff;
@@ -240,12 +240,12 @@ const visibleSections = computed(() =>
     color 160ms ease;
 }
 .nav-item:hover {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 .nav-item.router-link-active {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 .nav-item i {
   font-size: 20px;
@@ -265,8 +265,8 @@ const visibleSections = computed(() =>
   transition: background 160ms ease, border-color 160ms ease;
 }
 .sidebar-user:hover {
-  background: var(--color-primary-soft);
-  border-color: var(--color-primary);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand);
 }
 .user-avatar {
   width: 40px;
