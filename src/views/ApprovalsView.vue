@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
+import StatusBadge from "../components/StatusBadge.vue";
 import ImportReceiptHistoryModal from "../components/ImportReceiptHistoryModal.vue";
 import {
   approveImportReceipt,
@@ -184,7 +185,6 @@ function nextPage() {
   fetchPendingApprovals();
 }
 
-// ===== T96: Xem chi tiết phiếu chờ duyệt =====
 async function openDetail(receipt) {
   const selectedType = receipt.documentType || documentType.value;
   const token = detailState.requestToken + 1;
@@ -225,14 +225,12 @@ function closeDetail() {
   detailState.error = "";
 }
 
-// ===== T97: Duyệt phiếu nhập =====
 async function handleApprove(receipt) {
   if (!isPendingApproval(receipt.status)) return;
   approveConfirmState.open = true;
   approveConfirmState.receipt = receipt;
 }
 
-// ===== T98: Từ chối phiếu nhập (modal + validate lý do) =====
 function closeApproveConfirm() {
   if (actionState.action === "approve") return;
   approveConfirmState.open = false;
@@ -352,12 +350,6 @@ function statusLabel(status) {
   return statusLabels[status] || status || "-";
 }
 
-function statusClass(status) {
-  return `status-${String(status || "unknown")
-    .toLowerCase()
-    .replaceAll("_", "-")}`;
-}
-
 function formatDateTime(value) {
   if (!value) return "-";
   const date = new Date(value);
@@ -398,78 +390,67 @@ function getRejectionReason(receipt) {
     description="Quản lý duyệt hoặc từ chối phiếu kho theo cấp."
   />
 
-  <div class="filter-bar">
-    <div class="filter-card card card-pad">
-      <div class="filter-header">
-        <div>
-          <h3 class="section-title">Bộ lọc duyệt</h3>
-          <p class="filter-subtitle">
-            Tập trung thao tác duyệt cho Manager/Admin.
-          </p>
-        </div>
-        <button
-          class="btn btn-ghost btn-sm"
-          type="button"
-          @click="clearFilters"
+  <div class="filter-bar card card-pad flex flex-wrap items-center gap-3">
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-bold text-muted uppercase">Loại:</span>
+      <select
+        v-model="documentType"
+        class="select max-w-xs"
+        @change="
+          filters.warehouse = '';
+          page = 0;
+          fetchPendingApprovals();
+        "
+      >
+        <option
+          v-for="option in documentTypeOptions"
+          :key="option.value"
+          :value="option.value"
         >
-          Xóa lọc
-        </button>
-      </div>
-      <div class="filter-controls">
-        <label class="filter-field">
-          <span class="filter-label">Loại phiếu</span>
-          <select
-            v-model="documentType"
-            class="select"
-            @change="
-              filters.warehouse = '';
-              page = 0;
-              fetchPendingApprovals();
-            "
-          >
-            <option
-              v-for="option in documentTypeOptions"
-              :key="option.value"
-              :value="option.value"
-            >
-              {{ option.label }}
-            </option>
-          </select>
-        </label>
-
-        <label class="filter-field">
-          <span class="filter-label">Kho</span>
-          <select
-            v-model="filters.warehouse"
-            class="select"
-            @change="applyFilter"
-          >
-            <option value="">Tất cả kho</option>
-            <option
-              v-for="warehouse in warehouseOptions"
-              :key="warehouse"
-              :value="warehouse"
-            >
-              {{ warehouse }}
-            </option>
-          </select>
-        </label>
-
-        <label class="filter-field">
-          <span class="filter-label">Trạng thái</span>
-          <select v-model="filters.status" class="select" @change="applyFilter">
-            <option value="">Tất cả trạng thái</option>
-            <option
-              v-for="status in statusOptions"
-              :key="status.value"
-              :value="status.value"
-            >
-              {{ status.label }}
-            </option>
-          </select>
-        </label>
-      </div>
+          {{ option.label }}
+        </option>
+      </select>
     </div>
+
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-bold text-muted uppercase">Kho:</span>
+      <select
+        v-model="filters.warehouse"
+        class="select max-w-xs"
+        @change="applyFilter"
+      >
+        <option value="">Tất cả kho</option>
+        <option
+          v-for="warehouse in warehouseOptions"
+          :key="warehouse"
+          :value="warehouse"
+        >
+          {{ warehouse }}
+        </option>
+      </select>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-bold text-muted uppercase">Trạng thái:</span>
+      <select v-model="filters.status" class="select max-w-xs" @change="applyFilter">
+        <option value="">Tất cả</option>
+        <option
+          v-for="status in statusOptions"
+          :key="status.value"
+          :value="status.value"
+        >
+          {{ status.label }}
+        </option>
+      </select>
+    </div>
+
+    <button
+      class="btn btn-ghost btn-sm ml-auto"
+      type="button"
+      @click="clearFilters"
+    >
+      Xóa lọc
+    </button>
   </div>
 
   <p v-if="errorMessage" class="form-alert form-alert-error">
@@ -486,77 +467,140 @@ function getRejectionReason(receipt) {
   </p>
 
   <div v-if="!isLoading">
-    <DataTable
-      :columns="columns"
-      :rows="receipts"
-      empty-text="Không có phiếu nào đang chờ duyệt"
-    >
-      <template #code="{ row, value }">
-        <div class="document-cell">
-          <span class="document-code">{{ value || "-" }}</span>
-          <span
-            class="badge doc-badge"
-            :class="documentTypeBadgeClass(row.documentType)"
-          >
-            {{ documentTypeLabel(row.documentType) }}
-          </span>
+    <!-- Desktop Table View -->
+    <div class="hidden md:block">
+      <DataTable
+        :columns="columns"
+        :rows="receipts"
+        empty-text="Không có phiếu nào đang chờ duyệt"
+      >
+        <template #code="{ row, value }">
+          <div class="document-cell">
+            <span class="document-code">{{ value || "-" }}</span>
+            <span
+              class="badge doc-badge"
+              :class="documentTypeBadgeClass(row.documentType)"
+            >
+              {{ documentTypeLabel(row.documentType) }}
+            </span>
+          </div>
+        </template>
+        <template #warehouseName="{ value }">{{ value || "-" }}</template>
+        <template #supplierName="{ value }">{{ value || "-" }}</template>
+        <template #createdByName="{ value }">{{ value || "-" }}</template>
+        <template #submittedAt="{ value }">{{ formatDateTime(value) }}</template>
+        <template #status="{ value }">
+          <StatusBadge :status="statusLabel(value)" />
+        </template>
+        <template #totalAmount="{ value }">{{ formatCurrency(value) }}</template>
+        <template #actions="{ row }">
+          <div class="actions">
+            <button
+              class="btn btn-sm btn-secondary"
+              type="button"
+              :disabled="isAnyActionRunning(row)"
+              @click="openDetail(row)"
+            >
+              Xem
+            </button>
+            <button
+              class="btn btn-sm btn-secondary"
+              type="button"
+              :disabled="isAnyActionRunning(row)"
+              @click="openHistory(row)"
+            >
+              Lịch sử
+            </button>
+            <button
+              class="btn btn-sm btn-success"
+              type="button"
+              :disabled="
+                isAnyActionRunning(row) || !isPendingApproval(row.status)
+              "
+              @click="handleApprove(row)"
+            >
+              {{
+                isActionRunning(row, "approve")
+                  ? "Đang duyệt..."
+                  : approveLabel(row.status)
+              }}
+            </button>
+            <button
+              class="btn btn-sm btn-danger"
+              type="button"
+              :disabled="
+                isAnyActionRunning(row) || !isPendingApproval(row.status)
+              "
+              @click="openRejectModal(row)"
+            >
+              Từ chối
+            </button>
+          </div>
+        </template>
+      </DataTable>
+    </div>
+
+    <!-- Mobile Responsive Cards View -->
+    <div class="block md:hidden space-y-4">
+      <div v-if="receipts.length === 0" class="card card-pad text-center muted py-8">
+        Không có phiếu nào đang chờ duyệt.
+      </div>
+      <div v-else v-for="row in receipts" :key="row.id" class="card card-pad space-y-3">
+        <div class="between">
+          <div class="document-cell">
+            <span class="font-bold text-primary">{{ row.code }}</span>
+            <span class="badge doc-badge mt-1" :class="documentTypeBadgeClass(row.documentType)">
+              {{ documentTypeLabel(row.documentType) }}
+            </span>
+          </div>
+          <StatusBadge :status="statusLabel(row.status)" />
         </div>
-      </template>
-      <template #warehouseName="{ value }">{{ value || "-" }}</template>
-      <template #supplierName="{ value }">{{ value || "-" }}</template>
-      <template #createdByName="{ value }">{{ value || "-" }}</template>
-      <template #submittedAt="{ value }">{{ formatDateTime(value) }}</template>
-      <template #status="{ value }">
-        <span class="badge" :class="statusClass(value)">
-          {{ statusLabel(value) }}
-        </span>
-      </template>
-      <template #totalAmount="{ value }">{{ formatCurrency(value) }}</template>
-      <template #actions="{ row }">
-        <div class="actions">
-          <button
-            class="btn btn-sm"
-            type="button"
-            :disabled="isAnyActionRunning(row)"
-            @click="openDetail(row)"
-          >
-            Xem
-          </button>
-          <button
-            class="btn btn-sm btn-secondary"
-            type="button"
-            :disabled="isAnyActionRunning(row)"
-            @click="openHistory(row)"
-          >
-            Lịch sử
-          </button>
-          <button
-            class="btn btn-sm btn-primary"
-            type="button"
-            :disabled="
-              isAnyActionRunning(row) || !isPendingApproval(row.status)
-            "
+        
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <span class="text-muted block text-xs uppercase font-semibold">Kho</span>
+            <span class="font-medium text-text">{{ row.warehouseName || '-' }}</span>
+          </div>
+          <div>
+            <span class="text-muted block text-xs uppercase font-semibold">
+              {{ row.documentType === 'out' ? 'Khách hàng' : 'Nhà cung cấp' }}
+            </span>
+            <span class="font-medium text-text">{{ row.supplierName || '-' }}</span>
+          </div>
+          <div>
+            <span class="text-muted block text-xs uppercase font-semibold">Người tạo</span>
+            <span class="font-medium text-text">{{ row.createdByName || '-' }}</span>
+          </div>
+          <div>
+            <span class="text-muted block text-xs uppercase font-semibold">Ngày gửi</span>
+            <span class="font-medium text-text">{{ formatDateTime(row.submittedAt) }}</span>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-100 pt-3 flex justify-end gap-2 flex-wrap">
+          <button class="btn btn-sm btn-secondary" type="button" @click="openDetail(row)">Xem</button>
+          <button class="btn btn-sm btn-secondary" type="button" @click="openHistory(row)">Lịch sử</button>
+          <button 
+            v-if="isPendingApproval(row.status)" 
+            class="btn btn-sm btn-success" 
+            type="button" 
+            :disabled="isAnyActionRunning(row)" 
             @click="handleApprove(row)"
           >
-            {{
-              isActionRunning(row, "approve")
-                ? "Đang duyệt..."
-                : approveLabel(row.status)
-            }}
+            Duyệt
           </button>
-          <button
-            class="btn btn-sm btn-danger"
-            type="button"
-            :disabled="
-              isAnyActionRunning(row) || !isPendingApproval(row.status)
-            "
+          <button 
+            v-if="isPendingApproval(row.status)" 
+            class="btn btn-sm btn-danger" 
+            type="button" 
+            :disabled="isAnyActionRunning(row)" 
             @click="openRejectModal(row)"
           >
             Từ chối
           </button>
         </div>
-      </template>
-    </DataTable>
+      </div>
+    </div>
   </div>
 
   <div class="pagination-bar card card-pad">
@@ -627,11 +671,7 @@ function getRejectionReason(receipt) {
             </div>
             <div>
               <span class="detail-label">Trạng thái</span>
-              <span
-                class="badge"
-                :class="statusClass(detailState.receipt.status)"
-                >{{ statusLabel(detailState.receipt.status) }}</span
-              >
+              <StatusBadge :status="statusLabel(detailState.receipt.status)" />
             </div>
             <div>
               <span class="detail-label">Loại phiếu</span
@@ -679,7 +719,7 @@ function getRejectionReason(receipt) {
             </div>
             <div>
               <span class="detail-label">Tổng tiền</span
-              ><span class="detail-value">{{
+              ><span class="detail-value text-primary">{{
                 formatCurrency(detailState.receipt.totalAmount)
               }}</span>
             </div>
@@ -698,9 +738,9 @@ function getRejectionReason(receipt) {
                 <tr>
                   <th>Mã SP</th>
                   <th>Tên sản phẩm</th>
-                  <th>Số lượng</th>
-                  <th>Đơn giá</th>
-                  <th>Thành tiền</th>
+                  <th style="text-align: right">Số lượng</th>
+                  <th style="text-align: right">Đơn giá</th>
+                  <th style="text-align: right">Thành tiền</th>
                 </tr>
               </thead>
               <tbody>
@@ -715,9 +755,9 @@ function getRejectionReason(receipt) {
                 <tr v-for="item in detailState.receipt.details" :key="item.id">
                   <td>{{ item.productCode || "-" }}</td>
                   <td>{{ item.productName || "-" }}</td>
-                  <td>{{ item.quantity }}</td>
-                  <td>{{ formatCurrency(item.unitPrice) }}</td>
-                  <td>{{ formatCurrency(item.lineTotal) }}</td>
+                  <td style="text-align: right; font-weight: 700;">{{ item.quantity }}</td>
+                  <td style="text-align: right">{{ formatCurrency(item.unitPrice) }}</td>
+                  <td style="text-align: right; font-weight: 700" class="text-primary">{{ formatCurrency(item.lineTotal) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -731,14 +771,14 @@ function getRejectionReason(receipt) {
         class="modal-foot"
       >
         <button
-          class="btn btn-danger"
+          class="btn btn-danger mr-2"
           type="button"
           @click="openRejectModal(detailState.receipt)"
         >
           Từ chối phiếu
         </button>
         <button
-          class="btn btn-primary"
+          class="btn btn-success"
           type="button"
           @click="handleApprove(detailState.receipt)"
         >
@@ -807,7 +847,7 @@ function getRejectionReason(receipt) {
     </div>
   </div>
 
-  <!-- Modal Lịch sử duyệt -->
+  <!-- Confirm Dialog Duyệt -->
   <ConfirmDialog
     :open="approveConfirmState.open"
     title="Xác nhận duyệt"
@@ -861,45 +901,16 @@ function getRejectionReason(receipt) {
 }
 .filter-bar {
   margin-bottom: 16px;
-}
-.filter-card {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.filter-header {
-  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.filter-subtitle {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-.filter-controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-.filter-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.filter-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 .document-cell {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 2px;
 }
 .document-code {
   font-weight: 700;
@@ -910,7 +921,7 @@ function getRejectionReason(receipt) {
   align-items: center;
   border-radius: 999px;
   padding: 4px 9px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
   background: #f1f5f9;
@@ -927,31 +938,6 @@ function getRejectionReason(receipt) {
 .doc-badge-in {
   background: #dcfce7;
   color: #166534;
-}
-.status-cho-duyet,
-.status-cho-duyet-cap-1,
-.status-cho-duyet-cap-2,
-.status-cho-hang-ve,
-.status-cho-kiem-hang {
-  background: #fef3c7;
-  color: #b45309;
-}
-.status-da-duyet {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-.status-tu-choi {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-.status-hoan-thanh {
-  background: #dcfce7;
-  color: #15803d;
-}
-.status-nhap,
-.status-huy {
-  background: #f1f5f9;
-  color: #475569;
 }
 .pagination-bar {
   margin-top: 14px;
@@ -972,32 +958,6 @@ function getRejectionReason(receipt) {
 
 .detail-modal {
   width: min(760px, 100%);
-}
-.detail-focus-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid #bfdbfe;
-  background: linear-gradient(90deg, #eff6ff 0%, #f8fbff 100%);
-  border-radius: 12px;
-  margin-bottom: 14px;
-}
-.detail-focus-title {
-  margin: 0 0 4px;
-  font-weight: 800;
-  color: #1d4ed8;
-}
-.detail-focus-text {
-  margin: 0;
-  font-size: 13px;
-  color: #334155;
-}
-.detail-focus-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 .detail-rejection-card {
   padding: 12px 14px;
@@ -1088,36 +1048,12 @@ function getRejectionReason(receipt) {
 }
 
 @media (max-width: 640px) {
-  .filter-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .filter-controls {
-    grid-template-columns: 1fr;
-  }
-  .detail-focus-card {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .detail-focus-actions {
-    width: 100%;
-  }
-  .detail-focus-actions .btn {
-    flex: 1 1 100%;
-  }
   .detail-grid {
     grid-template-columns: 1fr;
   }
   .pagination-bar {
     align-items: flex-start;
     flex-direction: column;
-  }
-  .actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .actions .btn {
-    width: 100%;
   }
 }
 </style>
