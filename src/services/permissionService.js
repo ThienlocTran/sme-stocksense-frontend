@@ -84,10 +84,12 @@ export function canAccessRoute(path, role) {
     return canViewForecast(resolvedRole)
   }
 
+  // Check create/edit TRƯỚC (specific hơn) — MANAGER không được tạo/sửa phiếu
   if (/^\/stock-(in|out)\/(?:create|[^/]+\/edit)$/.test(path)) {
     return ['ADMIN', 'EMPLOYEE'].includes(resolvedRole)
   }
 
+  // Sau đó mới check detail view — MANAGER xem được để phê duyệt
   if (/^\/stock-in\/[^/]+$/.test(path)) {
     // MANAGER cần xem chi tiết phiếu nhập để duyệt/từ chối
     return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
@@ -103,4 +105,3 @@ export function canAccessRoute(path, role) {
 export function canCompleteExportReceipt(role) {
   return ['ADMIN', 'EMPLOYEE'].includes(resolveRole(role))
 }
-
