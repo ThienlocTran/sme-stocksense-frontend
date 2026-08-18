@@ -8,8 +8,12 @@ import {
   inspectReceipt,
   createDiscrepancyReport,
   completeImport,
-  getImportReceiptHistory
+  getImportReceiptHistory,
+  exportImportReceiptPdf,
+  exportImportReceiptExcel
 } from '../services/importReceiptService'
+import { downloadBlobResponse, setPrintWindowBlob } from '../utils/downloadHelper'
+
 
 const props = defineProps({
   receiptId: {
@@ -24,6 +28,7 @@ const submitting = ref(false)
 const savingDiscrepancy = ref(false)
 const error = ref('')
 const successMessage = ref('')
+const exporting = ref(false)
 
 // State cho form kiểm hàng
 const inspectItems = ref([])
@@ -329,6 +334,46 @@ function getActualLineTotal(item) {
   return Number(item.actualReceivedQuantity) * Number(item.unitPrice ?? 0)
 }
 
+async function handleExport(format) {
+  if (exporting.value) return
+  error.value = ''
+  successMessage.value = ''
+
+  let printWindow = null
+  if (format === 'print') {
+    printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      error.value = 'Không thể mở bản in. Vui lòng cho phép trình duyệt hiển thị popup.'
+      return
+    }
+    printWindow.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:20px;">Đang tải bản in PDF...</p>')
+  }
+
+  exporting.value = true
+  try {
+    if (format === 'pdf') {
+      const response = await exportImportReceiptPdf(props.receiptId)
+      downloadBlobResponse(response, `phieu-nhap-${receipt.value?.code || props.receiptId}.pdf`)
+      successMessage.value = 'Xuất phiếu PDF thành công.'
+    } else if (format === 'excel') {
+      const response = await exportImportReceiptExcel(props.receiptId)
+      downloadBlobResponse(response, `phieu-nhap-${receipt.value?.code || props.receiptId}.xlsx`)
+      successMessage.value = 'Xuất file Excel thành công.'
+    } else if (format === 'print') {
+      const response = await exportImportReceiptPdf(props.receiptId)
+      setPrintWindowBlob(printWindow, response)
+    }
+  } catch (err) {
+    if (printWindow) {
+      printWindow.close()
+    }
+    const actionLabel = format === 'pdf' ? 'xuất phiếu PDF' : format === 'excel' ? 'xuất file Excel' : 'mở bản in'
+    error.value = err.message || `Không thể ${actionLabel}.`
+  } finally {
+    exporting.value = false
+  }
+}
+
 watch(() => props.receiptId, loadData, { immediate: true })
 </script>
 
@@ -351,7 +396,28 @@ watch(() => props.receiptId, loadData, { immediate: true })
       <v-card-title class="font-weight-bold d-flex align-center py-3 px-4">
         <span>Phiếu Nhập: {{ receipt.code }}</span>
         <v-spacer></v-spacer>
-        <v-chip :color="statusColor" class="font-weight-medium">{{ statusLabel }}</v-chip>
+        <v-chip :color="statusColor" class="font-weight-medium mr-2">{{ statusLabel }}</v-chip>
+        <v-menu transition="slide-y-transition">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              color="primary"
+              variant="outlined"
+              v-bind="props"
+              :loading="exporting"
+              prepend-icon="mdi-export-variant"
+              append-icon="mdi-chevron-down"
+              size="small"
+              class="font-weight-medium text-capitalize ml-2"
+            >
+              Xuất phiếu
+            </v-btn>
+          </template>
+          <v-list density="compact" nav class="py-1">
+            <v-list-item prepend-icon="mdi-printer" title="In phiếu" @click="handleExport('print')" />
+            <v-list-item prepend-icon="mdi-file-pdf-box" title="Xuất PDF" @click="handleExport('pdf')" />
+            <v-list-item prepend-icon="mdi-file-excel-box" title="Xuất Excel" @click="handleExport('excel')" />
+          </v-list>
+        </v-menu>
       </v-card-title>
       <v-card-text class="pt-2 px-4 pb-4">
         <!-- Status Helper Description -->

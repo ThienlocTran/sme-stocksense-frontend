@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, reactive, watch } from "vue";
+import { computed, ref, reactive, watch, onBeforeUnmount } from "vue";
 import { useAuthStore } from "../stores/auth";
 import {
   approveExportReceipt,
@@ -7,7 +7,12 @@ import {
   rejectExportReceipt,
   completeExportReceipt,
 } from "../services/stockOutApprovalService";
-import { getExportReceiptHistory } from "../services/exportReceiptService";
+import {
+  getExportReceiptHistory,
+  exportExportReceiptPdf,
+  exportExportReceiptExcel,
+} from "../services/exportReceiptService";
+import { downloadBlobResponse, setPrintWindowBlob } from "../utils/downloadHelper";
 import EmptyState from "./EmptyState.vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import StatusBadge from "./StatusBadge.vue";
@@ -296,6 +301,62 @@ function approveButtonLabel() {
   return "Duyệt";
 }
 
+const exporting = ref(false);
+const exportDropdownOpen = ref(false);
+
+const closeDropdown = (e) => {
+  if (!e.target.closest(".export-dropdown-container")) {
+    exportDropdownOpen.value = false;
+  }
+};
+
+window.addEventListener("click", closeDropdown);
+onBeforeUnmount(() => {
+  window.removeEventListener("click", closeDropdown);
+});
+
+async function handleExport(format) {
+  if (exporting.value) return;
+  actionError.value = "";
+  actionMessage.value = "";
+  exportDropdownOpen.value = false;
+
+  let printWindow = null;
+  if (format === "print") {
+    printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      actionError.value = "Không thể mở bản in. Vui lòng cho phép trình duyệt hiển thị popup.";
+      return;
+    }
+    printWindow.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:20px;">Đang tải bản in PDF...</p>');
+  }
+
+  exporting.value = true;
+  try {
+    if (format === "pdf") {
+      const response = await exportExportReceiptPdf(props.receiptId);
+      downloadBlobResponse(response, `phieu-xuat-${receipt.value?.code || props.receiptId}.pdf`);
+      actionMessage.value = "Xuất phiếu PDF thành công.";
+    } else if (format === "excel") {
+      const response = await exportExportReceiptExcel(props.receiptId);
+      downloadBlobResponse(response, `phieu-xuat-${receipt.value?.code || props.receiptId}.xlsx`);
+      actionMessage.value = "Xuất file Excel thành công.";
+    } else if (format === "print") {
+      const response = await exportExportReceiptPdf(props.receiptId);
+      setPrintWindowBlob(printWindow, response);
+    }
+  } catch (err) {
+    if (printWindow) {
+      printWindow.close();
+    }
+    const actionLabel = format === "pdf" ? "xuất phiếu PDF" : format === "excel" ? "xuất file Excel" : "mở bản in";
+    actionError.value = err.message || `Không thể ${actionLabel}.`;
+  } finally {
+    exporting.value = false;
+  }
+}
+
+
 watch(
   () => props.receiptId,
   () => {
@@ -351,7 +412,57 @@ watch(
             Kiểm tra toàn bộ thông tin trước khi quyết định duyệt hoặc từ chối.
           </p>
         </div>
-        <StatusBadge :status="formatStatus(receipt.status)" />
+        <div class="row">
+          <StatusBadge :status="formatStatus(receipt.status)" />
+          
+          <div class="export-dropdown-container relative inline-block text-left">
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :disabled="exporting"
+              @click="exportDropdownOpen = !exportDropdownOpen"
+            >
+              <i class="mdi mdi-export-variant"></i>
+              <span>Xuất phiếu</span>
+              <i class="mdi mdi-chevron-down"></i>
+            </button>
+            <div
+              v-if="exportDropdownOpen"
+              class="absolute right-0 mt-1 w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 border border-gray-200"
+              style="right: 0;"
+            >
+              <div class="py-1 flex flex-col items-stretch">
+                <button
+                  type="button"
+                  class="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100 text-slate-800 cursor-pointer"
+                  style="border: none; background: none; justify-content: flex-start; box-shadow: none; font-weight: 500; text-align: left; padding: 8px 16px; border-radius: 0;"
+                  @click="handleExport('print')"
+                >
+                  <i class="mdi mdi-printer mr-2 text-slate-500" style="font-size: 16px;"></i>
+                  In phiếu
+                </button>
+                <button
+                  type="button"
+                  class="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100 text-slate-800 cursor-pointer"
+                  style="border: none; background: none; justify-content: flex-start; box-shadow: none; font-weight: 500; text-align: left; padding: 8px 16px; border-radius: 0;"
+                  @click="handleExport('pdf')"
+                >
+                  <i class="mdi mdi-file-pdf-box mr-2 text-slate-500" style="font-size: 16px;"></i>
+                  Xuất PDF
+                </button>
+                <button
+                  type="button"
+                  class="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100 text-slate-800 cursor-pointer"
+                  style="border: none; background: none; justify-content: flex-start; box-shadow: none; font-weight: 500; text-align: left; padding: 8px 16px; border-radius: 0;"
+                  @click="handleExport('excel')"
+                >
+                  <i class="mdi mdi-file-excel-box mr-2 text-slate-500" style="font-size: 16px;"></i>
+                  Xuất Excel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="detail-grid">
