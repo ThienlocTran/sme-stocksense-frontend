@@ -21,6 +21,7 @@ import EmployeeListView from '../views/employees/EmployeeListView.vue'
 import CategoryListView from '../views/categories/CategoryListView.vue'
 import InventoryCountListView from '../views/inventory-counts/InventoryCountListView.vue'
 import InventoryCountDetailView from '../views/inventory-counts/InventoryCountDetailView.vue'
+import AiForecastView from '../views/AiForecastView.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -50,7 +51,7 @@ const routes = [
   { path: '/users', component: UsersView, meta: { title: 'Nhân viên & phân quyền' } },
   { path: '/inventory-counts', component: InventoryCountListView, meta: { title: 'Kiểm kê kho' } },
   { path: '/inventory-counts/:id', component: InventoryCountDetailView, props: true, meta: { title: 'Chi tiết kiểm kê kho' } },
-
+  { path: '/forecast', component: AiForecastView, meta: { title: 'Dự báo AI' } },
 ]
 
 const router = createRouter({
