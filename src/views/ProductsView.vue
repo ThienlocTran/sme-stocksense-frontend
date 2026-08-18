@@ -515,6 +515,80 @@ function formatCurrency(value) {
     </DataTable>
   </div>
 
+  <div class="product-mobile-list" v-if="products.length > 0">
+    <div v-for="row in products" :key="row.id" class="product-mobile-card card card-pad">
+      <div class="product-mobile-card__header">
+        <div class="product-cell">
+          <div class="product-thumbnail">
+            <i class="mdi mdi-package-variant-closed"></i>
+          </div>
+          <div class="product-info">
+            <span class="product-name">{{ row.name }}</span>
+            <code class="sku-code text-xs">{{ row.code }}</code>
+          </div>
+        </div>
+        <StatusBadge :status="displayStatus(row.status)" />
+      </div>
+
+      <div class="product-mobile-card__details">
+        <div class="detail-row">
+          <span class="detail-label">SKU</span>
+          <code class="sku-code text-muted text-xs">{{ row.sku || '—' }}</code>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Danh mục</span>
+          <span class="detail-val">{{ row.categoryName || '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Nhà cung cấp</span>
+          <span class="detail-val text-ellipsis">{{ row.partnerName || '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Giá / Đơn vị</span>
+          <span class="detail-val">
+            <strong class="text-slate-800">{{ formatCurrency(row.price) }}</strong>
+            <span class="text-muted text-xs"> / {{ row.unit }}</span>
+          </span>
+        </div>
+        <div class="detail-row" v-if="row.minStock !== null">
+          <span class="detail-label">Ngưỡng tối thiểu</span>
+          <span class="detail-val">
+            <span class="tabular-num">{{ row.minStock }}</span>
+            <span class="text-muted text-xs"> {{ row.unit }}</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="product-mobile-card__actions" v-if="canManage">
+        <button
+          class="btn btn-sm btn-secondary"
+          type="button"
+          :disabled="isLoading || isSaving"
+          @click="openEditForm(row)"
+        >
+          <i class="mdi mdi-pencil-outline"></i>
+          Sửa
+        </button>
+        <button
+          class="btn btn-sm"
+          type="button"
+          :disabled="isLoading || togglingId"
+          @click="requestStatus(row)"
+        >
+          <i
+            class="mdi"
+            :class="
+              row.status === 'HOAT_DONG'
+                ? 'mdi-block-helper text-red-600'
+                : 'mdi-check-circle-outline text-emerald-600'
+            "
+          ></i>
+          {{ row.status === 'HOAT_DONG' ? 'Ngừng' : 'Kích hoạt' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
   <EmptyState
     v-if="!isLoading && !errorMessage && products.length === 0"
     title="Không có sản phẩm"
@@ -889,5 +963,72 @@ function formatCurrency(value) {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
+}
+
+.product-mobile-list {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .product-desktop-table {
+    display: none;
+  }
+  .product-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .product-mobile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+  .product-mobile-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 12px;
+  }
+  .product-mobile-card__details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .detail-label {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+  }
+  .detail-val {
+    color: var(--color-text-primary);
+    font-weight: 600;
+  }
+  .text-ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+  .product-mobile-card__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    border-top: 1px solid var(--color-border);
+    padding-top: 12px;
+  }
+  .product-mobile-card__actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
 </style>
