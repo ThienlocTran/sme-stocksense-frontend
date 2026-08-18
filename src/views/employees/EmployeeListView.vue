@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchFilterBar from '../../components/SearchFilterBar.vue'
 import DataTable from '../../components/DataTable.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import {
   employeeRoleOptions,
   employeeStatusOptions,
@@ -35,33 +36,63 @@ const formErrors = reactive({ fullName: '', email: '', phoneNumber: '', password
 const resetForm = reactive({ newPassword: '', confirmPassword: '' })
 const resetErrors = reactive({ newPassword: '', confirmPassword: '' })
 
-const baseColumns = [
-  { key: 'fullName', label: 'Họ tên', class: 'employee-name-column' },
-  { key: 'email', label: 'Email', class: 'employee-email-column' },
-  { key: 'phoneNumber', label: 'Số điện thoại', class: 'employee-phone-column' },
-  { key: 'role', label: 'Vai trò', class: 'employee-role-column' },
-  { key: 'status', label: 'Trạng thái', class: 'employee-status-column' },
-  { key: 'createdAt', label: 'Ngày tạo', class: 'employee-date-column' },
-]
-
 const statusOptions = [{ value: '', label: 'Tất cả trạng thái' }, ...employeeStatusOptions]
 const roleOptions = [{ value: '', label: 'Tất cả vai trò' }, ...employeeRoleOptions]
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const route = useRoute()
+const isUsersRoute = computed(() => route.path === '/users')
+const pageTitle = computed(() => isUsersRoute.value ? 'Tài khoản & Phân quyền' : 'Nhân viên')
+const pageDescription = computed(() => isUsersRoute.value ? 'Quản lý tài khoản đăng nhập, vai trò hệ thống và trạng thái khóa/mở.' : 'Quản lý danh sách nhân sự tham gia vận hành hệ thống.')
 
 const currentPage = computed(() => filters.page + 1)
 const canGoPrevious = computed(() => filters.page > 0 && !isLoading.value)
 const canGoNext = computed(() => filters.page + 1 < pageInfo.totalPages && !isLoading.value)
 const isEditMode = computed(() => formMode.value === 'edit')
 const canManageEmployees = computed(() => getCurrentRoleCode() === 'ADMIN')
-const columns = computed(() => (
-  canManageEmployees.value ? [...baseColumns, { key: 'actions', label: 'Thao tác', class: 'employee-actions-column' }] : baseColumns
-))
-const formTitle = computed(() => (isEditMode.value ? 'Sửa nhân viên' : 'Thêm nhân viên'))
+
+const columns = computed(() => {
+  if (isUsersRoute.value) {
+    return [
+      { key: 'email', label: 'Tên đăng nhập (Email)', class: 'employee-email-column' },
+      { key: 'fullName', label: 'Nhân viên liên kết', class: 'employee-name-column' },
+      { key: 'role', label: 'Vai trò hệ thống', class: 'employee-role-column' },
+      { key: 'status', label: 'Trạng thái tài khoản', class: 'employee-status-column' },
+      { key: 'createdAt', label: 'Ngày tạo tài khoản', class: 'employee-date-column' },
+      { key: 'actions', label: 'Thao tác', class: 'employee-actions-column' }
+    ]
+  } else {
+    return [
+      { key: 'fullName', label: 'Nhân viên', class: 'employee-name-column' },
+      { key: 'email', label: 'Email liên hệ', class: 'employee-email-column' },
+      { key: 'phoneNumber', label: 'Số điện thoại', class: 'employee-phone-column' },
+      { key: 'status', label: 'Trạng thái nhân sự', class: 'employee-status-column' },
+      { key: 'createdAt', label: 'Ngày gia nhập', class: 'employee-date-column' },
+      { key: 'actions', label: 'Thao tác', class: 'employee-actions-column' }
+    ]
+  }
+})
+
+const formTitle = computed(() => {
+  if (isUsersRoute.value) {
+    return isEditMode.value ? 'Cập nhật tài khoản & Vai trò' : 'Cấp tài khoản mới'
+  }
+  return isEditMode.value ? 'Sửa thông tin nhân sự' : 'Thêm nhân viên mới'
+})
+
+const formDesc = computed(() => {
+  if (isUsersRoute.value) {
+    return isEditMode.value ? 'Thay đổi vai trò hoặc trạng thái hoạt động của tài khoản.' : 'Cấp tài khoản đăng nhập mới liên kết với nhân sự.'
+  }
+  return isEditMode.value ? 'Cập nhật thông tin chi tiết nhân sự.' : 'Tạo nhân viên mới với vai trò và trạng thái ban đầu.'
+})
+
 const rangeText = computed(() => {
-  if (pageInfo.totalElements === 0) return '0 nhân viên'
+  const itemLabel = isUsersRoute.value ? 'tài khoản' : 'nhân viên'
+  if (pageInfo.totalElements === 0) return `0 ${itemLabel}`
   const start = filters.page * filters.size + 1
   const end = Math.min((filters.page + 1) * filters.size, pageInfo.totalElements)
-  return `${start}-${end} / ${pageInfo.totalElements} nhân viên`
+  return `${start}-${end} / ${pageInfo.totalElements} ${itemLabel}`
 })
 
 onMounted(() => {
@@ -123,9 +154,33 @@ function isStatusToggleDisabled(employee) {
   return employee.status === 'NGUNG_HOAT_DONG'
 }
 
-async function toggleEmployeeStatus(employee) {
+// Confirmation State
+const confirmOpen = ref(false)
+const confirmTitle = ref('')
+const confirmMessage = ref('')
+const confirmDanger = ref(false)
+const pendingEmployee = ref(null)
+
+function confirmToggleStatus(employee) {
   if (!canManageEmployees.value || !employee?.id || statusUpdatingId.value || isStatusToggleDisabled(employee)) return
 
+  pendingEmployee.value = employee
+  const shouldLock = employee.status === 'HOAT_DONG'
+  confirmTitle.value = shouldLock ? 'Khóa nhân viên?' : 'Mở khóa nhân viên?'
+  confirmMessage.value = `Bạn có chắc chắn muốn ${shouldLock ? 'khóa' : 'mở khóa'} tài khoản của nhân viên "${employee.fullName}" (${employee.email}) không?`
+  confirmDanger.value = shouldLock
+  confirmOpen.value = true
+}
+
+function cancelToggle() {
+  pendingEmployee.value = null
+  confirmOpen.value = false
+}
+
+async function executeToggleEmployeeStatus() {
+  if (!pendingEmployee.value) return
+  
+  const employee = pendingEmployee.value
   const shouldLock = employee.status === 'HOAT_DONG'
   statusUpdatingId.value = employee.id
   errorMessage.value = ''
@@ -144,10 +199,11 @@ async function toggleEmployeeStatus(employee) {
       router.replace('/login')
       return
     }
-
     errorMessage.value = error.message
   } finally {
     statusUpdatingId.value = null
+    confirmOpen.value = false
+    pendingEmployee.value = null
   }
 }
 
@@ -391,6 +447,15 @@ function displayRole(employee) {
 }
 
 function displayStatus(status) {
+  if (isUsersRoute.value) {
+    if (status === 'HOAT_DONG') return 'Đang hoạt động'
+    if (status === 'TAM_KHOA') return 'Đang bị khóa'
+    if (status === 'NGUNG_HOAT_DONG') return 'Vô hiệu hóa'
+  } else {
+    if (status === 'HOAT_DONG') return 'Đang làm việc'
+    if (status === 'TAM_KHOA') return 'Tạm dừng'
+    if (status === 'NGUNG_HOAT_DONG') return 'Đã nghỉ việc'
+  }
   return getStatusLabel(status)
 }
 
@@ -411,10 +476,10 @@ function formatDate(value) {
 </script>
 
 <template>
-  <PageHeader title="Nhân viên" description="Theo dõi danh sách nhân viên theo vai trò, trạng thái và từ khóa tìm kiếm.">
+  <PageHeader :title="pageTitle" :description="pageDescription">
     <button v-if="canManageEmployees" class="btn btn-primary employee-create-btn" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
       <i class="mdi mdi-account-plus-outline"></i>
-      Thêm nhân viên
+      {{ isUsersRoute ? 'Tạo tài khoản' : 'Thêm nhân viên' }}
     </button>
   </PageHeader>
 
@@ -447,7 +512,10 @@ function formatDate(value) {
       Đang tải danh sách nhân viên
     </div>
 
-    <DataTable v-else :columns="columns" :rows="employees" empty-text="Không có nhân viên phù hợp" min-width="1180px">
+    <DataTable v-else :columns="columns" :rows="employees" empty-text="Không có dữ liệu phù hợp" min-width="1100px">
+      <template #fullName="{ value }">
+        <strong class="text-sm font-semibold text-zinc-900">{{ value }}</strong>
+      </template>
       <template #phoneNumber="{ value }">{{ value || '-' }}</template>
       <template #role="{ row }">{{ displayRole(row) }}</template>
       <template #status="{ value }">
@@ -456,9 +524,21 @@ function formatDate(value) {
       <template #createdAt="{ value }">{{ formatDate(value) }}</template>
       <template #actions="{ row }">
         <div class="actions employee-actions">
-          <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">Sửa</button>
-          <button class="btn btn-sm" type="button" :disabled="isLoading || statusUpdatingId || isStatusToggleDisabled(row)" @click="toggleEmployeeStatus(row)">{{ getToggleStatusLabel(row) }}</button>
-          <button class="btn btn-sm" type="button" :disabled="isLoading || isResetting" @click="openResetPassword(row)">Reset mật khẩu</button>
+          <button class="btn btn-sm btn-secondary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">
+            {{ isUsersRoute ? 'Vai trò' : 'Sửa' }}
+          </button>
+          <template v-if="isUsersRoute">
+            <button 
+              class="btn btn-sm" 
+              :class="row.status === 'HOAT_DONG' ? 'btn-danger' : 'btn-success'" 
+              type="button" 
+              :disabled="isLoading || statusUpdatingId || isStatusToggleDisabled(row)" 
+              @click="confirmToggleStatus(row)"
+            >
+              {{ getToggleStatusLabel(row) }}
+            </button>
+            <button class="btn btn-sm btn-secondary" type="button" :disabled="isLoading || isResetting" @click="openResetPassword(row)">Reset mật khẩu</button>
+          </template>
         </div>
       </template>
     </DataTable>
@@ -490,7 +570,7 @@ function formatDate(value) {
         <div class="modal-head between">
           <div>
             <h2 class="section-title">{{ formTitle }}</h2>
-            <p class="modal-desc">{{ isEditMode ? 'Cập nhật thông tin nhân viên.' : 'Tạo nhân viên mới với vai trò và trạng thái ban đầu.' }}</p>
+            <p class="modal-desc">{{ formDesc }}</p>
           </div>
           <button class="btn btn-icon" type="button" :disabled="isSaving" aria-label="Đóng" @click="closeForm">
             <i class="mdi mdi-close"></i>
@@ -598,6 +678,18 @@ function formatDate(value) {
       </form>
     </div>
   </div>
+
+  <!-- Confirm Dialog for status changes -->
+  <ConfirmDialog
+    :open="confirmOpen"
+    :title="confirmTitle"
+    :message="confirmMessage"
+    confirm-text="Xác nhận"
+    :danger="confirmDanger"
+    :loading="statusUpdatingId !== null"
+    @cancel="cancelToggle"
+    @confirm="executeToggleEmployeeStatus"
+  />
 </template>
 
 <style scoped>
