@@ -1,24 +1,23 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, reactive } from "vue";
 import { useRouter } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
+import StatusBadge from "../components/StatusBadge.vue";
 import { getPendingExportReceipts } from "../services/exportReceiptService";
 import {
   getInventory,
   getLowStockInventory,
+  getInventoryTransactions,
 } from "../services/inventoryService";
 import { getPendingApprovals } from "../services/importReceiptService";
 import { getProducts } from "../services/productService";
 import { canAccessRoute } from "../services/permissionService";
 import { getWarehouses } from "../services/warehouseService";
-import ApexCharts from "vue3-apexcharts";
 import { getDashboardOverview } from "../services/dashboardService";
-
-defineOptions({
-  components: { ApexCharts },
-});
+import { useAuthStore } from "../stores/auth";
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 const isLoading = ref(true);
 const isRetrying = ref(false);
@@ -37,47 +36,11 @@ const warehouseCountFailed = ref(false);
 const warningCountFailed = ref(false);
 const stockTotalFailed = ref(false);
 
-const chartOptions = computed(() => {
-  let primary = "#176B5B";
-  let warning = "#D88A13";
-  let danger = "#C2413B";
-  
-  if (typeof window !== "undefined") {
-    const rootStyle = getComputedStyle(document.documentElement);
-    primary = rootStyle.getPropertyValue('--color-primary').trim() || primary;
-    warning = rootStyle.getPropertyValue('--color-warning').trim() || warning;
-    danger = rootStyle.getPropertyValue('--color-danger').trim() || danger;
-  }
-  
-  return {
-    chart: {
-      type: "bar",
-      toolbar: { show: false },
-    },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        borderRadius: 8,
-        columnWidth: "56%",
-      },
-    },
-    dataLabels: { enabled: false },
-    xaxis: {
-      categories: chartCategories.value,
-    },
-    yaxis: {
-      labels: {
-        formatter: (value) => new Intl.NumberFormat("vi-VN").format(value),
-      },
-    },
-    colors: [primary, warning, danger],
-    tooltip: {
-      y: {
-        formatter: (value) => new Intl.NumberFormat("vi-VN").format(value),
-      },
-    },
-  };
-});
+const recentTransactions = ref([]);
+const recentTransactionsFailed = ref(false);
+
+const currentUser = computed(() => authStore.currentUser);
+const currentUserName = computed(() => currentUser.value?.hoTen || currentUser.value?.fullName || "");
 
 const canSeeImportApprovals = computed(() => canAccessRoute("/approvals"));
 const canSeeExportApprovals = computed(() =>
@@ -95,15 +58,6 @@ const canSeeDashboardOverview = computed(
     canSeeExportApprovals.value,
 );
 
-const chartCategories = computed(() => {
-  const categories = [];
-  if (canSeeWarnings.value) categories.push("Tồn kho");
-  if (canSeeImportApprovals.value || canSeeExportApprovals.value)
-    categories.push("Phê duyệt");
-  if (canSeeAlerts.value) categories.push("Cảnh báo");
-  return categories;
-});
-
 const pendingApprovalsTotal = computed(() => {
   const importReceipts = canSeeImportApprovals.value
     ? Number(dashboardOverview.value?.pendingTasks?.importReceipts || 0)
@@ -115,29 +69,6 @@ const pendingApprovalsTotal = computed(() => {
   return importReceipts + exportReceipts;
 });
 
-const chartSeries = computed(() => [
-  {
-    name: "Số lượng",
-    data: [
-      ...(canSeeWarnings.value
-        ? [Number(dashboardOverview.value?.overview?.totalStock || 0)]
-        : []),
-      ...(canSeeImportApprovals.value || canSeeExportApprovals.value
-        ? [pendingApprovalsTotal.value]
-        : []),
-      ...(canSeeAlerts.value
-        ? [Number(dashboardOverview.value?.pendingTasks?.inventoryAlerts || 0)]
-        : []),
-    ],
-  },
-]);
-const visibleKpiCardCount = computed(() => {
-  let count = 0;
-  if (canSeeProducts.value) count += 1;
-  if (canSeeWarehouses.value) count += 1;
-  if (canSeeWarnings.value) count += 2;
-  return count || 2;
-});
 const hasAnyApiError = computed(() => {
   return (
     Boolean(errorMessage.value) ||
@@ -148,20 +79,23 @@ const hasAnyApiError = computed(() => {
     productCountFailed.value ||
     warehouseCountFailed.value ||
     stockTotalFailed.value ||
-    warningCountFailed.value
+    warningCountFailed.value ||
+    recentTransactionsFailed.value
   );
 });
+
 const dashboardAlertMessage = computed(() => {
   if (errorMessage.value) {
     return errorMessage.value;
   }
 
   if (hasAnyApiError.value) {
-    return "Một số dữ liệu trên dashboard chưa tải được. Vui lòng thử lại.";
+    return "Một số dữ liệu trên dashboard chưa tải được. Vui lòng làm mới trang.";
   }
 
   return "";
 });
+
 const hasDashboardData = computed(() => {
   const values = { ...summary.value };
   if (!canSeeWarnings.value) {
@@ -179,14 +113,8 @@ const hasDashboardData = computed(() => {
     pendingImportFailed.value || pendingExportFailed.value;
   const hasLowStockSectionError = lowStockFailed.value;
 
-  // Treat failed stock/warning loads as dashboard-visible error states so
-  // the KPI cards can still render their fallback messages instead of the
-  // empty-state view.
-  const hasWarningLoadError =
-    typeof warningCountFailed !== "undefined" &&
-    warningCountFailed.value === true;
-  const hasStockLoadError =
-    typeof stockTotalFailed !== "undefined" && stockTotalFailed.value === true;
+  const hasWarningLoadError = warningCountFailed.value === true;
+  const hasStockLoadError = stockTotalFailed.value === true;
 
   return (
     hasSummaryData ||
@@ -197,45 +125,19 @@ const hasDashboardData = computed(() => {
     hasWarningLoadError ||
     hasStockLoadError ||
     productCountFailed.value ||
-    warehouseCountFailed.value
+    warehouseCountFailed.value ||
+    recentTransactions.value.length > 0
   );
 });
 
-const visibleQuickAccess = computed(() => {
-  const items = [
-    {
-      title: "Product",
-      description: "Quản lý mặt hàng",
-      icon: "mdi-package-variant-closed",
-      route: "/products",
-    },
-    {
-      title: "Inventory",
-      description: "Xem tồn kho và biến động",
-      icon: "mdi-clipboard-list-outline",
-      route: "/inventory",
-    },
-    {
-      title: "Import Receipt",
-      description: "Quản lý phiếu nhập kho",
-      icon: "mdi-tray-arrow-down",
-      route: "/stock-in",
-    },
-    {
-      title: "Export Receipt",
-      description: "Quản lý phiếu xuất kho",
-      icon: "mdi-tray-arrow-up",
-      route: "/stock-out",
-    },
-    {
-      title: "Alerts",
-      description: "Cảnh báo tồn kho thấp",
-      icon: "mdi-alert-circle-outline",
-      route: "/alerts",
-    },
+const visibleQuickActions = computed(() => {
+  const actions = [
+    { title: "Tạo phiếu nhập", icon: "mdi-tray-arrow-down", route: "/stock-in/create" },
+    { title: "Tạo phiếu xuất", icon: "mdi-tray-arrow-up", route: "/stock-out/create" },
+    { title: "Kiểm kê kho", icon: "mdi-clipboard-check-outline", route: "/inventory-counts" },
+    { title: "Import Excel", icon: "mdi-file-excel-outline", route: "/import-excel" }
   ];
-
-  return items.filter((item) => canAccessRoute(item.route));
+  return actions.filter(act => canAccessRoute(act.route));
 });
 
 onMounted(() => {
@@ -277,12 +179,12 @@ async function loadDashboardData(forceReload = false) {
   warehouseCountFailed.value = false;
   warningCountFailed.value = false;
   stockTotalFailed.value = false;
+  recentTransactions.value = [];
+  recentTransactionsFailed.value = false;
   summary.value = { products: 0, warehouses: 0, stock: 0, warnings: 0 };
 
   try {
     const requests = [];
-    let productsResult = { status: "fulfilled", value: 0 };
-    let warehouseResult = { status: "fulfilled", value: 0 };
 
     if (canSeeDashboardOverview.value) {
       requests.push(loadDashboardOverview());
@@ -305,8 +207,8 @@ async function loadDashboardData(forceReload = false) {
     const [overviewResultValue, productsCountResult, warehouseCountResult] =
       await Promise.allSettled(requests);
 
-    productsResult = productsCountResult ?? { status: "fulfilled", value: 0 };
-    warehouseResult = warehouseCountResult ?? { status: "fulfilled", value: 0 };
+    const productsResult = productsCountResult ?? { status: "fulfilled", value: 0 };
+    const warehouseResult = warehouseCountResult ?? { status: "fulfilled", value: 0 };
 
     let productsResponse = 0;
     let warehouseData = 0;
@@ -386,6 +288,7 @@ async function loadDashboardData(forceReload = false) {
   }
 
   try {
+    // 1. Fetch pending approvals if allowed
     if (canSeeImportApprovals.value || canSeeExportApprovals.value) {
       const pendingData = await loadPendingApprovals();
       pendingImportItems.value = pendingData.importItems;
@@ -399,6 +302,7 @@ async function loadDashboardData(forceReload = false) {
       pendingExportFailed.value = false;
     }
 
+    // 2. Fetch low stock items if allowed
     if (canSeeWarnings.value) {
       const lowStockData = await loadLowStockItems();
       lowStockItems.value = lowStockData.items;
@@ -406,6 +310,16 @@ async function loadDashboardData(forceReload = false) {
     } else {
       lowStockItems.value = [];
       lowStockFailed.value = false;
+    }
+
+    // 3. Fetch recent transactions
+    if (canSeeWarnings.value) {
+      const transData = await getInventoryTransactions({ page: 0, size: 5 });
+      recentTransactions.value = transData.content || [];
+      recentTransactionsFailed.value = false;
+    } else {
+      recentTransactions.value = [];
+      recentTransactionsFailed.value = false;
     }
   } catch (error) {
     if (shouldRedirectForSessionError(error)) {
@@ -418,6 +332,8 @@ async function loadDashboardData(forceReload = false) {
     pendingExportFailed.value = true;
     lowStockItems.value = [];
     lowStockFailed.value = true;
+    recentTransactions.value = [];
+    recentTransactionsFailed.value = true;
   } finally {
     isLoading.value = false;
     isRetrying.value = false;
@@ -488,7 +404,7 @@ async function loadPendingApprovals() {
         ...(Array.isArray(importData?.content) ? importData.content : []).map(
           (item) => ({
             id: item.id,
-            code: item.code,
+            code: item.code || item.maPhieuNhap,
             label: item.supplierName || item.partnerName || "Phiếu nhập",
             subtitle: item.warehouseName || "Kho",
             route: "/approvals",
@@ -511,7 +427,7 @@ async function loadPendingApprovals() {
         ...(Array.isArray(exportData?.content) ? exportData.content : []).map(
           (item) => ({
             id: item.id,
-            code: item.code,
+            code: item.code || item.maPhieuXuat,
             label: item.warehouseName || "Phiếu xuất",
             subtitle: item.status || "Chờ duyệt",
             route: "/pending-export-approvals",
@@ -541,6 +457,7 @@ async function loadLowStockItems() {
     const items = Array.isArray(data?.content)
       ? data.content.map((item) => ({
           id: item.inventoryId || item.productId,
+          productCode: item.productCode || "SP",
           productName: item.productName || "Sản phẩm",
           warehouseName: item.warehouse || item.warehouseName || "Kho",
           available: item.currentQuantity ?? 0,
@@ -573,149 +490,304 @@ function openRoute(path) {
     router.push(path);
   }
 }
+
+function getTransactionTypeLabel(type) {
+  const transactionTypeOptions = [
+    { value: "NHAP_KHO", label: "Nhập kho" },
+    { value: "XUAT_KHO", label: "Xuất kho" },
+    { value: "NHAP_DAU_KY", label: "Nhập đầu kỳ" },
+    { value: "DIEU_CHINH_TANG", label: "Điều chỉnh tăng" },
+    { value: "DIEU_CHINH_GIAM", label: "Điều chỉnh giảm" },
+  ];
+  return transactionTypeOptions.find((option) => option.value === type)?.label || "Không xác định";
+}
+
+function getDelta(row) {
+  const before = Number(row.quantityBefore ?? 0);
+  const after = Number(row.quantityAfter ?? 0);
+  const delta = after - before;
+  return delta >= 0 ? `+${delta}` : `${delta}`;
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("vi-VN", { hour12: false });
+}
+
+function viewDocumentDetail(type, documentId) {
+  const path = type === 'in' ? `/stock-in/${documentId}` : `/stock-out/${documentId}`;
+  router.push(path);
+}
 </script>
 
 <template>
-  <PageHeader
-    title="Tổng quan"
-    description="Theo dõi tình trạng tồn kho và các công việc cần xử lý."
-  />
-
-  <div v-if="dashboardAlertMessage" class="dashboard-alert">
-    <div class="dashboard-alert__content">
-      <strong>Không thể tải đầy đủ dữ liệu</strong>
-      <p>{{ dashboardAlertMessage }}</p>
+  <div class="page-container page-shell">
+    
+    <!-- Header Greeting Area -->
+    <div class="dashboard-header animate-in fade-in duration-200">
+      <div class="greeting-section">
+        <h1 class="page-title text-zinc-900">
+          Chào buổi sáng, <span class="text-blue-600 font-bold">{{ currentUserName || 'Thiên Lộc' }}</span>
+        </h1>
+        <p class="page-desc text-zinc-500">Đây là tình trạng kho hàng của bạn hôm nay.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-sm flex items-center gap-1" @click="retryDashboardLoad" :disabled="isLoading">
+          <i class="mdi mdi-refresh text-blue-600" :class="{ 'mdi-spin': isLoading }"></i>
+          Làm mới
+        </button>
+      </div>
     </div>
-    <button
-      class="retry-button"
-      type="button"
-      :disabled="isLoading"
-      @click="retryDashboardLoad"
-    >
-      {{ isLoading ? "Đang tải..." : "Thử lại" }}
-    </button>
-  </div>
 
-  <div class="dashboard-wrapper">
-    <!-- Row 1: KPI Row -->
-    <div class="kpi-row" v-if="hasDashboardData || isLoading">
+    <!-- Error state banner -->
+    <div v-if="dashboardAlertMessage" class="error-alert animate-in fade-in duration-200">
+      <div class="flex items-center gap-2">
+        <i class="mdi mdi-alert-circle text-lg"></i>
+        <span>{{ dashboardAlertMessage }}</span>
+      </div>
+    </div>
+
+    <!-- KPI Strip (Designed summary strip) -->
+    <div class="kpi-strip card animate-in fade-in duration-200" v-if="hasDashboardData || isLoading">
       <template v-if="isLoading">
-        <article v-for="index in visibleKpiCardCount" :key="index" class="kpi-card kpi-card--loading">
-          <div class="kpi-card__body">
-            <div class="kpi-label skeleton"></div>
-            <div class="metric skeleton"></div>
-          </div>
-        </article>
+        <div v-for="index in 4" :key="index" class="kpi-metric-item">
+          <div class="skeleton skeleton-label"></div>
+          <div class="skeleton skeleton-value mt-2"></div>
+        </div>
       </template>
       <template v-else>
-        <article v-if="canSeeProducts" class="kpi-card" @click="openRoute('/products')" role="button" tabindex="0">
-          <div class="kpi-card__header">
-            <span class="kpi-label">Tổng sản phẩm</span>
-            <i class="mdi mdi-package-variant-closed kpi-card__icon"></i>
+        <!-- Item 1: Products count -->
+        <div v-if="canSeeProducts" class="kpi-metric-item" @click="openRoute('/products')" role="button" tabindex="0">
+          <span class="kpi-meta-label">Tổng sản phẩm</span>
+          <div class="kpi-val-row">
+            <span class="kpi-value font-semibold">{{ productCountFailed ? "—" : formatNumber(summary.products) }}</span>
+            <i class="mdi mdi-package-variant-closed kpi-icon"></i>
           </div>
-          <div class="metric">{{ productCountFailed ? "Không thể tải" : formatNumber(summary.products) }}</div>
-        </article>
+        </div>
+        <div class="kpi-divider" v-if="canSeeProducts && canSeeWarehouses"></div>
+        
+        <!-- Item 2: Warehouses count -->
+        <div v-if="canSeeWarehouses" class="kpi-metric-item" @click="openRoute('/warehouses')" role="button" tabindex="0">
+          <span class="kpi-meta-label">Tổng kho hàng</span>
+          <div class="kpi-val-row">
+            <span class="kpi-value font-semibold">{{ warehouseCountFailed ? "—" : formatNumber(summary.warehouses) }}</span>
+            <i class="mdi mdi-warehouse kpi-icon"></i>
+          </div>
+        </div>
+        <div class="kpi-divider" v-if="canSeeWarehouses && canSeeWarnings"></div>
 
-        <article v-if="canSeeWarehouses" class="kpi-card" @click="openRoute('/warehouses')" role="button" tabindex="0">
-          <div class="kpi-card__header">
-            <span class="kpi-label">Tổng kho hàng</span>
-            <i class="mdi mdi-warehouse kpi-card__icon"></i>
+        <!-- Item 3: Total stock -->
+        <div v-if="canSeeWarnings" class="kpi-metric-item" @click="openRoute('/inventory')" role="button" tabindex="0">
+          <span class="kpi-meta-label">Tổng tồn khả dụng</span>
+          <div class="kpi-val-row">
+            <span class="kpi-value font-semibold">{{ stockTotalFailed ? "—" : formatNumber(summary.stock) }}</span>
+            <i class="mdi mdi-cube-outline kpi-icon"></i>
           </div>
-          <div class="metric">{{ warehouseCountFailed ? "Không thể tải" : formatNumber(summary.warehouses) }}</div>
-        </article>
+        </div>
+        <div class="kpi-divider" v-if="canSeeWarnings"></div>
 
-        <article v-if="canSeeWarnings" class="kpi-card" @click="openRoute('/inventory')" role="button" tabindex="0">
-          <div class="kpi-card__header">
-            <span class="kpi-label">Tổng tồn khả dụng</span>
-            <i class="mdi mdi-cube-outline kpi-card__icon"></i>
+        <!-- Item 4: Alerts warnings count -->
+        <div v-if="canSeeWarnings" class="kpi-metric-item" @click="openRoute('/alerts')" role="button" tabindex="0">
+          <span class="kpi-meta-label">Cảnh báo tồn kho</span>
+          <div class="kpi-val-row">
+            <span class="kpi-value font-semibold" :class="{ 'text-red-600 font-bold': summary.warnings > 0 }">
+              {{ warningCountFailed ? "—" : formatNumber(summary.warnings) }}
+            </span>
+            <i class="mdi mdi-alert-circle-outline kpi-icon" :class="{ 'text-red-600': summary.warnings > 0 }"></i>
           </div>
-          <div class="metric">{{ stockTotalFailed ? "Không thể tải" : formatNumber(summary.stock) }}</div>
-        </article>
-
-        <article v-if="canSeeWarnings" class="kpi-card" @click="openRoute('/alerts')" role="button" tabindex="0">
-          <div class="kpi-card__header">
-            <span class="kpi-label">Cảnh báo tồn kho</span>
-            <i class="mdi mdi-alert-circle-outline kpi-card__icon kpi-card__icon--danger" :class="{ 'text-red': summary.warnings > 0 }"></i>
-          </div>
-          <div class="metric" :class="{ 'text-red': summary.warnings > 0 }">{{ warningCountFailed ? "Không thể tải" : formatNumber(summary.warnings) }}</div>
-        </article>
+        </div>
       </template>
     </div>
 
-    <!-- Row 2: Grid Layout -->
-    <div class="dashboard-grid">
-      <!-- Main Column: Chart -->
+    <!-- Asymmetrical Composition Grid -->
+    <div class="dashboard-grid animate-in fade-in duration-200">
+      
+      <!-- Left Column: Primary Operational Data (~65%) -->
       <div class="dashboard-main-col">
-        <section class="card card-pad dashboard-panel--wide">
-          <div class="section-head between">
-            <div>
-              <p class="eyebrow">Xu hướng</p>
-              <h2 class="section-title">Tổng quan tồn kho & duyệt phiếu</h2>
+        
+        <!-- Section: Biến động nhập xuất (Placeholder Chart) -->
+        <section class="card card-pad">
+          <div class="section-head mb-4">
+            <h2 class="section-title text-zinc-900">Biến động Nhập / Xuất kho</h2>
+            <p class="eyebrow text-zinc-500">Xu hướng nhịp độ 30 ngày qua</p>
+          </div>
+          
+          <!-- Analytical Placeholder State -->
+          <div class="analytical-placeholder">
+            <div class="placeholder-icon-wrap">
+              <i class="mdi mdi-chart-areaspline text-3xl text-zinc-400"></i>
             </div>
-            <button class="btn btn-sm btn-secondary" type="button" @click="retryDashboardLoad" :disabled="isLoading">
-              <i class="mdi mdi-refresh" :class="{ 'mdi-spin': isLoading }"></i>
-              Làm mới
+            <h3 class="font-semibold text-zinc-800 text-sm mb-1">Chưa đủ dữ liệu hiển thị biểu đồ biến động</h3>
+            <p class="text-xs text-zinc-500 max-w-md text-center">
+              Biểu đồ dòng chảy thời gian thực yêu cầu tổng hợp dữ liệu biến động hàng ngày từ backend. Tính năng này sẽ được kích hoạt sau khi Codex triển khai endpoint tổng hợp.
+            </p>
+            <div class="codex-badge mt-3">
+              <code class="text-xs font-mono text-zinc-600">GET /api/dashboard/inventory-movement</code>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Nhật ký hoạt động gần đây (Real Table) -->
+        <section class="card card-pad">
+          <div class="section-head between mb-4">
+            <div>
+              <h2 class="section-title text-zinc-900">Nhật ký hoạt động kho gần đây</h2>
+              <p class="eyebrow text-zinc-500">5 giao dịch phát sinh mới nhất được ghi nhận</p>
+            </div>
+            <button class="btn btn-secondary btn-sm flex items-center gap-1" @click="openRoute('/inventory-transactions')">
+              Xem tất cả <i class="mdi mdi-arrow-right"></i>
             </button>
           </div>
 
-          <div v-if="isLoading" class="state-card state-card--loading">
-            <div class="skeleton skeleton--line"></div>
-            <div class="skeleton skeleton--line skeleton--short"></div>
+          <div v-if="isLoading" class="loading-state-mini">
+            <i class="mdi mdi-loading mdi-spin text-xl text-blue-600"></i>
+            <span>Đang tải nhật ký giao dịch...</span>
           </div>
-          <div v-else-if="dashboardOverviewFailed" class="state-card state-card--error">
-            <div class="state-card__icon">
-              <i class="mdi mdi-alert-circle-outline"></i>
-            </div>
+          
+          <div v-else-if="recentTransactionsFailed" class="state-card state-card--error">
+            <div class="state-card__icon"><i class="mdi mdi-alert-circle-outline"></i></div>
             <div class="state-card__body">
-              <h3>Không thể tải biểu đồ</h3>
-              <p>Vui lòng kiểm tra lại kết nối đến máy chủ.</p>
+              <h3>Lỗi tải dữ liệu</h3>
+              <p>Không thể tải nhật ký hoạt động gần đây từ hệ thống.</p>
             </div>
           </div>
-          <div v-else-if="dashboardOverview" class="dashboard-chart-wrapper">
-            <ApexCharts
-              type="bar"
-              :options="chartOptions"
-              :series="chartSeries"
-              height="320"
-            />
-          </div>
-          <div v-else class="state-card state-card--empty">
-            <div class="state-card__icon">
-              <i class="mdi mdi-chart-bar"></i>
-            </div>
+
+          <div v-else-if="recentTransactions.length === 0" class="state-card state-card--empty">
+            <div class="state-card__icon"><i class="mdi mdi-clipboard-text-outline"></i></div>
             <div class="state-card__body">
-              <h3>Chưa có dữ liệu biểu đồ</h3>
-              <p>Biểu đồ sẽ tự động hiển thị khi có dữ liệu vận hành.</p>
+              <h3>Chưa ghi nhận hoạt động</h3>
+              <p>Không tìm thấy hoạt động kho nào phát sinh trong ngày hôm nay.</p>
             </div>
+          </div>
+
+          <div v-else class="table-wrap no-border">
+            <table class="compact-activity-table">
+              <thead>
+                <tr>
+                  <th style="width: 140px;">Thời gian</th>
+                  <th style="width: 130px;">Loại giao dịch</th>
+                  <th>Sản phẩm</th>
+                  <th class="text-right" style="width: 100px;">Biến động</th>
+                  <th>Chứng từ / Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="t in recentTransactions" :key="t.id">
+                  <td class="text-xs tabular-num text-zinc-500">{{ formatDate(t.createdAt) }}</td>
+                  <td><StatusBadge :status="getTransactionTypeLabel(t.transactionType)" /></td>
+                  <td>
+                    <div class="prod-info-mini">
+                      <span class="font-semibold text-zinc-900 block">{{ t.productName }}</span>
+                      <code class="sku-mini block w-fit mt-0.5 text-3xs">{{ t.productCode }}</code>
+                    </div>
+                  </td>
+                  <td class="text-right font-semibold tabular-num" :class="Number(getDelta(t)) >= 0 ? 'text-emerald-600' : 'text-zinc-700'">
+                    {{ getDelta(t) }}
+                  </td>
+                  <td class="text-xs">
+                    <span v-if="t.importReceiptId" class="doc-link" @click="viewDocumentDetail('in', t.importReceiptId)">
+                      <i class="mdi mdi-receipt-text-outline text-xs"></i> Phiếu nhập #{{ t.importReceiptId }}
+                    </span>
+                    <span v-else-if="t.exportReceiptId" class="doc-link" @click="viewDocumentDetail('out', t.exportReceiptId)">
+                      <i class="mdi mdi-receipt-text-send-outline text-xs"></i> Phiếu xuất #{{ t.exportReceiptId }}
+                    </span>
+                    <span v-else class="text-zinc-500">{{ t.note || '—' }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
+
+        <!-- Secondary Analytics Row (Grid-2 on Desktop) -->
+        <div class="secondary-analytics-row">
+          
+          <!-- Section: Stock Health (Placeholder) -->
+          <section class="card card-pad">
+            <div class="section-head mb-4">
+              <h2 class="section-title text-zinc-900">Sức khỏe tồn kho</h2>
+              <p class="eyebrow text-zinc-500">Mật độ SKU khỏe so với tồn cảnh báo</p>
+            </div>
+            <div class="analytical-placeholder-mini">
+              <i class="mdi mdi-chart-donut text-2xl text-zinc-400 mb-2"></i>
+              <p class="text-xs text-zinc-500 text-center px-4">Yêu cầu Codex triển khai endpoint `/api/dashboard/stock-health` để hiển thị tỷ lệ SKU Khỏe / Sắp hết / Hết hàng.</p>
+            </div>
+          </section>
+
+          <!-- Section: Warehouse Distribution (Placeholder) -->
+          <section class="card card-pad">
+            <div class="section-head mb-4">
+              <h2 class="section-title text-zinc-900">Phân bổ kho hàng</h2>
+              <p class="eyebrow text-zinc-500">Tỷ trọng số lượng hàng theo vị trí</p>
+            </div>
+            <div class="analytical-placeholder-mini">
+              <i class="mdi mdi-chart-bar-horizontal text-2xl text-zinc-400 mb-2"></i>
+              <p class="text-xs text-zinc-500 text-center px-4">Yêu cầu Codex triển khai endpoint `/api/dashboard/warehouse-distribution` để hiển thị tỷ trọng tổng tồn kho.</p>
+            </div>
+          </section>
+        </div>
       </div>
 
-      <!-- Side Column: Insight, Cần chú ý, Quick links -->
+      <!-- Right Column: Insights, Actions & Action Queue (~35%) -->
       <div class="dashboard-side-col">
-        <!-- StockSense Insight (Only visible if warnings/low stock exist) -->
-        <section class="insight-panel card" v-if="canSeeWarnings && !isLoading && summary.warnings > 0">
+        
+        <!-- StockSense Insight (Visually Memorably Styled) -->
+        <section class="insight-panel card animate-in fade-in duration-200" v-if="canSeeWarnings && !isLoading">
           <div class="insight-header">
-            <i class="mdi mdi-lightbulb-on-outline"></i>
-            <h3>StockSense Insight</h3>
+            <i class="mdi mdi-lightbulb-on-outline text-amber-500"></i>
+            <h3 class="text-zinc-900">StockSense Insight</h3>
           </div>
-          <div class="insight-body">
-            <p><strong>{{ summary.warnings }}</strong> mặt hàng hiện đang dưới mức tồn tối thiểu.</p>
-            <button class="btn btn-sm btn-ghost" @click="openRoute('/alerts')">Xem cảnh báo →</button>
+          <div class="insight-body-new">
+            <div class="insight-message" v-if="summary.warnings > 0">
+              <span class="bullet-dot warning-dot animate-pulse"></span>
+              <p class="text-zinc-700 text-xs">Có <strong>{{ summary.warnings }} mặt hàng</strong> đang dưới mức tồn tối thiểu an toàn.</p>
+            </div>
+            <div class="insight-message" v-else>
+              <span class="bullet-dot success-dot"></span>
+              <p class="text-zinc-700 text-xs">Tất cả các mặt hàng hiện đều ở mức tồn an toàn.</p>
+            </div>
+
+            <div class="insight-message mt-2.5" v-if="pendingApprovalsTotal > 0">
+              <span class="bullet-dot info-dot"></span>
+              <p class="text-zinc-700 text-xs">Có <strong>{{ pendingApprovalsTotal }} chứng từ</strong> đang ở hàng đợi phê duyệt.</p>
+            </div>
+
+            <button class="btn btn-sm btn-ghost mt-3 w-full justify-center text-blue-600" @click="openRoute('/alerts')">
+              Xem chi tiết cảnh báo <i class="mdi mdi-arrow-right"></i>
+            </button>
           </div>
         </section>
 
-        <!-- Cần chú ý (Unified list) -->
-        <section class="card card-pad attention-panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Nhiệm vụ</p>
-              <h2 class="section-title">Cần chú ý</h2>
+        <!-- Dynamic AI Forecast Surfacing Preview Panel -->
+        <section class="card card-pad ai-forecast-preview animate-in fade-in duration-200">
+          <div class="section-head mb-3">
+            <div class="flex items-center gap-1.5">
+              <i class="mdi mdi-robot-outline text-blue-600 text-lg"></i>
+              <h2 class="section-title text-zinc-900">AI Forecast Preview</h2>
             </div>
+            <p class="eyebrow text-zinc-500">Dự báo nhu cầu 30 ngày tới</p>
           </div>
 
-          <div v-if="isLoading" class="state-card state-card--loading">
-            <div class="skeleton skeleton--line"></div>
+          <div class="forecast-preview-placeholder">
+            <i class="mdi mdi-trending-up text-xl text-blue-600 mb-1"></i>
+            <p class="text-xs text-zinc-800 font-semibold mb-1">Báo cáo & Phân tích dự báo AI</p>
+            <p class="text-3xs text-zinc-500 text-center px-2">Truy cập Phân hệ Dự báo AI để xem chi tiết sai số sMAPE và lượng hàng khuyến nghị nhập dựa trên dữ liệu bán hàng lịch sử.</p>
+            <button class="btn btn-secondary btn-sm w-full mt-3 justify-center gap-1" @click="openRoute('/forecast')">
+              <i class="mdi mdi-chart-timeline-variant"></i> Vào module Dự báo AI
+            </button>
+          </div>
+        </section>
+
+        <!-- Unified "Cần chú ý" Queue -->
+        <section class="card card-pad attention-panel">
+          <div class="section-head mb-3">
+            <h2 class="section-title text-zinc-900">Hàng đợi công việc</h2>
+            <p class="eyebrow text-zinc-500">Các tác vụ cần ưu tiên giải quyết</p>
+          </div>
+
+          <div v-if="isLoading" class="loading-state-mini">
+            <i class="mdi mdi-loading mdi-spin text-lg text-blue-600"></i>
+            <span>Đang tải công việc...</span>
           </div>
           
           <div v-else-if="!pendingImportItems.length && !pendingExportItems.length && !lowStockItems.length" class="state-card state-card--empty">
@@ -723,8 +795,8 @@ function openRoute(path) {
               <i class="mdi mdi-check-circle-outline"></i>
             </div>
             <div class="state-card__body">
-              <h3>Mọi thứ đều ổn</h3>
-              <p>Không có phiếu chờ duyệt hoặc cảnh báo tồn thấp cần xử lý.</p>
+              <h3>Không có nhiệm vụ tồn đọng</h3>
+              <p>Mọi phiếu duyệt và mức tồn kho hiện tại đều ổn định.</p>
             </div>
           </div>
 
@@ -741,7 +813,7 @@ function openRoute(path) {
               <div class="attention-item__main">
                 <span class="badge-tag badge-tag--danger">Tồn kho thấp</span>
                 <strong>{{ item.productName }}</strong>
-                <p>{{ item.warehouseName }} · Tồn: {{ item.available }} (Tối thiểu: {{ item.minStock }})</p>
+                <p>{{ item.warehouseName }} · Tồn: {{ item.available }} / tối thiểu {{ item.minStock }}</p>
               </div>
               <i class="mdi mdi-chevron-right"></i>
             </div>
@@ -782,142 +854,323 @@ function openRoute(path) {
           </div>
         </section>
 
-        <!-- Quick Access -->
-        <section class="card card-pad quick-access-panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Lối tắt</p>
-              <h2 class="section-title">Truy cập nhanh</h2>
-            </div>
+        <!-- Quick Access links by role -->
+        <section class="card card-pad">
+          <div class="section-head mb-3">
+            <h2 class="section-title text-zinc-900">Lối tắt tác vụ nhanh</h2>
+            <p class="eyebrow text-zinc-500">Tác vụ theo quyền hạn vai trò</p>
           </div>
-          <div v-if="visibleQuickAccess.length > 0" class="quick-links">
+          
+          <div class="quick-actions-grid" v-if="visibleQuickActions.length > 0">
             <button
-              v-for="item in visibleQuickAccess"
-              :key="item.title"
-              class="quick-link"
-              @click="openRoute(item.route)"
+              v-for="act in visibleQuickActions"
+              :key="act.title"
+              class="btn btn-secondary btn-sm quick-action-btn flex items-center justify-start gap-2"
+              @click="openRoute(act.route)"
             >
-              <i class="mdi" :class="item.icon"></i>
-              <span>
-                <strong>{{ item.title }}</strong>
-                <small>{{ item.description }}</small>
-              </span>
+              <i class="mdi text-blue-600 text-lg" :class="act.icon"></i>
+              <span>{{ act.title }}</span>
             </button>
           </div>
-          <div v-else class="state-card state-card--empty">
-            <div class="state-card__body">
-              <p>Không có lối tắt phù hợp với vai trò của bạn.</p>
+          <div v-else class="text-xs text-zinc-500 py-2">
+            Không có lối tắt phù hợp với quyền hạn của bạn.
+          </div>
+        </section>
+
+        <!-- Need Inventory Reorder (Low stock details list) -->
+        <section class="card card-pad" v-if="canSeeWarnings && !isLoading && lowStockItems.length > 0">
+          <div class="section-head mb-3">
+            <h2 class="section-title text-zinc-900">Mặt hàng cần nhập</h2>
+            <p class="eyebrow text-zinc-500">Ưu tiên theo số lượng thiếu hụt lớn nhất</p>
+          </div>
+
+          <div class="reorder-list">
+            <div v-for="(item, idx) in lowStockItems" :key="`reorder-${item.id}`" class="reorder-item">
+              <span class="reorder-rank">{{ String(idx + 1).padStart(2, '0') }}</span>
+              <div class="reorder-details">
+                <span class="font-semibold text-zinc-900 text-xs block truncate" style="max-width: 140px;" :title="item.productName">{{ item.productName }}</span>
+                <span class="text-3xs text-zinc-500 block truncate" style="max-width: 140px;">{{ item.warehouseName }}</span>
+              </div>
+              <div class="reorder-qty-stats text-right ml-auto">
+                <span class="text-xs font-semibold block text-zinc-800 tabular-num">{{ item.available }} / {{ item.minStock }}</span>
+                <span class="text-3xs text-red-600 font-semibold block tabular-num">Thiếu {{ item.minStock - item.available }}</span>
+              </div>
             </div>
           </div>
         </section>
+
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.dashboard-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+.page-container {
+  padding: 24px;
 }
 
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.kpi-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 18px 20px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-  cursor: pointer;
-  transition: border-color 160ms ease, transform 160ms ease;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 100px;
-}
-
-.kpi-card:hover {
-  border-color: var(--color-primary);
-  transform: translateY(-1px);
-}
-
-.kpi-card__header {
+.dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 24px;
+  gap: 16px;
 }
 
-.kpi-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+.greeting-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.kpi-card__icon {
-  font-size: 20px;
-  color: var(--color-text-secondary);
-}
-
-.kpi-card__icon--danger {
-  color: var(--color-danger);
-}
-
-.metric {
-  font-size: 28px;
+.page-title {
+  font-size: 24px;
   font-weight: 700;
-  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
-.text-red {
-  color: var(--color-danger) !important;
+.page-desc {
+  font-size: 14px;
+  margin: 0;
 }
 
-.kpi-card--loading {
+.error-alert {
+  background: var(--color-danger-soft);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  color: var(--color-danger);
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* KPI Strip Panel */
+.kpi-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  margin-bottom: 24px;
   background: var(--color-surface);
-  min-height: 100px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 
+.kpi-metric-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-radius 160ms ease;
+  min-width: 0;
+}
+
+.kpi-metric-item[role="button"]:hover {
+  background-color: var(--color-bg);
+  border-radius: 8px;
+}
+
+.kpi-meta-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpi-val-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.kpi-icon {
+  font-size: 22px;
+  color: var(--color-text-muted);
+}
+
+.kpi-divider {
+  width: 1px;
+  height: 40px;
+  background-color: var(--color-border);
+  flex-shrink: 0;
+}
+
+/* Asymmetric Grid Layout */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1.7fr 1fr;
+  grid-template-columns: 1.85fr 1fr;
   gap: 24px;
   align-items: start;
 }
 
-.dashboard-main-col, .dashboard-side-col {
+.dashboard-main-col,
+.dashboard-side-col {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.dashboard-chart-wrapper {
-  min-height: 320px;
+/* Section Head Formatting */
+.section-head {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  gap: 4px;
 }
 
-.insight-panel {
-  background: var(--color-primary-soft);
-  border: 1px solid rgba(23, 107, 91, 0.2);
+.section-head.between {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Analytical Placeholder Component */
+.analytical-placeholder {
+  min-height: 220px;
+  border: 1px dashed var(--color-border-strong);
+  background-color: var(--color-bg);
   border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.placeholder-icon-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.codex-badge {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+/* Mini Placeholder for Smaller Sections */
+.analytical-placeholder-mini {
+  min-height: 120px;
+  border: 1px dashed var(--color-border-strong);
+  background-color: var(--color-bg);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 16px;
+}
+
+/* Compact Activity Table */
+.compact-activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.compact-activity-table th {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.compact-activity-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.compact-activity-table tr:hover td {
+  background-color: var(--color-action-primary-soft);
+}
+
+.prod-info-mini {
+  display: flex;
+  flex-direction: column;
+}
+
+.sku-mini {
+  font-family: monospace;
+  padding: 1px 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+
+.doc-link {
+  color: var(--color-action-primary);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.doc-link:hover {
+  text-decoration: underline;
+  color: var(--color-action-primary-hover);
+}
+
+/* Secondary Row */
+.secondary-analytics-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* Insight Panel Styling */
+.insight-panel {
+  background-color: var(--color-action-primary-soft);
+  border: 1px solid var(--color-action-primary-border);
+  border-radius: 12px;
+  padding: 18px 20px;
 }
 
 .insight-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
-  color: var(--color-primary);
+  margin-bottom: 12px;
 }
 
 .insight-header i {
@@ -932,40 +1185,83 @@ function openRoute(path) {
   letter-spacing: 0.05em;
 }
 
-.insight-body {
+.insight-body-new {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+}
+
+.insight-message {
+  display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
-.insight-body p {
+.insight-message p {
   margin: 0;
-  font-size: 14px;
-  color: var(--color-text-primary);
 }
 
+.bullet-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.warning-dot {
+  background-color: var(--color-warning);
+}
+
+.success-dot {
+  background-color: var(--color-success);
+}
+
+.info-dot {
+  background-color: var(--color-info);
+}
+
+/* AI Forecast Preview Panel */
+.ai-forecast-preview {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.forecast-preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--color-bg);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.text-2xs {
+  font-size: 10px;
+}
+
+/* Work Queue Lists */
 .attention-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .attention-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface);
   cursor: pointer;
-  transition: border-color 160ms ease, background-color 160ms ease;
+  transition: border-color 150ms ease, background-color 150ms ease;
 }
 
 .attention-item:hover {
   border-color: var(--color-primary);
-  background-color: var(--color-primary-soft);
+  background-color: var(--color-action-primary-soft);
 }
 
 .attention-item__main {
@@ -979,23 +1275,23 @@ function openRoute(path) {
   align-self: flex-start;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
 }
 
 .badge-tag--danger {
-  background: #fdf2f2;
+  background: var(--color-danger-soft);
   color: var(--color-danger);
 }
 
 .badge-tag--warning {
-  background: #fff9f0;
+  background: var(--color-warning-soft);
   color: var(--color-warning);
 }
 
 .attention-item__main strong {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text-primary);
 }
 
@@ -1006,57 +1302,71 @@ function openRoute(path) {
 }
 
 .attention-item i {
-  font-size: 20px;
+  font-size: 18px;
   color: var(--color-text-muted);
 }
 
-.quick-links {
+/* Quick Actions Grid */
+.quick-actions-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
-.quick-link {
+.quick-action-btn {
+  width: 100%;
+  height: 42px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.quick-action-btn:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-action-primary-soft);
+}
+
+/* Reorder List */
+.reorder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reorder-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--color-border);
+  padding: 8px 10px;
+  background-color: var(--color-bg);
   border-radius: 8px;
-  background: var(--color-bg);
-  text-align: left;
-  transition: border-color 160ms ease, background-color 160ms ease;
-  cursor: pointer;
+  border: 1px solid var(--color-border);
 }
 
-.quick-link:hover {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary-soft);
+.reorder-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  font-family: monospace;
 }
 
-.quick-link i {
-  font-size: 20px;
-  color: var(--color-primary);
-}
-
-.quick-link span {
+.reorder-details {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  min-width: 0;
 }
 
-.quick-link strong {
-  font-size: 13px;
-  color: var(--color-text-primary);
+.reorder-qty-stats {
+  margin-left: auto;
 }
 
-.quick-link small {
-  font-size: 12px;
-  color: var(--color-text-secondary);
+.text-3xs {
+  font-size: 10px;
 }
 
-/* Skeleton & Loading */
+/* Skeletons */
 .skeleton {
   background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg) 50%, var(--color-border) 75%);
   background-size: 200% 100%;
@@ -1064,30 +1374,88 @@ function openRoute(path) {
   border-radius: 4px;
 }
 
+.skeleton-label {
+  width: 80px;
+  height: 14px;
+}
+
+.skeleton-value {
+  width: 60px;
+  height: 24px;
+}
+
+.loading-state-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
+/* Responsive Media Queries */
 @media (max-width: 1279px) {
-  .kpi-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1023px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 639px) {
-  .kpi-row {
-    grid-template-columns: 1fr;
+@media (max-width: 1023px) {
+  .kpi-strip {
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px;
   }
-  .insight-body {
+  .kpi-metric-item {
+    flex: 1 1 40%;
+    padding: 6px 12px;
+  }
+  .kpi-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .secondary-analytics-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 639px) {
+  .page-container {
+    padding: 16px;
+  }
+  .dashboard-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
+  }
+  .header-actions {
+    width: 100%;
+  }
+  .header-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .kpi-metric-item {
+    flex: 1 1 100%;
+  }
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+  }
+  .table-wrap {
+    overflow-x: auto;
+  }
+  .compact-activity-table {
+    min-width: 500px;
   }
 }
 </style>
