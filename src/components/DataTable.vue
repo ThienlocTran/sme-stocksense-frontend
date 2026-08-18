@@ -45,7 +45,7 @@ const emit = defineEmits(["row-click"]);
 <style scoped>
 .empty-cell {
   text-align: center;
-  color: var(--muted);
+  color: var(--color-text-secondary);
   padding: 32px;
   font-weight: 600;
 }
@@ -53,6 +53,6 @@ const emit = defineEmits(["row-click"]);
   cursor: pointer;
 }
 .clickable-row:hover td {
-  background: #f8fbff;
+  background: var(--color-primary-soft);
 }
 </style>
