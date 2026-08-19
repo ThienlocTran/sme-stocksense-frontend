@@ -1,12 +1,64 @@
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useAuthStore } from "../stores/auth";
 import { useLayoutStore } from "../stores/layout";
 import { canAccessRoute } from "../services/permissionService";
+import StockSenseFullLogo from "./branding/StockSenseFullLogo.vue";
+import StockSenseMark from "./branding/StockSenseMark.vue";
+import { gsap } from "gsap";
 
 const authStore = useAuthStore();
 const layoutStore = useLayoutStore();
 const currentRole = computed(() => authStore.currentRole);
+
+let isSidebarTracing = false;
+
+function playSidebarTraceAnimation() {
+  if (isSidebarTracing) return;
+  
+  const traceLogo = document.querySelector('.sidebar-logo-full .trace-logo');
+  const greenPath = document.querySelector('.sidebar-logo-full .trace-logo .running-light-path');
+  const whitePath = document.querySelector('.sidebar-logo-full .trace-logo .running-light-path-white');
+  
+  if (traceLogo && greenPath && whitePath) {
+    isSidebarTracing = true;
+    const traceLen = greenPath.getTotalLength();
+    
+    gsap.set(traceLogo, { opacity: 0 });
+    gsap.set([greenPath, whitePath], {
+      strokeDasharray: `${traceLen * 0.20} ${traceLen * 0.80}`,
+      strokeDashoffset: 0
+    });
+    
+    const tl = gsap.timeline({
+      onComplete: () => {
+        isSidebarTracing = false;
+      }
+    });
+    
+    tl.to(traceLogo, {
+      opacity: 1,
+      duration: 0.15,
+      ease: 'power1.out'
+    }, 0);
+    
+    tl.to([greenPath, whitePath], {
+      strokeDashoffset: -traceLen,
+      duration: 1.8,
+      ease: 'power2.inOut'
+    }, 0);
+    
+    tl.to(traceLogo, {
+      opacity: 0,
+      duration: 0.3,
+      ease: 'power1.in'
+    }, 1.5);
+  }
+}
+
+onMounted(() => {
+  setTimeout(playSidebarTraceAnimation, 600);
+});
 
 const menuSections = [
   {
@@ -104,8 +156,19 @@ const visibleSections = computed(() =>
 
 <template>
   <aside class="sidebar" :class="{ 'sidebar--mobile-open': layoutStore.isMobileOpen }">
-    <RouterLink to="/dashboard" class="brand" @click="layoutStore.closeMobileSidebar">
-      <img src="../assets/brand/logo.png" alt="SME StockSense Logo" class="brand-logo-img" />
+    <RouterLink 
+      to="/dashboard" 
+      class="brand" 
+      @click="layoutStore.closeMobileSidebar"
+      @mouseenter="playSidebarTraceAnimation"
+    >
+      <div class="sidebar-logo-full">
+        <StockSenseFullLogo class="base-logo" />
+        <StockSenseFullLogo class="trace-logo" :isTrace="true" />
+      </div>
+      <div class="sidebar-logo-collapsed">
+        <StockSenseMark />
+      </div>
     </RouterLink>
     <nav class="nav-list">
       <template
@@ -182,12 +245,36 @@ const visibleSections = computed(() =>
   font-weight: 700;
   font-size: 20px;
 }
-.brand-logo-img {
-  width: auto;
-  max-width: 100%;
-  height: 48px;
-  border-radius: 8px;
-  object-fit: contain;
+.sidebar-logo-collapsed {
+  display: none;
+}
+.sidebar-logo-full {
+  display: block;
+  position: relative;
+  width: 100%;
+  max-width: 180px;
+  aspect-ratio: 1254 / 250;
+  height: auto;
+  overflow: hidden;
+}
+.sidebar-logo-full :deep(.svg-content) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  transform: translateY(-39.872%);
+}
+.base-logo {
+  width: 100%;
+  height: 100%;
+}
+.trace-logo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
 }
 .nav-list {
   display: flex;
@@ -309,8 +396,13 @@ const visibleSections = computed(() =>
     justify-content: center;
     padding: 8px 0 18px;
   }
-  .brand-logo-img {
-    height: 32px;
+  .sidebar-logo-full {
+    display: none !important;
+  }
+  .sidebar-logo-collapsed {
+    display: block !important;
+    width: 38px;
+    height: 38px;
   }
   .brand span,
   .sidebar-heading,
