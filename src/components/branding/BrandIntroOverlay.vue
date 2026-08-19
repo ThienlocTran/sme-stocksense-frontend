@@ -81,127 +81,127 @@ function playIntro() {
 
     // 0.05s: Fade in and unblur parent SVG
     tl.to(q('.logo-svg'), {
-      duration: 0.8,
+      duration: 0.6,
       opacity: 1,
       scale: 1,
       filter: 'blur(0px)',
       ease: 'power3.out'
     }, 0.05)
 
-    // 0.00s-0.45s: Act 1: 3 cubes pop up, scale up, fade in with back easing
+    // 0.00s-0.35s: Act 1: 3 cubes pop up, scale up, fade in with back easing
     tl.fromTo(q(['#box-1', '#box-2', '#box-3']),
       { opacity: 0, scale: 0.65, y: 28 },
       { 
-        duration: 0.35, 
+        duration: 0.25, 
         opacity: 1, 
         scale: 1, 
         y: 0, 
         transformOrigin: '32px 36px', 
         ease: 'back.out(1.35)', 
-        stagger: 0.07 
+        stagger: 0.05 
       },
       0.00
     )
 
-    // 0.25s-0.75s: Act 2: S-body parent group scales & fades in, and top/bottom diagonal converge
+    // 0.35s-0.70s: Act 2: S-body parent group scales & fades in, and top/bottom diagonal converge
     tl.fromTo(q('#s-body'),
       { opacity: 0, scale: 0.85 },
-      { duration: 0.50, opacity: 1, scale: 1, transformOrigin: 'center center', ease: 'power3.out' },
-      0.25
+      { duration: 0.35, opacity: 1, scale: 1, transformOrigin: 'center center', ease: 'power3.out' },
+      0.35
     )
     tl.fromTo(q('#s-body-top'),
       { x: -16, y: -16 },
-      { duration: 0.50, x: 0, y: 0, ease: 'power3.out' },
-      0.25
+      { duration: 0.35, x: 0, y: 0, ease: 'power3.out' },
+      0.35
     )
     tl.fromTo(q('#s-body-bottom'),
       { x: 16, y: 16 },
-      { duration: 0.50, x: 0, y: 0, ease: 'power3.out' },
-      0.25
+      { duration: 0.35, x: 0, y: 0, ease: 'power3.out' },
+      0.35
     )
 
-    // 0.45s-1.05s: Act 3: Swoosh draw paths
+    // 0.70s-1.15s: Act 3: Swoosh draw paths
     tl.to(q('#swoosh-path'),
-      { duration: 0.55, opacity: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
-      0.45
+      { duration: 0.45, opacity: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
+      0.70
     )
     tl.to(q('#swoosh-highlight'),
-      { duration: 0.55, opacity: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
-      0.50
+      { duration: 0.45, opacity: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
+      0.75
     )
 
-    // 0.85s-1.25s: Act 4: Data pixels pop up sequentially (1 -> 3 -> 2 -> 4)
+    // 1.15s-1.45s: Act 4: Data pixels pop up sequentially
     tl.fromTo(q(['#pixel-1', '#pixel-3', '#pixel-2', '#pixel-4']),
       { opacity: 0, scale: 0, x: -8, y: 12 },
       {
-        duration: 0.35,
+        duration: 0.22,
         opacity: 1,
         scale: 1,
         x: 0,
         y: 0,
         transformOrigin: 'center center',
         ease: 'back.out(1.6)',
-        stagger: 0.06
+        stagger: 0.04
       },
-      0.85
+      1.15
     )
     // Pulse the final pixel (pixel-4) scale 1 -> 1.10 -> 1
     tl.to(q('#pixel-4'), {
-      duration: 0.15,
+      duration: 0.10,
       scale: 1.10,
       transformOrigin: 'center center',
       ease: 'power1.inOut'
-    }, 1.15)
+    }, 1.30)
     tl.to(q('#pixel-4'), {
-      duration: 0.15,
+      duration: 0.10,
       scale: 1.0,
       transformOrigin: 'center center',
       ease: 'power1.inOut'
-    }, 1.30)
+    }, 1.40)
 
-    // 1.10s-1.35s: Act 5: S-Mark complete settling motion
+    // 1.45s-1.60s: Act 5: S-Mark complete settling motion
     tl.fromTo(q('#sense-mark'),
       { scale: 0.80 },
-      { duration: 0.25, scale: 0.78, ease: 'power2.out' },
-      1.10
+      { duration: 0.15, scale: 0.78, ease: 'power2.out' },
+      1.45
     )
 
-    // 1.20s-1.75s: Act 6: Full Brand Assembly
+    // 1.60s-2.05s: Act 6: Full Brand Assembly
     // Center S-Mark slides and scales down to its final wordmark position
     tl.to(q('#sense-mark'), {
-      duration: 0.55,
+      duration: 0.45,
       x: 1238.41,
       y: 78.00,
       scale: 0.59,
       ease: 'power3.out'
-    }, 1.20)
+    }, 1.60)
     
-    // Left and right wordmarks slide in from opposite sides at 1.30s (slight delay)
+    // Left and right wordmarks slide in from opposite sides at 1.70s (slight delay)
     tl.fromTo(q('#wordmark-left'),
       { opacity: 0, x: -30 },
-      { duration: 0.55, opacity: 1, x: 0, ease: 'power3.out' },
-      1.30
+      { duration: 0.35, opacity: 1, x: 0, ease: 'power3.out' },
+      1.70
     )
     tl.fromTo(q('#wordmark-ense'),
       { opacity: 0, x: 30 },
-      { duration: 0.55, opacity: 1, x: 0, ease: 'power3.out' },
-      1.30
+      { duration: 0.35, opacity: 1, x: 0, ease: 'power3.out' },
+      1.70
     )
 
-    // 1.65s-1.95s: Full logo final lock-in scale motion
+    // 2.05s-2.20s: Full logo final lock-in scale motion
     tl.fromTo(q('.logo-svg'),
       { scale: 1.018 },
-      { duration: 0.30, scale: 1, ease: 'power2.out' },
-      1.65
+      { duration: 0.15, scale: 1, ease: 'power2.out' },
+      2.05
     )
 
-    // 1.95s-2.15s: Hold logo (200ms hold)
+    // 2.20s-2.35s: Hold logo (150ms hold)
 
-    // 2.15s-2.75s: Exit Split Screen Reveal
+    // 2.35s-2.95s: Exit Split Screen Reveal
     // Left panel moves left, right panel moves right, logo scales down and fades out
-    tl.to(q('.left-panel'), { duration: 0.60, xPercent: -100, ease: 'power4.inOut' }, 2.15)
-    tl.to(q('.right-panel'), { duration: 0.60, xPercent: 100, ease: 'power4.inOut' }, 2.15)
-    tl.to(q('.logo-svg'), { duration: 0.60, scale: 0.96, opacity: 0, ease: 'power4.inOut' }, 2.15)
+    tl.to(q('.left-panel'), { duration: 0.60, xPercent: -100, ease: 'power4.inOut' }, 2.35)
+    tl.to(q('.right-panel'), { duration: 0.60, xPercent: 100, ease: 'power4.inOut' }, 2.35)
+    tl.to(q('.logo-svg'), { duration: 0.60, scale: 0.96, opacity: 0, ease: 'power4.inOut' }, 2.35)
 
     // Complete sequence: release scroll locking, emit complete event
     tl.add(() => {

@@ -256,7 +256,7 @@ function getPostLoginRoute(role) {
 .fade-in-delayed {
   opacity: 0;
   animation: logoFadeIn 0.6s forwards;
-  animation-delay: 2.3s;
+  animation-delay: 2.5s;
 }
 
 @keyframes logoFadeIn {
