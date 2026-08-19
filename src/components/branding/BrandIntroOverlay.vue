@@ -54,9 +54,9 @@ function playIntro() {
     // S-Mark centered initially in the 2200x460 canvas (TX = 900.32, TY = 30.32, Scale = 0.78)
     gsap.set(q('#sense-mark'), { x: 900.32, y: 30.32, scale: 0.78 })
 
-    // Parent SVG: hidden, scaled down, softly blurred
-    gsap.set(q('.logo-svg'), { opacity: 0, scale: 0.96, filter: 'blur(8px)' })
-    
+    // Parent SVG: make visible and sharp instantly to support cubes pop up
+    gsap.set(q('.logo-svg'), { opacity: 1, scale: 1, filter: 'none' })
+
     // Inventory boxes: hidden, translated down, scaled down
     gsap.set(q(['#box-1', '#box-2', '#box-3']), { opacity: 0, scale: 0.65, y: 28 })
     
@@ -78,15 +78,6 @@ function playIntro() {
 
     // 2. Initialize unified master GSAP Timeline
     const tl = gsap.timeline()
-
-    // 0.05s: Fade in and unblur parent SVG
-    tl.to(q('.logo-svg'), {
-      duration: 0.6,
-      opacity: 1,
-      scale: 1,
-      filter: 'blur(0px)',
-      ease: 'power3.out'
-    }, 0.05)
 
     // 0.00s-0.35s: Act 1: 3 cubes pop up, scale up, fade in with back easing
     tl.fromTo(q(['#box-1', '#box-2', '#box-3']),
