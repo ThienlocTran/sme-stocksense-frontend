@@ -5,9 +5,19 @@ import StockSenseLogo from './StockSenseLogo.vue'
 
 const emit = defineEmits(['complete'])
 const containerRef = ref(null)
-const isCentered = ref(true)
 const isDev = import.meta.env.DEV
 let ctx = null
+
+const staticTestMode = ref('none') // 'none', 's-mark', 'wordmark'
+
+// Parse static testing mode from URL query parameters synchronously
+if (typeof window !== 'undefined') {
+  const urlParams = new URLSearchParams(window.location.search)
+  const testMode = urlParams.get('test_intro_static')
+  if (testMode === 's-mark' || testMode === 'wordmark') {
+    staticTestMode.value = testMode
+  }
+}
 
 // Helper to dynamically calculate SVG element center with hardcoded fallbacks
 function getElementCenter(el, fallbackX, fallbackY) {
@@ -23,15 +33,94 @@ function getElementCenter(el, fallbackX, fallbackY) {
   return { x: fallbackX, y: fallbackY }
 }
 
+// Calculate responsive logo dimensions based on viewport width
+function getLogoDimensions(mode) {
+  const width = typeof window !== 'undefined' ? window.innerWidth : 1440
+  let w = '90vw'
+  let mw = '1050px'
+
+  if (mode === 's-mark') {
+    if (width < 768) {
+      // Mobile: approximately 220–260px artwork target -> 320px container
+      w = '82vw'
+      mw = '320px'
+    } else if (width < 1024) {
+      // Tablet: approximately 320–380px artwork target -> 480px container
+      w = '62vw'
+      mw = '480px'
+    } else {
+      // Desktop 1440x900: approximately 380–460px artwork target -> 550px container
+      w = '38vw'
+      mw = '550px'
+    }
+  } else {
+    // wordmark (full logo)
+    if (width < 768) {
+      // Mobile: 90–92vw
+      w = '92vw'
+      mw = '360px'
+    } else if (width < 1024) {
+      // Tablet: 84–88vw
+      w = '86vw'
+      mw = '800px'
+    } else {
+      // Desktop 1440x900: 900–1050px (capped at 1050px)
+      w = '82vw'
+      mw = '1050px'
+    }
+  }
+  return { width: w, maxWidth: mw }
+}
+
+// Set layout to static state for geometry testing/verification
+function applyStaticState(mode) {
+  const q = gsap.utils.selector(containerRef.value)
+  const svgEl = q('.logo-svg')[0]
+  if (!svgEl) return
+
+  // Lock scroll during static debug display
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = 'hidden'
+  }
+
+  const dims = getLogoDimensions(mode)
+  gsap.set(svgEl, {
+    width: dims.width,
+    maxWidth: dims.maxWidth,
+    opacity: 1,
+    scale: 1,
+    filter: 'none'
+  })
+
+  // Make all inner branding components fully visible statically
+  gsap.set(q('#s-body'), { opacity: 1, scale: 1, x: 0, y: 0 })
+  gsap.set(q('#swoosh-path'), { strokeDashoffset: 0, opacity: 1 })
+  gsap.set(q('#swoosh-highlight'), { strokeDashoffset: 0, opacity: 0.42 })
+  gsap.set(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']), { scale: 1, opacity: 1, y: 0 })
+  gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { scale: 1, opacity: 1, x: 0, y: 0 })
+
+  if (mode === 's-mark') {
+    // Focus viewBox and translate sense-mark for standalone S target
+    svgEl.setAttribute('viewBox', '870 0 460 460')
+    gsap.set(q('#sense-mark'), { attr: { transform: 'translate(882.4 12.4) scale(0.85)' } })
+    gsap.set(q('#wordmark-left'), { opacity: 0 })
+    gsap.set(q('#wordmark-ense'), { opacity: 0 })
+  } else if (mode === 'wordmark') {
+    // Zoom out viewBox to show full logo wordmark
+    svgEl.setAttribute('viewBox', '0 0 2200 460')
+    gsap.set(q('#sense-mark'), { attr: { transform: 'translate(1238.41 78.00) scale(0.59)' } })
+    gsap.set(q('#wordmark-left'), { opacity: 1, x: 0 })
+    gsap.set(q('#wordmark-ense'), { opacity: 1, x: 0 })
+  }
+}
+
 // Play/Replay intro sequence
 function playIntro() {
   if (ctx) {
     ctx.revert()
   }
 
-  isCentered.value = true
-
-  // Ensure scroll is locked during the intro
+  // Ensure scroll is locked during the active intro
   if (typeof document !== 'undefined') {
     document.body.style.overflow = 'hidden'
   }
@@ -43,16 +132,26 @@ function playIntro() {
 
     if (prefersReducedMotion) {
       // Accessibility: Simple fast fade transition
-      gsap.set(q('.logo-svg'), { opacity: 1, scale: 1, filter: 'none', attr: { viewBox: '0 0 2200 460' } })
+      const svgEl = q('.logo-svg')[0]
+      if (svgEl) {
+        svgEl.setAttribute('viewBox', '0 0 2200 460')
+        const wordmarkDims = getLogoDimensions('wordmark')
+        gsap.set(svgEl, {
+          width: wordmarkDims.width,
+          maxWidth: wordmarkDims.maxWidth,
+          opacity: 1,
+          scale: 1,
+          filter: 'none'
+        })
+      }
       gsap.set(q('#wordmark-left'), { opacity: 1, x: 0 })
-      gsap.set(q('#sense-mark'), { x: 1238.41, y: 78.00, scale: 0.59 })
+      gsap.set(q('#sense-mark'), { attr: { transform: 'translate(1238.41 78.00) scale(0.59)' } })
       gsap.set(q('#s-body'), { opacity: 1, scale: 1, x: 0, y: 0 })
       gsap.set(q('#swoosh-path'), { strokeDashoffset: 0, opacity: 1 })
-      gsap.set(q('#swoosh-highlight'), { strokeDashoffset: 0, opacity: 0.45 })
+      gsap.set(q('#swoosh-highlight'), { strokeDashoffset: 0, opacity: 0.42 })
       gsap.set(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']), { scale: 1, opacity: 1, y: 0 })
       gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { scale: 1, opacity: 1, x: 0, y: 0 })
       gsap.set(q('#wordmark-ense'), { opacity: 1, x: 0 })
-      isCentered.value = false
 
       gsap.to(containerRef.value, {
         duration: 0.6,
@@ -70,7 +169,21 @@ function playIntro() {
 
     // 1. Set initial states of S-Mark elements and viewport
     // Center the viewBox tightly around the large standalone S-Mark (X=870, Y=0, W=460, H=460)
-    gsap.set(q('.logo-svg'), { attr: { viewBox: '870 0 460 460' } })
+    const svgEl = q('.logo-svg')[0]
+    if (svgEl) {
+      svgEl.setAttribute('viewBox', '870 0 460 460')
+    }
+
+    const sMarkDims = getLogoDimensions('s-mark')
+    const wordmarkDims = getLogoDimensions('wordmark')
+
+    gsap.set(svgEl, {
+      width: sMarkDims.width,
+      maxWidth: sMarkDims.maxWidth,
+      opacity: 1,
+      scale: 1,
+      filter: 'none'
+    })
 
     // Dynamically calculate and register origin anchor points on child SVG components
     const senseMarkCenter = getElementCenter(q('#sense-mark')[0], 1100, 230)
@@ -100,30 +213,49 @@ function playIntro() {
     const p4Center = getElementCenter(q('#pixel-4')[0], 462, 62)
     gsap.set(q('#pixel-4'), { svgOrigin: `${p4Center.x} ${p4Center.y}` })
 
-    // Center S-Mark inside the initial square viewBox (scale: 0.85, x: 882.4, y: 12.4)
-    gsap.set(q('#sense-mark'), { x: 882.4, y: 12.4, scale: 0.85 })
+    // Calculate light trace path lengths dynamically
+    const traceLeftPath = q('#light-trace-left path')[0]
+    const traceRightPath = q('#light-trace-right path')[0]
+    
+    let lenLeft = 8000
+    let lenRight = 3000
+    
+    if (traceLeftPath && typeof traceLeftPath.getTotalLength === 'function') {
+      lenLeft = traceLeftPath.getTotalLength()
+    }
+    if (traceRightPath && typeof traceRightPath.getTotalLength === 'function') {
+      lenRight = traceRightPath.getTotalLength()
+    }
 
-    // Parent SVG: make visible and sharp instantly to support cubes pop up
-    gsap.set(q('.logo-svg'), { opacity: 1, scale: 1, filter: 'none' })
+    // Center S-Mark inside the initial square viewBox (scale: 0.85, translate to 882.4, 12.4)
+    gsap.set(q('#sense-mark'), { attr: { transform: 'translate(882.4 12.4) scale(0.85)' } })
 
-    // Initialize individual group states
-    gsap.set(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']), { opacity: 0, scale: 0.72, y: 28 })
-    gsap.set(q('#s-body'), { opacity: 0, scale: 0.92, y: 10 })
-    gsap.set(q('#swoosh-path'), { opacity: 0, strokeDasharray: 100, strokeDashoffset: 100 })
-    gsap.set(q('#swoosh-highlight'), { opacity: 0, strokeDasharray: 100, strokeDashoffset: 100 })
-    gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { opacity: 0, scale: 0, x: -8, y: 12 })
-    gsap.set(q('#wordmark-left'), { opacity: 0, x: -40 })
-    gsap.set(q('#wordmark-ense'), { opacity: 0, x: 30 })
+    // Initialize individual group states using autoAlpha to toggle visibility and save rendering cycles
+    gsap.set(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']), { autoAlpha: 0, scale: 0.75, y: 25 })
+    gsap.set(q('#s-body'), { autoAlpha: 0, scale: 0.92, y: 10 })
+    gsap.set(q('#swoosh-path'), { autoAlpha: 0, strokeDasharray: 100, strokeDashoffset: 100 })
+    gsap.set(q('#swoosh-highlight'), { autoAlpha: 0, strokeDasharray: 100, strokeDashoffset: 100 })
+    gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { autoAlpha: 0, scale: 0, x: -8, y: 12 })
+    gsap.set(q('#wordmark-left'), { autoAlpha: 0, x: -40 })
+    gsap.set(q('#wordmark-ense'), { autoAlpha: 0, x: 30 })
+
+    // Light trace paths initial setup
+    gsap.set(q(['#light-trace-left', '#light-trace-right']), { autoAlpha: 0 })
+    if (traceLeftPath) {
+      gsap.set(traceLeftPath, { strokeDasharray: `220, ${lenLeft}`, strokeDashoffset: 220 })
+    }
+    if (traceRightPath) {
+      gsap.set(traceRightPath, { strokeDasharray: `160, ${lenRight}`, strokeDashoffset: 160 })
+    }
 
     // 2. Initialize unified master GSAP Timeline
     const tl = gsap.timeline()
 
-    // 0.00s-0.35s: Act 1: 3 cubes pop up at their final x locations, offset downward
-    tl.fromTo(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']),
-      { opacity: 0, scale: 0.72, y: 28 },
+    // Phase 1: INVENTORY CUBES (0.00s - 0.30s)
+    tl.to(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']),
       { 
-        duration: 0.25, 
-        opacity: 1, 
+        duration: 0.30, 
+        autoAlpha: 1, 
         scale: 1, 
         y: 0, 
         ease: 'back.out(1.35)', 
@@ -132,97 +264,123 @@ function playIntro() {
       0.00
     )
 
-    // 0.22s-0.65s: Act 2: S-body parent group scales and fades in around its own center
-    tl.fromTo(q('#s-body'),
-      { opacity: 0, scale: 0.92, y: 10 },
-      { duration: 0.35, opacity: 1, scale: 1, y: 0, ease: 'power2.out' },
+    // Phase 2: S BODY (0.22s - 0.57s)
+    tl.to(q('#s-body'),
+      { duration: 0.35, autoAlpha: 1, scale: 1, y: 0, ease: 'power2.out' },
       0.22
     )
 
-    // 0.45s-1.05s: Act 3: Swoosh draw paths sweeps dynamically
-    tl.fromTo(q('#swoosh-path'),
-      { opacity: 0, strokeDashoffset: 100 },
-      { duration: 0.45, opacity: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
+    // Phase 3: SWOOSH (0.45s - 0.90s)
+    tl.to(q('#swoosh-path'),
+      { duration: 0.45, autoAlpha: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
       0.45
     )
-    tl.fromTo(q('#swoosh-highlight'),
-      { opacity: 0, strokeDashoffset: 100 },
-      { duration: 0.45, opacity: 0.45, strokeDashoffset: 0, ease: 'power2.inOut' },
+    tl.to(q('#swoosh-highlight'),
+      { duration: 0.45, autoAlpha: 0.42, strokeDashoffset: 0, ease: 'power2.inOut' },
       0.50
     )
 
-    // 0.88s-1.25s: Act 4: Data pixels pop up sequentially from relative positions to natural coordinates
-    tl.fromTo(q('#pixel-1'), { opacity: 0, scale: 0, x: -8, y: 12 }, { duration: 0.20, opacity: 1, scale: 1, x: 0, y: 0, ease: 'back.out(1.5)' }, 0.88)
-    tl.fromTo(q('#pixel-3'), { opacity: 0, scale: 0, x: -8, y: 12 }, { duration: 0.20, opacity: 1, scale: 1, x: 0, y: 0, ease: 'back.out(1.5)' }, 0.94)
-    tl.fromTo(q('#pixel-2'), { opacity: 0, scale: 0, x: -8, y: 12 }, { duration: 0.20, opacity: 1, scale: 1, x: 0, y: 0, ease: 'back.out(1.5)' }, 1.00)
-    tl.fromTo(q('#pixel-4'), { opacity: 0, scale: 0, x: -8, y: 12 }, { duration: 0.20, opacity: 1, scale: 1, x: 0, y: 0, ease: 'back.out(1.5)' }, 1.06)
-
-    // 1.20s-1.40s: Act 5: S-Mark complete settling motion
-    tl.fromTo(q('#sense-mark'),
-      { scale: 0.865 },
-      { duration: 0.15, scale: 0.85, ease: 'power2.out' },
-      1.20
+    // Phase 4: PIXELS (0.85s - 1.15s)
+    tl.to(q(['#pixel-1', '#pixel-3', '#pixel-2', '#pixel-4']),
+      { duration: 0.25, autoAlpha: 1, scale: 1, x: 0, y: 0, ease: 'back.out(1.5)', stagger: 0.06 },
+      0.85
     )
 
-    // 1.35s-1.85s: Act 6: Wordmark Assembly and ViewBox Zoom Out
-    // Center S-Mark slides and scales down to its final resting wordmark position
+    // Phase 5: S MARK HOLD (1.15s - 1.75s)
+    // Standalone S remains centered and large (~400px on desktop) for 0.6s
+
+    // Phase 6: WORDMARK TRANSITION (1.75s - 2.40s)
+    // Synchronously animate the SVG viewBox, the S-Mark scale/translation, and container width
+    tl.to(svgEl, {
+      width: wordmarkDims.width,
+      maxWidth: wordmarkDims.maxWidth,
+      duration: 0.65,
+      ease: 'power3.inOut'
+    }, 1.75)
+
     tl.to(q('#sense-mark'), {
-      duration: 0.50,
-      x: 1238.41,
-      y: 78.00,
-      scale: 0.59,
+      duration: 0.65,
+      attr: { transform: 'translate(1238.41 78.00) scale(0.59)' },
       ease: 'power3.inOut'
-    }, 1.35)
+    }, 1.75)
 
-    // Smoothly animate the viewBox from focused square to full horizontal canvas
-    tl.to(q('.logo-svg'), {
-      attr: { viewBox: '0 0 2200 460' },
-      duration: 0.50,
-      ease: 'power3.inOut'
-    }, 1.35)
+    const viewBoxObj = { x: 870, y: 0, w: 460, h: 460 }
+    tl.to(viewBoxObj, {
+      x: 0,
+      y: 0,
+      w: 2200,
+      h: 460,
+      duration: 0.65,
+      ease: 'power3.inOut',
+      onUpdate: () => {
+        if (svgEl) {
+          svgEl.setAttribute('viewBox', `${viewBoxObj.x} ${viewBoxObj.y} ${viewBoxObj.w} ${viewBoxObj.h}`)
+        }
+      }
+    }, 1.75)
 
-    // Remove isCentered class to trigger container CSS width transition
-    tl.add(() => {
-      isCentered.value = false
-    }, 1.35)
-
-    // Slide-in left/right wordmarks from opposite sides
+    // Slide in wordmarks
     tl.fromTo(q('#wordmark-left'),
-      { opacity: 0, x: -40 },
-      { duration: 0.40, opacity: 1, x: 0, ease: 'power3.out' },
-      1.45
+      { autoAlpha: 0, x: -40 },
+      { duration: 0.50, autoAlpha: 1, x: 0, ease: 'power3.out' },
+      1.90
     )
     tl.fromTo(q('#wordmark-ense'),
-      { opacity: 0, x: 30 },
-      { duration: 0.40, opacity: 1, x: 0, ease: 'power3.out' },
-      1.45
+      { autoAlpha: 0, x: 30 },
+      { duration: 0.50, autoAlpha: 1, x: 0, ease: 'power3.out' },
+      1.90
     )
 
-    // 1.85s-2.10s: Full logo final lock-in scale settle
-    tl.fromTo(q('.logo-svg'),
-      { scale: 1.012 },
-      { duration: 0.15, scale: 1, ease: 'power2.out' },
-      1.85
-    )
+    // Phase 7: ZENCO-STYLE ENERGY TRACE (2.40s - 3.40s)
+    // Moving light segments sweep around the completed wordmark contours
+    tl.to(q(['#light-trace-left', '#light-trace-right']), {
+      duration: 0.15,
+      autoAlpha: 1,
+      ease: 'power1.in'
+    }, 2.40)
 
-    // 2.10s-2.80s: Exit Split Screen panels slide out
-    tl.to(q('.left-panel'), { duration: 0.65, xPercent: -100, ease: 'power4.inOut' }, 2.10)
-    tl.to(q('.right-panel'), { duration: 0.65, xPercent: 100, ease: 'power4.inOut' }, 2.10)
-    tl.to(q('.logo-svg'), { duration: 0.65, scale: 0.96, opacity: 0, ease: 'power4.inOut' }, 2.10)
+    tl.to(traceLeftPath, {
+      duration: 1.10,
+      strokeDashoffset: -lenLeft,
+      ease: 'power1.inOut'
+    }, 2.40)
 
-    // Complete sequence: release scroll locking, emit complete event
+    tl.to(traceRightPath, {
+      duration: 0.75,
+      strokeDashoffset: -lenRight,
+      ease: 'power1.inOut'
+    }, 2.75)
+
+    tl.to(q(['#light-trace-left', '#light-trace-right']), {
+      duration: 0.20,
+      autoAlpha: 0,
+      ease: 'power2.out'
+    }, 3.30)
+
+    // Phase 8: SPLIT REVEAL (3.50s - 4.15s)
+    // Viewport-based split panels open cleanly from the center
+    tl.to(q('.intro-panel-left'), { duration: 0.65, xPercent: -100, ease: 'power4.inOut' }, 3.50)
+    tl.to(q('.intro-panel-right'), { duration: 0.65, xPercent: 100, ease: 'power4.inOut' }, 3.50)
+    tl.to(svgEl, { duration: 0.65, scale: 0.97, autoAlpha: 0, ease: 'power4.inOut' }, 3.50)
+    tl.to(q('.radial-glow'), { duration: 0.65, autoAlpha: 0, ease: 'power4.inOut' }, 3.50)
+
+    // Complete sequence: restore scrolling and notify parent view
     tl.add(() => {
       if (typeof document !== 'undefined') {
         document.body.style.overflow = ''
       }
       emit('complete')
-    }, 2.75)
+    }, 4.15)
 
   }, containerRef.value)
 }
 
 onMounted(() => {
-  playIntro()
+  if (staticTestMode.value === 'none') {
+    playIntro()
+  } else {
+    applyStaticState(staticTestMode.value)
+  }
 })
 
 onUnmounted(() => {
@@ -234,7 +392,6 @@ onUnmounted(() => {
   }
 })
 
-// Expose play function for development replay
 defineExpose({
   play: playIntro
 })
@@ -242,16 +399,16 @@ defineExpose({
 
 <template>
   <div ref="containerRef" class="brand-intro-overlay">
-    <!-- Split Reveal Panels -->
-    <div class="intro-panel left-panel"></div>
-    <div class="intro-panel right-panel"></div>
+    <!-- Split Reveal Panels (True 50vw viewport panels) -->
+    <div class="intro-panel-left"></div>
+    <div class="intro-panel-right"></div>
     
     <!-- Ambient Radial Glow -->
     <div class="radial-glow"></div>
     
     <!-- Large Centered Animated Branding Content -->
-    <div class="intro-content">
-      <StockSenseLogo class="logo-svg" :class="{ 'is-centered': isCentered, 'debug-mode': isDev }" />
+    <div class="brand-intro-stage">
+      <StockSenseLogo class="logo-svg" :class="{ 'debug-mode': isDev }" />
     </div>
   </div>
 </template>
@@ -261,27 +418,28 @@ defineExpose({
   position: fixed;
   inset: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   z-index: 9999;
   overflow: hidden;
   pointer-events: auto;
 }
 
-.intro-panel {
+.intro-panel-left,
+.intro-panel-right {
   position: absolute;
   top: 0;
+  bottom: 0;
   width: 50vw;
-  height: 100vh;
   background: #F8FAFC;
   z-index: 1;
 }
 
-.left-panel {
+.intro-panel-left {
   left: 0;
   border-right: 1px solid rgba(0, 0, 0, 0.02);
 }
 
-.right-panel {
+.intro-panel-right {
   right: 0;
   border-left: 1px solid rgba(0, 0, 0, 0.02);
 }
@@ -294,35 +452,28 @@ defineExpose({
   pointer-events: none;
 }
 
-.intro-content {
+.brand-intro-stage {
   position: absolute;
   inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
   z-index: 3;
   pointer-events: none;
   padding: 24px;
 }
 
 .logo-svg {
-  opacity: 0; /* Hide by default to prevent layout flash before GSAP initializes */
+  opacity: 0; /* Hide initially to prevent layout flash before GSAP/static setup */
   width: 90vw;
   height: auto;
   max-width: 1050px;
   overflow: visible;
   display: block;
-  /* Smooth CSS transition for layout shift between square and horizontal dimensions */
-  transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1), max-width 0.5s cubic-bezier(0.25, 1, 0.5, 1);
   will-change: transform, opacity, filter;
   transform-style: preserve-3d;
   backface-visibility: hidden;
-}
-
-.logo-svg.is-centered {
-  width: 62vw;
-  max-width: 420px;
-  aspect-ratio: 1 / 1;
 }
 
 /* Hide all sub-components initially in CSS to ensure 0ms flash-free startup */
@@ -339,17 +490,12 @@ defineExpose({
 :deep(#pixel-1),
 :deep(#pixel-2),
 :deep(#pixel-3),
-:deep(#pixel-4) {
+:deep(#pixel-4),
+:deep(#light-trace-left),
+:deep(#light-trace-right),
+:deep(#light-trace-left path),
+:deep(#light-trace-right path) {
   opacity: 0;
-}
-
-@media (min-width: 768px) {
-  .logo-svg {
-    width: min(75vw, 1050px);
-  }
-  .logo-svg.is-centered {
-    width: min(35vw, 420px);
-  }
 }
 
 /* DEV Debug Mode Styles to verify geometry outlines */

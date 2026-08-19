@@ -211,7 +211,9 @@ watch(
 </script>
 
 <template>
-  <BrandIntroOverlay v-if="showIntro" @complete="handleIntroComplete" />
+  <Teleport to="body">
+    <BrandIntroOverlay v-if="showIntro" @complete="handleIntroComplete" />
+  </Teleport>
 
   <RouterView v-if="isAuthLayout" />
   <div v-else class="app-shell">

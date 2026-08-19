@@ -83,7 +83,9 @@ onUnmounted(() => {
 <template>
   <div class="preview-container">
     <!-- Brand Intro Overlay Triggered dynamically -->
-    <BrandIntroOverlay v-if="showIntro" @complete="handleIntroComplete" />
+    <Teleport to="body">
+      <BrandIntroOverlay v-if="showIntro" @complete="handleIntroComplete" />
+    </Teleport>
 
     <!-- Navigation Header -->
     <header class="preview-header">

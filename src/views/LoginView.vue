@@ -15,6 +15,7 @@ const isSubmitting = ref(false)
 const showPassword = ref(false)
 
 const isDev = import.meta.env.DEV
+const showDevReplay = ref(false)
 
 function triggerDevReplay() {
   if (typeof window !== 'undefined' && typeof window.__replayIntro === 'function') {
@@ -27,6 +28,12 @@ const introPlayed = ref(false)
 onMounted(() => {
   if (typeof window !== 'undefined') {
     introPlayed.value = window.sessionStorage.getItem('stocksense-intro-played') === 'true'
+    
+    // Gate dev replay behind explicit debug flag (URL query parameter or localStorage)
+    const urlParams = new URLSearchParams(window.location.search)
+    const debugIntro = urlParams.get('debug_intro') === 'true'
+    const debugIntroStorage = window.localStorage.getItem('stocksense-debug-intro') === 'true'
+    showDevReplay.value = isDev && (debugIntro || debugIntroStorage)
   }
 })
 
@@ -102,12 +109,9 @@ function getPostLoginRoute(role) {
 
 <template>
   <main class="login-page">
-    <div class="login-logo-outside" :class="{ 'fade-in-delayed': !introPlayed }">
-      <img src="/LogoFull.svg" alt="SME StockSense" class="outside-logo-img" />
-    </div>
-
     <section class="login-panel card card-pad">
       <div class="login-head-static">
+        <h1 class="login-title">SME StockSense</h1>
         <p class="login-subtitle">Đăng nhập hệ thống nội bộ</p>
       </div>
 
@@ -165,7 +169,7 @@ function getPostLoginRoute(role) {
 
   <!-- Dev Replay Control in bottom corner -->
   <button
-    v-if="isDev"
+    v-if="showDevReplay"
     type="button"
     class="dev-replay-trigger"
     @click="triggerDevReplay"
@@ -187,23 +191,12 @@ function getPostLoginRoute(role) {
   background: var(--bg);
   position: relative;
 }
-.login-logo-outside {
-  position: absolute;
-  top: 8vh;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 380px;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-}
-.outside-logo-img {
-  width: 100%;
-  height: auto;
-  max-height: 110px;
-  object-fit: contain;
-  display: block;
+.login-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-brand);
+  letter-spacing: -0.02em;
 }
 .login-panel {
   width: min(420px, 100%);
@@ -275,18 +268,6 @@ function getPostLoginRoute(role) {
   to { transform: rotate(360deg); }
 }
 
-/* Delay fade-in of static login brand to prevent visual overlapping with exit transition */
-.fade-in-delayed {
-  opacity: 0;
-  animation: logoFadeIn 0.6s forwards;
-  animation-delay: 2.5s;
-}
-
-@keyframes logoFadeIn {
-  to {
-    opacity: 1;
-  }
-}
 </style>
 
 
