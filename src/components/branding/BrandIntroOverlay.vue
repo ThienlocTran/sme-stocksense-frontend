@@ -242,10 +242,14 @@ function playIntro() {
     // Light trace paths initial setup
     gsap.set(q(['#light-trace-left', '#light-trace-right']), { autoAlpha: 0 })
     if (traceLeftPath) {
-      gsap.set(traceLeftPath, { strokeDasharray: `220, ${lenLeft}`, strokeDashoffset: 220 })
+      const dashLeft = lenLeft * 0.25
+      const gapLeft = lenLeft * 0.75
+      gsap.set(traceLeftPath, { strokeDasharray: `${dashLeft} ${gapLeft}`, strokeDashoffset: 0 })
     }
     if (traceRightPath) {
-      gsap.set(traceRightPath, { strokeDasharray: `160, ${lenRight}`, strokeDashoffset: 160 })
+      const dashRight = lenRight * 0.25
+      const gapRight = lenRight * 0.75
+      gsap.set(traceRightPath, { strokeDasharray: `${dashRight} ${gapRight}`, strokeDashoffset: 0 })
     }
 
     // 2. Initialize unified master GSAP Timeline
@@ -342,13 +346,13 @@ function playIntro() {
     tl.to(traceLeftPath, {
       duration: 1.10,
       strokeDashoffset: -lenLeft,
-      ease: 'power1.inOut'
+      ease: 'none'
     }, 2.40)
 
     tl.to(traceRightPath, {
       duration: 0.75,
       strokeDashoffset: -lenRight,
-      ease: 'power1.inOut'
+      ease: 'none'
     }, 2.75)
 
     tl.to(q(['#light-trace-left', '#light-trace-right']), {
