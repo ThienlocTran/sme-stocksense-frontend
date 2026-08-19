@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { login as loginWithPassword } from '../services/authService'
 import { useAuthStore } from '../stores/auth'
@@ -22,6 +22,15 @@ function triggerDevReplay() {
     window.__replayIntro()
   }
 }
+
+const introPlayed = ref(false)
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    introPlayed.value = window.sessionStorage.getItem('stocksense-intro-played') === 'true'
+  }
+})
+
 
 
 
@@ -95,7 +104,7 @@ function getPostLoginRoute(role) {
 <template>
   <main class="login-page">
     <section class="login-panel card card-pad">
-      <div class="login-head-static">
+      <div class="login-head-static" :class="{ 'fade-in-delayed': !introPlayed }">
         <div class="logo-static-wrap">
           <StockSenseLogo class="static-logo-svg" />
         </div>
@@ -241,6 +250,19 @@ function getPostLoginRoute(role) {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Delay fade-in of static login brand to prevent visual overlapping with exit transition */
+.fade-in-delayed {
+  opacity: 0;
+  animation: logoFadeIn 0.6s forwards;
+  animation-delay: 2.3s;
+}
+
+@keyframes logoFadeIn {
+  to {
+    opacity: 1;
+  }
 }
 </style>
 

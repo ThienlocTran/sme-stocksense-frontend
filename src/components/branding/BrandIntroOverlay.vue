@@ -313,20 +313,20 @@ defineExpose({
 }
 
 /* Hide all sub-components initially in CSS to ensure 0ms flash-free startup */
-#wordmark-left,
-#wordmark-ense,
-#s-body,
-#s-body-top,
-#s-body-bottom,
-#swoosh-path,
-#swoosh-highlight,
-#box-1,
-#box-2,
-#box-3,
-#pixel-1,
-#pixel-2,
-#pixel-3,
-#pixel-4 {
+:deep(#wordmark-left),
+:deep(#wordmark-ense),
+:deep(#s-body),
+:deep(#s-body-top),
+:deep(#s-body-bottom),
+:deep(#swoosh-path),
+:deep(#swoosh-highlight),
+:deep(#box-1),
+:deep(#box-2),
+:deep(#box-3),
+:deep(#pixel-1),
+:deep(#pixel-2),
+:deep(#pixel-3),
+:deep(#pixel-4) {
   opacity: 0;
 }
 
