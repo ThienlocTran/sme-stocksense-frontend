@@ -21,10 +21,12 @@ import CategoryListView from '../views/categories/CategoryListView.vue'
 import InventoryCountListView from '../views/inventory-counts/InventoryCountListView.vue'
 import InventoryCountDetailView from '../views/inventory-counts/InventoryCountDetailView.vue'
 import AiForecastView from '../views/AiForecastView.vue'
+import AnimationPreviewView from '../views/AnimationPreviewView.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
   { path: '/login', component: LoginView, meta: { title: 'Đăng nhập', layout: 'auth' } },
+  { path: '/preview', component: AnimationPreviewView, meta: { title: 'Animation Preview', layout: 'auth' } },
   { path: '/dashboard', component: DashboardView, meta: { title: 'Tổng quan' } },
   { path: '/products', component: ProductsView, meta: { title: 'Sản phẩm' } },
   { path: '/partners', component: PartnerListView, meta: { title: 'Quản lý đối tác' } },

@@ -185,21 +185,33 @@ function getPostLoginRoute(role) {
   justify-content: center;
   padding: 24px;
   background: var(--bg);
-  gap: 16px;
+  position: relative;
 }
 .login-logo-outside {
+  position: absolute;
+  top: 8vh;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
-  max-width: 280px;
+  max-width: 380px;
   display: flex;
   justify-content: center;
-  margin-bottom: 8px;
+  pointer-events: none;
 }
 .outside-logo-img {
   width: 100%;
   height: auto;
+  max-height: 110px;
+  object-fit: contain;
   display: block;
 }
-.login-panel { width: min(420px, 100%); display: grid; gap: 24px; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08); }
+.login-panel {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 24px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+  margin-top: 40px;
+}
 .login-head-static {
   display: flex;
   flex-direction: column;
