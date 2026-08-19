@@ -65,26 +65,32 @@
       </g>
 
       <g id="inventory">
-        <g id="box-1" transform="translate(225 315)">
-          <polygon points="32,0 64,18 32,36 0,18" fill="#22C55E"/>
-          <polygon points="0,18 32,36 32,72 0,54" fill="#047857"/>
-          <polygon points="64,18 32,36 32,72 64,54" fill="#059669"/>
-          <polyline points="32,0 64,18 32,36 0,18 32,0 32,36 32,72" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-          <polyline points="0,18 0,54 32,72 64,54 64,18" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+        <g id="box-1-wrapper">
+          <g id="box-1" transform="translate(225 315)">
+            <polygon points="32,0 64,18 32,36 0,18" fill="#22C55E"/>
+            <polygon points="0,18 32,36 32,72 0,54" fill="#047857"/>
+            <polygon points="64,18 32,36 32,72 64,54" fill="#059669"/>
+            <polyline points="32,0 64,18 32,36 0,18 32,0 32,36 32,72" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+            <polyline points="0,18 0,54 32,72 64,54 64,18" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+          </g>
         </g>
-        <g id="box-2" transform="translate(180 350)">
-          <polygon points="32,0 64,18 32,36 0,18" fill="#16A34A"/>
-          <polygon points="0,18 32,36 32,72 0,54" fill="#047857"/>
-          <polygon points="64,18 32,36 32,72 64,54" fill="#059669"/>
-          <polyline points="32,0 64,18 32,36 0,18 32,0 32,36 32,72" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-          <polyline points="0,18 0,54 32,72 64,54 64,18" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+        <g id="box-2-wrapper">
+          <g id="box-2" transform="translate(180 350)">
+            <polygon points="32,0 64,18 32,36 0,18" fill="#16A34A"/>
+            <polygon points="0,18 32,36 32,72 0,54" fill="#047857"/>
+            <polygon points="64,18 32,36 32,72 64,54" fill="#059669"/>
+            <polyline points="32,0 64,18 32,36 0,18 32,0 32,36 32,72" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+            <polyline points="0,18 0,54 32,72 64,54 64,18" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+          </g>
         </g>
-        <g id="box-3" transform="translate(270 350)">
-          <polygon points="32,0 64,18 32,36 0,18" fill="#22C55E"/>
-          <polygon points="0,18 32,36 32,72 0,54" fill="#059669"/>
-          <polygon points="64,18 32,36 32,72 64,54" fill="#16A34A"/>
-          <polyline points="32,0 64,18 32,36 0,18 32,0 32,36 32,72" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-          <polyline points="0,18 0,54 32,72 64,54 64,18" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+        <g id="box-3-wrapper">
+          <g id="box-3" transform="translate(270 350)">
+            <polygon points="32,0 64,18 32,36 0,18" fill="#22C55E"/>
+            <polygon points="0,18 32,36 32,72 0,54" fill="#059669"/>
+            <polygon points="64,18 32,36 32,72 64,54" fill="#16A34A"/>
+            <polyline points="32,0 64,18 32,36 0,18 32,0 32,36 32,72" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+            <polyline points="0,18 0,54 32,72 64,54 64,18" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+          </g>
         </g>
       </g>
 

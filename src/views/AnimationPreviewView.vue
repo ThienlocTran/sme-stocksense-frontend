@@ -39,12 +39,13 @@ onMounted(() => {
 
   // Spinner 2: Infinite stagger bounce on cubes
   cubesTimeline = gsap.timeline({ repeat: -1 })
-  cubesTimeline.fromTo('.cubes-loader #box-1, .cubes-loader #box-2, .cubes-loader #box-3',
-    { y: 15, scale: 0.8 },
+  cubesTimeline.fromTo('.cubes-loader #box-1-wrapper, .cubes-loader #box-2-wrapper, .cubes-loader #box-3-wrapper',
+    { y: 15, scale: 0.8, transformOrigin: 'center center' },
     {
       y: -15,
       scale: 1.1,
       duration: 0.45,
+      transformOrigin: 'center center',
       stagger: {
         each: 0.12,
         yoyo: true,

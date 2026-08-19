@@ -58,10 +58,10 @@ function playIntro() {
     gsap.set(q('.logo-svg'), { opacity: 1, scale: 1, filter: 'none' })
 
     // Inventory boxes: hidden, translated down, scaled down
-    gsap.set(q(['#box-1', '#box-2', '#box-3']), { opacity: 0, scale: 0.65, y: 28 })
+    gsap.set(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']), { opacity: 0, scale: 0.65, y: 28, transformOrigin: 'center center' })
     
     // S body parent and child parts setup
-    gsap.set(q('#s-body'), { opacity: 0, scale: 0.85 })
+    gsap.set(q('#s-body'), { opacity: 0, scale: 0.85, transformOrigin: 'center center' })
     gsap.set(q('#s-body-top'), { x: -16, y: -16 })
     gsap.set(q('#s-body-bottom'), { x: 16, y: 16 })
     
@@ -70,7 +70,7 @@ function playIntro() {
     gsap.set(q('#swoosh-highlight'), { opacity: 0, strokeDasharray: 100, strokeDashoffset: 100 })
     
     // Data pixels: hidden, scale 0, offset bottom-left for growth motion
-    gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { opacity: 0, scale: 0, x: -8, y: 12 })
+    gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { opacity: 0, scale: 0, x: -8, y: 12, transformOrigin: 'center center' })
     
     // Left and Right wordmarks: hidden, offset left and right respectively
     gsap.set(q('#wordmark-left'), { opacity: 0, x: -30 })
@@ -80,14 +80,14 @@ function playIntro() {
     const tl = gsap.timeline()
 
     // 0.00s-0.35s: Act 1: 3 cubes pop up, scale up, fade in with back easing
-    tl.fromTo(q(['#box-1', '#box-2', '#box-3']),
-      { opacity: 0, scale: 0.65, y: 28 },
+    tl.fromTo(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']),
+      { opacity: 0, scale: 0.65, y: 28, transformOrigin: 'center center' },
       { 
         duration: 0.25, 
         opacity: 1, 
         scale: 1, 
         y: 0, 
-        transformOrigin: '32px 36px', 
+        transformOrigin: 'center center', 
         ease: 'back.out(1.35)', 
         stagger: 0.05 
       },
@@ -96,7 +96,7 @@ function playIntro() {
 
     // 0.35s-0.70s: Act 2: S-body parent group scales & fades in, and top/bottom diagonal converge
     tl.fromTo(q('#s-body'),
-      { opacity: 0, scale: 0.85 },
+      { opacity: 0, scale: 0.85, transformOrigin: 'center center' },
       { duration: 0.35, opacity: 1, scale: 1, transformOrigin: 'center center', ease: 'power3.out' },
       0.35
     )
@@ -123,7 +123,7 @@ function playIntro() {
 
     // 1.15s-1.45s: Act 4: Data pixels pop up sequentially
     tl.fromTo(q(['#pixel-1', '#pixel-3', '#pixel-2', '#pixel-4']),
-      { opacity: 0, scale: 0, x: -8, y: 12 },
+      { opacity: 0, scale: 0, x: -8, y: 12, transformOrigin: 'center center' },
       {
         duration: 0.22,
         opacity: 1,
@@ -292,9 +292,9 @@ defineExpose({
 .logo-svg {
   opacity: 0; /* Hide by default to prevent layout flash before GSAP initializes */
   /* Sizing constraints per spec: width min(70vw, 850px) on desktop, 82vw on mobile */
-  width: 82vw;
+  width: 90vw;
   height: auto;
-  max-width: 850px;
+  max-width: 1050px;
   overflow: visible;
   display: block;
   /* Performance optimizations */
@@ -311,9 +311,9 @@ defineExpose({
 :deep(#s-body-bottom),
 :deep(#swoosh-path),
 :deep(#swoosh-highlight),
-:deep(#box-1),
-:deep(#box-2),
-:deep(#box-3),
+:deep(#box-1-wrapper),
+:deep(#box-2-wrapper),
+:deep(#box-3-wrapper),
 :deep(#pixel-1),
 :deep(#pixel-2),
 :deep(#pixel-3),
@@ -323,7 +323,7 @@ defineExpose({
 
 @media (min-width: 768px) {
   .logo-svg {
-    width: min(70vw, 850px);
+    width: min(75vw, 1050px);
   }
 }
 </style>
