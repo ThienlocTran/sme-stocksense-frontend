@@ -106,10 +106,6 @@ const visibleSections = computed(() =>
   <aside class="sidebar" :class="{ 'sidebar--mobile-open': layoutStore.isMobileOpen }">
     <RouterLink to="/dashboard" class="brand" @click="layoutStore.closeMobileSidebar">
       <img src="../assets/brand/logo.png" alt="SME StockSense Logo" class="brand-logo-img" />
-      <span>
-        <strong>SME StockSense</strong>
-        <small>Quản lý tồn kho thông minh</small>
-      </span>
     </RouterLink>
     <nav class="nav-list">
       <template
@@ -171,7 +167,7 @@ const visibleSections = computed(() =>
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
   padding: 8px 10px 18px;
   border-bottom: 1px solid var(--color-border);
 }
@@ -187,20 +183,11 @@ const visibleSections = computed(() =>
   font-size: 20px;
 }
 .brand-logo-img {
-  width: 38px;
-  height: 38px;
+  width: auto;
+  max-width: 100%;
+  height: 48px;
   border-radius: 8px;
   object-fit: contain;
-}
-.brand strong {
-  display: block;
-  color: var(--color-text-primary);
-  line-height: 20px;
-}
-.brand small {
-  display: block;
-  color: var(--color-text-secondary);
-  margin-top: 2px;
 }
 .nav-list {
   display: flex;
@@ -321,6 +308,9 @@ const visibleSections = computed(() =>
   .brand {
     justify-content: center;
     padding: 8px 0 18px;
+  }
+  .brand-logo-img {
+    height: 32px;
   }
   .brand span,
   .sidebar-heading,

@@ -160,6 +160,7 @@ function getPostLoginRoute(role) {
       <StockSenseFullLogo class="base-logo" />
       <StockSenseFullLogo class="trace-logo" :isTrace="true" />
     </div>
+    <p class="brand-tagline">Quản lý tồn kho thông minh</p>
 
     <section class="login-panel card card-pad">
       <div class="login-head-static">
@@ -246,9 +247,17 @@ function getPostLoginRoute(role) {
   position: relative;
   width: min(490px, 90vw); /* Large full logo width */
   aspect-ratio: 1254 / 250; /* Precise aspect ratio of the cropped wordmark */
-  margin-bottom: 32px; /* Precise visual spacing between logo and login form */
+  margin-bottom: 12px; /* Reduced to leave room for the tagline */
   display: block;
   overflow: hidden;
+}
+.brand-tagline {
+  margin: 0 0 28px 0;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-align: center;
 }
 .login-brand-logo :deep(.svg-content) {
   position: absolute;
