@@ -20,7 +20,7 @@ function playIntro() {
 
   // Initialize GSAP context for scoped selectors and easy cleanup
   ctx = gsap.context((self) => {
-    const q = gsap.utils.selector(containerRef)
+    const q = gsap.utils.selector(containerRef.value)
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     if (prefersReducedMotion) {
