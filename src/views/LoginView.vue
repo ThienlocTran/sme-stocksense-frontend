@@ -3,7 +3,6 @@ import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { login as loginWithPassword } from '../services/authService'
 import { useAuthStore } from '../stores/auth'
-import StockSenseLogo from '../components/branding/StockSenseLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -103,11 +102,12 @@ function getPostLoginRoute(role) {
 
 <template>
   <main class="login-page">
+    <div class="login-logo-outside" :class="{ 'fade-in-delayed': !introPlayed }">
+      <img src="/LogoFull.svg" alt="SME StockSense" class="outside-logo-img" />
+    </div>
+
     <section class="login-panel card card-pad">
-      <div class="login-head-static" :class="{ 'fade-in-delayed': !introPlayed }">
-        <div class="logo-static-wrap">
-          <StockSenseLogo class="static-logo-svg" />
-        </div>
+      <div class="login-head-static">
         <p class="login-subtitle">Đăng nhập hệ thống nội bộ</p>
       </div>
 
@@ -177,7 +177,28 @@ function getPostLoginRoute(role) {
 </template>
 
 <style scoped>
-.login-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+  gap: 16px;
+}
+.login-logo-outside {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.outside-logo-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
 .login-panel { width: min(420px, 100%); display: grid; gap: 24px; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08); }
 .login-head-static {
   display: flex;
@@ -186,16 +207,6 @@ function getPostLoginRoute(role) {
   width: 100%;
   gap: 16px;
   text-align: center;
-}
-.logo-static-wrap {
-  width: 100%;
-  max-width: 280px;
-  margin: 0 auto;
-}
-.static-logo-svg {
-  width: 100%;
-  height: auto;
-  display: block;
 }
 .login-subtitle {
   margin: 0;
