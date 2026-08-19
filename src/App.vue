@@ -5,6 +5,7 @@ import AppSidebar from "./components/AppSidebar.vue";
 import AppTopbar from "./components/AppTopbar.vue";
 import GuidedTourOverlay from "./components/GuidedTourOverlay.vue";
 import WelcomeModal from "./components/WelcomeModal.vue";
+import BrandIntroOverlay from "./components/BrandIntroOverlay.vue";
 import { getCurrentUser } from "./services/authService";
 import { canAccessRoute } from "./services/permissionService";
 import { useAuthStore } from "./stores/auth";
@@ -17,6 +18,30 @@ const currentRole = computed(() => authStore.currentRole);
 const isAuthLayout = computed(() => route.meta.layout === "auth");
 const isWelcomeModalOpen = ref(false);
 const isGuidedTourOpen = ref(false);
+
+const showIntro = ref(false);
+
+if (typeof window !== "undefined") {
+  const introPlayed = window.sessionStorage.getItem("stocksense-intro-played");
+  if (!introPlayed) {
+    showIntro.value = true;
+  }
+}
+
+function handleIntroComplete() {
+  showIntro.value = false;
+  if (typeof window !== "undefined") {
+    window.sessionStorage.setItem("stocksense-intro-played", "true");
+  }
+}
+
+if (import.meta.env.DEV && typeof window !== "undefined") {
+  window.__replayIntro = () => {
+    window.sessionStorage.removeItem("stocksense-intro-played");
+    showIntro.value = true;
+  };
+}
+
 
 const WELCOME_MODAL_STORAGE_KEY = "stocksense_welcome_modal_seen";
 const GUIDED_TOUR_STORAGE_KEY = "stocksense_guided_tour_seen";
@@ -186,6 +211,8 @@ watch(
 </script>
 
 <template>
+  <BrandIntroOverlay v-if="showIntro" @complete="handleIntroComplete" />
+
   <RouterView v-if="isAuthLayout" />
   <div v-else class="app-shell">
     <div
