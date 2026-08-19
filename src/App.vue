@@ -5,7 +5,7 @@ import AppSidebar from "./components/AppSidebar.vue";
 import AppTopbar from "./components/AppTopbar.vue";
 import GuidedTourOverlay from "./components/GuidedTourOverlay.vue";
 import WelcomeModal from "./components/WelcomeModal.vue";
-import BrandIntroOverlay from "./components/BrandIntroOverlay.vue";
+import BrandIntroOverlay from "./components/branding/BrandIntroOverlay.vue";
 import { getCurrentUser } from "./services/authService";
 import { canAccessRoute } from "./services/permissionService";
 import { useAuthStore } from "./stores/auth";
