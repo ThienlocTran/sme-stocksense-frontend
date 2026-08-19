@@ -9,14 +9,16 @@ const isDev = import.meta.env.DEV
 let ctx = null
 
 const staticTestMode = ref('none') // 'none', 's-mark', 'wordmark'
+const showDebugMode = ref(false)
 
-// Parse static testing mode from URL query parameters synchronously
+// Parse static testing and debug options from URL query parameters synchronously
 if (typeof window !== 'undefined') {
   const urlParams = new URLSearchParams(window.location.search)
   const testMode = urlParams.get('test_intro_static')
   if (testMode === 's-mark' || testMode === 'wordmark') {
     staticTestMode.value = testMode
   }
+  showDebugMode.value = isDev && (urlParams.get('introDebug') === '1' || testMode !== null)
 }
 
 // Helper to dynamically calculate SVG element center with hardcoded fallbacks
@@ -99,10 +101,15 @@ function applyStaticState(mode) {
   gsap.set(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']), { scale: 1, opacity: 1, y: 0 })
   gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { scale: 1, opacity: 1, x: 0, y: 0 })
 
+  // Reveal the clip paths fully for static viewing
+  gsap.set(q('#clip-rect-top'), { attr: { width: 300 } })
+  gsap.set(q('#clip-rect-bottom'), { attr: { x: 168, width: 312 } })
+
   if (mode === 's-mark') {
     // Focus viewBox and translate sense-mark for standalone S target
     svgEl.setAttribute('viewBox', '870 0 460 460')
-    gsap.set(q('#sense-mark'), { attr: { transform: 'translate(882.4 12.4) scale(0.85)' } })
+    // Center the standalone S artwork mathematically in viewport (X delta <= 5px, Y delta <= 5px)
+    gsap.set(q('#sense-mark'), { attr: { transform: 'translate(862.85 16.23) scale(0.85)' } })
     gsap.set(q('#wordmark-left'), { opacity: 0 })
     gsap.set(q('#wordmark-ense'), { opacity: 0 })
   } else if (mode === 'wordmark') {
@@ -153,6 +160,10 @@ function playIntro() {
       gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { scale: 1, opacity: 1, x: 0, y: 0 })
       gsap.set(q('#wordmark-ense'), { opacity: 1, x: 0 })
 
+      // Reveal clip-paths
+      gsap.set(q('#clip-rect-top'), { attr: { width: 300 } })
+      gsap.set(q('#clip-rect-bottom'), { attr: { x: 168, width: 312 } })
+
       gsap.to(containerRef.value, {
         duration: 0.6,
         opacity: 0,
@@ -168,7 +179,6 @@ function playIntro() {
     }
 
     // 1. Set initial states of S-Mark elements and viewport
-    // Center the viewBox tightly around the large standalone S-Mark (X=870, Y=0, W=460, H=460)
     const svgEl = q('.logo-svg')[0]
     if (svgEl) {
       svgEl.setAttribute('viewBox', '870 0 460 460')
@@ -227,17 +237,21 @@ function playIntro() {
       lenRight = traceRightPath.getTotalLength()
     }
 
-    // Center S-Mark inside the initial square viewBox (scale: 0.85, translate to 882.4, 12.4)
-    gsap.set(q('#sense-mark'), { attr: { transform: 'translate(882.4 12.4) scale(0.85)' } })
+    // Mathematically center standalone S-Mark inside viewport (translate X=862.85, Y=16.23)
+    gsap.set(q('#sense-mark'), { attr: { transform: 'translate(862.85 16.23) scale(0.85)' } })
 
     // Initialize individual group states using autoAlpha to toggle visibility and save rendering cycles
-    gsap.set(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']), { autoAlpha: 0, scale: 0.75, y: 25 })
-    gsap.set(q('#s-body'), { autoAlpha: 0, scale: 0.92, y: 10 })
+    gsap.set(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']), { autoAlpha: 0, scale: 0.65, y: 24 })
+    gsap.set(q('#s-body'), { autoAlpha: 1, scale: 1, x: 0, y: 0 })
     gsap.set(q('#swoosh-path'), { autoAlpha: 0, strokeDasharray: 100, strokeDashoffset: 100 })
     gsap.set(q('#swoosh-highlight'), { autoAlpha: 0, strokeDasharray: 100, strokeDashoffset: 100 })
     gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { autoAlpha: 0, scale: 0, x: -8, y: 12 })
     gsap.set(q('#wordmark-left'), { autoAlpha: 0, x: -40 })
     gsap.set(q('#wordmark-ense'), { autoAlpha: 0, x: 30 })
+
+    // Initial state for clip paths (top and bottom hidden initially)
+    gsap.set(q('#clip-rect-top'), { attr: { width: 0 } })
+    gsap.set(q('#clip-rect-bottom'), { attr: { x: 480, width: 0 } })
 
     // Light trace paths initial setup
     gsap.set(q(['#light-trace-left', '#light-trace-right']), { autoAlpha: 0 })
@@ -252,61 +266,139 @@ function playIntro() {
       gsap.set(traceRightPath, { strokeDasharray: `${dashRight} ${gapRight}`, strokeDashoffset: 0 })
     }
 
+    // --- Dynamic Particle Convergence System ---
+    const containerEl = document.getElementById("preloader-particles")
+    const rect = svgEl.getBoundingClientRect()
+    // Calculate target coordinates based on actual S/swoosh crossing bounds in viewport
+    const targetX = rect.left + rect.width / 2
+    const targetY = rect.top + rect.height / 2
+
+    const particleCount = 75
+    const particles = []
+    const colors = ['#10B981', '#34D399', '#A3E635', '#FFFFFF']
+
+    if (containerEl) {
+      containerEl.innerHTML = '' // clear previous elements if any
+      for (let i = 0; i < particleCount; i++) {
+        const p = document.createElement("div")
+        p.className = "preloader-particle"
+        containerEl.appendChild(p)
+
+        const angle = Math.random() * Math.PI * 2
+        const distance = 250 + Math.random() * 150 // radial distribution 250px - 400px
+        const startX = targetX + Math.cos(angle) * distance
+        const startY = targetY + Math.sin(angle) * distance
+
+        const isSquare = Math.random() > 0.75
+        p.style.borderRadius = isSquare ? '0%' : '50%'
+
+        gsap.set(p, {
+          x: startX,
+          y: startY,
+          opacity: 0,
+          scale: 0.8 + Math.random() * 1.5,
+          backgroundColor: colors[i % colors.length]
+        })
+        particles.push(p)
+      }
+    }
+
     // 2. Initialize unified master GSAP Timeline
     const tl = gsap.timeline()
 
-    // Phase 1: INVENTORY CUBES (0.00s - 0.30s)
+    // Phase A: PARTICLE CONVERGENCE (0.00s - 1.10s)
+    tl.to(particles, {
+      x: targetX,
+      y: targetY,
+      opacity: 0.9,
+      duration: 1.10,
+      stagger: { each: 0.006, from: "random" },
+      ease: "power2.inOut"
+    }, 0)
+
+    // Phase B: INVENTORY CORE POP-IN (0.75s - 1.15s)
     tl.to(q(['#box-1-wrapper', '#box-2-wrapper', '#box-3-wrapper']),
       { 
-        duration: 0.30, 
+        duration: 0.35, 
         autoAlpha: 1, 
         scale: 1, 
         y: 0, 
-        ease: 'back.out(1.35)', 
-        stagger: 0.07 
+        ease: 'back.out(1.2)', 
+        stagger: 0.08 
       },
-      0.00
+      0.75
     )
 
-    // Phase 2: S BODY (0.22s - 0.57s)
-    tl.to(q('#s-body'),
-      { duration: 0.35, autoAlpha: 1, scale: 1, y: 0, ease: 'power2.out' },
-      0.22
-    )
+    // Phase C: S BODY REVEAL via SVG Clip Paths (1.00s - 1.85s)
+    tl.to(q('#clip-rect-top'), {
+      duration: 0.85,
+      attr: { width: 300 },
+      ease: 'power2.inOut'
+    }, 1.00)
 
-    // Phase 3: SWOOSH (0.45s - 0.90s)
+    tl.to(q('#clip-rect-bottom'), {
+      duration: 0.85,
+      attr: { x: 168, width: 312 },
+      ease: 'power2.inOut'
+    }, 1.00)
+
+    // Phase D: SWOOSH DRAW (1.30s - 2.05s)
     tl.to(q('#swoosh-path'),
-      { duration: 0.45, autoAlpha: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
-      0.45
+      { duration: 0.75, autoAlpha: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
+      1.30
     )
     tl.to(q('#swoosh-highlight'),
-      { duration: 0.45, autoAlpha: 0.42, strokeDashoffset: 0, ease: 'power2.inOut' },
-      0.50
+      { duration: 0.75, autoAlpha: 0.42, strokeDashoffset: 0, ease: 'power2.inOut' },
+      1.35
     )
 
-    // Phase 4: PIXELS (0.85s - 1.15s)
+    // Phase E: PIXELS ACTIVATE (1.85s - 2.25s)
     tl.to(q(['#pixel-1', '#pixel-3', '#pixel-2', '#pixel-4']),
       { duration: 0.25, autoAlpha: 1, scale: 1, x: 0, y: 0, ease: 'back.out(1.5)', stagger: 0.06 },
-      0.85
+      1.85
     )
+    // Highest pixel pulses once upon settlement
+    tl.to(q('#pixel-4'), {
+      scale: 1.4,
+      duration: 0.12,
+      yoyo: true,
+      repeat: 1,
+      ease: 'sine.inOut'
+    }, 2.15)
 
-    // Phase 5: S MARK HOLD (1.15s - 1.75s)
-    // Standalone S remains centered and large (~400px on desktop) for 0.6s
+    // Phase F: FILL / BRAND LOCK (2.05s - 2.40s)
+    // S-mark is now fully completed, visible and locked at desktop target scale. Hold briefly.
 
-    // Phase 6: WORDMARK TRANSITION (1.75s - 2.40s)
-    // Synchronously animate the SVG viewBox, the S-Mark scale/translation, and container width
+    // Post-Assembly Particle Burst (2.40s - 3.20s)
+    particles.forEach((p, idx) => {
+      const angle = Math.random() * Math.PI * 2
+      const distance = 160 + Math.random() * 200
+      const burstX = targetX + Math.cos(angle) * distance
+      const burstY = targetY + Math.sin(angle) * distance
+      tl.to(p, {
+        x: burstX,
+        y: burstY,
+        opacity: 0,
+        scale: 0.1,
+        duration: 0.8,
+        ease: 'power3.out'
+      }, 2.40)
+    })
+
+    // Phase G: FULL WORDMARK ASSEMBLY (2.30s - 2.85s)
+    // Smoothly transition viewBox, translate the S-Mark group, and expand logo size to horizontal layout
     tl.to(svgEl, {
       width: wordmarkDims.width,
       maxWidth: wordmarkDims.maxWidth,
       duration: 0.65,
       ease: 'power3.inOut'
-    }, 1.75)
+    }, 2.30)
 
     tl.to(q('#sense-mark'), {
       duration: 0.65,
       attr: { transform: 'translate(1238.41 78.00) scale(0.59)' },
       ease: 'power3.inOut'
-    }, 1.75)
+    }, 2.30)
 
     const viewBoxObj = { x: 870, y: 0, w: 460, h: 460 }
     tl.to(viewBoxObj, {
@@ -321,60 +413,62 @@ function playIntro() {
           svgEl.setAttribute('viewBox', `${viewBoxObj.x} ${viewBoxObj.y} ${viewBoxObj.w} ${viewBoxObj.h}`)
         }
       }
-    }, 1.75)
+    }, 2.30)
 
-    // Slide in wordmarks
+    // Slide in horizontal wordmarks
     tl.fromTo(q('#wordmark-left'),
       { autoAlpha: 0, x: -40 },
       { duration: 0.50, autoAlpha: 1, x: 0, ease: 'power3.out' },
-      1.90
+      2.45
     )
     tl.fromTo(q('#wordmark-ense'),
       { autoAlpha: 0, x: 30 },
       { duration: 0.50, autoAlpha: 1, x: 0, ease: 'power3.out' },
-      1.90
+      2.45
     )
 
-    // Phase 7: ZENCO-STYLE ENERGY TRACE (2.40s - 3.40s)
-    // Moving light segments sweep around the completed wordmark contours
+    // Phase H: RUNNING LIGHT BORDER (2.80s - 3.55s)
+    // Run one clean pass of the light trace contour segment using Zenco calculations
     tl.to(q(['#light-trace-left', '#light-trace-right']), {
       duration: 0.15,
       autoAlpha: 1,
       ease: 'power1.in'
-    }, 2.40)
+    }, 2.80)
 
     tl.to(traceLeftPath, {
-      duration: 1.10,
+      duration: 1.0,
       strokeDashoffset: -lenLeft,
       ease: 'none'
-    }, 2.40)
+    }, 2.80)
 
     tl.to(traceRightPath, {
-      duration: 0.75,
+      duration: 0.70,
       strokeDashoffset: -lenRight,
       ease: 'none'
-    }, 2.75)
+    }, 3.10)
 
     tl.to(q(['#light-trace-left', '#light-trace-right']), {
       duration: 0.20,
       autoAlpha: 0,
       ease: 'power2.out'
-    }, 3.30)
+    }, 3.50)
 
-    // Phase 8: SPLIT REVEAL (3.50s - 4.15s)
-    // Viewport-based split panels open cleanly from the center
-    tl.to(q('.intro-panel-left'), { duration: 0.65, xPercent: -100, ease: 'power4.inOut' }, 3.50)
-    tl.to(q('.intro-panel-right'), { duration: 0.65, xPercent: 100, ease: 'power4.inOut' }, 3.50)
-    tl.to(svgEl, { duration: 0.65, scale: 0.97, autoAlpha: 0, ease: 'power4.inOut' }, 3.50)
-    tl.to(q('.radial-glow'), { duration: 0.65, autoAlpha: 0, ease: 'power4.inOut' }, 3.50)
+    // Phase I: EXIT SPLIT PANELS (3.60s - 4.25s)
+    tl.to(q('.intro-panel-left'), { duration: 0.65, xPercent: -100, ease: 'power4.inOut' }, 3.60)
+    tl.to(q('.intro-panel-right'), { duration: 0.65, xPercent: 100, ease: 'power4.inOut' }, 3.60)
+    tl.to(svgEl, { duration: 0.65, scale: 0.97, autoAlpha: 0, ease: 'power4.inOut' }, 3.60)
+    tl.to(q('.radial-glow'), { duration: 0.65, autoAlpha: 0, ease: 'power4.inOut' }, 3.60)
 
-    // Complete sequence: restore scrolling and notify parent view
+    // Clean up timeline triggers and DOM particles on complete
     tl.add(() => {
       if (typeof document !== 'undefined') {
         document.body.style.overflow = ''
       }
+      if (containerEl) {
+        containerEl.innerHTML = ''
+      }
       emit('complete')
-    }, 4.15)
+    }, 4.25)
 
   }, containerRef.value)
 }
@@ -394,6 +488,10 @@ onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.body.style.overflow = ''
   }
+  const containerEl = document.getElementById("preloader-particles")
+  if (containerEl) {
+    containerEl.innerHTML = ''
+  }
 })
 
 defineExpose({
@@ -410,9 +508,18 @@ defineExpose({
     <!-- Ambient Radial Glow -->
     <div class="radial-glow"></div>
     
+    <!-- Preloader Particles Container -->
+    <div id="preloader-particles"></div>
+    
     <!-- Large Centered Animated Branding Content -->
     <div class="brand-intro-stage">
       <StockSenseLogo class="logo-svg" :class="{ 'debug-mode': isDev }" />
+    </div>
+
+    <!-- Center marker and replay button for visual QA debug mode only -->
+    <div v-if="showDebugMode" class="debug-hud">
+      <div class="debug-center-marker"></div>
+      <button class="debug-replay-btn" @click="playIntro">Replay Timeline</button>
     </div>
   </div>
 </template>
@@ -423,9 +530,10 @@ defineExpose({
   inset: 0;
   width: 100vw;
   height: 100dvh;
-  z-index: 9999;
+  z-index: 99999;
   overflow: hidden;
   pointer-events: auto;
+  background: transparent;
 }
 
 .intro-panel-left,
@@ -434,26 +542,43 @@ defineExpose({
   top: 0;
   bottom: 0;
   width: 50vw;
-  background: #F8FAFC;
+  background: #08120F; /* Cinematic green-black background overlay */
   z-index: 1;
 }
 
 .intro-panel-left {
   left: 0;
-  border-right: 1px solid rgba(0, 0, 0, 0.02);
+  border-right: 1px solid rgba(255, 255, 255, 0.02);
 }
 
 .intro-panel-right {
   right: 0;
-  border-left: 1px solid rgba(0, 0, 0, 0.02);
+  border-left: 1px solid rgba(255, 255, 255, 0.02);
 }
 
 .radial-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.06) 0%, rgba(248, 250, 252, 0) 70%);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, rgba(8, 18, 15, 0) 70%);
   z-index: 2;
   pointer-events: none;
+}
+
+#preloader-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+:deep(.preloader-particle) {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 
 .brand-intro-stage {
@@ -522,5 +647,58 @@ defineExpose({
   stroke: #F59E0B !important;
   stroke-width: 3px !important;
   stroke-dasharray: 4 4 !important;
+}
+
+/* Debug HUD Style */
+.debug-hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10000;
+}
+.debug-center-marker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(239, 68, 68, 0.7);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.debug-center-marker::before,
+.debug-center-marker::after {
+  content: '';
+  position: absolute;
+  background: rgba(239, 68, 68, 0.7);
+}
+.debug-center-marker::before {
+  left: -12px;
+  top: 11px;
+  width: 44px;
+  height: 2px;
+}
+.debug-center-marker::after {
+  left: 11px;
+  top: -12px;
+  width: 2px;
+  height: 44px;
+}
+.debug-replay-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  pointer-events: auto;
+  background: #EF4444;
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+.debug-replay-btn:hover {
+  background: #DC2626;
 }
 </style>
