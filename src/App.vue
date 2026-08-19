@@ -5,6 +5,7 @@ import AppSidebar from "./components/AppSidebar.vue";
 import AppTopbar from "./components/AppTopbar.vue";
 import GuidedTourOverlay from "./components/GuidedTourOverlay.vue";
 import WelcomeModal from "./components/WelcomeModal.vue";
+import BrandIntroOverlay from "./components/branding/BrandIntroOverlay.vue";
 import { getCurrentUser } from "./services/authService";
 import { canAccessRoute } from "./services/permissionService";
 import { useAuthStore } from "./stores/auth";
@@ -18,13 +19,55 @@ const isAuthLayout = computed(() => route.meta.layout === "auth");
 const isWelcomeModalOpen = ref(false);
 const isGuidedTourOpen = ref(false);
 
+const showIntro = ref(false);
+
+if (typeof window !== "undefined") {
+  const introPlayed = window.sessionStorage.getItem("stocksense-intro-played");
+  if (!introPlayed) {
+    showIntro.value = true;
+  }
+}
+
+function triggerWelcomeOrTour() {
+  if (showIntro.value) return; // Do not show modals while the intro animation is playing
+  if (!isAuthLayout.value) {
+    if (shouldShowWelcomeModal()) {
+      isWelcomeModalOpen.value = true;
+    } else if (shouldShowGuidedTour()) {
+      isGuidedTourOpen.value = true;
+    }
+  }
+}
+
+function handleIntroComplete() {
+  showIntro.value = false;
+  if (typeof window !== "undefined") {
+    window.sessionStorage.setItem("stocksense-intro-played", "true");
+    window.dispatchEvent(new CustomEvent('stocksense-intro-complete'));
+  }
+  // Trigger modals only after the intro animation has completed
+  triggerWelcomeOrTour();
+}
+
+if (import.meta.env.DEV && typeof window !== "undefined") {
+  window.__replayIntro = () => {
+    window.sessionStorage.removeItem("stocksense-intro-played");
+    showIntro.value = true;
+  };
+}
+
+
 const WELCOME_MODAL_STORAGE_KEY = "stocksense_welcome_modal_seen";
 const GUIDED_TOUR_STORAGE_KEY = "stocksense_guided_tour_seen";
 
-function getStorageKey(baseKey) {
+// Helper to determine storage keys based on current user session
+const getUserId = () => {
   const currentUser = getCurrentUser();
-  const userId = currentUser?.employeeId || currentUser?.id || "guest";
-  return `${baseKey}_${userId}`;
+  return currentUser?.employeeId || currentUser?.id || "guest";
+};
+
+function getStorageKey(baseKey) {
+  return `${baseKey}_${getUserId()}`;
 }
 
 function shouldShowWelcomeModal() {
@@ -65,7 +108,6 @@ function closeWelcomeModal(action = "dismiss") {
   }
 }
 
-// Complete rewrite of close/skip guided tour
 function closeGuidedTour() {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(getStorageKey(GUIDED_TOUR_STORAGE_KEY), "true");
@@ -133,17 +175,12 @@ const visibleGuidedTourSteps = computed(() =>
     if (!step.permissionRoute) {
       return true;
     }
-
     return canAccessRoute(step.permissionRoute, currentRole.value);
   }),
 );
 
 onMounted(() => {
-  if (!isAuthLayout.value && shouldShowWelcomeModal()) {
-    isWelcomeModalOpen.value = true;
-  } else if (!isAuthLayout.value && shouldShowGuidedTour()) {
-    isGuidedTourOpen.value = true;
-  }
+  triggerWelcomeOrTour();
 });
 
 watch(isAuthLayout, (newVal, oldVal) => {
@@ -154,11 +191,7 @@ watch(isAuthLayout, (newVal, oldVal) => {
   }
 
   if (oldVal === true && newVal === false) {
-    if (shouldShowWelcomeModal()) {
-      isWelcomeModalOpen.value = true;
-    } else if (shouldShowGuidedTour()) {
-      isGuidedTourOpen.value = true;
-    }
+    triggerWelcomeOrTour();
   }
 });
 
@@ -186,6 +219,10 @@ watch(
 </script>
 
 <template>
+  <Teleport to="body">
+    <BrandIntroOverlay v-if="showIntro" @complete="handleIntroComplete" />
+  </Teleport>
+
   <RouterView v-if="isAuthLayout" />
   <div v-else class="app-shell">
     <div

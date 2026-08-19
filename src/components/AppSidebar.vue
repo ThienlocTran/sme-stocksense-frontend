@@ -1,12 +1,64 @@
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useAuthStore } from "../stores/auth";
 import { useLayoutStore } from "../stores/layout";
 import { canAccessRoute } from "../services/permissionService";
+import StockSenseFullLogo from "./branding/StockSenseFullLogo.vue";
+import StockSenseMark from "./branding/StockSenseMark.vue";
+import { gsap } from "gsap";
 
 const authStore = useAuthStore();
 const layoutStore = useLayoutStore();
 const currentRole = computed(() => authStore.currentRole);
+
+let isSidebarTracing = false;
+
+function playSidebarTraceAnimation() {
+  if (isSidebarTracing) return;
+  
+  const traceLogo = document.querySelector('.sidebar-logo-full .trace-logo');
+  const greenPath = document.querySelector('.sidebar-logo-full .trace-logo .running-light-path');
+  const whitePath = document.querySelector('.sidebar-logo-full .trace-logo .running-light-path-white');
+  
+  if (traceLogo && greenPath && whitePath) {
+    isSidebarTracing = true;
+    const traceLen = greenPath.getTotalLength();
+    
+    gsap.set(traceLogo, { opacity: 0 });
+    gsap.set([greenPath, whitePath], {
+      strokeDasharray: `${traceLen * 0.20} ${traceLen * 0.80}`,
+      strokeDashoffset: 0
+    });
+    
+    const tl = gsap.timeline({
+      onComplete: () => {
+        isSidebarTracing = false;
+      }
+    });
+    
+    tl.to(traceLogo, {
+      opacity: 1,
+      duration: 0.15,
+      ease: 'power1.out'
+    }, 0);
+    
+    tl.to([greenPath, whitePath], {
+      strokeDashoffset: -traceLen,
+      duration: 1.8,
+      ease: 'power2.inOut'
+    }, 0);
+    
+    tl.to(traceLogo, {
+      opacity: 0,
+      duration: 0.3,
+      ease: 'power1.in'
+    }, 1.5);
+  }
+}
+
+onMounted(() => {
+  setTimeout(playSidebarTraceAnimation, 600);
+});
 
 const menuSections = [
   {
@@ -104,12 +156,19 @@ const visibleSections = computed(() =>
 
 <template>
   <aside class="sidebar" :class="{ 'sidebar--mobile-open': layoutStore.isMobileOpen }">
-    <RouterLink to="/dashboard" class="brand" @click="layoutStore.closeMobileSidebar">
-      <span class="brand-mark">S</span>
-      <span>
-        <strong>SME StockSense</strong>
-        <small>Quản lý tồn kho thông minh</small>
-      </span>
+    <RouterLink 
+      to="/dashboard" 
+      class="brand" 
+      @click="layoutStore.closeMobileSidebar"
+      @mouseenter="playSidebarTraceAnimation"
+    >
+      <div class="sidebar-logo-full">
+        <StockSenseFullLogo class="base-logo" />
+        <StockSenseFullLogo class="trace-logo" :isTrace="true" />
+      </div>
+      <div class="sidebar-logo-collapsed">
+        <StockSenseMark />
+      </div>
     </RouterLink>
     <nav class="nav-list">
       <template
@@ -171,7 +230,7 @@ const visibleSections = computed(() =>
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
   padding: 8px 10px 18px;
   border-bottom: 1px solid var(--color-border);
 }
@@ -186,15 +245,36 @@ const visibleSections = computed(() =>
   font-weight: 700;
   font-size: 20px;
 }
-.brand strong {
-  display: block;
-  color: var(--color-text-primary);
-  line-height: 20px;
+.sidebar-logo-collapsed {
+  display: none;
 }
-.brand small {
+.sidebar-logo-full {
   display: block;
-  color: var(--color-text-secondary);
-  margin-top: 2px;
+  position: relative;
+  width: 100%;
+  max-width: 180px;
+  aspect-ratio: 1254 / 250;
+  height: auto;
+  overflow: hidden;
+}
+.sidebar-logo-full :deep(.svg-content) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  transform: translateY(-39.872%);
+}
+.base-logo {
+  width: 100%;
+  height: 100%;
+}
+.trace-logo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
 }
 .nav-list {
   display: flex;
@@ -316,7 +396,15 @@ const visibleSections = computed(() =>
     justify-content: center;
     padding: 8px 0 18px;
   }
-  .brand span:not(.brand-mark),
+  .sidebar-logo-full {
+    display: none !important;
+  }
+  .sidebar-logo-collapsed {
+    display: block !important;
+    width: 38px;
+    height: 38px;
+  }
+  .brand span,
   .sidebar-heading,
   .nav-item span,
   .user-info {
