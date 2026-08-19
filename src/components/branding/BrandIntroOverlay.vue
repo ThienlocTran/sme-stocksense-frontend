@@ -60,20 +60,21 @@ function playIntro() {
     // Inventory boxes: hidden, translated down, scaled down
     gsap.set(q(['#box-1', '#box-2', '#box-3']), { opacity: 0, scale: 0.65, y: 28 })
     
-    // S body top/bottom: hidden, offset diagonally
-    gsap.set(q('#s-body-top'), { opacity: 0, scale: 0.90, x: -16, y: -16 })
-    gsap.set(q('#s-body-bottom'), { opacity: 0, scale: 0.90, x: 16, y: 16 })
+    // S body parent and child parts setup
+    gsap.set(q('#s-body'), { opacity: 0, scale: 0.85 })
+    gsap.set(q('#s-body-top'), { x: -16, y: -16 })
+    gsap.set(q('#s-body-bottom'), { x: 16, y: 16 })
     
     // Swoosh paths: set strokeDasharray/strokeDashoffset for path drawing sweep
-    gsap.set(q('#swoosh-path'), { strokeDasharray: 100, strokeDashoffset: 100 })
-    gsap.set(q('#swoosh-highlight'), { strokeDasharray: 100, strokeDashoffset: 100 })
+    gsap.set(q('#swoosh-path'), { opacity: 0, strokeDasharray: 100, strokeDashoffset: 100 })
+    gsap.set(q('#swoosh-highlight'), { opacity: 0, strokeDasharray: 100, strokeDashoffset: 100 })
     
     // Data pixels: hidden, scale 0, offset bottom-left for growth motion
     gsap.set(q(['#pixel-1', '#pixel-2', '#pixel-3', '#pixel-4']), { opacity: 0, scale: 0, x: -8, y: 12 })
     
     // Left and Right wordmarks: hidden, offset left and right respectively
-    gsap.set(q('#wordmark-left'), { opacity: 0, x: -40 })
-    gsap.set(q('#wordmark-ense'), { opacity: 0, x: 40 })
+    gsap.set(q('#wordmark-left'), { opacity: 0, x: -30 })
+    gsap.set(q('#wordmark-ense'), { opacity: 0, x: 30 })
 
     // 2. Initialize unified master GSAP Timeline
     const tl = gsap.timeline()
@@ -102,27 +103,30 @@ function playIntro() {
       0.00
     )
 
-    // 0.25s-0.75s: Act 2: S-body top and bottom converge from diagonals around cubes
+    // 0.25s-0.75s: Act 2: S-body parent group scales & fades in, and top/bottom diagonal converge
+    tl.fromTo(q('#s-body'),
+      { opacity: 0, scale: 0.85 },
+      { duration: 0.50, opacity: 1, scale: 1, transformOrigin: 'center center', ease: 'power3.out' },
+      0.25
+    )
     tl.fromTo(q('#s-body-top'),
-      { opacity: 0, scale: 0.90, x: -16, y: -16 },
-      { duration: 0.45, opacity: 1, scale: 1, x: 0, y: 0, transformOrigin: 'center center', ease: 'power3.out' },
+      { x: -16, y: -16 },
+      { duration: 0.50, x: 0, y: 0, ease: 'power3.out' },
       0.25
     )
     tl.fromTo(q('#s-body-bottom'),
-      { opacity: 0, scale: 0.90, x: 16, y: 16 },
-      { duration: 0.45, opacity: 1, scale: 1, x: 0, y: 0, transformOrigin: 'center center', ease: 'power3.out' },
+      { x: 16, y: 16 },
+      { duration: 0.50, x: 0, y: 0, ease: 'power3.out' },
       0.25
     )
 
     // 0.45s-1.05s: Act 3: Swoosh draw paths
-    tl.fromTo(q('#swoosh-path'),
-      { strokeDashoffset: 100 },
-      { duration: 0.55, strokeDashoffset: 0, ease: 'power2.inOut' },
+    tl.to(q('#swoosh-path'),
+      { duration: 0.55, opacity: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
       0.45
     )
-    tl.fromTo(q('#swoosh-highlight'),
-      { strokeDashoffset: 100 },
-      { duration: 0.55, strokeDashoffset: 0, ease: 'power2.inOut' },
+    tl.to(q('#swoosh-highlight'),
+      { duration: 0.55, opacity: 1, strokeDashoffset: 0, ease: 'power2.inOut' },
       0.50
     )
 
@@ -172,16 +176,16 @@ function playIntro() {
       ease: 'power3.out'
     }, 1.20)
     
-    // Left and right wordmarks slide in from opposite sides
+    // Left and right wordmarks slide in from opposite sides at 1.30s (slight delay)
     tl.fromTo(q('#wordmark-left'),
-      { opacity: 0, x: -40 },
+      { opacity: 0, x: -30 },
       { duration: 0.55, opacity: 1, x: 0, ease: 'power3.out' },
-      1.20
+      1.30
     )
     tl.fromTo(q('#wordmark-ense'),
-      { opacity: 0, x: 40 },
+      { opacity: 0, x: 30 },
       { duration: 0.55, opacity: 1, x: 0, ease: 'power3.out' },
-      1.20
+      1.30
     )
 
     // 1.65s-1.95s: Full logo final lock-in scale motion
@@ -295,6 +299,7 @@ defineExpose({
 }
 
 .logo-svg {
+  opacity: 0; /* Hide by default to prevent layout flash before GSAP initializes */
   /* Sizing constraints per spec: width min(70vw, 850px) on desktop, 82vw on mobile */
   width: 82vw;
   height: auto;
@@ -305,6 +310,24 @@ defineExpose({
   will-change: transform, opacity, filter;
   transform-style: preserve-3d;
   backface-visibility: hidden;
+}
+
+/* Hide all sub-components initially in CSS to ensure 0ms flash-free startup */
+#wordmark-left,
+#wordmark-ense,
+#s-body,
+#s-body-top,
+#s-body-bottom,
+#swoosh-path,
+#swoosh-highlight,
+#box-1,
+#box-2,
+#box-3,
+#pixel-1,
+#pixel-2,
+#pixel-3,
+#pixel-4 {
+  opacity: 0;
 }
 
 @media (min-width: 768px) {
