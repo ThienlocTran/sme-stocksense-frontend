@@ -3,6 +3,8 @@ import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { login as loginWithPassword } from '../services/authService'
 import { useAuthStore } from '../stores/auth'
+import { gsap } from 'gsap'
+import StockSenseFullLogo from '../components/branding/StockSenseFullLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,11 +25,59 @@ function triggerDevReplay() {
   }
 }
 
-const introPlayed = ref(false)
+// Function to trigger signature running light sweep effect
+function playTraceAnimation() {
+  const traceLogo = document.querySelector('.trace-logo')
+  const greenPath = document.querySelector('.trace-logo .running-light-path')
+  const whitePath = document.querySelector('.trace-logo .running-light-path-white')
+  if (traceLogo && greenPath && whitePath) {
+    const traceLen = greenPath.getTotalLength()
+    
+    // Set up initial state: transparent trace layer and reset path offset to 0
+    gsap.set(traceLogo, { opacity: 0 })
+    gsap.set([greenPath, whitePath], {
+      strokeDasharray: `${traceLen * 0.20} ${traceLen * 0.80}`,
+      strokeDashoffset: 0
+    })
+    
+    // Create GSAP timeline for coordinated sweep and fade
+    const tl = gsap.timeline()
+    
+    // Fade in the trace layer quickly
+    tl.to(traceLogo, {
+      opacity: 1,
+      duration: 0.15,
+      ease: 'power1.out'
+    }, 0)
+    
+    // Sweep the dash across the entire length of the logo contour
+    tl.to([greenPath, whitePath], {
+      strokeDashoffset: -traceLen,
+      duration: 1.8,
+      ease: 'power2.inOut'
+    }, 0)
+    
+    // Fade out the trace layer at the end of the sweep to ensure a clean finish
+    tl.to(traceLogo, {
+      opacity: 0,
+      duration: 0.3,
+      ease: 'power1.in'
+    }, 1.5) // Starts slightly before the 1.8s sweep ends
+  }
+}
 
 onMounted(() => {
   if (typeof window !== 'undefined') {
-    introPlayed.value = window.sessionStorage.getItem('stocksense-intro-played') === 'true'
+    // If intro has already completed, run immediately
+    const introPlayed = window.sessionStorage.getItem('stocksense-intro-played') === 'true'
+    if (introPlayed) {
+      setTimeout(playTraceAnimation, 400)
+    } else {
+      // Otherwise wait for the custom completion event from App.vue
+      window.addEventListener('stocksense-intro-complete', () => {
+        setTimeout(playTraceAnimation, 500)
+      })
+    }
     
     // Gate dev replay behind explicit debug flag (URL query parameter or localStorage)
     const urlParams = new URLSearchParams(window.location.search)
@@ -36,10 +86,6 @@ onMounted(() => {
     showDevReplay.value = isDev && (debugIntro || debugIntroStorage)
   }
 })
-
-
-
-
 
 watch(() => form.email, () => {
   fieldErrors.email = ''
@@ -109,9 +155,14 @@ function getPostLoginRoute(role) {
 
 <template>
   <main class="login-page">
+    <!-- Large wordmark above the form container, with absolute overlay trace -->
+    <div class="login-brand-logo">
+      <StockSenseFullLogo class="base-logo" />
+      <StockSenseFullLogo class="trace-logo" :isTrace="true" />
+    </div>
+
     <section class="login-panel card card-pad">
       <div class="login-head-static">
-        <h1 class="login-title">SME StockSense</h1>
         <p class="login-subtitle">Đăng nhập hệ thống nội bộ</p>
       </div>
 
@@ -186,31 +237,50 @@ function getPostLoginRoute(role) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 24px;
+  justify-content: flex-start; /* Nudge everything up */
+  padding: 8dvh 24px 24px; /* Pull content up towards top half */
   background: var(--bg);
   position: relative;
 }
-.login-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--color-brand);
-  letter-spacing: -0.02em;
+.login-brand-logo {
+  position: relative;
+  width: min(490px, 90vw); /* Large full logo width */
+  aspect-ratio: 1254 / 250; /* Precise aspect ratio of the cropped wordmark */
+  margin-bottom: 32px; /* Precise visual spacing between logo and login form */
+  display: block;
+  overflow: hidden;
+}
+.login-brand-logo :deep(.svg-content) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  transform: translateY(-39.872%); /* Shift upward to align text visual center: 500 / 1254 = 39.872% */
+}
+.base-logo {
+  width: 100%;
+  height: 100%;
+}
+.trace-logo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0; /* Guard against FOUC before animation starts */
 }
 .login-panel {
   width: min(420px, 100%);
   display: grid;
   gap: 24px;
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-  margin-top: 40px;
 }
 .login-head-static {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  gap: 16px;
+  gap: 8px;
   text-align: center;
 }
 .login-subtitle {
@@ -267,7 +337,4 @@ function getPostLoginRoute(role) {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-
 </style>
-
-
