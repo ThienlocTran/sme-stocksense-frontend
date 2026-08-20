@@ -506,7 +506,7 @@ onMounted(() => {
           repeat: -1,
           ease: 'sine.inOut'
         });
-      }, 2.8);
+      }, 2.5);
     }
 
     const ambientBgGlow = document.getElementById('ambient-bg-glow');
@@ -523,37 +523,37 @@ onMounted(() => {
     mainTimeline.to(overlay, {
       backgroundColor: 'transparent',
       duration: 0.05
-    }, 4.75);
+    }, 2.75);
 
     mainTimeline.to(svg, {
       scale: 0.97,
       opacity: 0,
       duration: 0.7,
       ease: 'power2.inOut'
-    }, 4.75);
+    }, 2.75);
 
     mainTimeline.to('.bg-effects', {
       opacity: 0,
       duration: 0.7,
       ease: 'power2.inOut'
-    }, 4.75);
+    }, 2.75);
 
     mainTimeline.to('#panel-l', {
       x: '-100%',
       duration: 0.75,
       ease: 'power3.inOut'
-    }, 4.80);
+    }, 2.80);
     
     mainTimeline.to('#panel-r', {
       x: '100%',
       duration: 0.75,
       ease: 'power3.inOut'
-    }, 4.80);
+    }, 2.80);
 
     mainTimeline.to(overlay, {
       opacity: 0,
       duration: 0.2
-    }, 5.45);
+    }, 3.45);
 
   } catch (error) {
     console.error("Error initializing GSAP timeline:", error);
