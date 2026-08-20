@@ -72,7 +72,7 @@ export function canAccessRoute(path, role) {
     return ['ADMIN', 'MANAGER'].includes(resolvedRole)
   }
 
-  if (path === '/approvals' || path === '/pending-export-approvals' || path === '/export-approvals') {
+  if (path === '/approvals') {
     return ['ADMIN', 'MANAGER'].includes(resolvedRole)
   }
 
