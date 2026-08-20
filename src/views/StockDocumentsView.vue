@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '../components/PageHeader.vue'
 import DataTable from '../components/DataTable.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
@@ -14,6 +15,7 @@ import { cancelExportReceipt, cancelLateExportReceipt, getExportReceipts, getMyE
 const props = defineProps({ type: { type: String, default: 'in' } })
 
 const router = useRouter()
+const { t } = useI18n()
 const receipts = ref([])
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -49,48 +51,50 @@ const hasNextPage = computed(() => page.value + 1 < totalPages.value)
 const currentRole = computed(() => getCurrentRoleCode())
 const isOut = computed(() => props.type === 'out')
 const canCreateReceipt = computed(() => isOut.value ? canCreateExportReceipt() : canCreateImportReceipt())
-const pageTitle = computed(() => `${isOut.value ? 'Phiếu xuất' : 'Phiếu nhập'}${currentRole.value === 'EMPLOYEE' ? ' của tôi' : ' kho'}`)
-const pageDescription = computed(() => `Danh sách phiếu ${isOut.value ? 'xuất' : 'nhập'} kho từ hệ thống.`)
+const pageTitle = computed(() => {
+  const baseKey = isOut.value ? 'export' : 'import'
+  const roleKey = currentRole.value === 'EMPLOYEE' ? 'My' : 'All'
+  return t(`stockDocument.title.${baseKey}.${roleKey}`)
+})
+const pageDescription = computed(() => {
+  return t(`stockDocument.desc.${isOut.value ? 'export' : 'import'}`)
+})
 
 const columns = computed(() => [
-  { key: 'code', label: 'Mã phiếu' },
-  { key: 'warehouseName', label: 'Kho' },
-  { key: isOut.value ? 'partnerName' : 'supplierName', label: isOut.value ? 'Đối tác' : 'Nhà cung cấp' },
-  { key: 'createdAt', label: 'Ngày tạo' },
-  { key: 'status', label: 'Trạng thái' },
-  { key: 'totalAmount', label: 'Tổng tiền' },
-  { key: 'actions', label: 'Thao tác' },
+  { key: 'code', label: t('stockDocument.columns.code') },
+  { key: 'warehouseName', label: t('stockDocument.columns.warehouse') },
+  { key: isOut.value ? 'partnerName' : 'supplierName', label: isOut.value ? t('stockDocument.columns.partner') : t('stockDocument.columns.supplier') },
+  { key: 'createdAt', label: t('stockDocument.columns.createdAt') },
+  { key: 'status', label: t('stockDocument.columns.status') },
+  { key: 'totalAmount', label: t('stockDocument.columns.totalAmount') },
+  { key: 'actions', label: t('stockDocument.columns.actions') },
 ])
 
-const statusOptions = [
-  { value: 'NHAP', label: 'Nháp' },
-  { value: 'CHO_DUYET', label: 'Chờ duyệt' },
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ duyệt' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ duyệt' },
-  { value: 'DA_DUYET', label: 'Đã duyệt' },
-  { value: 'CHO_HANG_VE', label: 'Chờ hàng về' },
-  { value: 'CHO_KIEM_HANG', label: 'Chờ kiểm hàng' },
-  { value: 'HOAN_THANH', label: 'Hoàn thành' },
-  { value: 'TU_CHOI', label: 'Từ chối' },
-  { value: 'HUY', label: 'Hủy' },
-]
+const statusOptions = computed(() => [
+  { value: 'NHAP', label: t('stockDocument.status.draft') },
+  { value: 'CHO_DUYET', label: t('stockDocument.status.pending') },
+  { value: 'CHO_DUYET_CAP_1', label: t('stockDocument.status.pending') },
+  { value: 'CHO_DUYET_CAP_2', label: t('stockDocument.status.pending') },
+  { value: 'DA_DUYET', label: t('stockDocument.status.approved') },
+  { value: 'CHO_HANG_VE', label: t('stockDocument.status.pending_delivery') },
+  { value: 'CHO_KIEM_HANG', label: t('stockDocument.status.pending_inspection') },
+  { value: 'HOAN_THANH', label: t('stockDocument.status.completed') },
+  { value: 'TU_CHOI', label: t('stockDocument.status.rejected') },
+  { value: 'HUY', label: t('stockDocument.status.cancelled') },
+])
 
-const statusLabels = {
-  ...Object.fromEntries(statusOptions.map(status => [status.value, status.label])),
-}
-
-const statusHelpers = {
-  NHAP: 'Bản nháp - chưa gửi phê duyệt.',
-  CHO_DUYET: 'Đang chờ người có thẩm quyền phê duyệt.',
-  CHO_DUYET_CAP_1: 'Chờ duyệt cấp 1 - đang chờ xử lý.',
-  CHO_DUYET_CAP_2: 'Chờ duyệt cấp 2 - chờ quản lý cấp cao.',
-  DA_DUYET: 'Đã duyệt - phiếu được chấp nhận, chờ xử lý kho.',
-  CHO_HANG_VE: 'Chờ hàng về - phiếu đã duyệt, chờ giao hàng.',
-  CHO_KIEM_HANG: 'Chờ kiểm hàng - vui lòng kiểm kê thực tế.',
-  HOAN_THANH: 'Hoàn thành - hàng đã nhập/xuất kho thành công.',
-  TU_CHOI: 'Từ chối - vui lòng kiểm tra lý do và chỉnh sửa.',
-  HUY: 'Đã hủy - phiếu không còn hiệu lực.',
-}
+const statusHelpers = computed(() => ({
+  NHAP: t('stockDocument.statusDesc.draft'),
+  CHO_DUYET: t('stockDocument.statusDesc.pending'),
+  CHO_DUYET_CAP_1: t('stockDocument.statusDesc.pending_level1'),
+  CHO_DUYET_CAP_2: t('stockDocument.statusDesc.pending_level2'),
+  DA_DUYET: t('stockDocument.statusDesc.approved'),
+  CHO_HANG_VE: t('stockDocument.statusDesc.pending_delivery'),
+  CHO_KIEM_HANG: t('stockDocument.statusDesc.pending_inspection'),
+  HOAN_THANH: t('stockDocument.statusDesc.completed'),
+  TU_CHOI: t('stockDocument.statusDesc.rejected'),
+  HUY: t('stockDocument.statusDesc.cancelled'),
+}))
 
 onMounted(() => {
   fetchReceipts()
@@ -228,9 +232,9 @@ async function confirmSubmit(receipt) {
     if (isOut.value) await submitExportReceipt(receipt.id, receipt.version)
     else await submitForApproval(receipt.id)
     await fetchReceipts()
-    actionMessage.value = 'Gửi duyệt thành công.'
+    actionMessage.value = t('stockDocument.actionMessages.submitSuccess')
   } catch (error) {
-    actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
+    actionErrorMessage.value = error.message || t('stockDocument.actionMessages.actionFailed')
     if (error.status === 401) router.replace('/login')
   } finally {
     actionState.receiptId = null
@@ -247,21 +251,21 @@ async function confirmCancel(receipt) {
   try {
     if (isOut.value) {
       if (receipt.status === 'DA_DUYET') {
-        await cancelLateExportReceipt(receipt.id, 'Hủy phiếu xuất')
+        await cancelLateExportReceipt(receipt.id, t('stockDocument.actionMessages.cancelExport'))
       } else {
         await cancelExportReceipt(receipt.id)
       }
     } else {
       if (receipt.status === 'CHO_HANG_VE' || receipt.status === 'CHO_KIEM_HANG') {
-        await cancelLateImportReceipt(receipt.id, 'Hủy phiếu nhập')
+        await cancelLateImportReceipt(receipt.id, t('stockDocument.actionMessages.cancelImport'))
       } else {
         await cancelDraft(receipt.id)
       }
     }
     await fetchReceipts()
-    actionMessage.value = `Hủy phiếu ${isOut.value ? 'xuất' : 'nhập'} thành công.`
+    actionMessage.value = t('stockDocument.actionMessages.cancelSuccess', { type: isOut.value ? t('stockDocument.typeOut') : t('stockDocument.typeIn') })
   } catch (error) {
-    actionErrorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
+    actionErrorMessage.value = error.message || t('stockDocument.actionMessages.actionFailed')
     if (error.status === 401) router.replace('/login')
   } finally {
     actionState.receiptId = null
@@ -279,7 +283,19 @@ function isAnyActionRunning(receipt) {
 }
 
 function statusLabel(status) {
-  return statusLabels[status] || status || '-'
+  const mapping = {
+    NHAP: t('stockDocument.status.draft'),
+    CHO_DUYET: t('stockDocument.status.pending'),
+    CHO_DUYET_CAP_1: t('stockDocument.status.pending'),
+    CHO_DUYET_CAP_2: t('stockDocument.status.pending'),
+    DA_DUYET: t('stockDocument.status.approved'),
+    CHO_HANG_VE: t('stockDocument.status.pending_delivery'),
+    CHO_KIEM_HANG: t('stockDocument.status.pending_inspection'),
+    HOAN_THANH: t('stockDocument.status.completed'),
+    TU_CHOI: t('stockDocument.status.rejected'),
+    HUY: t('stockDocument.status.cancelled'),
+  }
+  return mapping[status] || status || '-'
 }
 
 function hasRejectionReason(receipt) {
@@ -288,8 +304,8 @@ function hasRejectionReason(receipt) {
 
 function rejectionReasonText(receipt) {
   return hasRejectionReason(receipt)
-    ? `Lý do từ chối: ${String(receipt.rejectionReason).trim()}`
-    : 'Chưa có lý do từ chối.'
+    ? `${t('stockDocument.rejectionReason')}: ${String(receipt.rejectionReason).trim()}`
+    : t('stockDocument.noRejectionReason')
 }
 
 function canEditImportReceipt(status) {
@@ -302,9 +318,8 @@ function canSubmitImportReceipt(status) {
   return status === 'NHAP' || status === 'TU_CHOI'
 }
 
-// Map TU_CHOI to 'Gửi duyệt lại' or 'Gửi duyệt'
 function submitLabel(status) {
-  return status === 'TU_CHOI' ? 'Gửi duyệt lại' : 'Gửi duyệt'
+  return status === 'TU_CHOI' ? t('stockDocument.actionResubmit') : t('stockDocument.actionSubmit')
 }
 
 function canCancelReceipt(row) {
@@ -353,45 +368,46 @@ function formatCurrency(value) {
 }
 
 function confirmTitle() {
-  return confirmState.action === 'cancel' ? 'Xác nhận hủy' : 'Xác nhận gửi duyệt'
+  return confirmState.action === 'cancel' ? t('stockDocument.confirmCancelTitle') : t('stockDocument.confirmSubmitTitle')
 }
 
 function confirmMessage() {
+  const typeStr = isOut.value ? t('stockDocument.typeOut') : t('stockDocument.typeIn')
   return confirmState.action === 'cancel'
-    ? `Hủy phiếu ${isOut.value ? 'xuất' : 'nhập'} này?`
-    : `Gửi duyệt phiếu ${isOut.value ? 'xuất' : 'nhập'} này?`
+    ? t('stockDocument.confirmCancelMsg', { type: typeStr })
+    : t('stockDocument.confirmSubmitMsg', { type: typeStr })
 }
 
 function confirmText() {
-  return confirmState.action === 'cancel' ? 'Hủy phiếu' : 'Gửi duyệt'
+  return confirmState.action === 'cancel' ? t('stockDocument.actionCancel') : t('stockDocument.actionSubmit')
 }
 </script>
 
 <template>
   <PageHeader :title="pageTitle" :description="pageDescription">
     <button v-if="canCreateReceipt" class="btn btn-primary" type="button" @click="goCreate">
-      <i class="mdi" :class="isOut ? 'mdi-tray-arrow-up' : 'mdi-tray-arrow-down'"></i> Tạo phiếu
+      <i class="mdi" :class="isOut ? 'mdi-tray-arrow-up' : 'mdi-tray-arrow-down'"></i> {{ isOut ? t('stockDocument.createOut') : t('stockDocument.createIn') }}
     </button>
   </PageHeader>
 
   <div class="filter-bar card card-pad">
     <div class="flex items-center gap-3">
       <select v-model="filters.status" class="select max-w-xs" @change="applyFilter">
-        <option value="">Tất cả trạng thái</option>
+        <option value="">{{ t('stockDocument.allStatuses') }}</option>
         <option v-for="status in statusOptions" :key="status.value" :value="status.value">{{ status.label }}</option>
       </select>
-      <button class="btn btn-ghost" type="button" @click="clearFilters">Xóa lọc</button>
+      <button class="btn btn-ghost" type="button" @click="clearFilters">{{ t('stockDocument.clearFilters') }}</button>
     </div>
   </div>
 
   <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
   <p v-if="actionErrorMessage" class="form-alert form-alert-error">{{ actionErrorMessage }}</p>
   <p v-if="actionMessage" class="form-alert form-alert-info">{{ actionMessage }}</p>
-  <p v-if="isLoading" class="muted loading-line">Đang tải danh sách phiếu...</p>
+  <p v-if="isLoading" class="muted loading-line">{{ t('stockDocument.loadingList') }}</p>
 
   <!-- Desktop Table view -->
   <div class="hidden md:block">
-    <DataTable :columns="columns" :rows="receipts" :empty-text="`Chưa có phiếu ${isOut ? 'xuất' : 'nhập'} kho.`">
+    <DataTable :columns="columns" :rows="receipts" :empty-text="isOut ? t('stockDocument.emptyOut') : t('stockDocument.emptyIn')">
       <template #warehouseName="{ value }">{{ value || '-' }}</template>
       <template #supplierName="{ value }">{{ value || '-' }}</template>
       <template #partnerName="{ value }">{{ value || '-' }}</template>
@@ -408,7 +424,7 @@ function confirmText() {
       <template #totalAmount="{ value }">{{ formatCurrency(value) }}</template>
       <template #actions="{ row }">
         <div class="action-dropdown-container">
-          <button class="btn btn-sm btn-secondary" type="button" @click="goDetail(row)">Xem</button>
+          <button class="btn btn-sm btn-secondary" type="button" @click="goDetail(row)">{{ t('stockDocument.actionView') }}</button>
           
           <div class="dropdown-wrapper">
             <button 
@@ -428,7 +444,7 @@ function confirmText() {
                 :disabled="isAnyActionRunning(row)" 
                 @click="goEdit(row); closeActionMenu()"
               >
-                <i class="mdi mdi-pencil-outline"></i> Sửa
+                <i class="mdi mdi-pencil-outline"></i> {{ t('stockDocument.actionEdit') }}
               </button>
               <button 
                 v-if="canSubmitImportReceipt(row.status)" 
@@ -446,7 +462,7 @@ function confirmText() {
                 :disabled="isAnyActionRunning(row)" 
                 @click="handleCancel(row); closeActionMenu()"
               >
-                <i class="mdi mdi-cancel"></i> Hủy
+                <i class="mdi mdi-cancel"></i> {{ t('stockDocument.actionCancel') }}
               </button>
               <button 
                 class="dropdown-item" 
@@ -454,7 +470,7 @@ function confirmText() {
                 :disabled="isAnyActionRunning(row)" 
                 @click="openHistory(row); closeActionMenu()"
               >
-                <i class="mdi mdi-history"></i> Lịch sử
+                <i class="mdi mdi-history"></i> {{ t('stockDocument.actionHistory') }}
               </button>
             </div>
           </div>
@@ -466,7 +482,7 @@ function confirmText() {
   <!-- Mobile Responsive cards list -->
   <div class="block md:hidden space-y-4">
     <div v-if="receipts.length === 0" class="card card-pad text-center muted py-8">
-      Chưa có phiếu {{ isOut ? 'xuất' : 'nhập' }} nào phù hợp với bộ lọc.
+      {{ isOut ? t('stockDocument.emptyOutFilter') : t('stockDocument.emptyInFilter') }}
     </div>
     <div v-else v-for="row in receipts" :key="row.id" class="card card-pad relative space-y-3">
       <div class="between">
@@ -478,23 +494,23 @@ function confirmText() {
       
       <div class="grid grid-cols-2 gap-2 text-sm">
         <div>
-          <span class="text-muted block text-xs uppercase font-semibold">Kho</span>
+          <span class="text-muted block text-xs uppercase font-semibold">{{ t('stockDocument.columns.warehouse') }}</span>
           <span class="font-medium text-text">{{ row.warehouseName || '-' }}</span>
         </div>
         <div>
           <span class="text-muted block text-xs uppercase font-semibold">
-            {{ isOut ? 'Đối tác' : 'Nhà cung cấp' }}
+            {{ isOut ? t('stockDocument.columns.partner') : t('stockDocument.columns.supplier') }}
           </span>
           <span class="font-medium text-text">
             {{ isOut ? row.partnerName : row.supplierName || '-' }}
           </span>
         </div>
         <div>
-          <span class="text-muted block text-xs uppercase font-semibold">Ngày tạo</span>
+          <span class="text-muted block text-xs uppercase font-semibold">{{ t('stockDocument.columns.createdAt') }}</span>
           <span class="font-medium text-text">{{ formatDate(row.createdAt) }}</span>
         </div>
         <div>
-          <span class="text-muted block text-xs uppercase font-semibold">Tổng tiền</span>
+          <span class="text-muted block text-xs uppercase font-semibold">{{ t('stockDocument.columns.totalAmount') }}</span>
           <span class="font-bold text-danger">{{ formatCurrency(row.totalAmount) }}</span>
         </div>
       </div>
@@ -508,29 +524,29 @@ function confirmText() {
       </div>
 
       <div class="border-t border-gray-100 pt-3 flex justify-end gap-2">
-        <button class="btn btn-sm btn-secondary" type="button" @click="goDetail(row)">Xem</button>
+        <button class="btn btn-sm btn-secondary" type="button" @click="goDetail(row)">{{ t('stockDocument.actionView') }}</button>
         <button v-if="canEditImportReceipt(row.status)" class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="goEdit(row)">
-          Sửa
+          {{ t('stockDocument.actionEdit') }}
         </button>
         <button v-if="canSubmitImportReceipt(row.status)" class="btn btn-sm btn-primary" type="button" :disabled="isAnyActionRunning(row)" @click="handleSubmit(row)">
-          {{ isActionRunning(row, 'submit') ? 'Đang gửi...' : submitLabel(row.status) }}
+          {{ isActionRunning(row, 'submit') ? t('stockDocument.actionSubmitting') : submitLabel(row.status) }}
         </button>
         <button v-if="canCancelReceipt(row)" class="btn btn-sm btn-danger" type="button" :disabled="isAnyActionRunning(row)" @click="handleCancel(row)">
-          Hủy
+          {{ t('stockDocument.actionCancel') }}
         </button>
         <button class="btn btn-sm btn-secondary" type="button" :disabled="isAnyActionRunning(row)" @click="openHistory(row)">
-          Lịch sử
+          {{ t('stockDocument.actionHistory') }}
         </button>
       </div>
     </div>
   </div>
 
   <div class="pagination-bar card card-pad">
-    <span class="muted">{{ totalElements }} phiếu {{ isOut ? 'xuất' : 'nhập' }}</span>
+    <span class="muted">{{ totalElements }} {{ isOut ? t('stockDocument.typeOut') : t('stockDocument.typeIn') }}</span>
     <div class="pagination-actions">
-      <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage" @click="previousPage">Trước</button>
-      <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
-      <button class="btn btn-sm" type="button" :disabled="!hasNextPage" @click="nextPage">Sau</button>
+      <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage" @click="previousPage">{{ t('stockDocument.paginationPrevious') }}</button>
+      <span class="page-indicator">{{ t('stockDocument.pageIndicator', { current: totalPages === 0 ? 0 : page + 1, total: totalPages }) }}</span>
+      <button class="btn btn-sm" type="button" :disabled="!hasNextPage" @click="nextPage">{{ t('stockDocument.paginationNext') }}</button>
     </div>
   </div>
 

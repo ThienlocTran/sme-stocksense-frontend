@@ -22,6 +22,88 @@
     "yes": "Có",
     "no": "Không"
   },
+  "stockDocument": {
+    "title": {
+      "import": {
+        "All": "Phiếu nhập kho",
+        "My": "Phiếu nhập của tôi"
+      },
+      "export": {
+        "All": "Phiếu xuất kho",
+        "My": "Phiếu xuất của tôi"
+      }
+    },
+    "desc": {
+      "import": "Danh sách phiếu nhập kho từ hệ thống.",
+      "export": "Danh sách phiếu xuất kho từ hệ thống."
+    },
+    "createIn": "Tạo phiếu nhập",
+    "createOut": "Tạo phiếu xuất",
+    "allStatuses": "Tất cả trạng thái",
+    "clearFilters": "Xóa lọc",
+    "loadingList": "Đang tải danh sách phiếu...",
+    "emptyIn": "Chưa có phiếu nhập kho.",
+    "emptyOut": "Chưa có phiếu xuất kho.",
+    "emptyInFilter": "Chưa có phiếu nhập nào phù hợp với bộ lọc.",
+    "emptyOutFilter": "Chưa có phiếu xuất nào phù hợp với bộ lọc.",
+    "columns": {
+      "code": "Mã phiếu",
+      "warehouse": "Kho",
+      "supplier": "Nhà cung cấp",
+      "partner": "Đối tác",
+      "createdAt": "Ngày tạo",
+      "status": "Trạng thái",
+      "totalAmount": "Tổng tiền",
+      "actions": "Thao tác"
+    },
+    "actionView": "Xem",
+    "actionEdit": "Sửa",
+    "actionCancel": "Hủy",
+    "actionSubmit": "Gửi duyệt",
+    "actionResubmit": "Gửi duyệt lại",
+    "actionSubmitting": "Đang gửi...",
+    "actionHistory": "Lịch sử",
+    "typeIn": "phiếu nhập",
+    "typeOut": "phiếu xuất",
+    "paginationPrevious": "Trước",
+    "paginationNext": "Sau",
+    "pageIndicator": "Trang {current}/{total}",
+    "rejectionReason": "Lý do từ chối",
+    "noRejectionReason": "Chưa có lý do từ chối.",
+    "confirmCancelTitle": "Xác nhận hủy",
+    "confirmSubmitTitle": "Xác nhận gửi duyệt",
+    "confirmCancelMsg": "Hủy {type} này?",
+    "confirmSubmitMsg": "Gửi duyệt {type} này?",
+    "status": {
+      "draft": "Nháp",
+      "pending": "Chờ duyệt",
+      "approved": "Đã duyệt",
+      "pending_delivery": "Chờ hàng về",
+      "pending_inspection": "Chờ kiểm hàng",
+      "completed": "Hoàn thành",
+      "rejected": "Từ chối",
+      "cancelled": "Hủy"
+    },
+    "statusDesc": {
+      "draft": "Bản nháp - chưa gửi phê duyệt.",
+      "pending": "Đang chờ người có thẩm quyền phê duyệt.",
+      "pending_level1": "Chờ duyệt cấp 1 - đang chờ xử lý.",
+      "pending_level2": "Chờ duyệt cấp 2 - chờ quản lý cấp cao.",
+      "approved": "Đã duyệt - phiếu được chấp nhận, chờ xử lý kho.",
+      "pending_delivery": "Chờ hàng về - phiếu đã duyệt, chờ giao hàng.",
+      "pending_inspection": "Chờ kiểm hàng - vui lòng kiểm kê thực tế.",
+      "completed": "Hoàn thành - hàng đã nhập/xuất kho thành công.",
+      "rejected": "Từ chối - vui lòng kiểm tra lý do và chỉnh sửa.",
+      "cancelled": "Đã hủy - phiếu không còn hiệu lực."
+    },
+    "actionMessages": {
+      "submitSuccess": "Gửi duyệt thành công.",
+      "cancelSuccess": "Hủy {type} thành công.",
+      "actionFailed": "Thao tác thất bại, vui lòng thử lại.",
+      "cancelImport": "Hủy phiếu nhập",
+      "cancelExport": "Hủy phiếu xuất"
+    }
+  },
   "sidebar": {
     "sections": {
       "operations": "Vận hành",

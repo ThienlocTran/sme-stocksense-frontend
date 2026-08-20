@@ -22,6 +22,88 @@
     "yes": "Yes",
     "no": "No"
   },
+  "stockDocument": {
+    "title": {
+      "import": {
+        "All": "Import Receipts",
+        "My": "My Import Receipts"
+      },
+      "export": {
+        "All": "Export Receipts",
+        "My": "My Export Receipts"
+      }
+    },
+    "desc": {
+      "import": "List of import receipts from the system.",
+      "export": "List of export receipts from the system."
+    },
+    "createIn": "Create Import",
+    "createOut": "Create Export",
+    "allStatuses": "All Statuses",
+    "clearFilters": "Clear Filters",
+    "loadingList": "Loading document list...",
+    "emptyIn": "No import receipts found.",
+    "emptyOut": "No export receipts found.",
+    "emptyInFilter": "No import receipts match the filter.",
+    "emptyOutFilter": "No export receipts match the filter.",
+    "columns": {
+      "code": "Document Code",
+      "warehouse": "Warehouse",
+      "supplier": "Supplier",
+      "partner": "Partner",
+      "createdAt": "Created Date",
+      "status": "Status",
+      "totalAmount": "Total Amount",
+      "actions": "Actions"
+    },
+    "actionView": "View",
+    "actionEdit": "Edit",
+    "actionCancel": "Cancel",
+    "actionSubmit": "Submit",
+    "actionResubmit": "Resubmit",
+    "actionSubmitting": "Submitting...",
+    "actionHistory": "History",
+    "typeIn": "import receipt",
+    "typeOut": "export receipt",
+    "paginationPrevious": "Prev",
+    "paginationNext": "Next",
+    "pageIndicator": "Page {current}/{total}",
+    "rejectionReason": "Rejection Reason",
+    "noRejectionReason": "No rejection reason specified.",
+    "confirmCancelTitle": "Confirm Cancel",
+    "confirmSubmitTitle": "Confirm Submit",
+    "confirmCancelMsg": "Cancel this {type}?",
+    "confirmSubmitMsg": "Submit this {type} for approval?",
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending Approval",
+      "approved": "Approved",
+      "pending_delivery": "Pending Delivery",
+      "pending_inspection": "Pending Inspection",
+      "completed": "Completed",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    },
+    "statusDesc": {
+      "draft": "Draft - not submitted for approval yet.",
+      "pending": "Awaiting approval from authorized personnel.",
+      "pending_level1": "Level 1 approval pending - awaiting action.",
+      "pending_level2": "Level 2 approval pending - awaiting senior management.",
+      "approved": "Approved - receipt accepted, awaiting warehouse processing.",
+      "pending_delivery": "Pending delivery - receipt approved, awaiting shipping.",
+      "pending_inspection": "Pending inspection - please verify physical stock.",
+      "completed": "Completed - goods successfully imported/exported.",
+      "rejected": "Rejected - please check reason and modify.",
+      "cancelled": "Cancelled - document is no longer active."
+    },
+    "actionMessages": {
+      "submitSuccess": "Submitted for approval successfully.",
+      "cancelSuccess": "Cancelled {type} successfully.",
+      "actionFailed": "Action failed, please try again.",
+      "cancelImport": "Cancel Import",
+      "cancelExport": "Cancel Export"
+    }
+  },
   "sidebar": {
     "sections": {
       "operations": "Operations",
