@@ -9,6 +9,10 @@ const props = defineProps({
   modelValue: {
     type: [Number, String],
     default: 0
+  },
+  disabled: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -38,7 +42,7 @@ watch(() => props.modelValue, (newVal) => {
   const currentNum = parseNumber(rawInput.value)
   const propNum = Number(newVal) || 0
   if (currentNum !== propNum || (newVal === 0 && rawInput.value === '')) {
-    rawInput.value = newVal !== null && newVal !== undefined && newVal !== 0 ? formatNumber(newVal) : ''
+    rawInput.value = newVal !== null && newVal !== undefined && newVal !== 0 && newVal !== '' ? formatNumber(newVal) : ''
   }
 }, { immediate: true })
 
@@ -93,7 +97,7 @@ function handleInput(e) {
   const formatted = formatNumber(clean)
   rawInput.value = formatted
   
-  const numVal = clean ? parseInt(clean, 10) : 0
+  const numVal = clean ? parseInt(clean, 10) : ''
   emit('update:modelValue', numVal)
   
   nextTick(() => {
@@ -129,6 +133,7 @@ function handleBlur(e) {
       type="text"
       inputmode="numeric"
       :value="rawInput"
+      :disabled="disabled"
       @input="handleInput"
       @keydown="handleKeyDown"
       @focus="handleFocus"

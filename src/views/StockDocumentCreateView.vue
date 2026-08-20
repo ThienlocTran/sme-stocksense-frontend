@@ -18,6 +18,7 @@ import {
 } from '../services/importReceiptService'
 import { cancelExportReceipt, createExportReceipt, getExportReceipt, submitExportReceipt, updateExportReceipt } from '../services/exportReceiptService'
 import { getCurrentRoleCode, getCurrentUser } from '../services/authService'
+import { getInventory } from '../services/inventoryService'
 
 const props = defineProps({
   type: { type: String, default: 'in' },
@@ -80,13 +81,15 @@ const form = reactive({
 const itemDraft = reactive({
   productId: null,
   quantity: 1,
-  unitPrice: 0,
+  unitPrice: '',
   note: '',
 })
 
 const items = ref([])
 const formErrors = reactive({ warehouseId: '', supplierId: '', note: '' })
 const itemErrors = reactive({ productId: '', quantity: '', unitPrice: '' })
+const selectedProductStock = ref(null)
+const isLoadingStock = ref(false)
 
 const hasOperationalPermission = computed(() => ['ADMIN', 'EMPLOYEE'].includes(getCurrentRoleCode()))
 const isCreateMode = computed(() => props.mode === 'create')
@@ -148,6 +151,35 @@ watch(form, () => {
 watch(items, () => {
   if (!isHydrating.value) isDirty.value = true
 }, { deep: true })
+
+watch(() => itemDraft.productId, (newProductId) => {
+  if (newProductId) {
+    const product = products.value.find(p => String(p.id) === String(newProductId))
+    if (product) {
+      itemDraft.unitPrice = product.price ?? ''
+    }
+  } else {
+    itemDraft.unitPrice = ''
+  }
+})
+
+watch(() => [form.warehouseId, itemDraft.productId], async ([newWarehouseId, newProductId]) => {
+  if (newWarehouseId && newProductId) {
+    isLoadingStock.value = true
+    try {
+      const data = await getInventory({ warehouseId: newWarehouseId, productId: newProductId, page: 0, size: 1 })
+      const inventoryItem = data.content?.[0]
+      selectedProductStock.value = inventoryItem ? inventoryItem.currentQuantity : 0
+    } catch (error) {
+      console.error('Error fetching selected product stock:', error)
+      selectedProductStock.value = 0
+    } finally {
+      isLoadingStock.value = false
+    }
+  } else {
+    selectedProductStock.value = null
+  }
+})
 
 async function loadDropdowns() {
   isLoading.value = true
@@ -319,13 +351,18 @@ function validateItem() {
     isValid = false
   }
 
-  if (itemDraft.unitPrice === null || itemDraft.unitPrice === undefined || itemDraft.unitPrice < 0) {
+  if (itemDraft.unitPrice === null || itemDraft.unitPrice === undefined || itemDraft.unitPrice === '' || Number(itemDraft.unitPrice) < 0) {
     itemErrors.unitPrice = t('stockDocumentCreate.validation.unitPriceMin')
     isValid = false
   }
 
   if (itemDraft.productId && items.value.some(item => item.productId === itemDraft.productId)) {
     itemErrors.productId = t('stockDocumentCreate.validation.productExists')
+    isValid = false
+  }
+
+  if (props.type === 'out' && selectedProductStock.value !== null && itemDraft.quantity > selectedProductStock.value) {
+    itemErrors.quantity = t('stockDocumentCreate.validation.quantityExceedsStock', { stock: selectedProductStock.value })
     isValid = false
   }
 
@@ -346,14 +383,14 @@ function addItem() {
     productCode: product.code || product.sku,
     productName: product.name,
     quantity: itemDraft.quantity,
-    unitPrice: itemDraft.unitPrice,
+    unitPrice: Number(itemDraft.unitPrice) || 0,
     note: itemDraft.note.trim(),
-    lineTotal: itemDraft.quantity * itemDraft.unitPrice,
+    lineTotal: itemDraft.quantity * (Number(itemDraft.unitPrice) || 0),
   })
 
   itemDraft.productId = null
   itemDraft.quantity = 1
-  itemDraft.unitPrice = 0
+  itemDraft.unitPrice = ''
   itemDraft.note = ''
   itemErrors.productId = ''
   itemErrors.quantity = ''
@@ -642,6 +679,19 @@ function confirmText() {
             </select>
             <span v-if="itemErrors.productId" class="import-receipt-form__error">{{ itemErrors.productId }}</span>
             <span v-else-if="errorState.products" class="import-receipt-form__error">{{ errorState.products }}</span>
+
+            <!-- Stock indicator helper -->
+            <div v-if="itemDraft.productId" class="mt-1.5 text-sm" style="display: flex; align-items: center; gap: 6px; line-height: 1.4; font-weight: 600;">
+              <span v-if="!form.warehouseId" style="color: #d97706;">
+                ⚠️ Vui lòng chọn kho để xem tồn kho
+              </span>
+              <span v-else-if="isLoadingStock" style="color: #64748b;">
+                🔄 Đang kiểm tra tồn kho...
+              </span>
+              <span v-else-if="selectedProductStock !== null" :style="{ color: selectedProductStock > 0 ? '#16825d' : '#dc2626' }">
+                📦 Tồn kho hiện tại: {{ selectedProductStock }}
+              </span>
+            </div>
           </div>
 
           <div class="import-receipt-form__field">
@@ -844,9 +894,11 @@ function confirmText() {
   </template>
 </template>
 
-<style scoped>
+<style>
 @import '../assets/styles/import-receipt-form.css';
+</style>
 
+<style scoped>
 .mdi-spin {
   animation: spin 0.8s linear infinite;
 }
