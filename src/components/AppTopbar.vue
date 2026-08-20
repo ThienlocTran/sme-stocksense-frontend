@@ -25,26 +25,18 @@ const { locale, t } = useI18n()
 const currentLang = computed(() => locale.value)
 
 const vuetifyTheme = useTheme()
-const isDark = ref(localStorage.getItem('stocksense_theme') === 'dark')
+const isDark = computed(() => layoutStore.theme === 'dark')
 
 function changeLang(lang) {
   locale.value = lang
+  localStorage.setItem('stocksense-locale', lang)
   localStorage.setItem('stocksense_lang', lang)
-  // Dispatch dynamic event to notify other components if necessary
   window.dispatchEvent(new CustomEvent('stocksense-lang-change', { detail: lang }))
 }
 
 function toggleTheme() {
-  const newTheme = isDark.value ? 'light' : 'dark'
-  isDark.value = !isDark.value
-  localStorage.setItem('stocksense_theme', newTheme)
-  vuetifyTheme.global.name.value = newTheme
-  
-  if (newTheme === 'dark') {
-    document.documentElement.classList.add('dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-  }
+  layoutStore.toggleTheme()
+  vuetifyTheme.global.name.value = layoutStore.theme
 }
 
 const isUserMenuOpen = ref(false)

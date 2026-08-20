@@ -193,12 +193,14 @@ onMounted(() => {
   triggerWelcomeOrTour();
   
   // Initialize dark mode
-  const savedTheme = localStorage.getItem('stocksense_theme') || 'light';
+  const savedTheme = localStorage.getItem('stocksense-theme') || localStorage.getItem('stocksense_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   if (savedTheme === 'dark') {
     document.documentElement.classList.add('dark');
+    document.documentElement.setAttribute('data-theme', 'dark');
     vuetifyTheme.global.name.value = 'dark';
   } else {
     document.documentElement.classList.remove('dark');
+    document.documentElement.setAttribute('data-theme', 'light');
     vuetifyTheme.global.name.value = 'light';
   }
 });

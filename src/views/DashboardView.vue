@@ -20,6 +20,7 @@ import {
   getWarehouseDistribution
 } from "../services/dashboardService";
 import { useAuthStore } from "../stores/auth";
+import { useLayoutStore } from "../stores/layout";
 import { useI18n } from 'vue-i18n';
 import ApexCharts from "vue3-apexcharts";
 
@@ -29,6 +30,7 @@ defineOptions({
 
 const router = useRouter();
 const authStore = useAuthStore();
+const layoutStore = useLayoutStore();
 const { t } = useI18n();
 
 const isLoading = ref(true);
@@ -754,7 +756,7 @@ const movementChartOptions = computed(() => {
     tooltip: {
       shared: true,
       intersect: false,
-      theme: "light",
+      theme: layoutStore.theme === 'dark' ? 'dark' : 'light',
       x: { show: true },
       y: {
         formatter: (val) => `${formatNumber(val)} sản phẩm`
@@ -788,13 +790,13 @@ const stockHealthOptions = computed(() => {
     },
     labels: ["Còn hàng", "Sắp hết", "Hết hàng"],
     colors: ["#16825D", "#D97706", "#DC2626"],
-    stroke: { show: true, colors: ["#FFF"], width: 2 },
+    stroke: { show: true, colors: [layoutStore.theme === 'dark' ? '#151D30' : '#FFF'], width: 2 },
     dataLabels: { enabled: false },
     legend: {
       show: false
     },
     tooltip: {
-      theme: "light",
+      theme: layoutStore.theme === 'dark' ? 'dark' : 'light',
       y: {
         formatter: (val) => `${formatNumber(val)} vị trí`
       }
@@ -872,7 +874,7 @@ const warehouseDistOptions = computed(() => {
       enabled: true,
       textAnchor: "start",
       style: {
-        colors: ["#17201E"],
+        colors: [layoutStore.theme === 'dark' ? '#FFFFFF' : '#17201E'],
         fontSize: "11px",
         fontWeight: "bold",
         fontFamily: "inherit"
@@ -900,7 +902,7 @@ const warehouseDistOptions = computed(() => {
       }
     },
     tooltip: {
-      theme: "light",
+      theme: layoutStore.theme === 'dark' ? 'dark' : 'light',
       x: { show: true },
       y: {
         formatter: (val) => `${formatNumber(val)} sản phẩm`
