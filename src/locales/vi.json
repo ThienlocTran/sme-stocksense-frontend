@@ -161,8 +161,14 @@
     "sections": {
       "operations": "Vận hành",
       "analytics": "Phân tích",
+      "analyticsAndTracking": "Phân tích & Theo dõi",
       "approvals": "Phê duyệt",
-      "management": "Quản lý"
+      "management": "Quản lý",
+      "generalOperations": "Vận hành chung",
+      "warehouseOps": "Nghiệp vụ kho",
+      "systemManagement": "Quản lý hệ thống",
+      "overview": "Tổng quan",
+      "baseData": "Dữ liệu nền tảng"
     },
     "menu": {
       "dashboard": "Tổng quan",
@@ -552,6 +558,9 @@
     "category": "Danh mục",
     "supplier": "Nhà cung cấp",
     "unit": "Đơn vị",
+    "unitVolumeM3": "Thể tích (m³)",
+    "labelUnitVolume": "Thể tích đơn vị (m³)",
+    "unconfigured": "Chưa cấu hình",
     "minStock": "Ngưỡng tối thiểu",
     "price": "Đơn giá",
     "status": "Trạng thái",
@@ -560,6 +569,7 @@
     "errNameEmpty": "Tên sản phẩm không được để trống.",
     "errUnitEmpty": "Đơn vị tính không được để trống.",
     "errPriceInvalid": "Đơn giá phải lớn hơn hoặc bằng 0.",
+    "errUnitVolumeInvalid": "Thể tích đơn vị phải lớn hơn 0.",
     "errMinStockInvalid": "Ngưỡng tồn phải lớn hơn hoặc bằng 0.",
     "errStatusEmpty": "Trạng thái không được để trống.",
     "successUpdate": "Cập nhật sản phẩm thành công.",

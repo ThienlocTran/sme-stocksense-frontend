@@ -70,6 +70,25 @@ export async function updateWarehouse(id, payload) {
   }
 }
 
+/**
+ * Lấy thông tin sức chứa kho (API GET /api/warehouses/{id}/capacity).
+ * Trả về: usedCapacityM3, remainingCapacityM3, maxCapacityM3, usagePercent, status (BINH_THUONG/CAN_LUU_Y/NGUY_HIEM/QUA_TAI)
+ */
+export async function getWarehouseCapacity(id) {
+  try {
+    const { data } = await warehouseClient.get(`/api/warehouses/${id}/capacity`, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    // Nếu kho chưa cấu hình maxCapacityM3, trả về null thay vì throw
+    if (error.response?.status === 404 || error.response?.status === 422) {
+      return null
+    }
+    throw normalizeWarehouseError(error, 'Không thể tải thông tin sức chứa kho.')
+  }
+}
+
 function normalizeWarehouseError(error, fallbackMessage) {
   if (error.response?.status === 401) {
     clearAuth()

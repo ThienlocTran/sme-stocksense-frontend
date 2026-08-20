@@ -15,6 +15,7 @@ import {
 import { canManageWarehouses } from "../services/permissionService";
 import {
   createWarehouse,
+  getWarehouseCapacity,
   getWarehouses,
   updateWarehouse,
 } from "../services/warehouseService";
@@ -22,6 +23,7 @@ import {
 const router = useRouter();
 const { t } = useI18n();
 const warehouses = ref([]);
+const capacityMap = ref({}); // warehouseId -> capacity info
 const isLoading = ref(false);
 const isSaving = ref(false);
 const togglingId = ref(null);
@@ -61,6 +63,7 @@ const columns = computed(() => {
   return [
     { key: "tenKho", label: t("warehouse.table.name"), class: "cell-long" },
     { key: "diaChi", label: t("warehouse.table.address"), class: "cell-medium" },
+    { key: "sucChua", label: "Sức chứa", class: "cell-medium" },
     { key: "trangThai", label: t("warehouse.table.status"), class: "cell-nowrap" },
     { key: "actions", label: t("warehouse.table.actions"), class: "cell-nowrap" },
   ];
@@ -72,6 +75,7 @@ const formErrors = reactive({
   tenKho: "",
   diaChi: "",
   trangThai: "",
+  maxCapacityM3: "",
 });
 
 onMounted(fetchWarehouses);
@@ -86,6 +90,8 @@ async function fetchWarehouses() {
         keyword: filters.keyword,
         status: filters.status,
       })) || [];
+    // Load capacity info async cho từng kho (không block UI)
+    loadCapacities();
   } catch (error) {
     warehouses.value = [];
     errorMessage.value = error.message;
@@ -93,6 +99,18 @@ async function fetchWarehouses() {
   } finally {
     isLoading.value = false;
   }
+}
+
+async function loadCapacities() {
+  const ids = (warehouses.value || []).map((w) => w.id);
+  const results = await Promise.allSettled(ids.map((id) => getWarehouseCapacity(id)));
+  const map = {};
+  ids.forEach((id, i) => {
+    if (results[i].status === "fulfilled") {
+      map[id] = results[i].value; // null nếu chưa cấu hình
+    }
+  });
+  capacityMap.value = map;
 }
 
 function applySearch() {
@@ -112,7 +130,7 @@ function clearFilters() {
 }
 
 function createEmptyForm() {
-  return { id: "", maKho: "", tenKho: "", diaChi: "", trangThai: "HOAT_DONG" };
+  return { id: "", maKho: "", tenKho: "", diaChi: "", trangThai: "HOAT_DONG", maxCapacityM3: "" };
 }
 
 function openCreateForm() {
@@ -133,6 +151,7 @@ function openEditForm(warehouse) {
     tenKho: warehouse.tenKho || "",
     diaChi: warehouse.diaChi || "",
     trangThai: warehouse.trangThai || "HOAT_DONG",
+    maxCapacityM3: warehouse.maxCapacityM3 != null ? String(warehouse.maxCapacityM3) : "",
   });
   successMessage.value = "";
   clearFormFeedback();
@@ -189,6 +208,14 @@ function validateForm() {
     isValid = false;
   }
 
+  if (form.maxCapacityM3 !== "" && form.maxCapacityM3 !== null) {
+    const val = parseFloat(form.maxCapacityM3);
+    if (isNaN(val) || val <= 0) {
+      formErrors.maxCapacityM3 = "Sức chứa tối đa phải là số dương (m³).";
+      isValid = false;
+    }
+  }
+
   return isValid;
 }
 
@@ -200,11 +227,13 @@ async function submitWarehouseForm() {
   saveErrorMessage.value = "";
 
   try {
+    const maxCap = form.maxCapacityM3 !== "" ? parseFloat(form.maxCapacityM3) : null;
     if (isEditMode.value) {
       await updateWarehouse(form.id, {
         tenKho: form.tenKho.trim(),
         diaChi: form.diaChi ? form.diaChi.trim() : null,
         trangThai: form.trangThai,
+        maxCapacityM3: maxCap,
       });
       successMessage.value = t("warehouse.msg.successUpdate");
     } else {
@@ -213,6 +242,7 @@ async function submitWarehouseForm() {
         tenKho: form.tenKho.trim(),
         diaChi: form.diaChi ? form.diaChi.trim() : null,
         trangThai: form.trangThai,
+        maxCapacityM3: maxCap,
       });
       successMessage.value = t("warehouse.msg.successCreate");
     }
@@ -252,6 +282,7 @@ async function confirmStatus() {
       tenKho: warehouse.tenKho,
       diaChi: warehouse.diaChi || null,
       trangThai: nextStatus,
+      maxCapacityM3: warehouse.maxCapacityM3 || null,
     });
     successMessage.value =
       nextStatus === "HOAT_DONG"
@@ -269,6 +300,22 @@ async function confirmStatus() {
 
 function displayStatus(status) {
   return getWarehouseStatusLabel(status);
+}
+
+function capacityStatusClass(status) {
+  if (!status) return "";
+  if (status === "QUA_TAI") return "cap-danger";
+  if (status === "NGUY_HIEM") return "cap-warning";
+  if (status === "CAN_LUU_Y") return "cap-caution";
+  return "cap-ok";
+}
+
+function capacityStatusLabel(status) {
+  if (!status) return "";
+  if (status === "QUA_TAI") return "Quá tải";
+  if (status === "NGUY_HIEM") return "Nguy hiểm";
+  if (status === "CAN_LUU_Y") return "Cần lưu ý";
+  return "Bình thường";
 }
 </script>
 
@@ -375,6 +422,26 @@ function displayStatus(status) {
             </div>
           </template>
           <template #diaChi="{ value }">{{ value || "-" }}</template>
+          <template #sucChua="{ row }">
+            <div v-if="capacityMap[row.id]" class="cap-bar-wrap">
+              <div class="cap-bar">
+                <div
+                  class="cap-bar__fill"
+                  :class="capacityStatusClass(capacityMap[row.id]?.status)"
+                  :style="{ width: Math.min(capacityMap[row.id]?.usagePercent ?? 0, 100) + '%' }"
+                ></div>
+              </div>
+              <span class="cap-bar__label" :class="capacityStatusClass(capacityMap[row.id]?.status)">
+                {{ capacityMap[row.id]?.usagePercent?.toFixed(0) }}%
+                {{ capacityStatusLabel(capacityMap[row.id]?.status) }}
+              </span>
+              <span class="cap-bar__detail text-xs text-slate-400">
+                {{ capacityMap[row.id]?.usedCapacityM3?.toFixed(2) }} /
+                {{ capacityMap[row.id]?.maxCapacityM3?.toFixed(2) }} m³
+              </span>
+            </div>
+            <span v-else class="text-xs text-slate-400 italic">Chưa cấu hình</span>
+          </template>
           <template #trangThai="{ value }">
             <StatusBadge :status="displayStatus(value)" />
           </template>
@@ -440,6 +507,26 @@ function displayStatus(status) {
           <div class="warehouse-mobile-card__body" v-if="row.diaChi">
             <span class="text-xs text-slate-500">{{ t("warehouse.table.addressEmpty") }}</span>
             <p class="text-sm font-medium text-slate-700">{{ row.diaChi }}</p>
+          </div>
+
+          <div class="warehouse-mobile-card__body" v-if="capacityMap[row.id]">
+            <span class="text-xs text-slate-500">Sức chứa</span>
+            <div class="cap-bar-wrap mt-1">
+              <div class="cap-bar">
+                <div
+                  class="cap-bar__fill"
+                  :class="capacityStatusClass(capacityMap[row.id]?.status)"
+                  :style="{ width: Math.min(capacityMap[row.id]?.usagePercent ?? 0, 100) + '%' }"
+                ></div>
+              </div>
+              <span class="cap-bar__label" :class="capacityStatusClass(capacityMap[row.id]?.status)">
+                {{ capacityMap[row.id]?.usagePercent?.toFixed(0) }}%
+                {{ capacityStatusLabel(capacityMap[row.id]?.status) }}
+              </span>
+              <span class="cap-bar__detail text-xs text-slate-400">
+                {{ capacityMap[row.id]?.usedCapacityM3?.toFixed(2) }} / {{ capacityMap[row.id]?.maxCapacityM3?.toFixed(2) }} m³
+              </span>
+            </div>
           </div>
 
           <div class="warehouse-mobile-card__actions mt-2 pt-2 border-t border-slate-100 flex flex-wrap gap-2 justify-end">
@@ -584,6 +671,25 @@ function displayStatus(status) {
               </option>
             </select>
             <small v-if="formErrors.trangThai" class="field-error block text-red-600 font-semibold mt-1">{{ formErrors.trangThai }}</small>
+          </div>
+
+          <div class="field field--full">
+            <label class="field-label font-semibold text-slate-700 block mb-1">
+              Sức chứa tối đa (m³)
+              <span class="field-note">&nbsp;— Tổng thể tích vật lý của kho</span>
+            </label>
+            <input
+              v-model="form.maxCapacityM3"
+              class="input"
+              :class="{ 'input-invalid': formErrors.maxCapacityM3 }"
+              type="number"
+              min="0"
+              step="0.001"
+              placeholder="Ví dụ: 500.000 (m³). Để trống nếu chưa xác định."
+              :disabled="isSaving"
+            />
+            <small class="field-note block text-slate-400 mt-1">Để trống nếu kho chưa được đo đạc thể tích. Hệ thống sẽ không cảnh báo sức chứa cho kho chưa cấu hình.</small>
+            <small v-if="formErrors.maxCapacityM3" class="field-error block text-red-600 font-semibold mt-1">{{ formErrors.maxCapacityM3 }}</small>
           </div>
         </div>
 
@@ -813,5 +919,44 @@ function displayStatus(status) {
     border-top: 1px solid var(--color-border);
     padding-top: 12px;
   }
+}
+
+/* Capacity progress bar */
+.cap-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+.cap-bar {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.cap-bar__fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  background: #22c55e; /* green default = BINH_THUONG */
+}
+.cap-bar__fill.cap-caution { background: #f59e0b; }
+.cap-bar__fill.cap-warning { background: #ef4444; }
+.cap-bar__fill.cap-danger  { background: #7f1d1d; }
+.cap-bar__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #22c55e;
+}
+.cap-bar__label.cap-caution { color: #d97706; }
+.cap-bar__label.cap-warning { color: #dc2626; }
+.cap-bar__label.cap-danger  { color: #7f1d1d; }
+.cap-bar__detail {
+  display: block;
+}
+
+/* Form full-width field */
+.field--full {
+  grid-column: 1 / -1;
 }
 </style>

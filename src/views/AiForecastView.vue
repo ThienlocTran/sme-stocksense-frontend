@@ -230,11 +230,17 @@ const summaryText = computed(() => {
   if (rate <= 0) {
     return t("forecast.summary.noData");
   }
+  let text = "";
   if (stock <= minStock) {
-    return t("forecast.summary.urgent", { rate: rateText, stock: formatNumber(stock), min: formatNumber(minStock) });
+    text = t("forecast.summary.urgent", { rate: rateText, stock: formatNumber(stock), min: formatNumber(minStock) });
+  } else {
+    const daysUntilMin = Math.max(0, Math.floor((stock - minStock) / rate));
+    text = t("forecast.summary.normal", { rate: rateText, stock: formatNumber(stock), days: daysUntilMin, min: formatNumber(minStock) });
   }
-  const daysUntilMin = Math.max(0, Math.floor((stock - minStock) / rate));
-  return t("forecast.summary.normal", { rate: rateText, stock: formatNumber(stock), days: daysUntilMin, min: formatNumber(minStock) });
+  if (forecast.value.capacityLimited7d || forecast.value.capacityLimited14d || forecast.value.capacityLimited30d) {
+    text += " ⚠️ Sức chứa kho bị giới hạn! Một số đề xuất reorder đã được giảm để phù hợp với không gian trống của kho.";
+  }
+  return text;
 });
 </script>
 
@@ -354,21 +360,39 @@ const summaryText = computed(() => {
       <div class="reorder-grid">
         <div class="reorder-item">
           <span class="reorder-label">{{ t("forecast.reorder.7d") }}</span>
-          <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty7d > 0 }">
-            {{ formatNumber(forecast.reorderQty7d) }}
-          </strong>
+          <div class="flex flex-col items-center">
+            <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty7d > 0, 'line-through text-slate-400 text-sm font-normal': forecast.capacityLimited7d }">
+              {{ formatNumber(forecast.reorderQty7d) }}
+            </strong>
+            <span v-if="forecast.capacityLimited7d" class="text-xs text-amber-600 font-bold flex items-center gap-0.5 mt-1">
+              <i class="mdi mdi-alert-circle text-amber-500"></i>
+              Duyệt: {{ formatNumber(forecast.capacityAllowedQuantity7d) }}
+            </span>
+          </div>
         </div>
         <div class="reorder-item">
           <span class="reorder-label">{{ t("forecast.reorder.14d") }}</span>
-          <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty14d > 0 }">
-            {{ formatNumber(forecast.reorderQty14d) }}
-          </strong>
+          <div class="flex flex-col items-center">
+            <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty14d > 0, 'line-through text-slate-400 text-sm font-normal': forecast.capacityLimited14d }">
+              {{ formatNumber(forecast.reorderQty14d) }}
+            </strong>
+            <span v-if="forecast.capacityLimited14d" class="text-xs text-amber-600 font-bold flex items-center gap-0.5 mt-1">
+              <i class="mdi mdi-alert-circle text-amber-500"></i>
+              Duyệt: {{ formatNumber(forecast.capacityAllowedQuantity14d) }}
+            </span>
+          </div>
         </div>
         <div class="reorder-item">
           <span class="reorder-label">{{ t("forecast.reorder.30d") }}</span>
-          <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty30d > 0 }">
-            {{ formatNumber(forecast.reorderQty30d) }}
-          </strong>
+          <div class="flex flex-col items-center">
+            <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty30d > 0, 'line-through text-slate-400 text-sm font-normal': forecast.capacityLimited30d }">
+              {{ formatNumber(forecast.reorderQty30d) }}
+            </strong>
+            <span v-if="forecast.capacityLimited30d" class="text-xs text-amber-600 font-bold flex items-center gap-0.5 mt-1">
+              <i class="mdi mdi-alert-circle text-amber-500"></i>
+              Duyệt: {{ formatNumber(forecast.capacityAllowedQuantity30d) }}
+            </span>
+          </div>
         </div>
       </div>
       <span class="text-xs text-[var(--color-text-secondary)] mt-1">

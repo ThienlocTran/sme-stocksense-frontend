@@ -71,6 +71,21 @@ export async function getLowStockInventory({ page = 0, size = 20, keyword = '', 
   }
 }
 
+export async function saveWarehouseStockConfig({ productId, warehouseId, minStock }) {
+  try {
+    const { data } = await inventoryClient.post('/api/warehouse-stock-configs', {
+      productId,
+      warehouseId,
+      minStock,
+    }, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeInventoryError(error, 'Không thể cấu hình định mức tồn kho.')
+  }
+}
+
 function normalizeInventoryError(error, fallbackMessage) {
   if (error.response?.status === 401) {
     clearAuth()

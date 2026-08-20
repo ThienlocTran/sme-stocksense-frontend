@@ -9,6 +9,7 @@ import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
 import SearchFilterBar from "../components/SearchFilterBar.vue";
 import StatusBadge from "../components/StatusBadge.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { canManageProducts } from "../services/permissionService";
 import {
   createProduct,
@@ -72,7 +73,7 @@ const columns = computed(() => {
     { key: "categoryName", label: t('products.category') },
     { key: "partnerName", label: t('products.supplier') },
     { key: "unit", label: t('products.unit'), class: "cell-compact" },
-    { key: "minStock", label: t('products.minStock'), class: "cell-compact" },
+    { key: "unitVolumeM3", label: t('products.unitVolumeM3'), class: "cell-compact" },
     { key: "price", label: t('products.price'), class: "cell-nowrap" },
     { key: "status", label: t('products.status'), class: "cell-nowrap" },
   ];
@@ -84,6 +85,40 @@ const columns = computed(() => {
     : baseColumns;
 });
 
+const filterCategoryOptions = computed(() => {
+  return [
+    { value: "", label: t('products.allCategories') },
+    ...categories.value.map(c => ({
+      value: c.id,
+      label: c.name || '',
+      searchKey: (c.name || '').toLowerCase()
+    }))
+  ];
+});
+
+const formCategoryOptions = computed(() => {
+  return [
+    { value: "", label: t('products.noSelection') },
+    ...categories.value.map(c => ({
+      value: c.id,
+      label: c.name || '',
+      searchKey: (c.name || '').toLowerCase()
+    }))
+  ];
+});
+
+const formSupplierOptions = computed(() => {
+  return [
+    { value: "", label: t('products.noSelection') },
+    ...suppliers.value.map(s => ({
+      value: s.id,
+      label: s.tenDoiTac || s.name || '',
+      sublabel: s.maDoiTac || s.code || s.soDienThoai || '',
+      searchKey: `${s.tenDoiTac || s.name || ''} ${s.maDoiTac || s.code || ''}`.toLowerCase()
+    }))
+  ];
+});
+
 const form = reactive(emptyForm());
 const formErrors = reactive({
   code: "",
@@ -92,7 +127,7 @@ const formErrors = reactive({
   barcode: "",
   unit: "",
   price: "",
-  minStock: "",
+  unitVolumeM3: "",
   categoryId: "",
   partnerId: "",
   status: "",
@@ -180,7 +215,7 @@ function emptyForm() {
     barcode: "",
     unit: "",
     price: "",
-    minStock: 0,
+    unitVolumeM3: "",
     categoryId: "",
     partnerId: "",
     status: "HOAT_DONG",
@@ -212,7 +247,7 @@ async function openEditForm(product) {
       barcode: detail.barcode || "",
       unit: detail.unit || "",
       price: detail.price ?? "",
-      minStock: detail.minStock ?? 0,
+      unitVolumeM3: detail.unitVolumeM3 ?? "",
       categoryId: detail.categoryId || "",
       partnerId: detail.partnerId || "",
       status: detail.status || "HOAT_DONG",
@@ -259,8 +294,8 @@ function validateForm() {
     formErrors.price = t('products.errPriceInvalid');
     valid = false;
   }
-  if (form.minStock !== "" && Number(form.minStock) < 0) {
-    formErrors.minStock = t('products.errMinStockInvalid');
+  if (form.unitVolumeM3 !== "" && form.unitVolumeM3 !== null && Number(form.unitVolumeM3) <= 0) {
+    formErrors.unitVolumeM3 = t('products.errUnitVolumeInvalid');
     valid = false;
   }
   if (isEditMode.value && !form.status) {
@@ -280,7 +315,7 @@ function toPayload() {
     price: Number(form.price),
     categoryId: form.categoryId ? Number(form.categoryId) : null,
     partnerId: form.partnerId ? Number(form.partnerId) : null,
-    minStock: form.minStock === "" ? null : Number(form.minStock),
+    unitVolumeM3: form.unitVolumeM3 === "" || form.unitVolumeM3 === null ? null : Number(form.unitVolumeM3),
   };
   if (isEditMode.value) payload.status = form.status;
   return payload;
@@ -379,21 +414,13 @@ function formatCurrency(value) {
     :placeholder="t('products.searchPlaceholder')"
     @keyup.enter="applySearch"
   >
-    <select
+    <SearchableSelect
       v-model="filters.categoryId"
-      class="select"
+      :options="filterCategoryOptions"
+      :placeholder="t('products.allCategories')"
       :disabled="isLoading"
       @change="applyFilter"
-    >
-      <option value="">{{ t('products.allCategories') }}</option>
-      <option
-        v-for="category in categories"
-        :key="category.id"
-        :value="category.id"
-      >
-        {{ category.name }}
-      </option>
-    </select>
+    />
     <select
       v-model="filters.status"
       class="select"
@@ -472,9 +499,9 @@ function formatCurrency(value) {
           </div>
         </div>
       </template>
-      <template #minStock="{ value, row }">
-        <span class="tabular-num">{{ value ?? 0 }}</span>
-        <span class="unit-label">{{ row.unit }}</span>
+      <template #unitVolumeM3="{ value }">
+        <span class="tabular-num" v-if="value !== null && value !== undefined">{{ value }} m³</span>
+        <span class="text-slate-400 italic" v-else>{{ t('products.unconfigured') }}</span>
       </template>
       <template #price="{ value }">
         <span class="tabular-num font-semibold text-slate-800">{{ formatCurrency(value) }}</span>
@@ -551,11 +578,11 @@ function formatCurrency(value) {
             <span class="text-muted text-xs"> / {{ row.unit }}</span>
           </span>
         </div>
-        <div class="detail-row" v-if="row.minStock !== null">
-          <span class="detail-label">Ngưỡng tối thiểu</span>
+        <div class="detail-row">
+          <span class="detail-label">{{ t('products.labelUnitVolume') }}</span>
           <span class="detail-val">
-            <span class="tabular-num">{{ row.minStock }}</span>
-            <span class="text-muted text-xs"> {{ row.unit }}</span>
+            <span class="tabular-num" v-if="row.unitVolumeM3 !== null && row.unitVolumeM3 !== undefined">{{ row.unitVolumeM3 }} m³</span>
+            <span class="text-slate-400 italic" v-else>{{ t('products.unconfigured') }}</span>
           </span>
         </div>
       </div>
@@ -723,55 +750,41 @@ function formatCurrency(value) {
             </div>
 
             <div class="field">
-              <label class="field-label">{{ t('products.labelMinStock') }}</label>
+              <label class="field-label">{{ t('products.labelUnitVolume') }}</label>
               <input
-                v-model="form.minStock"
+                v-model="form.unitVolumeM3"
                 class="input"
                 type="number"
-                min="0"
-                :class="{ 'input--error': formErrors.minStock }"
+                step="0.000001"
+                min="0.000001"
+                :class="{ 'input--error': formErrors.unitVolumeM3 }"
                 :disabled="isSaving"
+                placeholder="0.0001"
               />
-              <small class="field-error">{{ formErrors.minStock }}</small>
+              <small class="field-error">{{ formErrors.unitVolumeM3 }}</small>
             </div>
 
             <div class="field">
               <label class="field-label">{{ t('products.category') }}</label>
-              <select
+              <SearchableSelect
                 v-model="form.categoryId"
-                class="select"
-                :class="{ 'input--error': formErrors.categoryId }"
+                :options="formCategoryOptions"
+                :placeholder="t('products.noSelection')"
                 :disabled="isSaving"
-              >
-                <option value="">{{ t('products.noSelection') }}</option>
-                <option
-                  v-for="category in categories"
-                  :key="category.id"
-                  :value="category.id"
-                >
-                  {{ category.name }}
-                </option>
-              </select>
+                :error="formErrors.categoryId"
+              />
               <small class="field-error">{{ formErrors.categoryId }}</small>
             </div>
 
             <div class="field">
               <label class="field-label">{{ t('products.supplier') }}</label>
-              <select
+              <SearchableSelect
                 v-model="form.partnerId"
-                class="select"
-                :class="{ 'input--error': formErrors.partnerId }"
+                :options="formSupplierOptions"
+                :placeholder="t('products.noSelection')"
                 :disabled="isSaving"
-              >
-                <option value="">{{ t('products.noSelection') }}</option>
-                <option
-                  v-for="supplier in suppliers"
-                  :key="supplier.id"
-                  :value="supplier.id"
-                >
-                  {{ supplier.tenDoiTac }}
-                </option>
-              </select>
+                :error="formErrors.partnerId"
+              />
               <small class="field-error">{{ formErrors.partnerId }}</small>
             </div>
 

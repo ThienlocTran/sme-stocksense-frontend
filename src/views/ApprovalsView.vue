@@ -90,12 +90,18 @@ const documentTypeOptions = [
   { value: "out", label: t("approvals.documentType.out") },
 ];
 
-const statusOptions = [
-  { value: "CHO_DUYET", label: t("approvals.status.pending") },
-  { value: "CHO_DUYET_CAP_1", label: t("approvals.status.pendingLevel1") },
-  { value: "CHO_DUYET_CAP_2", label: t("approvals.status.pendingLevel2") },
-  { value: "DA_DUYET", label: t("approvals.status.approved") },
-];
+const statusOptions = computed(() => {
+  if (documentType.value === "out") {
+    return [
+      { value: "CHO_DUYET", label: t("approvals.status.pending") },
+    ]
+  } else {
+    return [
+      { value: "CHO_DUYET_CAP_1", label: t("approvals.status.pendingLevel1") },
+      { value: "CHO_DUYET_CAP_2", label: t("approvals.status.pendingLevel2") },
+    ]
+  }
+})
 
 const statusLabels = {
   CHO_DUYET: t("approvals.status.pending"),

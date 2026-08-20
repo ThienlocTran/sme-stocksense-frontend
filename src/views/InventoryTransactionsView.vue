@@ -7,6 +7,7 @@ import SearchFilterBar from "../components/SearchFilterBar.vue";
 import DataTable from "../components/DataTable.vue";
 import EmptyState from "../components/EmptyState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { getInventoryTransactions } from "../services/inventoryService";
 import { getWarehouses } from "../services/warehouseService";
 
@@ -57,6 +58,23 @@ const hasActiveFilters = computed(() => {
     filters.from !== "" ||
     filters.to !== ""
   );
+});
+
+const warehouseOptions = computed(() => {
+  return [
+    { value: "", label: isLoadingDropdowns.value ? t('transactions.loadingWarehouses') : t('transactions.allWarehouses') },
+    ...warehouses.value.map(w => {
+      const code = w.maKho || w.code;
+      const name = w.tenKho || w.name;
+      const label = code ? `${code} - ${name || "-"}` : name || "-";
+      return {
+        value: w.id,
+        label,
+        sublabel: w.diaChi || '',
+        searchKey: `${code || ''} ${name || ''}`.toLowerCase()
+      };
+    })
+  ];
 });
 
 const hasPreviousPage = computed(() => page.value > 0);
@@ -217,12 +235,13 @@ function viewDocumentDetail(type, documentId) {
         </option>
       </select>
 
-      <select v-model="filters.warehouseId" class="select" :disabled="isLoadingDropdowns || isLoading" @change="applyFilter">
-        <option value="">{{ isLoadingDropdowns ? t("transactions.loadingWarehouses") : t("transactions.allWarehouses") }}</option>
-        <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-          {{ displayWarehouseOption(warehouse) }}
-        </option>
-      </select>
+      <SearchableSelect
+        v-model="filters.warehouseId"
+        :options="warehouseOptions"
+        :placeholder="t('transactions.allWarehouses')"
+        :disabled="isLoadingDropdowns || isLoading"
+        @change="applyFilter"
+      />
 
       <div class="date-filter-group">
         <input

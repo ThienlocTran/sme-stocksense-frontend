@@ -7,6 +7,7 @@ import DataTable from "../components/DataTable.vue";
 import SearchFilterBar from "../components/SearchFilterBar.vue";
 import EmptyState from "../components/EmptyState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { getLowStockInventory } from "../services/inventoryService";
 import { getWarehouses } from "../services/warehouseService";
 
@@ -49,6 +50,23 @@ const hasActiveFilters = computed(() => {
     filters.warehouseId !== "" ||
     filters.warehouseStatus !== ""
   );
+});
+
+const warehouseOptions = computed(() => {
+  return [
+    { value: "", label: isLoadingDropdowns.value ? t('alerts.filter.loadingWarehouses') : t('alerts.filter.allWarehouses') },
+    ...warehouses.value.map(w => {
+      const code = w.maKho || w.code;
+      const name = w.tenKho || w.name;
+      const label = code ? `${code} - ${name || "-"}` : name || "-";
+      return {
+        value: w.id,
+        label,
+        sublabel: w.diaChi || '',
+        searchKey: `${code || ''} ${name || ''}`.toLowerCase()
+      };
+    })
+  ];
 });
 
 // Dynamic Page Metrics
@@ -264,25 +282,13 @@ function navigateToInventory(row) {
       :placeholder="t('alerts.searchPlaceholder')"
       @keyup.enter="applySearch"
     >
-      <select
+      <SearchableSelect
         v-model="filters.warehouseId"
-        class="select"
+        :options="warehouseOptions"
+        :placeholder="t('alerts.filter.allWarehouse')"
         :disabled="isLoadingDropdowns || isLoading"
         @change="applyFilter"
-      >
-        <option value="">
-          {{ isLoadingDropdowns ? t("alerts.filter.loadingWarehouse") : t("alerts.filter.allWarehouse") }}
-        </option>
-        <option
-          v-for="warehouse in warehouses"
-          :key="warehouse.id"
-          :value="warehouse.id"
-        >
-          {{
-            `${warehouse.maKho || warehouse.code || ""}${warehouse.tenKho || warehouse.name ? " - " : ""}${warehouse.tenKho || warehouse.name || ""}`
-          }}
-        </option>
-      </select>
+      />
 
       <select
         v-model="filters.warehouseStatus"

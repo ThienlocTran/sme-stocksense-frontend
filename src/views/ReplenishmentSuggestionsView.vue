@@ -263,14 +263,20 @@ function nextPage() {
           </template>
 
           <template #suggested="{ row }">
-            <div class="text-right">
-              <strong 
-                v-if="row.suggestedQuantity > 0" 
-                class="text-sm text-emerald-700 font-bold tabular-nums"
-              >
-                +{{ row.suggestedQuantity }}
-              </strong>
-              <span v-else class="text-sm text-slate-400">0</span>
+            <div class="text-right flex flex-col items-end gap-1">
+              <div v-if="row.capacityLimited" class="flex flex-col items-end">
+                <span class="text-xs text-slate-400 line-through tabular-nums">+{{ row.suggestedQuantity }}</span>
+                <strong class="text-sm text-amber-600 font-bold tabular-nums flex items-center gap-1">
+                  <i class="mdi mdi-alert-circle text-amber-500"></i>
+                  +{{ row.capacityAllowedQuantity }}
+                </strong>
+              </div>
+              <div v-else>
+                <strong v-if="row.suggestedQuantity > 0" class="text-sm text-emerald-700 font-bold tabular-nums">
+                  +{{ row.suggestedQuantity }}
+                </strong>
+                <span v-else class="text-sm text-slate-400">0</span>
+              </div>
             </div>
           </template>
 
@@ -281,9 +287,17 @@ function nextPage() {
           </template>
 
           <template #reason="{ row }">
-            <span class="text-sm text-slate-700">
-              {{ t('replenishment.reason.' + row.reason) }}
-            </span>
+            <div class="flex flex-col gap-1">
+              <span class="text-sm text-slate-700">
+                {{ t('replenishment.reason.' + row.reason) }}
+              </span>
+              <div v-if="row.configurationWarning" class="cap-warning-hint text-xs flex items-start gap-1 p-1 rounded mt-1 border" :class="row.configurationWarning === 'UNIT_VOLUME_NOT_CONFIGURED' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-amber-50 text-amber-800 border-amber-100'">
+                <i class="mdi mdi-alert-circle-outline mr-0.5 mt-0.5"></i>
+                <span>
+                  {{ row.configurationWarning === 'UNIT_VOLUME_NOT_CONFIGURED' ? 'Sản phẩm chưa được cấu hình thể tích đơn vị.' : row.configurationWarning }}
+                </span>
+              </div>
+            </div>
           </template>
         </DataTable>
       </div>
@@ -317,12 +331,20 @@ function nextPage() {
             </div>
             <div class="flex flex-col items-end justify-center">
               <span class="text-red-600" v-if="item.shortageQuantity > 0">
-                {{ t('replenishment.table.shortage') }}: <strong>-{{ item.shortageQuantity }}</strong>
+                Thiếu hụt: <strong>-{{ item.shortageQuantity }}</strong>
               </span>
-              <span class="text-emerald-700" v-if="item.suggestedQuantity > 0">
-                {{ t('replenishment.table.suggested') }}: <strong>+{{ item.suggestedQuantity }}</strong>
+              <div v-if="item.capacityLimited" class="flex flex-col items-end">
+                <span class="text-slate-400 text-[10px] line-through">Đề xuất: +{{ item.suggestedQuantity }}</span>
+                <span class="text-amber-600 font-bold">Duyệt: +{{ item.capacityAllowedQuantity }}</span>
+              </div>
+              <span class="text-emerald-700 font-semibold" v-else-if="item.suggestedQuantity > 0">
+                Đề xuất: <strong>+{{ item.suggestedQuantity }}</strong>
               </span>
             </div>
+          </div>
+          <div v-if="item.configurationWarning" class="mt-2 text-[11px] p-1.5 rounded border" :class="item.configurationWarning === 'UNIT_VOLUME_NOT_CONFIGURED' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-amber-50 text-amber-800 border-amber-100'">
+            <i class="mdi mdi-alert-circle-outline mr-0.5"></i>
+            {{ item.configurationWarning === 'UNIT_VOLUME_NOT_CONFIGURED' ? 'Sản phẩm chưa được cấu hình thể tích đơn vị.' : item.configurationWarning }}
           </div>
         </div>
       </div>

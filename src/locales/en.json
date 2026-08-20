@@ -161,8 +161,14 @@
     "sections": {
       "operations": "Operations",
       "analytics": "Analytics",
+      "analyticsAndTracking": "Analytics & Tracking",
       "approvals": "Approvals",
-      "management": "Management"
+      "management": "Management",
+      "generalOperations": "General Operations",
+      "warehouseOps": "Warehouse Operations",
+      "systemManagement": "System Management",
+      "overview": "Overview",
+      "baseData": "Master Data"
     },
     "menu": {
       "dashboard": "Overview",
@@ -552,6 +558,9 @@
     "category": "Category",
     "supplier": "Supplier",
     "unit": "Unit",
+    "unitVolumeM3": "Volume (m³)",
+    "labelUnitVolume": "Unit Volume (m³)",
+    "unconfigured": "Unconfigured",
     "minStock": "Min Stock",
     "price": "Price",
     "status": "Status",
@@ -560,6 +569,7 @@
     "errNameEmpty": "Product name cannot be empty.",
     "errUnitEmpty": "Unit cannot be empty.",
     "errPriceInvalid": "Price must be >= 0.",
+    "errUnitVolumeInvalid": "Unit volume must be greater than 0.",
     "errMinStockInvalid": "Min stock must be >= 0.",
     "errStatusEmpty": "Status cannot be empty.",
     "successUpdate": "Product updated successfully.",

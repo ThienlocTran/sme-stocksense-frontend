@@ -62,8 +62,8 @@ onMounted(() => {
 
 const menuSections = [
   {
-    title: "Vận hành",
-    titleKey: "operations",
+    title: "Tổng quan",
+    titleKey: "overview",
     items: [
       {
         label: "Tổng quan",
@@ -71,17 +71,17 @@ const menuSections = [
         to: "/dashboard",
         icon: "mdi-view-dashboard-outline",
       },
+    ],
+  },
+  {
+    title: "Dữ liệu nền tảng",
+    titleKey: "baseData",
+    items: [
       {
-        label: "Sản phẩm",
-        labelKey: "products",
-        to: "/products",
-        icon: "mdi-package-variant-closed",
-      },
-      {
-        label: "Danh mục",
-        labelKey: "categories",
-        to: "/categories",
-        icon: "mdi-shape-outline",
+        label: "Đối tác",
+        labelKey: "partners",
+        to: "/partners",
+        icon: "mdi-truck-delivery-outline",
       },
       {
         label: "Kho hàng",
@@ -90,30 +90,70 @@ const menuSections = [
         icon: "mdi-store-24-hour",
       },
       {
-        label: "Đối tác",
-        labelKey: "partners",
-        to: "/partners",
-        icon: "mdi-truck-delivery-outline",
+        label: "Danh mục",
+        labelKey: "categories",
+        to: "/categories",
+        icon: "mdi-shape-outline",
       },
+      {
+        label: "Sản phẩm",
+        labelKey: "products",
+        to: "/products",
+        icon: "mdi-package-variant-closed",
+      },
+    ],
+  },
+  {
+    title: "Nghiệp vụ kho",
+    titleKey: "warehouseOps",
+    items: [
       {
         label: "Tồn kho",
         labelKey: "inventory",
         to: "/inventory",
         icon: "mdi-clipboard-list-outline",
       },
-      { label: "Phiếu nhập kho", labelKey: "stockIn", to: "/stock-in", icon: "mdi-tray-arrow-down" },
-      { label: "Phiếu xuất kho", labelKey: "stockOut", to: "/stock-out", icon: "mdi-tray-arrow-up" },
+      {
+        label: "Phiếu nhập kho",
+        labelKey: "stockIn",
+        to: "/stock-in",
+        icon: "mdi-tray-arrow-down",
+      },
+      {
+        label: "Phiếu xuất kho",
+        labelKey: "stockOut",
+        to: "/stock-out",
+        icon: "mdi-tray-arrow-up",
+      },
       {
         label: "Kiểm kê kho",
         labelKey: "inventoryCounts",
         to: "/inventory-counts",
         icon: "mdi-clipboard-check-outline",
       },
+      {
+        label: "Import Excel",
+        labelKey: "importExcel",
+        to: "/import-excel",
+        icon: "mdi-file-excel-outline",
+      },
     ],
   },
   {
-    title: "Phân tích",
-    titleKey: "analytics",
+    title: "Phê duyệt",
+    titleKey: "approvals",
+    items: [
+      {
+        label: "Phiếu chờ duyệt",
+        labelKey: "pendingApprovals",
+        to: "/approvals",
+        icon: "mdi-check-decagram-outline",
+      },
+    ],
+  },
+  {
+    title: "Phân tích & Theo dõi",
+    titleKey: "analyticsAndTracking",
     items: [
       { label: "Dự báo AI", labelKey: "forecast", to: "/forecast", icon: "mdi-chart-line" },
       { label: "Cảnh báo tồn kho", labelKey: "alerts", to: "/alerts", icon: "mdi-alert-outline" },
@@ -132,20 +172,8 @@ const menuSections = [
     ],
   },
   {
-    title: "Phê duyệt",
-    titleKey: "approvals",
-    items: [
-      {
-        label: "Phiếu chờ duyệt",
-        labelKey: "pendingApprovals",
-        to: "/approvals",
-        icon: "mdi-check-decagram-outline",
-      },
-    ],
-  },
-  {
-    title: "Quản lý",
-    titleKey: "management",
+    title: "Quản lý hệ thống",
+    titleKey: "systemManagement",
     items: [
       {
         label: "Nhân viên",
@@ -154,13 +182,7 @@ const menuSections = [
         icon: "mdi-account-group-outline",
       },
       {
-        label: "Import Excel",
-        labelKey: "importExcel",
-        to: "/import-excel",
-        icon: "mdi-file-excel-outline",
-      },
-      {
-        label: "Cấu hình",
+        label: "Cấu hình hệ thống",
         labelKey: "settings",
         to: "/settings",
         icon: "mdi-cog-outline",
@@ -168,6 +190,7 @@ const menuSections = [
     ],
   },
 ];
+
 
 const visibleSections = computed(() =>
   menuSections
