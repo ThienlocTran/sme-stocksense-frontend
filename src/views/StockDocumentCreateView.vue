@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import PageHeader from '../components/PageHeader.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import PriceInput from '../components/PriceInput.vue'
+import SearchableSelect from '../components/SearchableSelect.vue'
 import {
   cancelDraft,
   createImportReceipt,
@@ -48,6 +49,15 @@ let redirectTimer = null
 const warehouses = ref([])
 const suppliers = ref([])
 const products = ref([])
+
+const productOptions = computed(() => {
+  return products.value.map(product => ({
+    value: product.id,
+    label: product.name,
+    sublabel: product.code || product.sku || '',
+    searchKey: `${product.name} ${product.code || product.sku || ''}`.toLowerCase()
+  }));
+});
 
 function scheduleRedirectToList(delay) {
   if (redirectTimer) clearTimeout(redirectTimer)
@@ -666,17 +676,13 @@ function confirmText() {
         <div class="import-receipt-form__grid import-receipt-form__grid--4">
           <div class="import-receipt-form__field">
             <label class="import-receipt-form__label import-receipt-form__label--required">{{ t("stockDocumentCreate.label.product") }}</label>
-            <select
+            <SearchableSelect
               v-model="itemDraft.productId"
-              class="import-receipt-form__select"
-              :class="{ 'import-receipt-form__select--error': itemErrors.productId || errorState.products }"
+              :options="productOptions"
+              :placeholder="products.length === 0 ? t('stockDocumentCreate.placeholder.noProduct') : t('stockDocumentCreate.placeholder.selectProduct')"
               :disabled="isProcessing || !isEditableStatus || products.length === 0"
-            >
-              <option :value="null" disabled>{{ products.length === 0 ? t('stockDocumentCreate.placeholder.noProduct') : t('stockDocumentCreate.placeholder.selectProduct') }}</option>
-              <option v-for="product in products" :key="product.id" :value="product.id">
-                {{ product.name }} ({{ product.code || product.sku }})
-              </option>
-            </select>
+              :error="itemErrors.productId || errorState.products"
+            />
             <span v-if="itemErrors.productId" class="import-receipt-form__error">{{ itemErrors.productId }}</span>
             <span v-else-if="errorState.products" class="import-receipt-form__error">{{ errorState.products }}</span>
 
