@@ -517,10 +517,21 @@ function applyPasswordBackendErrors(errors = {}) {
   cursor: pointer;
   transition: all 150ms ease;
   font-size: 18px;
+  overflow: hidden;
 }
 .theme-btn:hover {
   background: var(--color-bg);
   border-color: var(--color-border-strong);
+}
+.theme-btn i {
+  display: inline-block;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+}
+.theme-btn:hover i {
+  transform: rotate(45deg) scale(1.1);
+}
+.theme-btn:active i {
+  transform: rotate(90deg) scale(0.95);
 }
 
 .lang-selector {

@@ -240,7 +240,7 @@ const visibleSections = computed(() =>
   display: flex;
   flex-direction: column;
   z-index: 20;
-  transition: width 180ms ease, left 180ms ease;
+  transition: width 180ms ease, left 180ms ease, background-color 300ms ease, border-color 300ms ease;
 }
 .brand {
   display: flex;

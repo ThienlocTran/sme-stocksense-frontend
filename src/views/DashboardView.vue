@@ -918,10 +918,10 @@ const warehouseDistOptions = computed(() => {
     <!-- Header Greeting Area -->
     <div class="dashboard-header animate-in fade-in duration-200">
       <div class="greeting-section">
-        <h1 class="page-title text-zinc-900">
+        <h1 class="page-title text-zinc-900 dark:text-zinc-100">
           {{ $t('dashboard.greeting') }}, <span class="text-blue-600 font-bold">{{ currentUserName || 'Thiên Lộc' }}</span>
         </h1>
-        <p class="page-desc text-zinc-500">{{ $t('dashboard.subtitle') }}</p>
+        <p class="page-desc text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.subtitle') }}</p>
       </div>
       <div class="header-actions">
         <button class="btn btn-secondary btn-sm flex items-center gap-1" @click="retryDashboardLoad" :disabled="isLoading">
@@ -1001,8 +1001,8 @@ const warehouseDistOptions = computed(() => {
         <section class="card card-pad">
           <div class="section-head-wrap mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 class="section-title text-zinc-900">{{ $t('dashboard.stockMovement') }}</h2>
-              <p class="eyebrow text-zinc-500">{{ $t('dashboard.stockMovementDesc') }}</p>
+              <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.stockMovement') }}</h2>
+              <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.stockMovementDesc') }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <select 
@@ -1038,24 +1038,24 @@ const warehouseDistOptions = computed(() => {
 
           <div v-else-if="movementFailed" class="analytical-placeholder-error py-8 text-center">
             <i class="mdi mdi-alert-circle-outline text-3xl text-red-500 mb-2"></i>
-            <h3 class="font-semibold text-zinc-800 text-sm mb-1">{{ $t('dashboard.failedLoadMovement') }}</h3>
+            <h3 class="font-semibold text-zinc-800 dark:text-zinc-200 text-sm mb-1">{{ $t('dashboard.failedLoadMovement') }}</h3>
             <button class="btn btn-secondary btn-sm mt-2" @click="fetchMovementData">{{ $t('common.refresh') }}</button>
           </div>
 
           <div v-else-if="movementData.length === 0" class="analytical-placeholder">
             <div class="placeholder-icon-wrap">
-              <i class="mdi mdi-chart-areaspline text-3xl text-zinc-400"></i>
+              <i class="mdi mdi-chart-areaspline text-3xl text-zinc-400 dark:text-zinc-500"></i>
             </div>
-            <h3 class="font-semibold text-zinc-800 text-sm mb-1">{{ $t('dashboard.noMovementData') }}</h3>
-            <p class="text-xs text-zinc-500 max-w-md text-center">
+            <h3 class="font-semibold text-zinc-800 dark:text-zinc-200 text-sm mb-1">{{ $t('dashboard.noMovementData') }}</h3>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 max-w-md text-center">
               {{ $t('dashboard.noMovementDataDesc') }}
             </p>
           </div>
 
           <div v-else-if="isMovementEmpty" class="relative">
-            <div class="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center p-4">
-              <i class="mdi mdi-alert-circle-outline text-2xl text-zinc-400 mb-1"></i>
-              <p class="text-xs text-zinc-600 font-medium">{{ $t('dashboard.noMovementInPeriod') }}</p>
+            <div class="absolute inset-0 bg-white/70 dark:bg-black/70 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center p-4">
+              <i class="mdi mdi-alert-circle-outline text-2xl text-zinc-400 dark:text-zinc-500 mb-1"></i>
+              <p class="text-xs text-zinc-600 dark:text-zinc-300 font-medium">{{ $t('dashboard.noMovementInPeriod') }}</p>
             </div>
             <ApexCharts type="area" :options="movementChartOptions" :series="movementChartSeries" height="280" />
           </div>
@@ -1065,12 +1065,12 @@ const warehouseDistOptions = computed(() => {
           </div>
         </section>
 
-        <!-- Section: Nhật ký hoạt động gần đây (Real Table) -->
+        <!-- Section: Nhật ký hoạt động kho gần đây (Real Table) -->
         <section class="card card-pad">
           <div class="section-head between mb-4">
             <div>
-              <h2 class="section-title text-zinc-900">{{ $t('dashboard.recentActivityLog') }}</h2>
-              <p class="eyebrow text-zinc-500">{{ $t('dashboard.recentActivityLogDesc') }}</p>
+              <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.recentActivityLog') }}</h2>
+              <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.recentActivityLogDesc') }}</p>
             </div>
             <button class="btn btn-secondary btn-sm flex items-center gap-1" @click="openRoute('/inventory-transactions')">
               {{ $t('common.viewAll') }} <i class="mdi mdi-arrow-right"></i>
@@ -1111,15 +1111,15 @@ const warehouseDistOptions = computed(() => {
               </thead>
               <tbody>
                 <tr v-for="t in recentTransactions" :key="t.id">
-                  <td class="text-xs tabular-num text-zinc-500">{{ formatDate(t.createdAt) }}</td>
+                  <td class="text-xs tabular-num text-zinc-500 dark:text-zinc-400">{{ formatDate(t.createdAt) }}</td>
                   <td><StatusBadge :status="$t(getTransactionTypeLabel(t.transactionType))" /></td>
                   <td>
                     <div class="prod-info-mini">
-                      <span class="font-semibold text-zinc-900 block">{{ t.productName }}</span>
+                      <span class="font-semibold text-zinc-900 dark:text-zinc-100 block">{{ t.productName }}</span>
                       <code class="sku-mini block w-fit mt-0.5 text-3xs">{{ t.productCode }}</code>
                     </div>
                   </td>
-                  <td class="text-right font-semibold tabular-num" :class="Number(getDelta(t)) >= 0 ? 'text-emerald-600' : 'text-zinc-700'">
+                  <td class="text-right font-semibold tabular-num" :class="Number(getDelta(t)) >= 0 ? 'text-emerald-600' : 'text-zinc-700 dark:text-zinc-300'">
                     {{ getDelta(t) }}
                   </td>
                   <td class="text-xs">
@@ -1129,7 +1129,7 @@ const warehouseDistOptions = computed(() => {
                     <span v-else-if="t.exportReceiptId" class="doc-link" @click="viewDocumentDetail('out', t.exportReceiptId)">
                       <i class="mdi mdi-receipt-text-send-outline text-xs"></i> {{ $t('dashboard.exportReceiptShort') }} #{{ t.exportReceiptId }}
                     </span>
-                    <span v-else class="text-zinc-500">{{ t.note || '—' }}</span>
+                    <span v-else class="text-zinc-500 dark:text-zinc-400">{{ t.note || '—' }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -1143,8 +1143,8 @@ const warehouseDistOptions = computed(() => {
           <!-- Section: Stock Health -->
           <section class="card card-pad">
             <div class="section-head mb-4">
-              <h2 class="section-title text-zinc-900">{{ $t('dashboard.stockHealth') }}</h2>
-              <p class="eyebrow text-zinc-500">{{ $t('dashboard.stockHealthDesc') }}</p>
+              <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.stockHealth') }}</h2>
+              <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.stockHealthDesc') }}</p>
             </div>
 
             <div v-if="isStockHealthLoading" class="loading-state-mini">
@@ -1154,13 +1154,13 @@ const warehouseDistOptions = computed(() => {
 
             <div v-else-if="stockHealthFailed" class="analytical-placeholder-error py-6 text-center">
               <i class="mdi mdi-alert-circle-outline text-2xl text-red-500 mb-2"></i>
-              <p class="text-xs text-zinc-700 font-semibold mb-2">{{ $t('dashboard.failedLoadStockHealth') }}</p>
+              <p class="text-xs text-zinc-700 dark:text-zinc-300 font-semibold mb-2">{{ $t('dashboard.failedLoadStockHealth') }}</p>
               <button class="btn btn-secondary btn-sm" @click="fetchStockHealth">{{ $t('common.retry') }}</button>
             </div>
 
             <div v-else-if="!stockHealthData || stockHealthTotal === 0" class="analytical-placeholder-mini">
-              <i class="mdi mdi-chart-donut text-2xl text-zinc-400 mb-2"></i>
-              <p class="text-xs text-zinc-500 text-center px-4">{{ $t('dashboard.noStockHealthData') }}</p>
+              <i class="mdi mdi-chart-donut text-2xl text-zinc-400 dark:text-zinc-500 mb-2"></i>
+              <p class="text-xs text-zinc-500 dark:text-zinc-400 text-center px-4">{{ $t('dashboard.noStockHealthData') }}</p>
             </div>
 
             <div v-else>
@@ -1169,35 +1169,35 @@ const warehouseDistOptions = computed(() => {
               </div>
               
               <!-- Custom Legend & Counts display -->
-              <div class="stock-health-legend mt-2 border-t border-zinc-100 pt-2">
-                <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 last:border-0">
+              <div class="stock-health-legend mt-2 border-t border-zinc-100 dark:border-zinc-800 pt-2">
+                <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
                   <div class="flex items-center gap-1.5">
                     <span class="legend-dot" style="background-color: #16825D;"></span>
-                    <span class="text-xs text-zinc-700">{{ $t('dashboard.statusInStock') }}</span>
+                    <span class="text-xs text-zinc-700 dark:text-zinc-300">{{ $t('dashboard.statusInStock') }}</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <span class="text-xs font-semibold tabular-num text-zinc-900">{{ formatNumber(stockHealthData.healthy) }}</span>
-                    <span class="text-3xs text-zinc-400">({{ formatPercent(stockHealthData.healthy, stockHealthTotal) }})</span>
+                    <span class="text-xs font-semibold tabular-num text-zinc-900 dark:text-zinc-100">{{ formatNumber(stockHealthData.healthy) }}</span>
+                    <span class="text-3xs text-zinc-400 dark:text-zinc-500">({{ formatPercent(stockHealthData.healthy, stockHealthTotal) }})</span>
                   </div>
                 </div>
-                <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 last:border-0">
+                <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
                   <div class="flex items-center gap-1.5">
                     <span class="legend-dot" style="background-color: #D97706;"></span>
-                    <span class="text-xs text-zinc-700">{{ $t('dashboard.statusLowStock') }}</span>
+                    <span class="text-xs text-zinc-700 dark:text-zinc-300">{{ $t('dashboard.statusLowStock') }}</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <span class="text-xs font-semibold tabular-num text-zinc-900">{{ formatNumber(stockHealthData.lowStock) }}</span>
-                    <span class="text-3xs text-zinc-400">({{ formatPercent(stockHealthData.lowStock, stockHealthTotal) }})</span>
+                    <span class="text-xs font-semibold tabular-num text-zinc-900 dark:text-zinc-100">{{ formatNumber(stockHealthData.lowStock) }}</span>
+                    <span class="text-3xs text-zinc-400 dark:text-zinc-500">({{ formatPercent(stockHealthData.lowStock, stockHealthTotal) }})</span>
                   </div>
                 </div>
-                <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 last:border-0">
+                <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
                   <div class="flex items-center gap-1.5">
                     <span class="legend-dot" style="background-color: #DC2626;"></span>
-                    <span class="text-xs text-zinc-700">{{ $t('dashboard.statusOutOfStock') }}</span>
+                    <span class="text-xs text-zinc-700 dark:text-zinc-300">{{ $t('dashboard.statusOutOfStock') }}</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <span class="text-xs font-semibold tabular-num text-zinc-900">{{ formatNumber(stockHealthData.outOfStock) }}</span>
-                    <span class="text-3xs text-zinc-400">({{ formatPercent(stockHealthData.outOfStock, stockHealthTotal) }})</span>
+                    <span class="text-xs font-semibold tabular-num text-zinc-900 dark:text-zinc-100">{{ formatNumber(stockHealthData.outOfStock) }}</span>
+                    <span class="text-3xs text-zinc-400 dark:text-zinc-500">({{ formatPercent(stockHealthData.outOfStock, stockHealthTotal) }})</span>
                   </div>
                 </div>
               </div>
@@ -1207,8 +1207,8 @@ const warehouseDistOptions = computed(() => {
           <!-- Section: Warehouse Distribution -->
           <section class="card card-pad">
             <div class="section-head mb-4">
-              <h2 class="section-title text-zinc-900">{{ $t('dashboard.warehouseDistribution') }}</h2>
-              <p class="eyebrow text-zinc-500">{{ $t('dashboard.warehouseDistributionDesc') }}</p>
+              <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.warehouseDistribution') }}</h2>
+              <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.warehouseDistributionDesc') }}</p>
             </div>
 
             <div v-if="isWarehouseDistLoading" class="loading-state-mini">
@@ -1218,13 +1218,13 @@ const warehouseDistOptions = computed(() => {
 
             <div v-else-if="warehouseDistFailed" class="analytical-placeholder-error py-6 text-center">
               <i class="mdi mdi-alert-circle-outline text-2xl text-red-500 mb-2"></i>
-              <p class="text-xs text-zinc-700 font-semibold mb-2">{{ $t('dashboard.failedLoadWarehouseDistribution') }}</p>
+              <p class="text-xs text-zinc-700 dark:text-zinc-300 font-semibold mb-2">{{ $t('dashboard.failedLoadWarehouseDistribution') }}</p>
               <button class="btn btn-secondary btn-sm" @click="fetchWarehouseDistribution">{{ $t('common.retry') }}</button>
             </div>
 
             <div v-else-if="warehouseDistData.length === 0" class="analytical-placeholder-mini">
-              <i class="mdi mdi-chart-bar-horizontal text-2xl text-zinc-400 mb-2"></i>
-              <p class="text-xs text-zinc-500 text-center px-4">{{ $t('dashboard.noWarehouseDistributionData') }}</p>
+              <i class="mdi mdi-chart-bar-horizontal text-2xl text-zinc-400 dark:text-zinc-500 mb-2"></i>
+              <p class="text-xs text-zinc-500 dark:text-zinc-400 text-center px-4">{{ $t('dashboard.noWarehouseDistributionData') }}</p>
             </div>
 
             <div v-else>
@@ -1232,7 +1232,7 @@ const warehouseDistOptions = computed(() => {
                 <ApexCharts type="bar" :options="warehouseDistOptions" :series="warehouseDistSeries" height="180" />
               </div>
               <div v-if="warehouseDistData.length > 5" class="mt-2 text-right">
-                <span class="text-3xs text-zinc-400">{{ $t('dashboard.showingAllWarehousesCount', { count: warehouseDistData.length }) }}</span>
+                <span class="text-3xs text-zinc-400 dark:text-zinc-500">{{ $t('dashboard.showingAllWarehousesCount', { count: warehouseDistData.length }) }}</span>
               </div>
             </div>
           </section>
@@ -1246,21 +1246,21 @@ const warehouseDistOptions = computed(() => {
         <section class="insight-panel card animate-in fade-in duration-200" v-if="canSeeWarnings && !isLoading">
           <div class="insight-header">
             <i class="mdi mdi-lightbulb-on-outline text-amber-500"></i>
-            <h3 class="text-zinc-900">{{ $t('dashboard.insightsTitle') }}</h3>
+            <h3 class="text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.insightsTitle') }}</h3>
           </div>
           <div class="insight-body-new">
             <div class="insight-message" v-if="summary.warnings > 0">
               <span class="bullet-dot warning-dot animate-pulse"></span>
-              <p class="text-zinc-700 text-xs" v-html="$t('dashboard.insightLowStockAlert', { count: summary.warnings })"></p>
+              <p class="text-zinc-700 dark:text-zinc-300 text-xs" v-html="$t('dashboard.insightLowStockAlert', { count: summary.warnings })"></p>
             </div>
             <div class="insight-message" v-else>
               <span class="bullet-dot success-dot"></span>
-              <p class="text-zinc-700 text-xs">{{ $t('dashboard.insightAllStockSafe') }}</p>
+              <p class="text-zinc-700 dark:text-zinc-300 text-xs">{{ $t('dashboard.insightAllStockSafe') }}</p>
             </div>
 
             <div class="insight-message mt-2.5" v-if="pendingApprovalsTotal > 0">
               <span class="bullet-dot info-dot"></span>
-              <p class="text-zinc-700 text-xs" v-html="$t('dashboard.insightPendingApprovals', { count: pendingApprovalsTotal })"></p>
+              <p class="text-zinc-700 dark:text-zinc-300 text-xs" v-html="$t('dashboard.insightPendingApprovals', { count: pendingApprovalsTotal })"></p>
             </div>
 
             <button class="btn btn-sm btn-ghost mt-3 w-full justify-center text-blue-600" @click="openRoute('/alerts')">
@@ -1274,15 +1274,15 @@ const warehouseDistOptions = computed(() => {
           <div class="section-head mb-3">
             <div class="flex items-center gap-1.5">
               <i class="mdi mdi-robot-outline text-blue-600 text-lg"></i>
-              <h2 class="section-title text-zinc-900">AI Forecast Preview</h2>
+              <h2 class="section-title text-zinc-900 dark:text-zinc-100">AI Forecast Preview</h2>
             </div>
-            <p class="eyebrow text-zinc-500">{{ $t('dashboard.aiForecastDesc') }}</p>
+            <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.aiForecastDesc') }}</p>
           </div>
 
           <div class="forecast-preview-placeholder">
             <i class="mdi mdi-trending-up text-xl text-blue-600 mb-1"></i>
-            <p class="text-xs text-zinc-800 font-semibold mb-1">{{ $t('dashboard.aiForecastReportTitle') }}</p>
-            <p class="text-3xs text-zinc-500 text-center px-2">{{ $t('dashboard.aiForecastReportDesc') }}</p>
+            <p class="text-xs text-zinc-800 dark:text-zinc-200 font-semibold mb-1">{{ $t('dashboard.aiForecastReportTitle') }}</p>
+            <p class="text-3xs text-zinc-500 dark:text-zinc-400 text-center px-2">{{ $t('dashboard.aiForecastReportDesc') }}</p>
             <button class="btn btn-secondary btn-sm w-full mt-3 justify-center gap-1" @click="openRoute('/forecast')">
               <i class="mdi mdi-chart-timeline-variant"></i> {{ $t('dashboard.goToAiForecast') }}
             </button>
@@ -1292,8 +1292,8 @@ const warehouseDistOptions = computed(() => {
         <!-- Unified "Cần chú ý" Queue -->
         <section class="card card-pad attention-panel">
           <div class="section-head mb-3">
-            <h2 class="section-title text-zinc-900">{{ $t('dashboard.workQueue') }}</h2>
-            <p class="eyebrow text-zinc-500">{{ $t('dashboard.workQueueDesc') }}</p>
+            <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.workQueue') }}</h2>
+            <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.workQueueDesc') }}</p>
           </div>
 
           <div v-if="isLoading" class="loading-state-mini">
@@ -1373,8 +1373,8 @@ const warehouseDistOptions = computed(() => {
         <!-- Quick Access links by role -->
         <section class="card card-pad">
           <div class="section-head mb-3">
-            <h2 class="section-title text-zinc-900">{{ $t('dashboard.quickShortcuts') }}</h2>
-            <p class="eyebrow text-zinc-500">{{ $t('dashboard.quickShortcutsDesc') }}</p>
+            <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.quickShortcuts') }}</h2>
+            <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.quickShortcutsDesc') }}</p>
           </div>
           
           <div class="quick-actions-grid" v-if="visibleQuickActions.length > 0">
@@ -1388,7 +1388,7 @@ const warehouseDistOptions = computed(() => {
               <span>{{ act.title }}</span>
             </button>
           </div>
-          <div v-else class="text-xs text-zinc-500 py-2">
+          <div v-else class="text-xs text-zinc-500 dark:text-zinc-400 py-2">
             {{ $t('dashboard.noQuickShortcuts') }}
           </div>
         </section>
@@ -1396,19 +1396,19 @@ const warehouseDistOptions = computed(() => {
         <!-- Need Inventory Reorder (Low stock details list) -->
         <section class="card card-pad" v-if="canSeeWarnings && !isLoading && lowStockItems.length > 0">
           <div class="section-head mb-3">
-            <h2 class="section-title text-zinc-900">{{ $t('dashboard.itemsToReorder') }}</h2>
-            <p class="eyebrow text-zinc-500">{{ $t('dashboard.itemsToReorderDesc') }}</p>
+            <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.itemsToReorder') }}</h2>
+            <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.itemsToReorderDesc') }}</p>
           </div>
 
           <div class="reorder-list">
             <div v-for="(item, idx) in lowStockItems" :key="`reorder-${item.id}`" class="reorder-item">
               <span class="reorder-rank">{{ String(idx + 1).padStart(2, '0') }}</span>
               <div class="reorder-details">
-                <span class="font-semibold text-zinc-900 text-xs block truncate" style="max-width: 140px;" :title="item.productName">{{ item.productName }}</span>
-                <span class="text-3xs text-zinc-500 block truncate" style="max-width: 140px;">{{ item.warehouseName }}</span>
+                <span class="font-semibold text-zinc-900 dark:text-zinc-100 text-xs block truncate" style="max-width: 140px;" :title="item.productName">{{ item.productName }}</span>
+                <span class="text-3xs text-zinc-500 dark:text-zinc-400 block truncate" style="max-width: 140px;">{{ item.warehouseName }}</span>
               </div>
               <div class="reorder-qty-stats text-right ml-auto">
-                <span class="text-xs font-semibold block text-zinc-800 tabular-num">{{ item.available }} / {{ item.minStock }}</span>
+                <span class="text-xs font-semibold block text-zinc-800 dark:text-zinc-200 tabular-num">{{ item.available }} / {{ item.minStock }}</span>
                 <span class="text-3xs text-red-600 font-semibold block tabular-num">{{ $t('dashboard.missingQty', { count: item.minStock - item.available }) }}</span>
               </div>
             </div>
