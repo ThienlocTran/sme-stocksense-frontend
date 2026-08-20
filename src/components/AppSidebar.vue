@@ -245,9 +245,6 @@ const visibleSections = computed(() =>
   font-weight: 700;
   font-size: 20px;
 }
-.sidebar-logo-collapsed {
-  display: none;
-}
 .sidebar-logo-full {
   display: block;
   position: relative;
@@ -275,6 +272,9 @@ const visibleSections = computed(() =>
   width: 100%;
   height: 100%;
   opacity: 0;
+}
+.sidebar-logo-collapsed {
+  display: none;
 }
 .nav-list {
   display: flex;

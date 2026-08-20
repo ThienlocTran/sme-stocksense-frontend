@@ -149,12 +149,16 @@ async function updateTarget() {
       }
 
       const rect = target.getBoundingClientRect();
-      spotlightRect.value = {
-        top: rect.top + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-        height: rect.height,
-      };
+      if (rect.width === 0 || rect.height === 0 || rect.left < 0 || rect.top < 0) {
+        spotlightRect.value = null;
+      } else {
+        spotlightRect.value = {
+          top: rect.top + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+          height: rect.height,
+        };
+      }
 
       if (updateTargetQueued) {
         continue;
@@ -271,17 +275,14 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <div v-if="open" class="tour-backdrop" @click.self="closeTour">
       <div
+        v-if="spotlightRect"
         class="tour-spotlight"
-        :style="
-          spotlightRect
-            ? {
-                top: `${spotlightRect.top}px`,
-                left: `${spotlightRect.left}px`,
-                width: `${spotlightRect.width}px`,
-                height: `${spotlightRect.height}px`,
-              }
-            : {}
-        "
+        :style="{
+          top: `${spotlightRect.top}px`,
+          left: `${spotlightRect.left}px`,
+          width: `${spotlightRect.width}px`,
+          height: `${spotlightRect.height}px`,
+        }"
       />
 
       <div
@@ -293,7 +294,13 @@ onBeforeUnmount(() => {
                 left: `${Math.min(Math.max(spotlightRect.left, 24), Math.max(viewportWidth - 360, 24))}px`,
                 maxWidth: `${Math.min(360, viewportWidth - 48)}px`,
               }
-            : { top: '24px', right: '24px', maxWidth: '360px' }
+            : {
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                maxWidth: `${Math.min(360, viewportWidth - 48)}px`,
+                position: 'fixed'
+              }
         "
       >
         <div class="tour-pill">Hướng dẫn nhanh</div>
