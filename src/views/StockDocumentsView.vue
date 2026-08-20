@@ -73,8 +73,8 @@ const columns = computed(() => [
 const statusOptions = computed(() => [
   { value: 'NHAP', label: t('stockDocument.status.draft') },
   { value: 'CHO_DUYET', label: t('stockDocument.status.pending') },
-  { value: 'CHO_DUYET_CAP_1', label: t('stockDocument.status.pending') },
-  { value: 'CHO_DUYET_CAP_2', label: t('stockDocument.status.pending') },
+  { value: 'CHO_DUYET_CAP_1', label: t('stockDocument.status.pending_level1') },
+  { value: 'CHO_DUYET_CAP_2', label: t('stockDocument.status.pending_level2') },
   { value: 'DA_DUYET', label: t('stockDocument.status.approved') },
   { value: 'CHO_HANG_VE', label: t('stockDocument.status.pending_delivery') },
   { value: 'CHO_KIEM_HANG', label: t('stockDocument.status.pending_inspection') },
@@ -286,8 +286,8 @@ function statusLabel(status) {
   const mapping = {
     NHAP: t('stockDocument.status.draft'),
     CHO_DUYET: t('stockDocument.status.pending'),
-    CHO_DUYET_CAP_1: t('stockDocument.status.pending'),
-    CHO_DUYET_CAP_2: t('stockDocument.status.pending'),
+    CHO_DUYET_CAP_1: t('stockDocument.status.pending_level1'),
+    CHO_DUYET_CAP_2: t('stockDocument.status.pending_level2'),
     DA_DUYET: t('stockDocument.status.approved'),
     CHO_HANG_VE: t('stockDocument.status.pending_delivery'),
     CHO_KIEM_HANG: t('stockDocument.status.pending_inspection'),
