@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../components/PageHeader.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import PriceInput from '../components/PriceInput.vue'
 import {
   cancelDraft,
   createImportReceipt,
@@ -659,11 +660,8 @@ function confirmText() {
 
           <div class="import-receipt-form__field">
             <label class="import-receipt-form__label import-receipt-form__label--required">{{ t("stockDocumentCreate.label.unitPrice") }}</label>
-            <input
-              v-model.number="itemDraft.unitPrice"
-              type="number"
-              min="0"
-              step="0.01"
+            <PriceInput
+              v-model="itemDraft.unitPrice"
               class="import-receipt-form__input"
               :class="{ 'import-receipt-form__input--error': itemErrors.unitPrice }"
               :placeholder="t('stockDocumentCreate.placeholder.unitPrice')"
@@ -806,7 +804,7 @@ function confirmText() {
       </section>
 
       <!-- Sticky Action Footer -->
-      <div class="sticky-footer border-t border-gray-200 bg-white p-4 flex items-center justify-between shadow-lg sticky bottom-0 z-10 rounded-b-xl">
+      <div class="sticky-footer p-4 flex items-center justify-between shadow-lg z-10 rounded-b-xl">
         <div class="text-sm font-semibold text-text hidden sm:block">
           {{ items.length }} mặt hàng · Tổng số lượng: {{ totalQuantity }} · Tổng tiền: <span class="text-primary font-bold">{{ formatCurrency(totalAmountPreview) }}</span>
         </div>

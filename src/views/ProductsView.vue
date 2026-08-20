@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useI18n } from 'vue-i18n';
 import { useRouter } from "vue-router";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
+import PriceInput from "../components/PriceInput.vue";
 import DataTable from "../components/DataTable.vue";
 import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
@@ -712,12 +713,9 @@ function formatCurrency(value) {
 
             <div class="field">
               <label class="field-label">{{ t('products.labelPrice') }}</label>
-              <input
+              <PriceInput
                 v-model="form.price"
                 class="input"
-                type="number"
-                min="0"
-                step="0.01"
                 :class="{ 'input--error': formErrors.price }"
                 :disabled="isSaving"
               />
