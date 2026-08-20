@@ -55,7 +55,14 @@ function handleIntroComplete() {
 if (import.meta.env.DEV && typeof window !== "undefined") {
   window.__replayIntro = () => {
     window.sessionStorage.removeItem("stocksense-intro-played");
-    showIntro.value = true;
+    if (showIntro.value) {
+      showIntro.value = false;
+      setTimeout(() => {
+        showIntro.value = true;
+      }, 50);
+    } else {
+      showIntro.value = true;
+    }
   };
 }
 

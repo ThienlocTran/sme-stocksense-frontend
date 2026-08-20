@@ -16,6 +16,7 @@ const props = defineProps({
 // Anim references for cleanup
 let mainTimeline = null;
 let humTween = null;
+let introAudio = null;
 
 // Storage Keys
 const PLAYBACK_LOAD_KEY = 'stocksense_intro_played_load';
@@ -236,6 +237,16 @@ onMounted(() => {
     mainTimeline.timeScale(0.5);
 
     resetInitialStates(svg);
+
+    // Initialize and play intro audio in sync with GSAP timeline
+    introAudio = new Audio('/audio/stocksense-intro.mp3');
+    introAudio.preload = 'auto';
+    introAudio.volume = 0.7;
+    introAudio.loop = false;
+    introAudio.currentTime = 0;
+    introAudio.play().catch((error) => {
+      console.warn("Intro audio autoplay was blocked by browser:", error);
+    });
 
     // Select all dynamic elements
     const drawCubes = svg.querySelectorAll('.draw-c');
@@ -569,6 +580,11 @@ onMounted(() => {
 onUnmounted(() => {
   if (mainTimeline) mainTimeline.kill();
   if (humTween) humTween.kill();
+  if (introAudio) {
+    introAudio.pause();
+    introAudio.currentTime = 0;
+    introAudio = null;
+  }
   if (typeof document !== 'undefined') {
     document.body.classList.remove('scroll-locked');
     document.documentElement.classList.remove('scroll-locked');
