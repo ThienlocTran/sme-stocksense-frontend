@@ -622,7 +622,14 @@
     "cancel": "Hủy",
     "saving": "Đang lưu",
     "save": "Lưu",
-    "volumeHelper": "Nếu đơn vị tính là Thùng, giá trị này là m3/thùng."
+    "volumeHelper": "Nếu đơn vị tính là Thùng, giá trị này là m3/thùng.",
+    "sectionInitialStockConfig": "Cấu hình tồn kho ban đầu",
+    "enableForWarehouse": "Thiết lập định mức tại kho này",
+    "placeholderMinStock": "Nhập tồn tối thiểu...",
+    "errMinStockRequired": "Định mức tồn tối thiểu là bắt buộc khi đã kích hoạt.",
+    "errorSaveConfigPartial": "Sản phẩm đã được tạo nhưng cấu hình tồn tối thiểu của một số kho chưa lưu thành công. Vui lòng thử lại.",
+    "errorUpdateConfigPartial": "Sản phẩm đã được cập nhật nhưng cấu hình tồn tối thiểu của một số kho chưa lưu thành công. Vui lòng thử lại.",
+    "btnRetrySaveConfig": "Thử lại lưu cấu hình"
   },
   "category": {
     "editCategory": "Sửa danh mục",
@@ -764,7 +771,11 @@
       "nameMax": "Tên kho không được vượt quá 150 ký tự.",
       "addressMax": "Địa chỉ không được vượt quá 255 ký tự.",
       "statusEmpty": "Trạng thái không được để trống."
-    }
+    },
+    "minimumSafeVolume": "Mức tồn an toàn",
+    "minimumSafeVolumeHelp": "Mức thể tích tối thiểu cần duy trì dựa trên định mức tồn tối thiểu của các sản phẩm trong kho.",
+    "minimumStockConflict": "Cấu hình tồn tối thiểu vượt sức chứa kho.",
+    "minimumStockConflictExceeded": "Vượt: {amount} m³"
   },
   "replenishment": {
     "title": "Gợi ý nhập hàng",

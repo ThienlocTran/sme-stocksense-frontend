@@ -622,7 +622,14 @@
     "cancel": "Cancel",
     "saving": "Saving",
     "save": "Save",
-    "volumeHelper": "If the unit of measure is Carton, this value represents m3/carton."
+    "volumeHelper": "If the unit of measure is Carton, this value represents m3/carton.",
+    "sectionInitialStockConfig": "Initial stock configuration",
+    "enableForWarehouse": "Configure minimum stock for this warehouse",
+    "placeholderMinStock": "Enter minimum stock...",
+    "errMinStockRequired": "Minimum stock is required when enabled.",
+    "errorSaveConfigPartial": "Product created, but minimum stock configurations for some warehouses failed to save. Please retry.",
+    "errorUpdateConfigPartial": "Product updated, but minimum stock configurations for some warehouses failed to save. Please retry.",
+    "btnRetrySaveConfig": "Retry saving configurations"
   },
   "category": {
     "editCategory": "Edit category",
@@ -764,7 +771,11 @@
       "nameMax": "Warehouse name cannot exceed 150 characters.",
       "addressMax": "Address cannot exceed 255 characters.",
       "statusEmpty": "Status cannot be empty."
-    }
+    },
+    "minimumSafeVolume": "Safe Stock Volume",
+    "minimumSafeVolumeHelp": "Minimum volume required based on products' minimum stock thresholds.",
+    "minimumStockConflict": "Safe stock volume exceeds physical capacity.",
+    "minimumStockConflictExceeded": "Exceeded: {amount} m³"
   },
   "replenishment": {
     "title": "Replenishment Suggestions",
