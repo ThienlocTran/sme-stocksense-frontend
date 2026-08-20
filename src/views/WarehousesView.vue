@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
 import DataTable from "../components/DataTable.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -19,6 +20,7 @@ import {
 } from "../services/warehouseService";
 
 const router = useRouter();
+const { t } = useI18n();
 const warehouses = ref([]);
 const isLoading = ref(false);
 const isSaving = ref(false);
@@ -33,13 +35,13 @@ const searchDraft = ref("");
 const filters = reactive({ keyword: "", status: "" });
 
 const statusOptions = [
-  { value: "", label: "Tất cả trạng thái" },
+  { value: "", label: t("warehouse.filter.allStatus") },
   ...warehouseStatusOptions,
 ];
 const canManage = computed(() => canManageWarehouses());
 const isEditMode = computed(() => formMode.value === "edit");
 const formTitle = computed(() =>
-  isEditMode.value ? "Sửa kho hàng" : "Thêm kho hàng",
+  isEditMode.value ? t("warehouse.form.titleEdit") : t("warehouse.form.titleCreate"),
 );
 const hasActiveFilters = computed(
   () => filters.keyword !== "" || filters.status !== "",
@@ -51,16 +53,16 @@ const confirmTitle = computed(() =>
 );
 const confirmMessage = computed(() =>
   pendingWarehouse.value
-    ? `Bạn muốn ${pendingWarehouse.value.trangThai === "HOAT_DONG" ? "ngừng hoạt động" : "kích hoạt"} "${pendingWarehouse.value.tenKho}"?`
+    ? pendingWarehouse.value ? (pendingWarehouse.value.trangThai === "HOAT_DONG" ? t("warehouse.confirm.msgDeactivate", { name: pendingWarehouse.value.tenKho }) : t("warehouse.confirm.msgActivate", { name: pendingWarehouse.value.tenKho })) : ""
     : "",
 );
 
 const columns = computed(() => {
   return [
-    { key: "tenKho", label: "Kho hàng", class: "cell-long" },
-    { key: "diaChi", label: "Địa chỉ", class: "cell-medium" },
-    { key: "trangThai", label: "Trạng thái", class: "cell-nowrap" },
-    { key: "actions", label: "Thao tác", class: "cell-nowrap" },
+    { key: "tenKho", label: t("warehouse.table.name"), class: "cell-long" },
+    { key: "diaChi", label: t("warehouse.table.address"), class: "cell-medium" },
+    { key: "trangThai", label: t("warehouse.table.status"), class: "cell-nowrap" },
+    { key: "actions", label: t("warehouse.table.actions"), class: "cell-nowrap" },
   ];
 });
 
@@ -161,29 +163,29 @@ function validateForm() {
 
   if (!isEditMode.value) {
     if (!form.maKho.trim()) {
-      formErrors.maKho = "Mã kho không được để trống.";
+      formErrors.maKho = t("warehouse.error.codeEmpty");
       isValid = false;
     } else if (form.maKho.trim().length > 50) {
-      formErrors.maKho = "Mã kho không được vượt quá 50 ký tự.";
+      formErrors.maKho = t("warehouse.error.codeMax");
       isValid = false;
     }
   }
 
   if (!form.tenKho.trim()) {
-    formErrors.tenKho = "Tên kho không được để trống.";
+    formErrors.tenKho = t("warehouse.error.nameEmpty");
     isValid = false;
   } else if (form.tenKho.trim().length > 150) {
-    formErrors.tenKho = "Tên kho không được vượt quá 150 ký tự.";
+    formErrors.tenKho = t("warehouse.error.nameMax");
     isValid = false;
   }
 
   if (form.diaChi && form.diaChi.trim().length > 255) {
-    formErrors.diaChi = "Địa chỉ không được vượt quá 255 ký tự.";
+    formErrors.diaChi = t("warehouse.error.addressMax");
     isValid = false;
   }
 
   if (!form.trangThai) {
-    formErrors.trangThai = "Trạng thái không được để trống.";
+    formErrors.trangThai = t("warehouse.error.statusEmpty");
     isValid = false;
   }
 
@@ -204,7 +206,7 @@ async function submitWarehouseForm() {
         diaChi: form.diaChi ? form.diaChi.trim() : null,
         trangThai: form.trangThai,
       });
-      successMessage.value = "Cập nhật kho hàng thành công.";
+      successMessage.value = t("warehouse.msg.successUpdate");
     } else {
       await createWarehouse({
         maKho: form.maKho.trim(),
@@ -212,7 +214,7 @@ async function submitWarehouseForm() {
         diaChi: form.diaChi ? form.diaChi.trim() : null,
         trangThai: form.trangThai,
       });
-      successMessage.value = "Thêm kho hàng mới thành công.";
+      successMessage.value = t("warehouse.msg.successCreate");
     }
 
     isFormOpen.value = false;
@@ -272,8 +274,8 @@ function displayStatus(status) {
 
 <template>
   <PageHeader
-    title="Kho hàng"
-    description="Quản lý danh sách kho ở mức cơ bản, chưa dùng sơ đồ kệ/vị trí."
+    :title="t('warehouse.title')"
+    :description="t('warehouse.description')"
   >
     <button
       v-if="canManage"
@@ -281,7 +283,7 @@ function displayStatus(status) {
       type="button"
       :disabled="isLoading || isSaving"
       @click="openCreateForm"
-      title="Thêm kho hàng mới"
+      :title="t('warehouse.button.addWarehouseTitle')"
     >
       <i class="mdi mdi-plus"></i>
       Thêm kho
@@ -290,12 +292,12 @@ function displayStatus(status) {
 
   <div v-if="!canManage" class="warehouse-readonly card card-pad">
     <i class="mdi mdi-eye-outline"></i>
-    <span>Bạn đang xem ở chế độ chỉ xem.</span>
+    <span>{{ t("warehouse.readonly") }}</span>
   </div>
 
   <SearchFilterBar
     v-model="searchDraft"
-    placeholder="Tìm theo mã hoặc tên kho"
+    :placeholder="t('warehouse.searchPlaceholder')"
     @keyup.enter="applySearch"
   >
     <select
@@ -349,8 +351,8 @@ function displayStatus(status) {
         <i class="mdi mdi-loading mdi-spin"></i>
       </div>
       <div class="state-card__body">
-        <h3>Đang tải danh sách kho</h3>
-        <p>Hệ thống đang chuẩn bị dữ liệu kho cho bạn xem.</p>
+        <h3>{{ t("warehouse.loading.title") }}</h3>
+        <p>{{ t("warehouse.loading.desc") }}</p>
       </div>
     </div>
 
@@ -381,7 +383,7 @@ function displayStatus(status) {
               <RouterLink
                 :to="{ path: '/inventory', query: { warehouseId: row.id } }"
                 class="btn btn-sm btn-ghost"
-                title="Xem tồn kho tại đây"
+                :title="t('warehouse.table.viewInventoryTitle')"
               >
                 <i class="mdi mdi-clipboard-list-outline"></i>
                 Xem tồn kho
@@ -392,7 +394,7 @@ function displayStatus(status) {
                 type="button"
                 :disabled="isLoading || isSaving"
                 @click="openEditForm(row)"
-                title="Chỉnh sửa thông tin kho hàng"
+                :title="t('warehouse.table.editTitle')"
               >
                 <i class="mdi mdi-pencil-outline"></i>
                 Sửa
@@ -402,7 +404,7 @@ function displayStatus(status) {
                 class="btn btn-sm btn-secondary"
                 type="button"
                 :disabled="isLoading || isSaving || togglingId"
-                title="Ngừng hoạt động hoặc kích hoạt kho hàng"
+                :title="t('warehouse.table.toggleTitle')"
                 @click="requestStatus(row)"
               >
                 <i
@@ -413,7 +415,7 @@ function displayStatus(status) {
                       : 'mdi-check-circle-outline'
                   "
                 ></i>
-                {{ row.trangThai === "HOAT_DONG" ? "Ngừng" : "Kích hoạt" }}
+                {{ row.trangThai === "HOAT_DONG" ? t("warehouse.table.deactivate") : t("warehouse.table.activate") }}
               </button>
             </div>
           </template>
@@ -436,7 +438,7 @@ function displayStatus(status) {
           </div>
 
           <div class="warehouse-mobile-card__body" v-if="row.diaChi">
-            <span class="text-xs text-slate-500">Địa chỉ:</span>
+            <span class="text-xs text-slate-500">{{ t("warehouse.table.addressEmpty") }}</span>
             <p class="text-sm font-medium text-slate-700">{{ row.diaChi }}</p>
           </div>
 
@@ -485,7 +487,7 @@ function displayStatus(status) {
 
     <EmptyState
       v-else-if="!isLoading && !errorMessage"
-      title="Không có kho hàng"
+      :title="t('warehouse.empty.title')"
       :description="
         canManage
           ? 'Thử thay đổi bộ lọc hoặc thêm kho mới.'
@@ -526,47 +528,47 @@ function displayStatus(status) {
           </div>
 
           <div class="field">
-            <label class="field-label font-semibold text-slate-700 block mb-1">Mã kho *</label>
+            <label class="field-label font-semibold text-slate-700 block mb-1">{{ t("warehouse.form.labelCode") }}</label>
             <input
               v-model="form.maKho"
               class="input"
               :class="{ 'input-invalid': formErrors.maKho }"
               type="text"
-              placeholder="Nhập mã kho (VD: KHO_A)"
+              :placeholder="t('warehouse.form.placeholderCode')"
               :disabled="isSaving || isEditMode"
             />
-            <small v-if="isEditMode" class="field-note block text-slate-400 mt-1">Không thể thay đổi mã kho hàng khi đã tạo.</small>
+            <small v-if="isEditMode" class="field-note block text-slate-400 mt-1">{{ t("warehouse.form.noteCode") }}</small>
             <small v-if="formErrors.maKho" class="field-error block text-red-600 font-semibold mt-1">{{ formErrors.maKho }}</small>
           </div>
 
           <div class="field">
-            <label class="field-label font-semibold text-slate-700 block mb-1">Tên kho *</label>
+            <label class="field-label font-semibold text-slate-700 block mb-1">{{ t("warehouse.form.labelName") }}</label>
             <input
               v-model="form.tenKho"
               class="input"
               :class="{ 'input-invalid': formErrors.tenKho }"
               type="text"
-              placeholder="Nhập tên kho hàng"
+              :placeholder="t('warehouse.form.placeholderName')"
               :disabled="isSaving"
             />
             <small v-if="formErrors.tenKho" class="field-error block text-red-600 font-semibold mt-1">{{ formErrors.tenKho }}</small>
           </div>
 
           <div class="field">
-            <label class="field-label font-semibold text-slate-700 block mb-1">Địa chỉ</label>
+            <label class="field-label font-semibold text-slate-700 block mb-1">{{ t("warehouse.form.labelAddress") }}</label>
             <input
               v-model="form.diaChi"
               class="input"
               :class="{ 'input-invalid': formErrors.diaChi }"
               type="text"
-              placeholder="Nhập địa chỉ kho hàng"
+              :placeholder="t('warehouse.form.placeholderAddress')"
               :disabled="isSaving"
             />
             <small v-if="formErrors.diaChi" class="field-error block text-red-600 font-semibold mt-1">{{ formErrors.diaChi }}</small>
           </div>
 
           <div class="field">
-            <label class="field-label font-semibold text-slate-700 block mb-1">Trạng thái *</label>
+            <label class="field-label font-semibold text-slate-700 block mb-1">{{ t("warehouse.form.labelStatus") }}</label>
             <select
               v-model="form.trangThai"
               class="select"
@@ -596,7 +598,7 @@ function displayStatus(status) {
           </button>
           <button class="btn btn-primary" type="submit" :disabled="isSaving">
             <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
-            {{ isSaving ? "Đang lưu" : "Lưu" }}
+            {{ isSaving ? t("warehouse.form.btnSaving") : t("warehouse.form.btnSave") }}
           </button>
         </div>
       </form>

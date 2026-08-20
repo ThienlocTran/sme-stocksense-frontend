@@ -1,10 +1,11 @@
 <script setup>
 import { computed, reactive, ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { changeOwnPassword, clearAuth, formatRole } from '../services/authService'
 import { useAuthStore } from '../stores/auth'
 import { useLayoutStore } from '../stores/layout'
+import { useI18n } from 'vue-i18n'
+import { useTheme } from 'vuetify'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +20,32 @@ const passwordErrorMessage = ref('')
 const passwordSuccessMessage = ref('')
 const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const passwordErrors = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+const { locale, t } = useI18n()
+const currentLang = computed(() => locale.value)
+
+const vuetifyTheme = useTheme()
+const isDark = ref(localStorage.getItem('stocksense_theme') === 'dark')
+
+function changeLang(lang) {
+  locale.value = lang
+  localStorage.setItem('stocksense_lang', lang)
+  // Dispatch dynamic event to notify other components if necessary
+  window.dispatchEvent(new CustomEvent('stocksense-lang-change', { detail: lang }))
+}
+
+function toggleTheme() {
+  const newTheme = isDark.value ? 'light' : 'dark'
+  isDark.value = !isDark.value
+  localStorage.setItem('stocksense_theme', newTheme)
+  vuetifyTheme.global.name.value = newTheme
+  
+  if (newTheme === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+}
 
 const isUserMenuOpen = ref(false)
 
@@ -80,7 +107,7 @@ async function submitChangePassword() {
       newPassword: passwordForm.newPassword,
       confirmPassword: passwordForm.confirmPassword,
     })
-    passwordSuccessMessage.value = data?.message || 'Đổi mật khẩu thành công.'
+    passwordSuccessMessage.value = data?.message || t('topbar.changePasswordSuccess')
     isPasswordModalOpen.value = false
     clearPasswordForm()
   } catch (error) {
@@ -103,26 +130,26 @@ function validatePasswordForm() {
   let isValid = true
 
   if (!passwordForm.currentPassword) {
-    passwordErrors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại.'
+    passwordErrors.currentPassword = t('topbar.currentPasswordRequired')
     isValid = false
   }
 
   if (!passwordForm.newPassword) {
-    passwordErrors.newPassword = 'Vui lòng nhập mật khẩu mới.'
+    passwordErrors.newPassword = t('topbar.newPasswordRequired')
     isValid = false
   } else if (passwordForm.newPassword.length < 8) {
-    passwordErrors.newPassword = 'Mật khẩu mới tối thiểu 8 ký tự.'
+    passwordErrors.newPassword = t('topbar.newPasswordMinLength')
     isValid = false
   } else if (passwordForm.newPassword === passwordForm.currentPassword) {
-    passwordErrors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại.'
+    passwordErrors.newPassword = t('topbar.newPasswordMustBeDifferent')
     isValid = false
   }
 
   if (!passwordForm.confirmPassword) {
-    passwordErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới.'
+    passwordErrors.confirmPassword = t('topbar.confirmPasswordRequired')
     isValid = false
   } else if (passwordForm.confirmPassword !== passwordForm.newPassword) {
-    passwordErrors.confirmPassword = 'Mật khẩu xác nhận không khớp.'
+    passwordErrors.confirmPassword = t('topbar.confirmPasswordMismatch')
     isValid = false
   }
 
@@ -153,18 +180,86 @@ function applyPasswordBackendErrors(errors = {}) {
 <template>
   <header class="topbar">
     <div style="display: flex; align-items: center; gap: 12px;">
-      <button class="mobile-menu-btn" type="button" @click="layoutStore.toggleMobileSidebar" aria-label="Menu">
+      <button class="mobile-menu-btn" type="button" @click="layoutStore.toggleMobileSidebar" :aria-label="t('common.close')">
         <i class="mdi mdi-menu"></i>
       </button>
       <div>
-        <strong>{{ route.meta.title || 'SME StockSense' }}</strong>
-        <span>Doanh nghiệp SME duy nhất</span>
+        <strong>{{ $t('routes.' + route.meta.title) || route.meta.title || 'SME StockSense' }}</strong>
+        <span>{{ $t('topbar.subtitle') }}</span>
       </div>
     </div>
     <div class="topbar-actions">
       <div v-if="passwordSuccessMessage" class="password-success">
         <i class="mdi mdi-check-circle-outline"></i>
         <span>{{ passwordSuccessMessage }}</span>
+      </div>
+
+      <!-- Dark Mode Toggle (Scaled like the repo) -->
+      <div class="theme-selector">
+        <div 
+          class="mode-button-container" 
+          :class="isDark ? 'dark' : 'light'"
+          @click="toggleTheme" 
+          role="button" 
+          tabindex="0"
+          :title="isDark ? 'Switch to Light Mode' : 'Chuyển sang Chế độ tối'"
+          @keydown.enter="toggleTheme"
+          @keydown.space.prevent="toggleTheme"
+        >
+          <div class="mode-button">
+            <!-- Glow layers -->
+            <div class="layer">
+              <div>
+                <div></div>
+              </div>
+            </div>
+            <!-- Sun / Moon indicator -->
+            <div class="indicator">
+              <div>
+                <div></div>
+                <div></div>
+                <div></div>
+              </div>
+            </div>
+            <!-- Clouds (for day mode) -->
+            <div class="cloud">
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+            <div class="cloud-background">
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+            <!-- Stars (for night mode) -->
+            <div class="star">
+              <div class="star-dot dot-1"></div>
+              <div class="star-dot dot-2"></div>
+              <div class="star-dot dot-3"></div>
+              <div class="star-dot dot-4"></div>
+              <div class="star-dot dot-5"></div>
+              <div class="star-dot dot-6"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Language Selector Toggle -->
+      <div class="lang-selector">
+        <button 
+          class="lang-btn" 
+          type="button" 
+          @click="changeLang(currentLang === 'vi' ? 'en' : 'vi')"
+          :title="currentLang === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'"
+        >
+          <span class="lang-flag">{{ currentLang === 'vi' ? '🇻🇳' : '🇬🇧' }}</span>
+          <span class="lang-code">{{ currentLang.toUpperCase() }}</span>
+        </button>
       </div>
 
       <!-- Clickable User Profile Toggle with Dropdown -->
@@ -195,11 +290,11 @@ function applyPasswordBackendErrors(errors = {}) {
             <div class="dropdown-divider"></div>
             <button class="dropdown-item" type="button" :disabled="isLoggingOut" @click="triggerChangePassword">
               <i class="mdi mdi-lock-reset"></i>
-              Đổi mật khẩu
+              {{ $t('topbar.changePassword') }}
             </button>
             <button class="dropdown-item logout-item" type="button" :disabled="isLoggingOut" @click="triggerLogout">
               <i class="mdi mdi-logout"></i>
-              Đăng xuất
+              {{ $t('topbar.logout') }}
             </button>
           </div>
         </transition>
@@ -212,10 +307,10 @@ function applyPasswordBackendErrors(errors = {}) {
       <form class="password-form" @submit.prevent="submitChangePassword">
         <div class="modal-head between">
           <div>
-            <h2 class="section-title">Đổi mật khẩu</h2>
-            <p class="modal-desc">Cập nhật mật khẩu cho tài khoản hiện tại.</p>
+            <h2 class="section-title">{{ $t('topbar.changePassword') }}</h2>
+            <p class="modal-desc">{{ $t('topbar.updatingPassword') }}</p>
           </div>
-          <button class="btn btn-icon" type="button" :disabled="isChangingPassword" aria-label="Đóng" @click="closePasswordModal">
+          <button class="btn btn-icon" type="button" :disabled="isChangingPassword" :aria-label="$t('common.close')" @click="closePasswordModal">
             <i class="mdi mdi-close"></i>
           </button>
         </div>
@@ -227,29 +322,29 @@ function applyPasswordBackendErrors(errors = {}) {
           </div>
 
           <label class="field">
-            <span>Mật khẩu hiện tại</span>
-            <input v-model="passwordForm.currentPassword" class="input" type="password" placeholder="Nhập mật khẩu hiện tại" :disabled="isChangingPassword" autocomplete="current-password" />
+            <span>{{ $t('topbar.currentPassword') }}</span>
+            <input v-model="passwordForm.currentPassword" class="input" type="password" :placeholder="$t('topbar.enterCurrentPassword')" :disabled="isChangingPassword" autocomplete="current-password" />
             <small v-if="passwordErrors.currentPassword" class="field-error">{{ passwordErrors.currentPassword }}</small>
           </label>
 
           <label class="field">
-            <span>Mật khẩu mới</span>
-            <input v-model="passwordForm.newPassword" class="input" type="password" placeholder="Tối thiểu 8 ký tự" :disabled="isChangingPassword" autocomplete="new-password" />
+            <span>{{ $t('topbar.newPassword') }}</span>
+            <input v-model="passwordForm.newPassword" class="input" type="password" :placeholder="$t('topbar.min8Chars')" :disabled="isChangingPassword" autocomplete="new-password" />
             <small v-if="passwordErrors.newPassword" class="field-error">{{ passwordErrors.newPassword }}</small>
           </label>
 
           <label class="field">
-            <span>Xác nhận mật khẩu mới</span>
-            <input v-model="passwordForm.confirmPassword" class="input" type="password" placeholder="Nhập lại mật khẩu mới" :disabled="isChangingPassword" autocomplete="new-password" />
+            <span>{{ $t('topbar.confirmPassword') }}</span>
+            <input v-model="passwordForm.confirmPassword" class="input" type="password" :placeholder="$t('topbar.enterNewPasswordConfirm')" :disabled="isChangingPassword" autocomplete="new-password" />
             <small v-if="passwordErrors.confirmPassword" class="field-error">{{ passwordErrors.confirmPassword }}</small>
           </label>
         </div>
 
         <div class="modal-foot">
-          <button class="btn" type="button" :disabled="isChangingPassword" @click="closePasswordModal">Hủy</button>
+          <button class="btn" type="button" :disabled="isChangingPassword" @click="closePasswordModal">{{ $t('common.cancel') }}</button>
           <button class="btn btn-primary" type="submit" :disabled="isChangingPassword">
             <i v-if="isChangingPassword" class="mdi mdi-loading mdi-spin"></i>
-            {{ isChangingPassword ? 'Đang lưu' : 'Lưu' }}
+            {{ isChangingPassword ? $t('topbar.saving') : $t('topbar.save') }}
           </button>
         </div>
       </form>
@@ -263,7 +358,7 @@ function applyPasswordBackendErrors(errors = {}) {
   position: sticky; 
   top: 0; 
   z-index: 10; 
-  background: rgba(255, 255, 255, 0.92); 
+  background: var(--color-topbar-bg); 
   backdrop-filter: blur(10px); 
   border-bottom: 1px solid var(--color-border); 
   padding: 12px 24px; 
@@ -367,7 +462,7 @@ function applyPasswordBackendErrors(errors = {}) {
   top: calc(100% + 8px);
   right: 0;
   width: 220px;
-  background: #ffffff;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
@@ -446,6 +541,269 @@ function applyPasswordBackendErrors(errors = {}) {
 .dropdown-fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+.theme-selector {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+.mode-button-container {
+  --toggle-width: 56px; 
+  --toggle-height: 24px; 
+  --layer-size: 56px;
+  --indicator-size: 18px;
+  --indicator-padding: 3px;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.mode-button {
+  width: var(--toggle-width);
+  height: var(--toggle-height);
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--toggle-height) / 2);
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4), 0.5px 0.5px 1px rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: background-color 0.5s ease-in-out;
+}
+
+.mode-button:hover .layer {
+  transform: scale(1.1);
+}
+
+.layer {
+  position: absolute;
+  z-index: 2;
+  top: -110%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--layer-size);
+  height: var(--layer-size);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.08);
+  transition: all 0.5s ease-in-out;
+}
+
+.layer div {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--layer-size) / 4 * 3);
+  height: calc(var(--layer-size) / 4 * 3);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.layer div div {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--layer-size) / 4 * 2);
+  height: calc(var(--layer-size) / 4 * 2);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.indicator {
+  position: absolute;
+  z-index: 4;
+  top: var(--indicator-padding);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--indicator-size);
+  height: var(--indicator-size);
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #fbbf24; /* Sun */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.4), inset 1px 1px 2px rgba(255,255,255,0.4);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicator > div {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--indicator-size);
+  height: var(--indicator-size);
+  border-radius: 50%;
+  background-color: #cbd5e1; /* Moon */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.4), inset 1px 1px 2px rgba(255,255,255,0.4);
+  transition: all 0.5s ease-in-out;
+}
+
+/* Moon Craters */
+.indicator div div:first-child {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  box-shadow: inset 0.5px 0.5px 1px rgba(0,0,0,0.3);
+}
+
+.indicator div div:nth-child(2) {
+  position: absolute;
+  top: 8px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  box-shadow: inset 0.5px 0.5px 1px rgba(0,0,0,0.3);
+}
+
+.indicator div div:last-child {
+  position: absolute;
+  top: 10px;
+  left: 11px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  box-shadow: inset 0.5px 0.5px 1px rgba(0,0,0,0.3);
+}
+
+/* Clouds styling */
+.cloud, .cloud-background {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  transition: all 0.5s ease-in-out;
+  width: 100%;
+  height: 100%;
+}
+
+.cloud div, .cloud-background div {
+  position: absolute;
+  border-radius: 50%;
+  background-color: #ffffff;
+}
+
+.cloud div:first-child { left: 24px; top: 12px; width: 16px; height: 16px; }
+.cloud div:nth-child(2) { left: 32px; top: 8px; width: 18px; height: 18px; }
+.cloud div:nth-child(3) { left: 40px; top: 10px; width: 14px; height: 14px; }
+.cloud div:nth-child(4) { left: 16px; top: 14px; width: 12px; height: 12px; }
+.cloud div:last-child { left: 8px; top: 16px; width: 10px; height: 10px; }
+
+.cloud-background div {
+  background-color: #93c5fd; /* Soft blue shadow cloud */
+}
+.cloud-background div:first-child { left: 22px; top: 10px; width: 16px; height: 16px; }
+.cloud-background div:nth-child(2) { left: 30px; top: 6px; width: 18px; height: 18px; }
+.cloud-background div:nth-child(3) { left: 38px; top: 8px; width: 14px; height: 14px; }
+.cloud-background div:nth-child(4) { left: 14px; top: 12px; width: 12px; height: 12px; }
+.cloud-background div:last-child { left: 6px; top: 14px; width: 10px; height: 10px; }
+
+/* Stars styling */
+.star {
+  position: absolute;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  transition: all 0.5s ease-in-out;
+}
+
+.star-dot {
+  position: absolute;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 1px rgba(255, 255, 255, 0.8);
+}
+.dot-1 { left: 12px; top: 4px; width: 1.5px; height: 1.5px; }
+.dot-2 { left: 18px; top: 14px; width: 1px; height: 1px; }
+.dot-3 { left: 24px; top: 6px; width: 2px; height: 2px; }
+.dot-4 { left: 28px; top: 16px; width: 1px; height: 1px; }
+.dot-5 { left: 34px; top: 8px; width: 1.5px; height: 1.5px; }
+.dot-6 { left: 8px; top: 12px; width: 1px; height: 1px; }
+
+/* Light Mode active styles */
+.light .indicator {
+  left: var(--indicator-padding);
+}
+.light .indicator > div {
+  left: 120%; /* Hide moon surface */
+}
+.light .layer {
+  left: -20%;
+}
+.light .cloud {
+  bottom: 0;
+}
+.light .cloud-background {
+  bottom: 2px;
+}
+.light .mode-button {
+  background-color: #3b82f6; /* Blue sky */
+}
+.light .star {
+  top: -100%;
+}
+
+/* Dark Mode active styles */
+.dark .indicator {
+  left: calc(var(--toggle-width) - var(--indicator-padding) - var(--indicator-size));
+}
+.dark .indicator > div {
+  left: 0; /* Show moon surface */
+}
+.dark .layer {
+  left: 10%;
+}
+.dark .cloud {
+  bottom: -100%;
+}
+.dark .cloud-background {
+  bottom: -100%;
+}
+.dark .mode-button {
+  background-color: #0f172a; /* Slate 900 night sky */
+}
+.dark .star {
+  top: 0;
+}
+
+.lang-selector {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.lang-btn:hover {
+  background: var(--color-bg);
+  border-color: var(--color-border-strong);
+}
+.lang-flag {
+  font-size: 16px;
+  line-height: 1;
+}
+.lang-code {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
 }
 
 @media (max-width: 720px) {

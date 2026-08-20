@@ -1,5 +1,6 @@
 ﻿<script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { canProcessImportReceipt } from '../services/permissionService'
 import { 
@@ -45,9 +46,10 @@ const cancelLateState = ref({
 const discrepancyReportSaved = ref(false)
 const savedDiscrepancySignature = ref('')
 
-// Lịch sử phê duyệt
+// {{ t('importInspection.approvalHistory') }}
 const historyList = ref([])
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const canProcessReceipt = computed(() => {
   return canProcessImportReceipt(authStore.currentRole)
@@ -126,35 +128,35 @@ const statusColor = computed(() => {
 const statusLabel = computed(() => {
   if (!receipt.value) return ''
   const labels = {
-    NHAP: 'Bản nháp',
-    CHO_DUYET_CAP_1: 'Chờ duyệt cấp 1',
-    CHO_DUYET_CAP_2: 'Chờ duyệt cấp 2',
-    CHO_HANG_VE: 'Chờ hàng về',
-    CHO_KIEM_HANG: 'Chờ kiểm hàng',
-    HOAN_THANH: 'Hoàn thành',
-    TU_CHOI: 'Từ chối',
-    HUY: 'Đã hủy'
+    NHAP: t('stockDocument.status.draft'),
+    CHO_DUYET_CAP_1: t('stockDocument.status.pending'),
+    CHO_DUYET_CAP_2: t('stockDocument.status.pending'),
+    CHO_HANG_VE: t('stockDocument.status.pending_delivery'),
+    CHO_KIEM_HANG: t('stockDocument.status.pending_inspection'),
+    HOAN_THANH: t('stockDocument.status.completed'),
+    TU_CHOI: t('stockDocument.status.rejected'),
+    HUY: t('stockDocument.status.cancelled')
   }
   return labels[receipt.value.status] || receipt.value.status
 })
 
 const statusHelpers = {
-  NHAP: 'Bản nháp - phiếu chưa được gửi phê duyệt.',
-  CHO_DUYET_CAP_1: 'Chờ duyệt cấp 1 - đang chờ quản lý kho cấp 1 xử lý.',
-  CHO_DUYET_CAP_2: 'Chờ duyệt cấp 2 - đang chờ quản lý kho cấp 2 xử lý.',
-  CHO_HANG_VE: 'Chờ hàng về - phiếu đã duyệt, đang chờ hàng giao đến kho.',
-  CHO_KIEM_HANG: 'Chờ kiểm hàng - hàng đã về kho, vui lòng thực hiện kiểm kê thực tế.',
-  HOAN_THANH: 'Hoàn thành - phiếu nhập kho đã hoàn tất và lưu kho thành công.',
-  TU_CHOI: 'Từ chối - phiếu bị từ chối phê duyệt. Vui lòng kiểm tra lý do và chỉnh sửa.',
-  HUY: 'Đã hủy - phiếu nhập kho đã bị hủy.'
+  NHAP: t('stockDocument.statusDesc.draft'),
+  CHO_DUYET_CAP_1: t('stockDocument.statusDesc.pending_level1'),
+  CHO_DUYET_CAP_2: t('stockDocument.statusDesc.pending_level2'),
+  CHO_HANG_VE: t('stockDocument.statusDesc.pending_delivery'),
+  CHO_KIEM_HANG: t('stockDocument.statusDesc.pending_inspection'),
+  HOAN_THANH: t('stockDocument.statusDesc.completed'),
+  TU_CHOI: t('stockDocument.statusDesc.rejected'),
+  HUY: t('stockDocument.statusDesc.cancelled')
 }
 
 const ACTION_LABELS = {
-  GUI_DUYET: 'Gửi duyệt',
-  DUYET_CAP_1: 'Duyệt cấp 1',
-  DUYET_CAP_2: 'Duyệt cấp 2',
-  TU_CHOI: 'Từ chối',
-  HUY: 'Hủy phiếu',
+  GUI_DUYET: t('stockDocument.actionSubmit'),
+  DUYET_CAP_1: t('approvals.actions.approveLevel', { level: 1 }),
+  DUYET_CAP_2: t('approvals.actions.approveLevel', { level: 2 }),
+  TU_CHOI: t('stockDocument.status.rejected'),
+  HUY: t('stockDocument.actionCancel'),
 }
 const ACTION_ICONS = {
   GUI_DUYET: 'mdi-send-outline',
@@ -181,7 +183,12 @@ function getHistoryActionColor(action) {
   return ACTION_COLORS[action] || 'grey'
 }
 
-const physicalStatusOptions = ['Tốt', 'Hư hỏng', 'Thiếu', 'Khác']
+const physicalStatusOptions = computed(() => [
+  { value: 'Tốt', title: t('importInspection.physicalStatus.good') },
+  { value: 'Hư hỏng', title: t('importInspection.physicalStatus.damaged') },
+  { value: 'Thiếu', title: t('importInspection.physicalStatus.missing') },
+  { value: 'Khác', title: t('importInspection.physicalStatus.other') }
+])
 
 let currentRequestId = 0
 
@@ -206,7 +213,7 @@ async function loadData() {
         productCode: item.productCode,
         productName: item.productName,
         expectedQuantity: item.quantity,
-        unitName: item.unitName || 'Cái',
+        unitName: item.unitName || t('importInspection.table.pcs'),
         actualReceivedQuantity: item.quantity, // mặc định bằng số lượng mong đợi
         physicalStatus: 'Tốt',
         expiryDate: '',
@@ -224,7 +231,7 @@ async function loadData() {
     }
   } catch (err) {
     if (requestId !== currentRequestId) return
-    error.value = err.message || 'Lỗi tải dữ liệu phiếu nhập'
+    error.value = err.message || t('importInspection.messages.loadError')
   } finally {
     if (requestId !== currentRequestId) return
     loading.value = false
@@ -268,10 +275,10 @@ async function handleArrival() {
   successMessage.value = ''
   try {
     await confirmArrival(props.receiptId)
-    successMessage.value = 'Đã xác nhận hàng về thành công.'
+    successMessage.value = t('importInspection.messages.confirmArrivalSuccess')
     await loadData()
   } catch (err) {
-    error.value = err.message || 'Lỗi khi xác nhận hàng về'
+    error.value = err.message || t('importInspection.messages.confirmArrivalError')
   } finally {
     submitting.value = false
   }
@@ -299,11 +306,11 @@ function closeCancelLateModal() {
 async function confirmCancelLate() {
   const reason = cancelLateState.value.reason.trim();
   if (!reason) {
-    cancelLateState.value.error = 'Vui lòng nhập lý do hủy.';
+    cancelLateState.value.error = t('importInspection.messages.reasonRequired');
     return;
   }
   if (reason.length > 500) {
-    cancelLateState.value.error = `Lý do hủy không được vượt quá 500 ký tự.`;
+    cancelLateState.value.error = t('importInspection.messages.reasonMaxLength');
     return;
   }
 
@@ -316,11 +323,11 @@ async function confirmCancelLate() {
     const cancelledReceipt = await cancelLateImportReceipt(String(props.receiptId), reason);
     receipt.value = cancelledReceipt;
     cancelLateState.value = { open: false, reason: '', error: '', submitting: false };
-    successMessage.value = `Đã hủy phiếu ${cancelledReceipt?.code || props.receiptId} thành công.`;
+    successMessage.value = t('importInspection.messages.cancelSuccess', { code: cancelledReceipt?.code || props.receiptId });
     await loadData();
   } catch (err) {
     cancelLateState.value.submitting = false;
-    cancelLateState.value.error = err.message || 'Không thể hủy phiếu nhập.';
+    cancelLateState.value.error = err.message || t('importInspection.messages.cancelError');
   }
 }
 
@@ -330,7 +337,7 @@ async function handleComplete() {
   successMessage.value = ''
   try {
     if (inspectItems.value.length === 0) {
-      error.value = 'Không có sản phẩm nào để kiểm tra.'
+      error.value = t('importInspection.messages.emptyInspect')
       return
     }
 
@@ -341,21 +348,21 @@ async function handleComplete() {
     })
 
     if (invalidItem) {
-      error.value = `Số lượng thực nhận của "${invalidItem.productName}" không hợp lệ.`
+      error.value = t('importInspection.messages.invalidQty', { name: invalidItem.productName })
       return
     }
 
     if (hasDiscrepancy.value && !isDiscrepancyReportCurrent.value) {
-      error.value = 'Có chênh lệch số lượng/tình trạng hàng. Vui lòng lưu biên bản chênh lệch trước khi hoàn tất nhập kho.'
+      error.value = t('importInspection.messages.discrepancyWarning')
       return
     }
 
     await completeImport(props.receiptId, buildInspectPayload())
     
-    successMessage.value = 'Đã hoàn tất nhập kho thành công.'
+    successMessage.value = t('importInspection.messages.completeSuccess')
     await loadData()
   } catch (err) {
-    error.value = err.message || 'Lỗi khi hoàn tất phiếu nhập'
+    error.value = err.message || t('importInspection.messages.completeError')
   } finally {
     submitting.value = false
   }
@@ -367,21 +374,21 @@ async function handleSaveDiscrepancyReport() {
   successMessage.value = ''
   try {
     if (!hasDiscrepancy.value) {
-      error.value = 'Không có chênh lệch để lập biên bản.'
+      error.value = t('importInspection.messages.emptyDiscrepancyReport')
       return
     }
     const invalidItem = findInvalidDiscrepancyItem()
     if (invalidItem) {
-      error.value = `Vui lòng nhập lý do và hướng xử lý cho "${invalidItem.productName}".`
+      error.value = t('importInspection.messages.fillDiscrepancyReason', { name: invalidItem.productName })
       return
     }
     await inspectReceipt(props.receiptId, buildInspectPayload())
     await createDiscrepancyReport(props.receiptId, buildDiscrepancyPayload())
     discrepancyReportSaved.value = true
     savedDiscrepancySignature.value = currentDiscrepancySignature.value
-    successMessage.value = 'Đã lưu biên bản chênh lệch. Bạn có thể hoàn tất nhập kho theo số lượng thực nhận.'
+    successMessage.value = t('importInspection.messages.discrepancyReportSaved')
   } catch (err) {
-    error.value = err.message || 'Không thể lưu biên bản chênh lệch.'
+    error.value = err.message || t('importInspection.messages.completeError')
   } finally {
     savingDiscrepancy.value = false
   }
@@ -432,10 +439,10 @@ async function handleExport(format) {
   if (format === 'print') {
     printWindow = window.open('', '_blank')
     if (!printWindow) {
-      error.value = 'Không thể mở bản in. Vui lòng cho phép trình duyệt hiển thị popup.'
+      error.value = t('importInspection.messages.printPopupBlocked')
       return
     }
-    printWindow.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:20px;">Đang tải bản in PDF...</p>')
+    printWindow.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:20px;">' + t('importInspection.messages.loadingPrintPdf') + '</p>')
   }
 
   exporting.value = true
@@ -443,11 +450,11 @@ async function handleExport(format) {
     if (format === 'pdf') {
       const response = await exportImportReceiptPdf(props.receiptId)
       downloadBlobResponse(response, `phieu-nhap-${receipt.value?.code || props.receiptId}.pdf`)
-      successMessage.value = 'Xuất phiếu PDF thành công.'
+      successMessage.value = t('importInspection.messages.exportPdfSuccess')
     } else if (format === 'excel') {
       const response = await exportImportReceiptExcel(props.receiptId)
       downloadBlobResponse(response, `phieu-nhap-${receipt.value?.code || props.receiptId}.xlsx`)
-      successMessage.value = 'Xuất file Excel thành công.'
+      successMessage.value = t('importInspection.messages.exportExcelSuccess')
     } else if (format === 'print') {
       const response = await exportImportReceiptPdf(props.receiptId)
       setPrintWindowBlob(printWindow, response)
@@ -456,8 +463,8 @@ async function handleExport(format) {
     if (printWindow) {
       printWindow.close()
     }
-    const actionLabel = format === 'pdf' ? 'xuất phiếu PDF' : format === 'excel' ? 'xuất file Excel' : 'mở bản in'
-    error.value = err.message || `Không thể ${actionLabel}.`
+    const actionLabel = format === 'pdf' ? t('importInspection.exportLabels.pdf') : format === 'excel' ? t('importInspection.exportLabels.excel') : t('importInspection.exportLabels.print')
+    error.value = err.message || t('importInspection.messages.exportFailed', { label: actionLabel })
   } finally {
     exporting.value = false
   }
@@ -483,7 +490,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
     <!-- Thông tin chung -->
     <v-card class="mb-6 rounded-lg elevation-1" border>
       <v-card-title class="font-weight-bold d-flex align-center py-3 px-4">
-        <span>Phiếu Nhập: {{ receipt.code }}</span>
+        <span>{{ t('importInspection.title', { code: receipt.code }) }}</span>
         <v-spacer></v-spacer>
         <v-chip :color="statusColor" class="font-weight-medium mr-2">{{ statusLabel }}</v-chip>
         <v-menu transition="slide-y-transition">
@@ -497,14 +504,12 @@ watch(() => props.receiptId, loadData, { immediate: true })
               append-icon="mdi-chevron-down"
               size="small"
               class="font-weight-medium text-capitalize ml-2"
-            >
-              Xuất phiếu
-            </v-btn>
+            > {{ t('importInspection.btn.export') }} </v-btn>
           </template>
           <v-list density="compact" nav class="py-1">
-            <v-list-item prepend-icon="mdi-printer" title="In phiếu" @click="handleExport('print')" />
-            <v-list-item prepend-icon="mdi-file-pdf-box" title="Xuất PDF" @click="handleExport('pdf')" />
-            <v-list-item prepend-icon="mdi-file-excel-box" title="Xuất Excel" @click="handleExport('excel')" />
+            <v-list-item prepend-icon="mdi-printer" :title="t('importInspection.btn.print')" @click="handleExport('print')" />
+            <v-list-item prepend-icon="mdi-file-pdf-box" :title="t('importInspection.btn.exportPdf')" @click="handleExport('pdf')" />
+            <v-list-item prepend-icon="mdi-file-excel-box" :title="t('importInspection.btn.exportExcel')" @click="handleExport('excel')" />
           </v-list>
         </v-menu>
       </v-card-title>
@@ -512,24 +517,24 @@ watch(() => props.receiptId, loadData, { immediate: true })
         <!-- Status Helper Description -->
         <div class="text-subtitle-2 text-grey-darken-2 mb-4 bg-grey-lighten-4 pa-3 rounded-lg border-left-brand">
           <v-icon start size="small" color="primary">mdi-information-outline</v-icon>
-          <strong>Trạng thái:</strong> {{ statusHelpers[receipt.status] || 'Trạng thái không xác định.' }}
+          <strong>{{ t('stockDocument.columns.status') }}:</strong> {{ statusHelpers[receipt.status] || t('importInspection.messages.unknownStatus') }}
         </div>
 
         <v-row>
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">Kho hàng</div>
+            <div class="text-caption text-grey">{{ t('stockDocument.columns.warehouse') }}</div>
             <div class="font-weight-medium text-body-1">{{ receipt.warehouseName || '-' }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">Nhà cung cấp</div>
+            <div class="text-caption text-grey">{{ t('stockDocument.columns.supplier') }}</div>
             <div class="font-weight-medium text-body-1">{{ receipt.supplierName || '-' }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">Tổng tiền</div>
+            <div class="text-caption text-grey">{{ t('stockDocument.columns.totalAmount') }}</div>
             <div class="font-weight-bold text-body-1 text-primary">{{ formatCurrency(receipt.totalAmount) }}</div>
           </v-col>
           <v-col cols="12" sm="6" md="3">
-            <div class="text-caption text-grey">Ngày tạo</div>
+            <div class="text-caption text-grey">{{ t('stockDocument.columns.createdAt') }}</div>
             <div class="font-weight-medium text-body-1">{{ formatDate(receipt.createdAt) }}</div>
           </v-col>
         </v-row>
@@ -538,11 +543,11 @@ watch(() => props.receiptId, loadData, { immediate: true })
         <v-spacer></v-spacer>
         <v-btn v-if="canCancelLate" color="error" variant="text" :loading="cancelLateState.submitting" @click="openCancelLateModal">
           <v-icon start>mdi-cancel</v-icon>
-          Hủy Phiếu Nhập
+          {{ t('importInspection.btn.cancelReceipt') }}
         </v-btn>
         <v-btn v-if="canProcessReceipt" color="primary" variant="flat" :loading="submitting" @click="handleArrival">
           <v-icon start>mdi-truck-check</v-icon>
-          Xác Nhận Hàng Về
+          {{ t('importInspection.btn.confirmArrival') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -551,7 +556,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
     <v-card v-if="receipt.status === 'CHO_KIEM_HANG' && canProcessReceipt" class="mb-6 rounded-lg elevation-1 border-primary" border>
       <v-card-title class="bg-primary text-white d-flex align-center py-3">
         <v-icon start>mdi-clipboard-check</v-icon>
-        Bước 2: Kiểm Hàng Thực Tế
+        {{ t('importInspection.step2Title') }}
       </v-card-title>
       <v-card-text class="pt-4">
         <!-- Desktop view table -->
@@ -559,11 +564,11 @@ watch(() => props.receiptId, loadData, { immediate: true })
           <v-table hover v-if="inspectItems.length > 0">
             <thead>
               <tr>
-                <th class="text-left">Sản phẩm</th>
-                <th class="text-center" width="120">SL Gốc</th>
-                <th class="text-center" width="150">Thực nhận</th>
-                <th class="text-left" width="200">Tình trạng</th>
-                <th class="text-left" width="200">Hạn sử dụng</th>
+                <th class="text-left">{{ t('importInspection.table.product') }}</th>
+                <th class="text-center" width="120">{{ t('importInspection.table.expectedQty') }}</th>
+                <th class="text-center" width="150">{{ t('importInspection.table.actualReceivedQty') }}</th>
+                <th class="text-left" width="200">{{ t('importInspection.table.physicalStatus') }}</th>
+                <th class="text-left" width="200">{{ t('importInspection.table.expiryDate') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -587,7 +592,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
                 <td>
                   <v-select
                     v-model="item.physicalStatus"
-                    :items="physicalStatusOptions"
+                    :items="physicalStatusOptions" item-title="title" item-value="value"
                     density="compact"
                     variant="outlined"
                     hide-details
@@ -616,13 +621,13 @@ watch(() => props.receiptId, loadData, { immediate: true })
                class="mb-3 pa-3 rounded-lg border"
                :class="item.actualReceivedQuantity !== item.expectedQuantity || hasPhysicalIssue(item.physicalStatus) ? 'bg-red-lighten-5 border-error' : 'bg-grey-lighten-5'">
             <div class="font-weight-bold text-subtitle-1">{{ item.productName }}</div>
-            <div class="text-caption text-grey mb-3">SKU: {{ item.productCode }} | Yêu cầu: {{ item.expectedQuantity }} {{ item.unitName }}</div>
+            <div class="text-caption text-grey mb-3">SKU: {{ item.productCode }} | {{ t('importInspection.table.expectedQty') }}: {{ item.expectedQuantity }} {{ item.unitName }}</div>
 
             <v-row class="ma-0">
               <v-col cols="12" class="pa-1">
                 <v-text-field
                   v-model.number="item.actualReceivedQuantity"
-                  label="Số lượng thực nhận"
+                  :label="t('importInspection.table.actualReceivedQty')"
                   type="number"
                   min="0"
                   density="compact"
@@ -634,8 +639,8 @@ watch(() => props.receiptId, loadData, { immediate: true })
               <v-col cols="6" class="pa-1">
                 <v-select
                   v-model="item.physicalStatus"
-                  :items="physicalStatusOptions"
-                  label="Tình trạng"
+                  :items="physicalStatusOptions" item-title="title" item-value="value"
+                  :label="t('importInspection.table.physicalStatus')"
                   density="compact"
                   variant="outlined"
                   hide-details
@@ -645,7 +650,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
               <v-col cols="6" class="pa-1">
                 <v-text-field
                   v-model="item.expiryDate"
-                  label="Hạn sử dụng"
+                  :label="t('importInspection.table.expiryDate')"
                   type="date"
                   density="compact"
                   variant="outlined"
@@ -659,7 +664,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
         </div>
 
         <v-alert v-if="inspectItems.length === 0" type="info" variant="tonal" class="mt-2">
-          Không có sản phẩm nào để kiểm tra.
+          {{ t('importInspection.emptyList') }}
         </v-alert>
       </v-card-text>
     </v-card>
@@ -668,20 +673,20 @@ watch(() => props.receiptId, loadData, { immediate: true })
     <v-card v-if="receipt.status === 'CHO_KIEM_HANG' && hasDiscrepancy && canProcessReceipt" class="mb-6 rounded-lg elevation-1 border-error" border>
       <v-card-title class="bg-error text-white d-flex align-center py-3">
         <v-icon start>mdi-alert</v-icon>
-        Biên Bản Chênh Lệch
+        {{ t('importInspection.discrepancyTitle') }}
       </v-card-title>
       <v-card-text class="pt-4">
         <v-alert type="warning" variant="tonal" class="mb-4">
-          Có chênh lệch giữa số lượng thực nhận và số lượng trên phiếu. Vui lòng ghi lý do/hướng xử lý và lưu biên bản trước khi hoàn tất.
+          {{ t('importInspection.messages.discrepancyWarning') }}
         </v-alert>
 
         <v-alert v-if="isDiscrepancyReportCurrent" type="success" variant="tonal" class="mb-4">
-          Đã lưu biên bản chênh lệch. Bạn có thể hoàn tất nhập kho theo số lượng thực nhận.
+          {{ t('importInspection.messages.discrepancyReportSaved') }}
         </v-alert>
 
         <v-textarea
           v-model="discrepancyNote"
-          label="Ghi chú tổng quát biên bản"
+          :label="t('importInspection.discrepancyNote')"
           variant="outlined"
           rows="2"
           class="mb-4"
@@ -690,13 +695,13 @@ watch(() => props.receiptId, loadData, { immediate: true })
         <div v-for="item in discrepancyItems" :key="item.productId" class="mb-4 pa-4 bg-grey-lighten-4 rounded">
           <div class="font-weight-bold mb-2">
             {{ item.productName }}
-            <v-chip size="small" color="error" class="ml-2">Lệch: {{ item.actualReceivedQuantity - item.expectedQuantity }} {{ item.unitName }}</v-chip>
+            <v-chip size="small" color="error" class="ml-2">{{ t('importInspection.table.discrepancy') }}: {{ item.actualReceivedQuantity - item.expectedQuantity }} {{ item.unitName }}</v-chip>
           </div>
           <v-row>
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="item.reason"
-                label="Lý do chênh lệch"
+                :label="t('importInspection.discrepancyReason')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -705,7 +710,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="item.action"
-                label="Hướng xử lý đề xuất"
+                :label="t('importInspection.discrepancyAction')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -721,7 +726,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
             @click="handleSaveDiscrepancyReport"
           >
             <v-icon start>mdi-content-save-alert</v-icon>
-            Lưu biên bản chênh lệch
+            {{ t('importInspection.btn.saveDiscrepancy') }}
           </v-btn>
         </div>
       </v-card-text>
@@ -739,7 +744,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
         @click="openCancelLateModal"
       >
         <v-icon start>mdi-cancel</v-icon>
-        Hủy Phiếu Nhập
+        {{ t('importInspection.btn.cancelReceipt') }}
       </v-btn>
       <v-btn
         color="primary"
@@ -750,26 +755,26 @@ watch(() => props.receiptId, loadData, { immediate: true })
         @click="handleComplete"
       >
         <v-icon start>mdi-check-circle</v-icon>
-        Hoàn Tất Nhập Kho
+        {{ t('importInspection.btn.completeImport') }}
       </v-btn>
     </div>
 
     <!-- Chỉ xem danh sách sản phẩm nếu không ở trạng thái cần action -->
     <v-card v-if="receipt.status !== 'CHO_KIEM_HANG' || !canProcessReceipt" class="mb-6 rounded-lg elevation-1" border>
       <v-card-title class="font-weight-bold bg-grey-lighten-4 py-3">
-        Danh sách sản phẩm
+        {{ t('importInspection.productListTitle') }}
       </v-card-title>
       <v-card-text class="pa-0">
         <v-table>
           <thead>
             <tr>
-              <th class="text-left">Sản phẩm</th>
-              <th class="text-center">SL trên phiếu</th>
-              <th class="text-center">SL thực nhận</th>
-              <th class="text-center">Chênh lệch</th>
-              <th class="text-right">Đơn giá</th>
-              <th class="text-right">Thành tiền trên phiếu</th>
-              <th class="text-right">Giá trị thực nhận</th>
+              <th class="text-left">{{ t('importInspection.table.product') }}</th>
+              <th class="text-center">{{ t('importInspection.table.expectedQty') }}</th>
+              <th class="text-center">{{ t('importInspection.table.actualReceivedQty') }}</th>
+              <th class="text-center">{{ t('importInspection.table.discrepancy') }}</th>
+              <th class="text-right">{{ t('importInspection.table.unitPrice') }}</th>
+              <th class="text-right">{{ t('importInspection.table.lineTotal') }}</th>
+              <th class="text-right">{{ t('importInspection.table.actualReceivedTotal') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -778,9 +783,9 @@ watch(() => props.receiptId, loadData, { immediate: true })
                 <div class="font-weight-bold">{{ item.productName }}</div>
                 <div class="text-caption text-grey">{{ item.productCode }}</div>
               </td>
-              <td class="text-center font-weight-medium">{{ item.quantity }} {{ item.unitName || 'Cái' }}</td>
+              <td class="text-center font-weight-medium">{{ item.quantity }} {{ item.unitName || t('importInspection.table.pcs') }}</td>
               <td class="text-center font-weight-medium">
-                <span v-if="hasActualReceivedQuantity(item)">{{ item.actualReceivedQuantity }} {{ item.unitName || 'Cái' }}</span>
+                <span v-if="hasActualReceivedQuantity(item)">{{ item.actualReceivedQuantity }} {{ item.unitName || t('importInspection.table.pcs') }}</span>
                 <span v-else>-</span>
               </td>
               <td class="text-center">
@@ -790,7 +795,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
                   :color="getDiscrepancyQuantity(item) > 0 ? 'warning' : 'error'"
                   variant="tonal"
                 >
-                  {{ formatDiscrepancy(item) }} {{ item.unitName || 'Cái' }}
+                  {{ formatDiscrepancy(item) }} {{ item.unitName || t('importInspection.table.pcs') }}
                 </v-chip>
                 <span v-else>{{ formatDiscrepancy(item) }}</span>
               </td>
@@ -806,15 +811,15 @@ watch(() => props.receiptId, loadData, { immediate: true })
       </v-card-text>
     </v-card>
 
-    <!-- Lịch sử phê duyệt timeline trực tiếp trên trang -->
+    <!-- {{ t('importInspection.approvalHistory') }} timeline trực tiếp trên trang -->
     <v-card class="mb-6 rounded-lg elevation-1" border>
       <v-card-title class="font-weight-bold bg-grey-lighten-4 py-3">
         <v-icon start>mdi-history</v-icon>
-        Lịch sử phê duyệt
+        {{ t('importInspection.approvalHistory') }}
       </v-card-title>
       <v-card-text class="pt-4">
         <div v-if="historyList.length === 0" class="text-grey italic text-body-2 text-center py-4">
-          Chưa có lịch sử phê duyệt nào cho phiếu này.
+          {{ t('importInspection.emptyHistory') }}
         </div>
         <div v-else class="history-timeline">
           <div v-for="(item, index) in historyList" :key="item.id" class="history-item mb-4 d-flex align-start">
@@ -829,10 +834,10 @@ watch(() => props.receiptId, loadData, { immediate: true })
                 <span class="text-caption text-grey">{{ formatDate(item.createdAt) }}</span>
               </div>
               <div class="text-body-2 mt-1">
-                <strong>Người thực hiện:</strong> {{ item.actorName || 'Hệ thống' }}
+                <strong>{{ t('importInspection.actorLabel') }}</strong> {{ item.actorName || t('common.system') }}
               </div>
               <div v-if="item.note" class="text-body-2 text-error mt-1 italic pl-3 border-left-error">
-                Lý do: {{ item.note }}
+                {{ t('importInspection.reasonLabel') }} {{ item.note }}
               </div>
             </div>
           </div>
@@ -847,24 +852,24 @@ watch(() => props.receiptId, loadData, { immediate: true })
     </v-alert>
     <v-btn color="primary" @click="loadData">
       <v-icon start>mdi-reload</v-icon>
-      Tải lại
+      {{ t('importInspection.btn.reload') }}
     </v-btn>
   </div>
 
   <v-dialog v-model="cancelLateState.open" max-width="500px" persistent>
     <v-card>
       <v-card-title class="text-h6 pt-4 pb-2 px-6">
-        Hủy phiếu nhập
+        {{ t('importInspection.btn.cancelReceipt') }}
         <v-btn icon="mdi-close" variant="text" size="small" class="float-right" :disabled="cancelLateState.submitting" @click="closeCancelLateModal"></v-btn>
       </v-card-title>
       <v-card-text class="px-6 pb-2">
-        <p class="mb-4 text-body-2 text-grey-darken-1">Lý do hủy <span class="text-error">*</span></p>
+        <p class="mb-4 text-body-2 text-grey-darken-1">{{ t('importInspection.cancelReasonDesc') }} <span class="text-error">*</span></p>
         <v-textarea
           v-model="cancelLateState.reason"
           rows="4"
           variant="outlined"
           density="comfortable"
-          placeholder="Nhập lý do hủy..."
+          :placeholder="t('importInspection.cancelReasonPlaceholder')"
           :error-messages="cancelLateState.error ? [cancelLateState.error] : []"
           @update:model-value="cancelLateState.error = ''"
         ></v-textarea>
@@ -874,8 +879,9 @@ watch(() => props.receiptId, loadData, { immediate: true })
       </v-card-text>
       <v-card-actions class="px-6 pb-4">
         <v-spacer></v-spacer>
-        <v-btn color="grey-darken-1" variant="text" :disabled="cancelLateState.submitting" @click="closeCancelLateModal">Hủy</v-btn>
-        <v-btn color="error" variant="flat" :loading="cancelLateState.submitting" @click="confirmCancelLate">Xác nhận hủy</v-btn>
+        <v-btn color="grey-darken-1" variant="text" :disabled="cancelLateState.submitting" @click="closeCancelLateModal">{{ t('common.cancel') }}</v-btn>
+        <v-btn color="error" variant="flat" :loading="cancelLateState.submitting" @click="confirmCancelLate">
+          {{ t('importInspection.btn.cancelReceipt') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

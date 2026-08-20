@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from 'vue-i18n';
 import PageHeader from "../components/PageHeader.vue";
 import SearchFilterBar from "../components/SearchFilterBar.vue";
 import DataTable from "../components/DataTable.vue";
@@ -10,6 +11,7 @@ import { getInventoryTransactions } from "../services/inventoryService";
 import { getWarehouses } from "../services/warehouseService";
 
 const router = useRouter();
+const { t } = useI18n();
 const transactions = ref([]);
 const warehouses = ref([]);
 const isLoading = ref(false);
@@ -28,23 +30,23 @@ const filters = reactive({
 });
 
 const transactionTypeOptions = [
-  { value: "", label: "Tất cả loại giao dịch" },
-  { value: "NHAP_KHO", label: "Nhập kho" },
-  { value: "XUAT_KHO", label: "Xuất kho" },
-  { value: "NHAP_DAU_KY", label: "Nhập đầu kỳ" },
-  { value: "DIEU_CHINH_TANG", label: "Điều chỉnh tăng" },
-  { value: "DIEU_CHINH_GIAM", label: "Điều chỉnh giảm" },
+  { value: "", label: t("transactions.allTransactionTypes") },
+  { value: "NHAP_KHO", label: t("transactions.inbound") },
+  { value: "XUAT_KHO", label: t("transactions.outbound") },
+  { value: "NHAP_DAU_KY", label: t("transactions.initialInbound") },
+  { value: "DIEU_CHINH_TANG", label: t("transactions.adjustIncrease") },
+  { value: "DIEU_CHINH_GIAM", label: t("transactions.adjustDecrease") },
 ];
 
 const columns = [
-  { key: "createdAt", label: "Ngày tạo", class: "cell-nowrap" },
-  { key: "transactionType", label: "Loại giao dịch", class: "cell-nowrap" },
-  { key: "product", label: "Sản phẩm", class: "cell-long" },
-  { key: "warehouseName", label: "Kho hàng", class: "cell-medium" },
-  { key: "delta", label: "Biến động", class: "cell-compact text-right" },
-  { key: "transition", label: "Trước → Sau", class: "cell-compact text-right tabular-num" },
-  { key: "reference", label: "Chứng từ / Ghi chú", class: "cell-medium" },
-  { key: "createdByName", label: "Người thực hiện", class: "cell-medium" },
+  { key: "createdAt", label: t("transactions.createdAt"), class: "cell-nowrap" },
+  { key: "transactionType", label: t("transactions.transactionType"), class: "cell-nowrap" },
+  { key: "product", label: t("transactions.product"), class: "cell-long" },
+  { key: "warehouseName", label: t("transactions.warehouse"), class: "cell-medium" },
+  { key: "delta", label: t("transactions.delta"), class: "cell-compact text-right" },
+  { key: "transition", label: t("transactions.transition"), class: "cell-compact text-right tabular-num" },
+  { key: "reference", label: t("transactions.reference"), class: "cell-medium" },
+  { key: "createdByName", label: t("transactions.createdBy"), class: "cell-medium" },
 ];
 
 const hasActiveFilters = computed(() => {
@@ -137,7 +139,7 @@ function clearFilters() {
 }
 
 function getTransactionTypeLabel(type) {
-  return transactionTypeOptions.find((option) => option.value === type)?.label || "Không xác định";
+  return transactionTypeOptions.find((option) => option.value === type)?.label || t("transactions.unknown");
 }
 
 function getDelta(row) {
@@ -183,22 +185,22 @@ function viewDocumentDetail(type, documentId) {
 <template>
   <div class="page-container page-shell">
     <PageHeader
-      title="Lịch sử giao dịch kho"
-      description="Xem chi tiết lịch sử biến động kho theo từng sản phẩm, kho hàng và thời gian thực tế."
+      :title="t('transactions.title')"
+      :description="t('transactions.description')"
     />
 
     <!-- KPI Summary Cards -->
     <div class="summary-metrics-grid animate-in fade-in duration-200">
       <div class="metric-card card card-pad">
-        <span class="metric-label">Tổng số giao dịch</span>
+        <span class="metric-label">{{ t("transactions.totalTransactions") }}</span>
         <span class="metric-value text-blue-600 font-semibold">{{ totalElements }}</span>
       </div>
       <div class="metric-card card card-pad bg-emerald-50/50">
-        <span class="metric-label">Số giao dịch nhập kho (trên trang)</span>
+        <span class="metric-label">{{ t("transactions.inboundCount") }}</span>
         <span class="metric-value text-emerald-600 font-semibold">{{ inboundCount }}</span>
       </div>
       <div class="metric-card card card-pad bg-zinc-50/55">
-        <span class="metric-label">Số giao dịch xuất kho (trên trang)</span>
+        <span class="metric-label">{{ t("transactions.outboundCount") }}</span>
         <span class="metric-value text-zinc-700 font-semibold">{{ outboundCount }}</span>
       </div>
     </div>
@@ -206,7 +208,7 @@ function viewDocumentDetail(type, documentId) {
     <!-- Filters Bar -->
     <SearchFilterBar
       v-model="searchDraft"
-      placeholder="Tìm theo mã SP, tên sản phẩm hoặc người thực hiện"
+      :placeholder="t('transactions.searchPlaceholder')"
       @keyup.enter="applySearch"
     >
       <select v-model="filters.transactionType" class="select" :disabled="isLoading" @change="applyFilter">
@@ -216,7 +218,7 @@ function viewDocumentDetail(type, documentId) {
       </select>
 
       <select v-model="filters.warehouseId" class="select" :disabled="isLoadingDropdowns || isLoading" @change="applyFilter">
-        <option value="">{{ isLoadingDropdowns ? "Đang tải kho..." : "Tất cả kho" }}</option>
+        <option value="">{{ isLoadingDropdowns ? t("transactions.loadingWarehouses") : t("transactions.allWarehouses") }}</option>
         <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
           {{ displayWarehouseOption(warehouse) }}
         </option>
@@ -229,27 +231,27 @@ function viewDocumentDetail(type, documentId) {
           class="input"
           :disabled="isLoading"
           @change="applyFilter"
-          aria-label="Từ ngày"
+          :aria-label="t('transactions.fromDate')"
         />
-        <span class="date-range-sep">to</span>
+        <span class="date-range-sep">{{ t("transactions.to") }}</span>
         <input
           v-model="filters.to"
           type="datetime-local"
           class="input"
           :disabled="isLoading"
           @change="applyFilter"
-          aria-label="Đến ngày"
+          :aria-label="t('transactions.toDate')"
         />
       </div>
 
       <div class="filter-actions">
         <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
           <i class="mdi mdi-magnify"></i>
-          Tìm kiếm
+          {{ t("transactions.search") }}
         </button>
         <button v-if="hasActiveFilters" class="btn btn-ghost" type="button" :disabled="isLoading" @click="clearFilters">
           <i class="mdi mdi-filter-remove-outline"></i>
-          Xóa lọc
+          {{ t("transactions.clearFilter") }}
         </button>
       </div>
     </SearchFilterBar>
@@ -263,7 +265,7 @@ function viewDocumentDetail(type, documentId) {
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-state card card-pad">
       <i class="mdi mdi-loading mdi-spin text-2xl text-blue-600"></i>
-      <span>Đang tải lịch sử giao dịch kho...</span>
+      <span>{{ t("transactions.loadingHistory") }}</span>
     </div>
 
     <!-- Main Content Container -->
@@ -308,7 +310,7 @@ function viewDocumentDetail(type, documentId) {
                   class="document-link"
                   @click="viewDocumentDetail('in', row.importReceiptId)"
                 >
-                  <i class="mdi mdi-receipt-text-outline"></i> Phiếu nhập #{{ row.importReceiptId }}
+                  <i class="mdi mdi-receipt-text-outline"></i> {{ t("transactions.importReceipt") }} #{{ row.importReceiptId }}
                 </span>
               </template>
               <template v-else-if="row.exportReceiptId">
@@ -316,7 +318,7 @@ function viewDocumentDetail(type, documentId) {
                   class="document-link"
                   @click="viewDocumentDetail('out', row.exportReceiptId)"
                 >
-                  <i class="mdi mdi-receipt-text-send-outline"></i> Phiếu xuất #{{ row.exportReceiptId }}
+                  <i class="mdi mdi-receipt-text-send-outline"></i> {{ t("transactions.exportReceipt") }} #{{ row.exportReceiptId }}
                 </span>
               </template>
               <span v-else class="note-text">{{ row.note || '—' }}</span>
@@ -335,15 +337,15 @@ function viewDocumentDetail(type, documentId) {
 
           <div class="card-body-details">
             <div class="detail-row">
-              <span class="detail-label">Sản phẩm</span>
+              <span class="detail-label">{{ t("transactions.product") }}</span>
               <span class="detail-val text-zinc-900">{{ row.productName }} <code class="sku-code ml-1 text-xs">{{ row.productCode }}</code></span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Kho hàng</span>
+              <span class="detail-label">{{ t("transactions.warehouse") }}</span>
               <span class="detail-val">{{ displayWarehouseName(row) }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Biến động</span>
+              <span class="detail-label">{{ t("transactions.delta") }}</span>
               <span
                 class="detail-val tabular-num font-semibold"
                 :class="Number(getDelta(row)) >= 0 ? 'text-emerald-600' : 'text-zinc-700'"
@@ -352,16 +354,16 @@ function viewDocumentDetail(type, documentId) {
               </span>
             </div>
             <div class="detail-row" v-if="row.importReceiptId || row.exportReceiptId || row.note">
-              <span class="detail-label">Chứng từ gốc</span>
+              <span class="detail-label">{{ t("transactions.originalDocument") }}</span>
               <span class="detail-val">
                 <template v-if="row.importReceiptId">
                   <span class="document-link" @click="viewDocumentDetail('in', row.importReceiptId)">
-                    Phiếu nhập #{{ row.importReceiptId }}
+                    {{ t("transactions.importReceipt") }} #{{ row.importReceiptId }}
                   </span>
                 </template>
                 <template v-else-if="row.exportReceiptId">
                   <span class="document-link" @click="viewDocumentDetail('out', row.exportReceiptId)">
-                    Phiếu xuất #{{ row.exportReceiptId }}
+                    {{ t("transactions.exportReceipt") }} #{{ row.exportReceiptId }}
                   </span>
                 </template>
                 <template v-else>
@@ -370,7 +372,7 @@ function viewDocumentDetail(type, documentId) {
               </span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Người thực hiện</span>
+              <span class="detail-label">{{ t("transactions.createdBy") }}</span>
               <span class="detail-val text-xs text-muted">{{ row.createdByName }}</span>
             </div>
           </div>
@@ -379,7 +381,7 @@ function viewDocumentDetail(type, documentId) {
 
       <!-- Pagination -->
       <div class="pagination-bar card card-pad">
-        <span class="muted">{{ totalElements }} bản ghi</span>
+        <span class="muted">{{ totalElements }} {{ t("transactions.records") }}</span>
         <div class="pagination-actions">
           <button
             class="btn btn-sm"
@@ -390,7 +392,7 @@ function viewDocumentDetail(type, documentId) {
             <i class="mdi mdi-chevron-left"></i>
             Trước
           </button>
-          <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
+          <span class="page-indicator">{{ t("transactions.page") }} {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
           <button
             class="btn btn-sm"
             type="button"
@@ -408,14 +410,14 @@ function viewDocumentDetail(type, documentId) {
     <div v-else>
       <EmptyState
         v-if="hasActiveFilters"
-        title="Không tìm thấy kết quả"
-        description="Không tìm thấy lịch sử giao dịch kho phù hợp với bộ lọc hiện tại."
+        :title="t('transactions.noResultsTitle')"
+        :description="t('transactions.noResultsDesc')"
         icon="mdi-filter-off-outline"
       />
       <EmptyState
         v-else
-        title="Chưa có giao dịch"
-        description="Hệ thống chưa ghi nhận bất kỳ giao dịch biến động kho nào."
+        :title="t('transactions.noTransactionsTitle')"
+        :description="t('transactions.noTransactionsDesc')"
         icon="mdi-history"
       />
     </div>

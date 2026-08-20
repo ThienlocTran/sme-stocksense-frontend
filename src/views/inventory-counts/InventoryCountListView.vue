@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/PageHeader.vue'
 import DataTable from '../../components/DataTable.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
@@ -11,6 +12,7 @@ import { canManageInventoryCounts } from '../../services/permissionService'
 import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
+const { t } = useI18n()
 const counts = ref([])
 const warehouses = ref([])
 const isLoading = ref(false)
@@ -30,23 +32,23 @@ const totalPages = ref(0)
 const totalElements = ref(0)
 
 const countStatusOptions = [
-  { value: '', label: 'Tất cả trạng thái' },
-  { value: 'DANG_KIEM_KE', label: 'Đang kiểm kê' },
-  { value: 'DA_CHOT', label: 'Đã chốt' },
-  { value: 'DA_HUY', label: 'Đã hủy' }
+  { value: '', label: t('inventoryCounts.allStatuses') },
+  { value: 'DANG_KIEM_KE', label: t('inventoryCounts.counting') },
+  { value: 'DA_CHOT', label: t('inventoryCounts.finalized') },
+  { value: 'DA_HUY', label: t('inventoryCounts.cancelled') }
 ]
 
 const authStore = useAuthStore()
 const canManage = computed(() => canManageInventoryCounts(authStore.currentUser))
 
 const columns = [
-  { key: 'code', label: 'Mã kiểm kê', class: 'cell-compact font-semibold text-zinc-900' },
-  { key: 'warehouseName', label: 'Kho hàng' },
-  { key: 'status', label: 'Trạng thái' },
-  { key: 'createdByName', label: 'Người tạo' },
-  { key: 'createdAt', label: 'Ngày tạo' },
-  { key: 'finalizedAt', label: 'Ngày hoàn tất' },
-  { key: 'actions', label: 'Thao tác', class: 'cell-nowrap text-right' }
+  { key: 'code', label: t('inventoryCounts.countCode'), class: 'cell-compact font-semibold text-zinc-900' },
+  { key: 'warehouseName', label: t('inventoryCounts.warehouse') },
+  { key: 'status', label: t('inventoryCounts.status') },
+  { key: 'createdByName', label: t('inventoryCounts.createdBy') },
+  { key: 'createdAt', label: t('inventoryCounts.createdAt') },
+  { key: 'finalizedAt', label: t('inventoryCounts.finalizedAt') },
+  { key: 'actions', label: t('inventoryCounts.actions'), class: 'cell-nowrap text-right' }
 ]
 
 const createForm = reactive({
@@ -74,7 +76,7 @@ async function fetchCounts() {
     totalElements.value = res.totalElements || 0
   } catch (error) {
     counts.value = []
-    errorMessage.value = error.message || 'Không thể tải danh sách kiểm kê.'
+    errorMessage.value = error.message || t('inventoryCounts.errorLoadList')
   } finally {
     isLoading.value = false
   }
@@ -122,7 +124,7 @@ function closeCreateModal() {
 
 async function handleCreate() {
   if (!createForm.warehouseId) {
-    saveErrorMessage.value = 'Vui lòng chọn kho hàng cần kiểm kê.'
+    saveErrorMessage.value = t('inventoryCounts.errorSelectWarehouse')
     return
   }
   isSaving.value = true
@@ -137,7 +139,7 @@ async function handleCreate() {
     isCreateOpen.value = false
     router.push(`/inventory-counts/${newCount.id}`)
   } catch (error) {
-    saveErrorMessage.value = error.message || 'Không thể tạo đợt kiểm kê.'
+    saveErrorMessage.value = error.message || t('inventoryCounts.errorCreateCount')
   } finally {
     isSaving.value = false
   }
@@ -148,9 +150,9 @@ function viewDetail(id) {
 }
 
 function getStatusText(status) {
-  if (status === 'DANG_KIEM_KE') return 'Đang kiểm kê'
-  if (status === 'DA_CHOT') return 'Đã chốt'
-  if (status === 'DA_HUY') return 'Đã hủy'
+  if (status === 'DANG_KIEM_KE') return t('inventoryCounts.counting')
+  if (status === 'DA_CHOT') return t('inventoryCounts.finalized')
+  if (status === 'DA_HUY') return t('inventoryCounts.cancelled')
   return status
 }
 
@@ -169,9 +171,9 @@ function formatDate(dateString) {
 
 <template>
   <div class="page-container page-shell">
-    <PageHeader title="Kiểm kê kho" description="Kiểm tra thực tế và cân bằng tồn kho hệ thống.">
+    <PageHeader :title="t('inventoryCounts.title')" :description="t('inventoryCounts.description')">
       <button v-if="canManage" class="btn btn-primary" @click="openCreateModal">
-        <i class="mdi mdi-plus"></i> Tạo đợt kiểm kê
+        <i class="mdi mdi-plus"></i> {{ t("inventoryCounts.createCount") }}
       </button>
     </PageHeader>
 
@@ -179,9 +181,9 @@ function formatDate(dateString) {
     <div class="filter-bar card card-pad animate-in fade-in duration-200">
       <div class="filter-row">
         <div class="form-group flex-1">
-          <label class="label">Kho hàng</label>
+          <label class="label">{{ t("inventoryCounts.warehouse") }}</label>
           <select class="select" v-model="filters.warehouseId" @change="onFilterChange">
-            <option value="">Tất cả kho hàng</option>
+            <option value="">{{ t("inventoryCounts.allWarehouses") }}</option>
             <option v-for="w in warehouses" :key="w.id" :value="w.id">
               {{ w.maKho || w.code ? `${w.maKho || w.code} - ` : '' }}{{ w.name || w.tenKho }}
             </option>
@@ -189,7 +191,7 @@ function formatDate(dateString) {
         </div>
 
         <div class="form-group flex-1">
-          <label class="label">Trạng thái</label>
+          <label class="label">{{ t("inventoryCounts.status") }}</label>
           <select class="select" v-model="filters.status" @change="onFilterChange">
             <option v-for="opt in countStatusOptions" :key="opt.value" :value="opt.value">
               {{ opt.label }}
@@ -204,21 +206,21 @@ function formatDate(dateString) {
       <div class="flex items-center gap-3 w-full">
         <i class="mdi mdi-alert-circle text-2xl"></i>
         <span>{{ errorMessage }}</span>
-        <button class="btn btn-secondary btn-sm ml-auto" @click="fetchCounts">Thử lại</button>
+        <button class="btn btn-secondary btn-sm ml-auto" @click="fetchCounts">{{ t("inventoryCounts.retry") }}</button>
       </div>
     </div>
 
     <!-- Loading State -->
     <div v-else-if="isLoading" class="loading-state card card-pad">
       <i class="mdi mdi-loading mdi-spin text-2xl text-blue-600"></i>
-      <span>Đang tải danh sách kiểm kê...</span>
+      <span>{{ t("inventoryCounts.loading") }}</span>
     </div>
 
     <!-- Empty State -->
     <div v-else-if="counts.length === 0">
       <EmptyState
-        title="Không tìm thấy đợt kiểm kê nào"
-        description="Hãy tạo đợt kiểm kê mới để bắt đầu đối soát số lượng tồn kho thực tế."
+        :title="t('inventoryCounts.noCountsTitle')"
+        :description="t('inventoryCounts.noCountsDesc')"
         icon="mdi-clipboard-text-search-outline"
       />
     </div>
@@ -248,25 +250,19 @@ function formatDate(dateString) {
                 class="btn btn-primary btn-sm flex items-center gap-1"
                 @click.stop="viewDetail(row.id)"
               >
-                <i class="mdi mdi-play-circle-outline"></i>
-                Tiếp tục kiểm kê
-              </button>
+                <i class="mdi mdi-play-circle-outline"></i> {{ t("inventoryCounts.continueCount") }} </button>
               <button
                 v-else-if="row.status === 'DA_CHOT'"
                 class="btn btn-secondary btn-sm flex items-center gap-1"
                 @click.stop="viewDetail(row.id)"
               >
-                <i class="mdi mdi-file-check-outline"></i>
-                Xem kết quả
-              </button>
+                <i class="mdi mdi-file-check-outline"></i> {{ t("inventoryCounts.viewResult") }} </button>
               <button
                 v-else
                 class="btn btn-ghost btn-sm text-zinc-600 hover:bg-zinc-100 flex items-center gap-1"
                 @click.stop="viewDetail(row.id)"
               >
-                <i class="mdi mdi-eye-outline"></i>
-                Xem chi tiết
-              </button>
+                <i class="mdi mdi-eye-outline"></i> {{ t("inventoryCounts.viewDetail") }} </button>
             </div>
           </template>
         </DataTable>
@@ -282,19 +278,19 @@ function formatDate(dateString) {
 
           <div class="card-body-details">
             <div class="detail-row">
-              <span class="detail-label">Kho hàng</span>
+              <span class="detail-label">{{ t("inventoryCounts.warehouse") }}</span>
               <span class="detail-val">{{ row.warehouseName }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Người tạo</span>
+              <span class="detail-label">{{ t("inventoryCounts.createdBy") }}</span>
               <span class="detail-val">{{ row.createdByName }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Ngày tạo</span>
+              <span class="detail-label">{{ t("inventoryCounts.createdAt") }}</span>
               <span class="detail-val text-muted">{{ formatDate(row.createdAt) }}</span>
             </div>
             <div class="detail-row" v-if="row.finalizedAt || row.cancelledAt">
-              <span class="detail-label">{{ row.status === 'DA_CHOT' ? 'Ngày chốt' : 'Ngày hủy' }}</span>
+              <span class="detail-label">{{ row.status === 'DA_CHOT' ? t('inventoryCounts.finalizedDate') : t('inventoryCounts.cancelledDate') }}</span>
               <span class="detail-val text-muted">{{ formatDate(row.finalizedAt || row.cancelledAt) }}</span>
             </div>
           </div>
@@ -304,30 +300,24 @@ function formatDate(dateString) {
               v-if="row.status === 'DANG_KIEM_KE' && canManage"
               class="btn btn-primary btn-sm w-full justify-center gap-1"
             >
-              <i class="mdi mdi-play-circle-outline"></i>
-              Tiếp tục kiểm kê
-            </button>
+              <i class="mdi mdi-play-circle-outline"></i> {{ t("inventoryCounts.continueCount") }} </button>
             <button
               v-else-if="row.status === 'DA_CHOT'"
               class="btn btn-secondary btn-sm w-full justify-center gap-1"
             >
-              <i class="mdi mdi-file-check-outline"></i>
-              Xem kết quả
-            </button>
+              <i class="mdi mdi-file-check-outline"></i> {{ t("inventoryCounts.viewResult") }} </button>
             <button
               v-else
               class="btn btn-ghost btn-sm w-full justify-center gap-1"
             >
-              <i class="mdi mdi-eye-outline"></i>
-              Xem chi tiết
-            </button>
+              <i class="mdi mdi-eye-outline"></i> {{ t("inventoryCounts.viewDetail") }} </button>
           </div>
         </div>
       </div>
 
       <!-- Pagination -->
       <div class="pagination-bar card card-pad">
-        <span class="muted">{{ totalElements }} bản ghi</span>
+        <span class="muted">{{ totalElements }} {{ t("inventoryCounts.records") }}</span>
         <div class="pagination-actions">
           <button
             class="btn btn-sm"
@@ -335,18 +325,14 @@ function formatDate(dateString) {
             :disabled="!hasPreviousPage || isLoading"
             @click="previousPage"
           >
-            <i class="mdi mdi-chevron-left"></i>
-            Trước
-          </button>
-          <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
+            <i class="mdi mdi-chevron-left"></i> {{ t("inventoryCounts.previous") }} </button>
+          <span class="page-indicator">{{ t("inventoryCounts.page") }} {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
           <button
             class="btn btn-sm"
             type="button"
             :disabled="!hasNextPage || isLoading"
             @click="nextPage"
-          >
-            Sau
-            <i class="mdi mdi-chevron-right"></i>
+          > {{ t("inventoryCounts.next") }} <i class="mdi mdi-chevron-right"></i>
           </button>
         </div>
       </div>
@@ -357,10 +343,10 @@ function formatDate(dateString) {
       <div class="modal">
         <div class="modal-head between">
           <div>
-            <h2 class="section-title">Tạo đợt kiểm kê kho mới</h2>
-            <p class="modal-subtitle">Hệ thống sẽ chụp lại dữ liệu tồn kho hiện tại để đối soát thực tế.</p>
+            <h2 class="section-title">{{ t("inventoryCounts.modalCreateTitle") }}</h2>
+            <p class="modal-subtitle">{{ t("inventoryCounts.modalCreateDesc") }}</p>
           </div>
-          <button class="btn btn-icon" @click="closeCreateModal" aria-label="Đóng">
+          <button class="btn btn-icon" @click="closeCreateModal" :aria-label="t('inventoryCounts.close')">
             <i class="mdi mdi-close"></i>
           </button>
         </div>
@@ -372,27 +358,27 @@ function formatDate(dateString) {
           </div>
 
           <div class="field">
-            <label class="required">Chọn kho hàng cần kiểm kê</label>
+            <label class="required">{{ t("inventoryCounts.selectWarehouseLabel") }}</label>
             <select class="select" v-model="createForm.warehouseId">
-              <option value="" disabled>-- Chọn kho hàng --</option>
+              <option value="" disabled>{{ t("inventoryCounts.selectWarehousePlaceholder") }}</option>
               <option v-for="w in warehouses" :key="w.id" :value="w.id">
                 {{ w.maKho || w.code ? `${w.maKho || w.code} - ` : '' }}{{ w.name || w.tenKho }}
               </option>
             </select>
-            <span class="helper-text">Mọi thay đổi số lượng thực tế sẽ được so sánh trực tiếp với tồn kho hệ thống tại kho này.</span>
+            <span class="helper-text">{{ t("inventoryCounts.warehouseHelperText") }}</span>
           </div>
 
           <div class="field">
-            <label>Ghi chú</label>
-            <textarea class="textarea" v-model="createForm.note" placeholder="Nhập lý do kiểm kê, thông tin thêm..."></textarea>
+            <label>{{ t("inventoryCounts.note") }}</label>
+            <textarea class="textarea" v-model="createForm.note" :placeholder="t('inventoryCounts.notePlaceholder')"></textarea>
           </div>
         </div>
 
         <div class="modal-foot">
-          <button class="btn btn-ghost" @click="closeCreateModal" :disabled="isSaving">Hủy</button>
+          <button class="btn btn-ghost" @click="closeCreateModal" :disabled="isSaving">{{ t("inventoryCounts.cancel") }}</button>
           <button class="btn btn-primary" @click="handleCreate" :disabled="isSaving">
             <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
-            {{ isSaving ? 'Đang khởi tạo...' : 'Xác nhận tạo' }}
+            {{ isSaving ? t('inventoryCounts.creating') : t('inventoryCounts.confirmCreate') }}
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { login as loginWithPassword } from '../services/authService'
 import { useAuthStore } from '../stores/auth'
@@ -8,6 +9,7 @@ import StockSenseFullLogo from '../components/branding/StockSenseFullLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const authStore = useAuthStore()
 const form = reactive({ email: '', password: '' })
 const fieldErrors = reactive({ email: '', password: '' })
@@ -102,11 +104,11 @@ async function submitLogin() {
 
   let hasError = false
   if (!form.email.trim()) {
-    fieldErrors.email = 'Vui lòng nhập email.'
+    fieldErrors.email = t('login.errEmailEmpty')
     hasError = true
   }
   if (!form.password) {
-    fieldErrors.password = 'Vui lòng nhập mật khẩu.'
+    fieldErrors.password = t('login.errPasswordEmpty')
     hasError = true
   }
 
@@ -117,7 +119,7 @@ async function submitLogin() {
   try {
     const response = await loginWithPassword(form.email.trim(), form.password)
     authStore.syncFromStorage()
-    successMessage.value = 'Đăng nhập thành công.'
+    successMessage.value = t('login.successLogin')
     router.push(getPostLoginRoute(response.role))
   } catch (error) {
     if (error.errors && (error.errors.email || error.errors.password)) {
@@ -160,11 +162,11 @@ function getPostLoginRoute(role) {
       <StockSenseFullLogo class="base-logo" />
       <StockSenseFullLogo class="trace-logo" :isTrace="true" />
     </div>
-    <p class="brand-tagline">Quản lý tồn kho thông minh</p>
+    <p class="brand-tagline">{{ t('login.brandTagline') }}</p>
 
     <section class="login-panel card card-pad">
       <div class="login-head-static">
-        <p class="login-subtitle">Đăng nhập hệ thống nội bộ</p>
+        <p class="login-subtitle">{{ t('login.loginSubtitle') }}</p>
       </div>
 
       <form class="login-form" @submit.prevent="submitLogin">
@@ -172,7 +174,7 @@ function getPostLoginRoute(role) {
         <p v-if="successMessage" class="form-alert success-alert">{{ successMessage }}</p>
 
         <label class="field">
-          <span>Email</span>
+          <span>{{ t('login.email') }}</span>
           <input
             v-model="form.email"
             class="input"
@@ -186,7 +188,7 @@ function getPostLoginRoute(role) {
         </label>
 
         <label class="field">
-          <span>Mật khẩu</span>
+          <span>{{ t('login.password') }}</span>
           <div class="password-input-wrap">
             <input
               v-model="form.password"
@@ -194,18 +196,18 @@ function getPostLoginRoute(role) {
               :class="{ invalid: fieldErrors.password }"
               :type="showPassword ? 'text' : 'password'"
               autocomplete="current-password"
-              placeholder="Nhập mật khẩu"
+              :placeholder="t('login.placeholderPassword')"
               :disabled="isSubmitting"
             />
             <button
               class="password-toggle"
               type="button"
               :disabled="isSubmitting"
-              :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
-              :title="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+              :aria-label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
+              :title="showPassword ? t('login.hidePassword') : t('login.showPassword')"
               @click="showPassword = !showPassword"
             >
-              <i class="mdi" :class="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"></i>
+              <i class="mdi" :class="showPassword ? 'mdi-eye-outline' : 'mdi-eye-off-outline'"></i>
             </button>
           </div>
           <small v-if="fieldErrors.password" class="field-error">{{ fieldErrors.password }}</small>
@@ -213,7 +215,7 @@ function getPostLoginRoute(role) {
 
         <button class="btn btn-primary login-submit" type="submit" :disabled="isSubmitting">
           <i class="mdi" :class="isSubmitting ? 'mdi-loading mdi-spin' : 'mdi-login'"></i>
-          {{ isSubmitting ? 'Đang đăng nhập' : 'Đăng nhập' }}
+          {{ isSubmitting ? t('login.loggingIn') : t('login.loginBtn') }}
         </button>
       </form>
     </section>
@@ -225,10 +227,10 @@ function getPostLoginRoute(role) {
     type="button"
     class="dev-replay-trigger"
     @click="triggerDevReplay"
-    title="Dev Replay: Chạy lại Intro"
-    aria-label="Chạy lại Intro"
+    :title="t('login.devReplayTitle')"
+    :aria-label="t('login.devReplayAria')"
   >
-    <i class="mdi mdi-replay"></i> Intro Replay
+    <i class="mdi mdi-replay"></i> {{ t('login.introReplay') }}
   </button>
 </template>
 

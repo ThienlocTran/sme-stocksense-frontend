@@ -327,17 +327,17 @@ function formatDateTime(value) {
 .actor-name {
   font-size: 13px;
   font-weight: 700;
-  color: #334155;
+  color: var(--color-text-secondary);
 }
 
 .timeline-note {
   margin-top: 4px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: var(--color-warning-soft);
+  border: 1px solid var(--color-warning);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 12px;
-  color: #78350f;
+  color: var(--color-warning);
   line-height: 1.5;
 }
 
@@ -348,29 +348,29 @@ function formatDateTime(value) {
 /* Action color variants */
 .action-submit .timeline-dot,
 .action-submit {
-  background: #eff6ff;
-  border-color: #93c5fd;
-  color: #1d4ed8;
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .action-approve .timeline-dot,
 .action-approve {
-  background: #dcfce7;
-  border-color: #86efac;
-  color: #15803d;
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .action-reject .timeline-dot,
 .action-reject {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  color: #b91c1c;
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .action-cancel .timeline-dot,
 .action-cancel {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #475569;
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
 }
 </style>

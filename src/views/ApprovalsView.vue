@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
@@ -21,6 +22,7 @@ import {
 import { getWarehouses } from "../services/warehouseService";
 
 const router = useRouter();
+const { t } = useI18n();
 const documentType = ref("in");
 
 const receipts = ref([]);
@@ -69,37 +71,37 @@ const historyState = reactive({
 const REJECT_REASON_MAX = 500;
 
 const columns = computed(() => [
-  { key: "code", label: "Mã phiếu" },
-  { key: "warehouseName", label: "Kho" },
+  { key: "code", label: t("approvals.columns.code") },
+  { key: "warehouseName", label: t("approvals.columns.warehouse") },
   {
     key: "supplierName",
-    label: documentType.value === "out" ? "Khách hàng" : "Nhà cung cấp",
+    label: documentType.value === "out" ? t("approvals.columns.customer") : t("approvals.columns.supplier"),
   },
-  { key: "createdByName", label: "Người tạo" },
-  { key: "submittedAt", label: "Ngày gửi duyệt" },
-  { key: "status", label: "Trạng thái" },
-  { key: "totalAmount", label: "Tổng tiền" },
-  { key: "actions", label: "Thao tác" },
+  { key: "createdByName", label: t("approvals.columns.creator") },
+  { key: "submittedAt", label: t("approvals.columns.submitDate") },
+  { key: "status", label: t("approvals.columns.status") },
+  { key: "totalAmount", label: t("approvals.columns.totalAmount") },
+  { key: "actions", label: t("approvals.columns.actions") },
 ]);
 
 const documentTypeOptions = [
-  { value: "in", label: "Phiếu nhập" },
-  { value: "out", label: "Phiếu xuất" },
+  { value: "in", label: t("approvals.documentType.in") },
+  { value: "out", label: t("approvals.documentType.out") },
 ];
 
 const statusOptions = [
-  { value: "CHO_DUYET", label: "Chờ duyệt" },
-  { value: "CHO_DUYET_CAP_1", label: "Chờ cấp 1" },
-  { value: "CHO_DUYET_CAP_2", label: "Chờ cấp 2" },
-  { value: "DA_DUYET", label: "Đã duyệt" },
+  { value: "CHO_DUYET", label: t("approvals.status.pending") },
+  { value: "CHO_DUYET_CAP_1", label: t("approvals.status.pendingLevel1") },
+  { value: "CHO_DUYET_CAP_2", label: t("approvals.status.pendingLevel2") },
+  { value: "DA_DUYET", label: t("approvals.status.approved") },
 ];
 
 const statusLabels = {
-  CHO_DUYET: "Chờ duyệt",
-  CHO_DUYET_CAP_1: "Chờ cấp 1",
-  CHO_DUYET_CAP_2: "Chờ cấp 2",
-  DA_DUYET: "Đã duyệt",
-  HOAN_THANH: "Hoàn thành",
+  CHO_DUYET: t("approvals.status.pending"),
+  CHO_DUYET_CAP_1: t("approvals.status.pendingLevel1"),
+  CHO_DUYET_CAP_2: t("approvals.status.pendingLevel2"),
+  DA_DUYET: t("approvals.status.approved"),
+  HOAN_THANH: t("approvals.status.completed"),
 };
 
 const hasPreviousPage = computed(() => page.value > 0);
@@ -209,7 +211,7 @@ async function openDetail(receipt) {
         : { ...detail, documentType: selectedType };
   } catch (error) {
     if (token !== detailState.requestToken) return;
-    detailState.error = error.message || "Không thể tải chi tiết phiếu.";
+    detailState.error = error.message || t("approvals.messages.loadDetailError");
     if (error.status === 401) router.replace("/login");
   } finally {
     if (token === detailState.requestToken) {
@@ -252,10 +254,10 @@ async function confirmApprove() {
     approveConfirmState.receipt = null;
     closeDetail();
     await fetchPendingApprovals();
-    actionMessage.value = `Đã duyệt phiếu ${receipt.code} thành công.`;
+    actionMessage.value = t("approvals.messages.approveSuccess", { code: receipt.code });
   } catch (error) {
     actionErrorMessage.value =
-      error.message || "Thao tác thất bại, vui lòng thử lại.";
+      error.message || t("approvals.messages.actionFailed");
     if (error.status === 401) router.replace("/login");
   } finally {
     actionState.receiptId = null;
@@ -286,11 +288,11 @@ async function confirmReject() {
   const reason = rejectState.reason.trim();
   const currentDocumentType = rejectState.documentType || documentType.value;
   if (!reason) {
-    rejectState.error = "Vui lòng nhập lý do từ chối.";
+    rejectState.error = t("approvals.messages.rejectReasonRequired");
     return;
   }
   if (reason.length > REJECT_REASON_MAX) {
-    rejectState.error = `Lý do từ chối không được vượt quá ${REJECT_REASON_MAX} ký tự.`;
+    rejectState.error = t("approvals.messages.rejectReasonMaxLength", { max: REJECT_REASON_MAX });
     return;
   }
 
@@ -306,7 +308,7 @@ async function confirmReject() {
     rejectState.submitting = false;
     closeDetail();
     await fetchPendingApprovals();
-    actionMessage.value = `Đã từ chối phiếu ${currentDocumentType === "out" ? "xuất" : "nhập"} thành công.`;
+    actionMessage.value = t("approvals.messages.rejectSuccess", { type: currentDocumentType === "out" ? t("approvals.documentType.outName") : t("approvals.documentType.inName") });
   } catch (error) {
     rejectState.submitting = false;
     rejectState.error =
@@ -323,7 +325,7 @@ function isPendingApproval(status) {
 }
 
 function approveLabel(status) {
-  return "Duyệt phiếu";
+  return t("approvals.actions.approve");
 }
 
 function isActionRunning(receipt, action) {
@@ -386,13 +388,13 @@ function getRejectionReason(receipt) {
 
 <template>
   <PageHeader
-    :title="`Phiếu ${documentType === 'out' ? 'xuất' : 'nhập'} chờ duyệt`"
-    description="Quản lý duyệt hoặc từ chối phiếu kho theo cấp."
+    :title="documentType === 'out' ? t('approvals.titleOut') : t('approvals.titleIn')"
+    :description="t('approvals.description')"
   />
 
   <div class="filter-bar card card-pad flex flex-wrap items-center gap-3">
     <div class="flex items-center gap-2">
-      <span class="text-xs font-bold text-muted uppercase">Loại:</span>
+      <span class="text-xs font-bold text-muted uppercase">{{ t("approvals.filters.type") }}:</span>
       <select
         v-model="documentType"
         class="select max-w-xs"
@@ -413,13 +415,13 @@ function getRejectionReason(receipt) {
     </div>
 
     <div class="flex items-center gap-2">
-      <span class="text-xs font-bold text-muted uppercase">Kho:</span>
+      <span class="text-xs font-bold text-muted uppercase">{{ t("approvals.filters.warehouse") }}:</span>
       <select
         v-model="filters.warehouse"
         class="select max-w-xs"
         @change="applyFilter"
       >
-        <option value="">Tất cả kho</option>
+        <option value="">{{ t("approvals.filters.allWarehouses") }}</option>
         <option
           v-for="warehouse in warehouseOptions"
           :key="warehouse"
@@ -431,9 +433,9 @@ function getRejectionReason(receipt) {
     </div>
 
     <div class="flex items-center gap-2">
-      <span class="text-xs font-bold text-muted uppercase">Trạng thái:</span>
+      <span class="text-xs font-bold text-muted uppercase">{{ t("approvals.filters.status") }}:</span>
       <select v-model="filters.status" class="select max-w-xs" @change="applyFilter">
-        <option value="">Tất cả</option>
+        <option value="">{{ t("approvals.filters.all") }}</option>
         <option
           v-for="status in statusOptions"
           :key="status.value"
@@ -449,7 +451,7 @@ function getRejectionReason(receipt) {
       type="button"
       @click="clearFilters"
     >
-      Xóa lọc
+      {{ t("approvals.actions.clearFilter") }}
     </button>
   </div>
 
@@ -463,7 +465,7 @@ function getRejectionReason(receipt) {
     {{ actionMessage }}
   </p>
   <p v-if="isLoading" class="muted loading-line">
-    Đang tải danh sách phiếu chờ duyệt...
+    {{ t("approvals.loading") }}
   </p>
 
   <div v-if="!isLoading">
@@ -472,7 +474,7 @@ function getRejectionReason(receipt) {
       <DataTable
         :columns="columns"
         :rows="receipts"
-        empty-text="Không có phiếu nào đang chờ duyệt"
+        :empty-text="t('approvals.emptyList')"
       >
         <template #code="{ row, value }">
           <div class="document-cell">
@@ -543,7 +545,7 @@ function getRejectionReason(receipt) {
     <!-- Mobile Responsive Cards View -->
     <div class="block md:hidden space-y-4">
       <div v-if="receipts.length === 0" class="card card-pad text-center muted py-8">
-        Không có phiếu nào đang chờ duyệt.
+        {{ t("approvals.emptyList") }}
       </div>
       <div v-else v-for="row in receipts" :key="row.id" class="card card-pad space-y-3">
         <div class="between">
@@ -604,7 +606,7 @@ function getRejectionReason(receipt) {
   </div>
 
   <div class="pagination-bar card card-pad">
-    <span class="muted">{{ totalElements }} phiếu chờ duyệt</span>
+    <span class="muted">{{ t("approvals.pagination.total", { total: totalElements }) }}</span>
     <div class="pagination-actions">
       <button
         class="btn btn-sm"
@@ -615,7 +617,7 @@ function getRejectionReason(receipt) {
         Trước
       </button>
       <span class="page-indicator"
-        >Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span
+        >{{ t("approvals.pagination.pageInfo", { current: totalPages === 0 ? 0 : page + 1, total: totalPages }) }}</span
       >
       <button
         class="btn btn-sm"
@@ -647,7 +649,7 @@ function getRejectionReason(receipt) {
       </div>
       <div class="modal-body">
         <p v-if="detailState.loading" class="muted">
-          Đang tải chi tiết phiếu...
+          {{ t("approvals.modal.loadingDetail") }}
         </p>
         <p v-else-if="detailState.error" class="form-alert form-alert-error">
           {{ detailState.error }}
@@ -658,7 +660,7 @@ function getRejectionReason(receipt) {
             v-if="getRejectionReason(detailState.receipt)"
             class="detail-rejection-card"
           >
-            <p class="detail-rejection-title">Lý do từ chối</p>
+            <p class="detail-rejection-title">{{ t("approvals.modal.rejectionReason") }}</p>
             <p class="detail-rejection-text">
               {{ getRejectionReason(detailState.receipt) }}
             </p>
@@ -666,15 +668,15 @@ function getRejectionReason(receipt) {
 
           <div class="detail-grid">
             <div>
-              <span class="detail-label">Mã phiếu</span
+              <span class="detail-label">{{ t("approvals.detail.code") }}</span
               ><span class="detail-value">{{ detailState.receipt.code }}</span>
             </div>
             <div>
-              <span class="detail-label">Trạng thái</span>
+              <span class="detail-label">{{ t("approvals.detail.status") }}</span>
               <StatusBadge :status="statusLabel(detailState.receipt.status)" />
             </div>
             <div>
-              <span class="detail-label">Loại phiếu</span
+              <span class="detail-label">{{ t("approvals.detail.type") }}</span
               ><span
                 class="badge doc-badge"
                 :class="
@@ -684,7 +686,7 @@ function getRejectionReason(receipt) {
               >
             </div>
             <div>
-              <span class="detail-label">Kho</span
+              <span class="detail-label">{{ t("approvals.detail.warehouse") }}</span
               ><span class="detail-value">{{
                 detailState.receipt.warehouseName || "-"
               }}</span>
@@ -700,44 +702,44 @@ function getRejectionReason(receipt) {
               }}</span>
             </div>
             <div>
-              <span class="detail-label">Người tạo</span
+              <span class="detail-label">{{ t("approvals.detail.creator") }}</span
               ><span class="detail-value">{{
                 detailState.receipt.createdByName || "-"
               }}</span>
             </div>
             <div>
-              <span class="detail-label">Người gửi duyệt</span
+              <span class="detail-label">{{ t("approvals.detail.submitter") }}</span
               ><span class="detail-value">{{
                 detailState.receipt.submittedByName || "-"
               }}</span>
             </div>
             <div>
-              <span class="detail-label">Ngày gửi duyệt</span
+              <span class="detail-label">{{ t("approvals.detail.submitDate") }}</span
               ><span class="detail-value">{{
                 formatDateTime(detailState.receipt.submittedAt)
               }}</span>
             </div>
             <div>
-              <span class="detail-label">Tổng tiền</span
+              <span class="detail-label">{{ t("approvals.detail.totalAmount") }}</span
               ><span class="detail-value text-primary">{{
                 formatCurrency(detailState.receipt.totalAmount)
               }}</span>
             </div>
             <div class="detail-span-2">
-              <span class="detail-label">Ghi chú</span
+              <span class="detail-label">{{ t("approvals.detail.note") }}</span
               ><span class="detail-value">{{
                 detailState.receipt.note || "-"
               }}</span>
             </div>
           </div>
 
-          <h3 class="detail-section-title">Danh sách sản phẩm</h3>
+          <h3 class="detail-section-title">{{ t("approvals.detail.productList") }}</h3>
           <div class="table-wrap card">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Mã SP</th>
-                  <th>Tên sản phẩm</th>
+                  <th>{{ t("approvals.table.productCode") }}</th>
+                  <th>{{ t("approvals.table.productName") }}</th>
                   <th style="text-align: right">Số lượng</th>
                   <th style="text-align: right">Đơn giá</th>
                   <th style="text-align: right">Thành tiền</th>
@@ -750,7 +752,7 @@ function getRejectionReason(receipt) {
                     detailState.receipt.details.length === 0
                   "
                 >
-                  <td colspan="5" class="empty-cell">Phiếu chưa có sản phẩm</td>
+                  <td colspan="5" class="empty-cell">{{ t("approvals.table.emptyProduct") }}</td>
                 </tr>
                 <tr v-for="item in detailState.receipt.details" :key="item.id">
                   <td>{{ item.productCode || "-" }}</td>
@@ -793,7 +795,7 @@ function getRejectionReason(receipt) {
     <div class="modal small-modal">
       <div class="modal-head between">
         <h2 class="section-title">
-          Từ chối phiếu {{ documentType === "out" ? "xuất" : "nhập" }}
+          {{ t("approvals.rejectModal.title", { type: documentType === "out" ? t("approvals.documentType.outName") : t("approvals.documentType.inName") }) }}
         </h2>
         <button
           class="btn btn-icon"

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/PageHeader.vue'
 import DataTable from '../../components/DataTable.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
@@ -16,6 +17,7 @@ import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const countId = Number(route.params.id)
 
 const count = ref(null)
@@ -54,13 +56,13 @@ const canManage = computed(() => canManageInventoryCounts(authStore.currentUser)
 const isActive = computed(() => count.value && count.value.status === 'DANG_KIEM_KE')
 
 const columns = [
-  { key: 'productCode', label: 'Mã SP', class: 'cell-compact' },
-  { key: 'productName', label: 'Tên sản phẩm' },
-  { key: 'systemQuantity', label: 'Tồn hệ thống', class: 'cell-right tabular-num' },
-  { key: 'actualQuantity', label: 'Thực tế', class: 'cell-nowrap' },
-  { key: 'differenceQuantity', label: 'Chênh lệch', class: 'cell-right tabular-num' },
-  { key: 'note', label: 'Ghi chú' },
-  { key: 'actions', label: 'Lưu', class: 'cell-compact text-center' }
+  { key: 'productCode', label: t('inventoryCountDetail.productCode'), class: 'cell-compact' },
+  { key: 'productName', label: t('inventoryCountDetail.productName') },
+  { key: 'systemQuantity', label: t('inventoryCountDetail.systemQuantity'), class: 'cell-right tabular-num' },
+  { key: 'actualQuantity', label: t('inventoryCountDetail.actualQuantity'), class: 'cell-nowrap' },
+  { key: 'differenceQuantity', label: t('inventoryCountDetail.differenceQuantity'), class: 'cell-right tabular-num' },
+  { key: 'note', label: t('inventoryCountDetail.note') },
+  { key: 'actions', label: t('inventoryCountDetail.save'), class: 'cell-compact text-center' }
 ]
 
 onMounted(fetchDetail)
@@ -79,7 +81,7 @@ async function fetchDetail() {
       })
     }
   } catch (error) {
-    errorMessage.value = error.message || 'Không thể tải chi tiết đợt kiểm kê.'
+    errorMessage.value = error.message || t('inventoryCountDetail.errorLoadDetail')
   } finally {
     isLoading.value = false
   }
@@ -143,12 +145,12 @@ async function saveAllLines() {
     
     if (isModified) {
       if (localActual === '' || localActual === null || localActual === undefined) {
-        showToast(`Dòng sản phẩm ${d.productCode} chưa nhập số lượng thực tế hợp lệ.`, 'error')
+        showToast(t('inventoryCountDetail.errorInvalidActual', { productCode: d.productCode }), 'error')
         return
       }
       const actualQty = Number(localActual)
       if (isNaN(actualQty) || actualQty < 0) {
-        showToast(`Số lượng dòng ${d.productCode} phải là số nguyên >= 0.`, 'error')
+        showToast(t('inventoryCountDetail.errorInvalidQty', { productCode: d.productCode }), 'error')
         return
       }
       
@@ -161,7 +163,7 @@ async function saveAllLines() {
   }
 
   if (modifiedLines.length === 0) {
-    showToast('Không có thay đổi nào để lưu.', 'info')
+    showToast(t('inventoryCountDetail.noChanges'), 'info')
     return
   }
 
@@ -204,23 +206,23 @@ async function saveAllLines() {
   savingAll.value = false
 
   if (failCount === 0) {
-    showToast(`Đã lưu thành công tất cả ${successCount} dòng thay đổi!`, 'success')
+    showToast(t('inventoryCountDetail.saveAllSuccess', { count: successCount }), 'success')
   } else if (successCount > 0) {
-    showToast(`Đã lưu ${successCount} dòng thành công, ${failCount} dòng thất bại. Lỗi cuối: ${lastErrorMessage}`, 'error')
+    showToast(t('inventoryCountDetail.savePartial', { success: successCount, fail: failCount, error: lastErrorMessage }), 'error')
   } else {
-    showToast(`Lưu thất bại. Lỗi: ${lastErrorMessage}`, 'error')
+    showToast(t('inventoryCountDetail.saveFailed', { error: lastErrorMessage }), 'error')
   }
 }
 
 async function saveLine(detail) {
   const actualVal = localActuals.value[detail.id]
   if (actualVal === '' || actualVal === null || actualVal === undefined) {
-    showToast('Vui lòng nhập số lượng thực tế hợp lệ.', 'error')
+    showToast(t('inventoryCountDetail.invalidActualQty'), 'error')
     return
   }
   const actualQty = Number(actualVal)
   if (isNaN(actualQty) || actualQty < 0) {
-    showToast('Số lượng thực tế phải là số nguyên lớn hơn hoặc bằng 0.', 'error')
+    showToast(t('inventoryCountDetail.actualQtyMustBePositive'), 'error')
     return
   }
 
@@ -241,9 +243,9 @@ async function saveLine(detail) {
         localNotes.value[d.id] = d.note || ''
       })
     }
-    showToast('Cập nhật số lượng dòng này thành công!', 'success')
+    showToast(t('inventoryCountDetail.updateLineSuccess'), 'success')
   } catch (error) {
-    showToast(error.message || 'Không thể cập nhật số lượng dòng này.', 'error')
+    showToast(error.message || t('inventoryCountDetail.updateLineFailed'), 'error')
   } finally {
     savingDetailId.value = null
   }
@@ -256,7 +258,7 @@ function openFinalize() {
     return val === '' || val === null || val === undefined
   })
   if (hasUncounted) {
-    showToast('Bạn phải nhập số lượng thực tế cho tất cả sản phẩm trước khi chốt kiểm kê.', 'error')
+    showToast(t('inventoryCountDetail.errorUncounted'), 'error')
     return
   }
   isFinalizeOpen.value = true
@@ -268,9 +270,9 @@ async function handleFinalize() {
     const updated = await finalizeInventoryCount(countId, { version: count.value.version })
     count.value = updated
     isFinalizeOpen.value = false
-    showToast('Chốt đợt kiểm kê thành công!', 'success')
+    showToast(t('inventoryCountDetail.finalizeSuccess'), 'success')
   } catch (error) {
-    showToast(error.message || 'Chốt kiểm kê thất bại.', 'error')
+    showToast(error.message || t('inventoryCountDetail.finalizeFailed'), 'error')
   } finally {
     isFinalizeLoading.value = false
   }
@@ -284,7 +286,7 @@ function openCancel() {
 
 async function handleCancel() {
   if (!cancelReason.value.trim()) {
-    cancelErrorMessage.value = 'Vui lòng nhập lý do hủy đợt kiểm kê.'
+    cancelErrorMessage.value = t('inventoryCountDetail.errorCancelReason')
     return
   }
   isCancelLoading.value = true
@@ -296,18 +298,18 @@ async function handleCancel() {
     })
     count.value = updated
     isCancelOpen.value = false
-    showToast('Hủy đợt kiểm kê thành công!', 'success')
+    showToast(t('inventoryCountDetail.cancelSuccess'), 'success')
   } catch (error) {
-    cancelErrorMessage.value = error.message || 'Không thể hủy đợt kiểm kê.'
+    cancelErrorMessage.value = error.message || t('inventoryCountDetail.cancelFailed')
   } finally {
     isCancelLoading.value = false
   }
 }
 
 function getStatusText(status) {
-  if (status === 'DANG_KIEM_KE') return 'Đang kiểm kê'
-  if (status === 'DA_CHOT') return 'Đã chốt'
-  if (status === 'DA_HUY') return 'Đã hủy'
+  if (status === 'DANG_KIEM_KE') return t('inventoryCountDetail.counting')
+  if (status === 'DA_CHOT') return t('inventoryCountDetail.finalized')
+  if (status === 'DA_HUY') return t('inventoryCountDetail.cancelled')
   return status
 }
 
@@ -339,11 +341,10 @@ function formatDate(dateString) {
 
 <template>
   <div class="page-container page-shell">
-    <PageHeader :title="count ? `Chi tiết kiểm kê: ${count.code}` : 'Chi tiết kiểm kê'" description="Theo dõi đối soát và cập nhật số lượng tồn kho thực tế.">
+    <PageHeader :title="count ? t('inventoryCountDetail.titleWithCode', { code: count.code }) : t('inventoryCountDetail.title')" :description="t('inventoryCountDetail.description')">
       <div class="actions-header-group">
         <button class="btn btn-outline" @click="router.push('/inventory-counts')">
-          <i class="mdi mdi-arrow-left"></i> Quay lại
-        </button>
+          <i class="mdi mdi-arrow-left"></i> {{ t("inventoryCountDetail.back") }} </button>
         
         <button
           v-if="isActive"
@@ -351,17 +352,13 @@ function formatDate(dateString) {
           @click="saveAllLines"
           :disabled="savingAll"
         >
-          <i class="mdi" :class="savingAll ? 'mdi-loading mdi-spin' : 'mdi-content-save-all'"></i>
-          Lưu thay đổi
-        </button>
+          <i class="mdi" :class="savingAll ? 'mdi-loading mdi-spin' : 'mdi-content-save-all'"></i> {{ t("inventoryCountDetail.saveChanges") }} </button>
 
         <template v-if="isActive && canManage">
           <button class="btn btn-danger" @click="openCancel">
-            <i class="mdi mdi-close-circle-outline"></i> Hủy
-          </button>
+            <i class="mdi mdi-close-circle-outline"></i> {{ t("inventoryCountDetail.cancelCount") }} </button>
           <button class="btn btn-primary" @click="openFinalize">
-            <i class="mdi mdi-check-all"></i> Chốt kiểm kê
-          </button>
+            <i class="mdi mdi-check-all"></i> {{ t("inventoryCountDetail.finalizeCount") }} </button>
         </template>
       </div>
     </PageHeader>
@@ -369,7 +366,7 @@ function formatDate(dateString) {
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-state card card-pad">
       <i class="mdi mdi-loading mdi-spin text-2xl text-blue-600"></i>
-      <span>Đang tải thông tin đợt kiểm kê...</span>
+      <span>{{ t("inventoryCountDetail.loadingInfo") }}</span>
     </div>
 
     <!-- Error State -->
@@ -377,7 +374,7 @@ function formatDate(dateString) {
       <div class="flex items-center gap-3">
         <i class="mdi mdi-alert-circle text-2xl"></i>
         <span>{{ errorMessage }}</span>
-        <button class="btn btn-secondary btn-sm ml-auto" @click="fetchDetail">Thử lại</button>
+        <button class="btn btn-secondary btn-sm ml-auto" @click="fetchDetail">{{ t("inventoryCountDetail.retry") }}</button>
       </div>
     </div>
 
@@ -386,62 +383,62 @@ function formatDate(dateString) {
       <!-- Session Summary Metrics -->
       <div class="summary-metrics-grid">
         <div class="metric-card card card-pad">
-          <span class="metric-label">Tổng dòng sản phẩm</span>
+          <span class="metric-label">{{ t("inventoryCountDetail.totalLines") }}</span>
           <span class="metric-value text-zinc-900">{{ totalLines }}</span>
         </div>
         <div class="metric-card card card-pad bg-emerald-50/50">
-          <span class="metric-label">Số dòng khớp</span>
+          <span class="metric-label">{{ t("inventoryCountDetail.matchingLines") }}</span>
           <span class="metric-value text-emerald-600">{{ matchingLines }}</span>
         </div>
         <div class="metric-card card card-pad bg-amber-50/50">
-          <span class="metric-label">Số dòng thừa</span>
+          <span class="metric-label">{{ t("inventoryCountDetail.overageLines") }}</span>
           <span class="metric-value text-amber-600">{{ overageLines }}</span>
         </div>
         <div class="metric-card card card-pad bg-rose-50/50">
-          <span class="metric-label">Số dòng thiếu</span>
+          <span class="metric-label">{{ t("inventoryCountDetail.shortageLines") }}</span>
           <span class="metric-value text-rose-600">{{ shortageLines }}</span>
         </div>
         <div class="metric-card card card-pad bg-zinc-50/50" v-if="isActive">
-          <span class="metric-label">Chưa kiểm kê</span>
+          <span class="metric-label">{{ t("inventoryCountDetail.uncountedLines") }}</span>
           <span class="metric-value text-zinc-500">{{ uncountedLines }}</span>
         </div>
       </div>
 
       <!-- Session Metadata Card -->
       <div class="card card-pad mb-6">
-        <h3 class="section-title mb-4">Thông tin đợt kiểm kê</h3>
+        <h3 class="section-title mb-4">{{ t("inventoryCountDetail.countInfo") }}</h3>
         <div class="meta-layout">
           <div class="meta-item">
-            <span class="meta-label">Kho hàng kiểm kê</span>
+            <span class="meta-label">{{ t("inventoryCountDetail.warehouse") }}</span>
             <span class="meta-value">{{ count.warehouseName }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Trạng thái</span>
+            <span class="meta-label">{{ t("inventoryCountDetail.status") }}</span>
             <span class="meta-value"><StatusBadge :status="getStatusText(count.status)" /></span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Người tạo</span>
+            <span class="meta-label">{{ t("inventoryCountDetail.createdBy") }}</span>
             <span class="meta-value">{{ count.createdByName }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Ngày tạo</span>
+            <span class="meta-label">{{ t("inventoryCountDetail.createdAt") }}</span>
             <span class="meta-value text-zinc-700">{{ formatDate(count.createdAt) }}</span>
           </div>
 
           <!-- Conditionally display finalize details -->
           <div class="meta-item" v-if="count.status === 'DA_CHOT'">
-            <span class="meta-label">Ngày hoàn tất</span>
+            <span class="meta-label">{{ t("inventoryCountDetail.finalizedAt") }}</span>
             <span class="meta-value text-emerald-600 font-semibold">{{ formatDate(count.finalizedAt) }}</span>
           </div>
 
           <!-- Conditionally display cancel details -->
           <div class="meta-item col-span-2" v-if="count.status === 'DA_HUY'">
-            <span class="meta-label text-rose-600">Lý do hủy (Ngày hủy: {{ formatDate(count.cancelledAt) }})</span>
-            <span class="meta-value text-rose-600 font-medium">{{ count.cancellationReason || 'Không có lý do cụ thể' }}</span>
+            <span class="meta-label text-rose-600">{{ t("inventoryCountDetail.cancelReasonLabel", { date: formatDate(count.cancelledAt) }) }}</span>
+            <span class="meta-value text-rose-600 font-medium">{{ count.cancellationReason || t('inventoryCountDetail.noSpecificReason') }}</span>
           </div>
 
           <div class="meta-item col-span-2">
-            <span class="meta-label">Ghi chú chung</span>
+            <span class="meta-label">{{ t("inventoryCountDetail.generalNote") }}</span>
             <span class="meta-value">{{ count.note || '—' }}</span>
           </div>
         </div>
@@ -450,15 +447,15 @@ function formatDate(dateString) {
       <!-- Detail Lines Workspace -->
       <div class="card">
         <div class="card-header border-b px-6 py-4 flex items-center justify-between bg-zinc-50/50">
-          <h3 class="section-title mb-0">Danh sách sản phẩm kiểm kê</h3>
-          <span class="text-sm text-zinc-500 font-medium">Tổng số: {{ totalLines }} mặt hàng</span>
+          <h3 class="section-title mb-0">{{ t("inventoryCountDetail.productList") }}</h3>
+          <span class="text-sm text-zinc-500 font-medium">{{ t("inventoryCountDetail.totalItems", { count: totalLines }) }}</span>
         </div>
 
         <!-- Desktop Table View -->
         <div class="inventory-desktop-table">
           <DataTable :columns="columns" :rows="count.details">
             <template #actions-header>
-              <span class="text-center block">Thao tác</span>
+              <span class="text-center block">{{ t("inventoryCountDetail.actions") }}</span>
             </template>
             <template #productCode="{ row }">
               <span class="font-mono text-zinc-800 font-semibold">{{ row.productCode }}</span>
@@ -473,8 +470,8 @@ function formatDate(dateString) {
                   min="0"
                   class="input actual-input"
                   v-model.number="localActuals[row.id]"
-                  placeholder="Nhập thực tế"
-                  aria-label="Số lượng thực tế"
+                  :placeholder="t('inventoryCountDetail.placeholderActual')"
+                  :aria-label="t('inventoryCountDetail.ariaActual')"
                 />
               </div>
               <span v-else class="font-semibold text-zinc-800">{{ row.actualQuantity !== null ? row.actualQuantity : '—' }}</span>
@@ -490,8 +487,8 @@ function formatDate(dateString) {
                 type="text"
                 class="input note-input"
                 v-model="localNotes[row.id]"
-                placeholder="Ví dụ: Thiếu 2 hộp do hỏng..."
-                aria-label="Ghi chú dòng sản phẩm"
+                :placeholder="t('inventoryCountDetail.placeholderNote')"
+                :aria-label="t('inventoryCountDetail.ariaNote')"
               />
               <span v-else class="text-zinc-600">{{ row.note || '—' }}</span>
             </template>
@@ -501,7 +498,7 @@ function formatDate(dateString) {
                   class="btn btn-ghost btn-icon btn-sm"
                   @click="saveLine(row)"
                   :disabled="savingDetailId === row.id"
-                  title="Lưu dòng này"
+                  :title="t('inventoryCountDetail.saveLine')"
                 >
                   <i class="mdi" :class="savingDetailId === row.id ? 'mdi-loading mdi-spin text-blue-600' : 'mdi-content-save text-blue-600'"></i>
                 </button>
@@ -520,7 +517,7 @@ function formatDate(dateString) {
                 <span class="product-sku text-xs font-mono text-muted bg-zinc-100 px-2 py-0.5 rounded">SKU: {{ row.productCode }}</span>
               </div>
               <div class="difference-col text-right">
-                <span class="text-xs text-muted block mb-1">Chênh lệch</span>
+                <span class="text-xs text-muted block mb-1">{{ t("inventoryCountDetail.differenceQuantity") }}</span>
                 <span :class="getDiffClass(localDifference(row.id, row.systemQuantity))">
                   {{ getDiffText(localDifference(row.id, row.systemQuantity)) }}
                 </span>
@@ -529,34 +526,34 @@ function formatDate(dateString) {
 
             <div class="item-qty-row">
               <div class="qty-box">
-                <span class="qty-label">Tồn hệ thống</span>
+                <span class="qty-label">{{ t("inventoryCountDetail.systemQuantity") }}</span>
                 <span class="qty-val">{{ row.systemQuantity }}</span>
               </div>
               <div class="qty-box-input" v-if="isActive">
-                <span class="qty-label required">Thực tế</span>
+                <span class="qty-label required">{{ t("inventoryCountDetail.actualQuantity") }}</span>
                 <input
                   type="number"
                   min="0"
                   class="input actual-input-mobile"
                   v-model.number="localActuals[row.id]"
-                  placeholder="Nhập số thực"
+                  :placeholder="t('inventoryCountDetail.placeholderActualMobile')"
                 />
               </div>
               <div class="qty-box" v-else>
-                <span class="qty-label">Thực tế</span>
+                <span class="qty-label">{{ t("inventoryCountDetail.actualQuantity") }}</span>
                 <span class="qty-val">{{ row.actualQuantity !== null ? row.actualQuantity : '—' }}</span>
               </div>
             </div>
 
             <!-- Notes Field -->
             <div class="item-notes-field mt-3">
-              <span class="qty-label">Ghi chú</span>
+              <span class="qty-label">{{ t("inventoryCountDetail.note") }}</span>
               <input
                 v-if="isActive"
                 type="text"
                 class="input note-input-mobile"
                 v-model="localNotes[row.id]"
-                placeholder="Ghi chú riêng cho sản phẩm này..."
+                :placeholder="t('inventoryCountDetail.placeholderNoteMobile')"
               />
               <span v-else class="text-zinc-700 block text-xs mt-1">{{ row.note || '—' }}</span>
             </div>
@@ -568,9 +565,7 @@ function formatDate(dateString) {
                 @click="saveLine(row)"
                 :disabled="savingDetailId === row.id"
               >
-                <i class="mdi" :class="savingDetailId === row.id ? 'mdi-loading mdi-spin' : 'mdi-content-save'"></i>
-                Lưu dòng này
-              </button>
+                <i class="mdi" :class="savingDetailId === row.id ? 'mdi-loading mdi-spin' : 'mdi-content-save'"></i> {{ t("inventoryCountDetail.saveLine") }} </button>
             </div>
           </div>
         </div>
@@ -580,9 +575,9 @@ function formatDate(dateString) {
     <!-- Finalize Confirm Dialog -->
     <ConfirmDialog
       :open="isFinalizeOpen"
-      title="Chốt đợt kiểm kê"
-      message="Khi hoàn tất chốt kiểm kê, tồn kho hệ thống của sản phẩm sẽ được cập nhật trực tiếp theo số lượng thực tế đã nhập. Biến động kho sẽ được ghi nhận vào lịch sử giao dịch. Thao tác này không thể hoàn tác. Bạn có chắc chắn muốn chốt không?"
-      confirmText="Xác nhận chốt"
+      :title="t('inventoryCountDetail.finalizeTitle')"
+      :message="t('inventoryCountDetail.finalizeMessage')"
+      :confirmText="t('inventoryCountDetail.finalizeConfirm')"
       :loading="isFinalizeLoading"
       @cancel="isFinalizeOpen = false"
       @confirm="handleFinalize"
@@ -591,17 +586,17 @@ function formatDate(dateString) {
     <!-- Cancel Confirm Dialog -->
     <ConfirmDialog
       :open="isCancelOpen"
-      title="Hủy đợt kiểm kê"
-      message="Bạn có chắc chắn muốn hủy đợt kiểm kê này không? Mọi số lượng thực tế đã nhập sẽ bị loại bỏ và tồn kho hệ thống sẽ được giữ nguyên."
-      confirmText="Xác nhận hủy"
+      :title="t('inventoryCountDetail.cancelTitle')"
+      :message="t('inventoryCountDetail.cancelMessage')"
+      :confirmText="t('inventoryCountDetail.cancelConfirm')"
       danger
       :loading="isCancelLoading"
       @cancel="isCancelOpen = false"
       @confirm="handleCancel"
     >
       <div class="field mt-4">
-        <label class="required">Lý do hủy đợt kiểm kê</label>
-        <textarea class="textarea" v-model="cancelReason" placeholder="Nhập lý do hủy chi tiết..."></textarea>
+        <label class="required">{{ t("inventoryCountDetail.cancelReasonInputLabel") }}</label>
+        <textarea class="textarea" v-model="cancelReason" :placeholder="t('inventoryCountDetail.cancelReasonPlaceholder')"></textarea>
         <span v-if="cancelErrorMessage" class="text-danger text-xs mt-1 block">{{ cancelErrorMessage }}</span>
       </div>
     </ConfirmDialog>

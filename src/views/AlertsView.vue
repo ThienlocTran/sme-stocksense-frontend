@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
 import SearchFilterBar from "../components/SearchFilterBar.vue";
@@ -10,6 +11,7 @@ import { getLowStockInventory } from "../services/inventoryService";
 import { getWarehouses } from "../services/warehouseService";
 
 const router = useRouter();
+const { t } = useI18n();
 const alerts = ref([]);
 const warehouses = ref([]);
 const isLoading = ref(false);
@@ -29,14 +31,14 @@ const dropdownRequestId = ref(0);
 const latestDropdownRequestId = ref(0);
 
 const columns = [
-  { key: "productCode", label: "Mã SP", class: "cell-compact font-semibold text-zinc-900" },
-  { key: "productName", label: "Tên sản phẩm", class: "cell-long" },
-  { key: "warehouse", label: "Kho hàng", class: "cell-medium" },
-  { key: "currentQuantity", label: "Tồn thực tế / Tối thiểu", class: "cell-medium text-right" },
-  { key: "severity", label: "Mức độ", class: "cell-compact text-center" },
-  { key: "status", label: "Trạng thái", class: "cell-nowrap" },
-  { key: "lastUpdatedAt", label: "Cập nhật", class: "cell-nowrap" },
-  { key: "actions", label: "Thao tác", class: "cell-compact text-right" },
+  { key: "productCode", label: t("alerts.table.productCode"), class: "cell-compact font-semibold text-zinc-900" },
+  { key: "productName", label: t("alerts.table.productName"), class: "cell-long" },
+  { key: "warehouse", label: t("alerts.table.warehouse"), class: "cell-medium" },
+  { key: "currentQuantity", label: t("alerts.table.currentQuantity"), class: "cell-medium text-right" },
+  { key: "severity", label: t("alerts.table.severity"), class: "cell-compact text-center" },
+  { key: "status", label: t("alerts.table.status"), class: "cell-nowrap" },
+  { key: "lastUpdatedAt", label: t("alerts.table.lastUpdatedAt"), class: "cell-nowrap" },
+  { key: "actions", label: t("alerts.table.actions"), class: "cell-compact text-right" },
 ];
 
 const hasPreviousPage = computed(() => page.value > 0);
@@ -190,10 +192,10 @@ function displayWarehouseName(row) {
 }
 
 function formatInventoryStatus(status) {
-  if (status === "LOW_STOCK") return "Sắp hết";
-  if (status === "OUT_OF_STOCK") return "Thiếu hàng";
-  if (status === "NORMAL") return "Đủ hàng";
-  if (status === "OVER_STOCK") return "Thừa hàng";
+  if (status === "LOW_STOCK") return t("alerts.status.lowStock");
+  if (status === "OUT_OF_STOCK") return t("alerts.status.outOfStock");
+  if (status === "NORMAL") return t("alerts.status.normal");
+  if (status === "OVER_STOCK") return t("alerts.status.overStock");
   return status || "-";
 }
 
@@ -236,22 +238,22 @@ function navigateToInventory(row) {
 <template>
   <div class="page-container page-shell">
     <PageHeader
-      title="Cảnh báo tồn kho"
-      description="Hiển thị các sản phẩm có tồn kho thực tế dưới ngưỡng tối thiểu được thiết lập."
+      :title="t('alerts.title')"
+      :description="t('alerts.description')"
     />
 
     <!-- KPI Summary Metrics widgets -->
     <div class="summary-metrics-grid animate-in fade-in duration-200">
       <div class="metric-card card card-pad">
-        <span class="metric-label">Tổng số cảnh báo</span>
+        <span class="metric-label">{{ t("alerts.metrics.total") }}</span>
         <span class="metric-value text-blue-600 font-semibold">{{ totalElements }}</span>
       </div>
       <div class="metric-card card card-pad bg-rose-50/50">
-        <span class="metric-label">Khẩn cấp (Hết hàng)</span>
+        <span class="metric-label">{{ t("alerts.metrics.critical") }}</span>
         <span class="metric-value text-red-600 font-semibold">{{ criticalCount }}</span>
       </div>
       <div class="metric-card card card-pad bg-amber-50/50">
-        <span class="metric-label">Cần chú ý (Sắp hết)</span>
+        <span class="metric-label">{{ t("alerts.metrics.warning") }}</span>
         <span class="metric-value text-amber-600 font-semibold">{{ warningCount }}</span>
       </div>
     </div>
@@ -259,7 +261,7 @@ function navigateToInventory(row) {
     <!-- Search and Filter Bar -->
     <SearchFilterBar
       v-model="searchDraft"
-      placeholder="Tìm theo mã sản phẩm, tên sản phẩm hoặc mã vạch"
+      :placeholder="t('alerts.searchPlaceholder')"
       @keyup.enter="applySearch"
     >
       <select
@@ -269,7 +271,7 @@ function navigateToInventory(row) {
         @change="applyFilter"
       >
         <option value="">
-          {{ isLoadingDropdowns ? "Đang tải kho..." : "Tất cả kho" }}
+          {{ isLoadingDropdowns ? t("alerts.filter.loadingWarehouse") : t("alerts.filter.allWarehouse") }}
         </option>
         <option
           v-for="warehouse in warehouses"
@@ -288,9 +290,9 @@ function navigateToInventory(row) {
         :disabled="isLoading || isLoadingDropdowns"
         @change="applyFilter"
       >
-        <option value="">Tất cả trạng thái kho</option>
-        <option value="HOAT_DONG">Kho đang hoạt động</option>
-        <option value="NGUNG_HOAT_DONG">Kho ngừng hoạt động</option>
+        <option value="">{{ t("alerts.filter.allStatus") }}</option>
+        <option value="HOAT_DONG">{{ t("alerts.filter.active") }}</option>
+        <option value="NGUNG_HOAT_DONG">{{ t("alerts.filter.inactive") }}</option>
       </select>
 
       <div class="filter-actions">
@@ -301,7 +303,7 @@ function navigateToInventory(row) {
           @click="applySearch"
         >
           <i class="mdi mdi-magnify"></i>
-          Tìm kiếm
+          {{ t("alerts.filter.search") }}
         </button>
         <button
           v-if="hasActiveFilters"
@@ -311,7 +313,7 @@ function navigateToInventory(row) {
           @click="clearFilters"
         >
           <i class="mdi mdi-filter-remove-outline"></i>
-          Xóa lọc
+          {{ t("alerts.filter.clear") }}
         </button>
       </div>
     </SearchFilterBar>
@@ -329,7 +331,7 @@ function navigateToInventory(row) {
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-state card card-pad">
       <i class="mdi mdi-loading mdi-spin text-2xl text-blue-600"></i>
-      <span>Đang tải dữ liệu cảnh báo tồn kho...</span>
+      <span>{{ t("alerts.loading") }}</span>
     </div>
 
     <!-- Main Content Container -->
@@ -364,7 +366,7 @@ function navigateToInventory(row) {
               >
                 {{ row.currentQuantity ?? 0 }}
               </span>
-              <span class="threshold-hint">/ tối thiểu {{ row.minStock }}</span>
+              <span class="threshold-hint">/ {{ t("alerts.table.minStock") }} {{ row.minStock }}</span>
             </div>
           </template>
           <template #severity="{ row }">
@@ -383,10 +385,10 @@ function navigateToInventory(row) {
               <button
                 class="btn btn-secondary btn-sm flex items-center gap-1 ml-auto"
                 @click="navigateToInventory(row)"
-                title="Xem chi tiết thẻ kho"
+                :title="t('alerts.table.viewInventoryTitle')"
               >
                 <i class="mdi mdi-eye-outline"></i>
-                Xem tồn kho
+                {{ t("alerts.table.viewInventory") }}
               </button>
             </div>
           </template>
@@ -411,24 +413,24 @@ function navigateToInventory(row) {
 
           <div class="card-body-details">
             <div class="detail-row">
-              <span class="detail-label">Kho hàng</span>
+              <span class="detail-label">{{ t("alerts.table.warehouse") }}</span>
               <span class="detail-val">{{ displayWarehouseName(row) }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Tồn hiện tại</span>
+              <span class="detail-label">{{ t("alerts.table.currentQuantityLabel") }}</span>
               <span
                 class="detail-val tabular-num font-semibold"
                 :class="row.status === 'OUT_OF_STOCK' ? 'text-red-600' : 'text-amber-600'"
               >
-                {{ row.currentQuantity ?? 0 }} / tối thiểu {{ row.minStock }}
+                {{ row.currentQuantity ?? 0 }} / {{ t("alerts.table.minStock") }} {{ row.minStock }}
               </span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Mức độ ưu tiên</span>
+              <span class="detail-label">{{ t("alerts.table.severity") }}</span>
               <span class="detail-val"><StatusBadge :status="computeSeverity(row)" variant="severity" /></span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Cập nhật</span>
+              <span class="detail-label">{{ t("alerts.table.lastUpdatedAt") }}</span>
               <span class="detail-val text-muted text-xs">{{ formatDate(row.lastUpdatedAt) }}</span>
             </div>
           </div>
@@ -439,7 +441,7 @@ function navigateToInventory(row) {
               @click="navigateToInventory(row)"
             >
               <i class="mdi mdi-eye-outline"></i>
-              Xem tồn kho
+              {{ t("alerts.table.viewInventory") }}
             </button>
           </div>
         </div>
@@ -447,7 +449,7 @@ function navigateToInventory(row) {
 
       <!-- Pagination bar -->
       <div class="pagination-bar card card-pad">
-        <span class="muted">{{ totalElements }} bản ghi</span>
+        <span class="muted">{{ totalElements }} {{ t("alerts.pagination.records") }}</span>
         <div class="pagination-actions">
           <button
             class="btn btn-sm"
@@ -456,16 +458,16 @@ function navigateToInventory(row) {
             @click="previousPage"
           >
             <i class="mdi mdi-chevron-left"></i>
-            Trước
+            {{ t("alerts.pagination.prev") }}
           </button>
-          <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
+          <span class="page-indicator">{{ t("alerts.pagination.page") }} {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
           <button
             class="btn btn-sm"
             type="button"
             :disabled="!hasNextPage || isLoading"
             @click="nextPage"
           >
-            Sau
+            {{ t("alerts.pagination.next") }}
             <i class="mdi mdi-chevron-right"></i>
           </button>
         </div>
@@ -476,14 +478,14 @@ function navigateToInventory(row) {
     <div v-else>
       <EmptyState
         v-if="hasActiveFilters"
-        title="Không tìm thấy cảnh báo phù hợp"
-        description="Không có cảnh báo tồn kho nào phù hợp với bộ lọc hiện tại."
+        :title="t('alerts.empty.filteredTitle')"
+        :description="t('alerts.empty.filteredDesc')"
         icon="mdi-filter-off-outline"
       />
       <EmptyState
         v-else
-        title="Tồn kho an toàn"
-        description="Tất cả các sản phẩm đều đang ở mức tồn an toàn, chưa ghi nhận cảnh báo nào."
+        :title="t('alerts.empty.safeTitle')"
+        :description="t('alerts.empty.safeDesc')"
         icon="mdi-check-circle-outline"
       />
     </div>

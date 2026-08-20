@@ -33,6 +33,11 @@ const authClient = axios.create({
   },
 })
 
+authClient.interceptors.request.use((config) => {
+  config.headers['Accept-Language'] = localStorage.getItem('stocksense_lang') || 'vi'
+  return config
+})
+
 export async function login(email, password) {
   try {
     const { data } = await authClient.post('/api/auth/login', { email, password })
@@ -92,7 +97,9 @@ export function getCurrentUser() {
 export function getAuthorizationHeader() {
   const accessToken = getAccessToken()
   const tokenType = localStorage.getItem(AUTH_STORAGE_KEYS.tokenType) || 'Bearer'
-  return accessToken ? { Authorization: `${tokenType} ${accessToken}` } : {}
+  const headers = accessToken ? { Authorization: `${tokenType} ${accessToken}` } : {}
+  headers['Accept-Language'] = localStorage.getItem('stocksense_lang') || 'vi'
+  return headers
 }
 
 export function getCurrentRoleCode() {

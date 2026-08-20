@@ -1,8 +1,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '../components/PageHeader.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import PriceInput from '../components/PriceInput.vue'
 import {
   cancelDraft,
   createImportReceipt,
@@ -24,6 +26,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const { t } = useI18n()
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isSubmitting = ref(false)
@@ -105,8 +108,8 @@ const isReceiptOwner = computed(() => {
 const isProcessing = computed(() => isSaving.value || isSubmitting.value || isCancelling.value)
 const isEditableStatus = computed(() => hasOperationalPermission.value && isReceiptOwner.value && (isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI'))
 const pageTitle = computed(() => {
-  if (props.type === 'out') return isEditMode.value ? 'Sửa phiếu xuất kho' : 'Tạo phiếu xuất kho'
-  return isEditMode.value ? 'Sửa phiếu nhập kho' : 'Tạo phiếu nhập kho'
+  if (props.type === 'out') return isEditMode.value ? t('stockDocumentCreate.title.editOut') : t('stockDocumentCreate.title.createOut')
+  return isEditMode.value ? t('stockDocumentCreate.title.editIn') : t('stockDocumentCreate.title.createIn')
 })
 
 const detailCount = computed(() => items.value.length)
@@ -118,7 +121,7 @@ const canCancel = computed(() => hasOperationalPermission.value && isReceiptOwne
 const canSave = computed(() => hasOperationalPermission.value && isReceiptOwner.value && (isCreateMode.value || receiptStatus.value === 'NHAP' || receiptStatus.value === 'TU_CHOI'))
 const isRejectedImportReceipt = computed(() => isEditMode.value && receiptStatus.value === 'TU_CHOI')
 const normalizedRejectionReason = computed(() => String(rejectionReason.value || '').trim())
-const rejectionReasonMessage = computed(() => normalizedRejectionReason.value || 'Chưa có lý do từ chối.')
+const rejectionReasonMessage = computed(() => normalizedRejectionReason.value || 't("stockDocumentCreate.alerts.noRejectReason")')
 
 const totalQuantity = computed(() => {
   return items.value.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
@@ -164,30 +167,30 @@ async function loadDropdowns() {
   if (whResult.status === 'fulfilled') {
     warehouses.value = whResult.value
     if (whResult.value.length === 0) {
-      errorState.warehouses = 'Không có kho nào đang hoạt động.'
+      errorState.warehouses = t('stockDocumentCreate.messages.noActiveWarehouses')
     }
   } else {
-    errorState.warehouses = whResult.reason?.message || 'Không thể tải danh sách kho.'
+    errorState.warehouses = whResult.reason?.message || t('stockDocumentCreate.messages.loadWarehouseError')
     if (whResult.reason?.status === 401) router.replace('/login')
   }
 
   if (suppResult.status === 'fulfilled') {
     suppliers.value = suppResult.value
     if (suppResult.value.length === 0) {
-      errorState.suppliers = 'Không có nhà cung cấp nào đang hoạt động.'
+      errorState.suppliers = t('stockDocumentCreate.messages.noActiveSuppliers')
     }
   } else {
-    errorState.suppliers = suppResult.reason?.message || 'Không thể tải danh sách nhà cung cấp.'
+    errorState.suppliers = suppResult.reason?.message || t('stockDocumentCreate.messages.loadSupplierError')
     if (suppResult.reason?.status === 401) router.replace('/login')
   }
 
   if (prodResult.status === 'fulfilled') {
     products.value = prodResult.value
     if (prodResult.value.length === 0) {
-      errorState.products = 'Không có sản phẩm nào đang hoạt động.'
+      errorState.products = t('stockDocumentCreate.messages.noActiveProducts')
     }
   } else {
-    errorState.products = prodResult.reason?.message || 'Không thể tải danh sách sản phẩm.'
+    errorState.products = prodResult.reason?.message || t('stockDocumentCreate.messages.loadProductError')
     if (prodResult.reason?.status === 401) router.replace('/login')
   }
 
@@ -195,7 +198,7 @@ async function loadDropdowns() {
 
   const hasAnyError = errorState.warehouses || errorState.suppliers || errorState.products
   if (hasAnyError && warehouses.value.length === 0 && suppliers.value.length === 0 && products.value.length === 0) {
-    errorMessage.value = 'Không thể tải dữ liệu nền. Vui lòng thử lại sau.'
+    errorMessage.value = t('stockDocumentCreate.messages.loadBaseDataError')
   }
 }
 
@@ -215,7 +218,7 @@ async function loadReceiptDetail() {
       return
     }
   } catch (error) {
-    errorMessage.value = error.message || 'Không thể tải thông tin phiếu.'
+    errorMessage.value = error.message || t('stockDocumentCreate.messages.loadReceiptError')
     if (error.status === 401) router.replace('/login')
   } finally {
     await markHydrationComplete()
@@ -282,17 +285,17 @@ function validateForm() {
   let isValid = true
 
   if (!form.warehouseId) {
-    formErrors.warehouseId = `Vui lòng chọn kho ${props.type === 'out' ? 'xuất' : 'nhập'}.`
+    formErrors.warehouseId = t('stockDocumentCreate.validation.selectWarehouse', { type: props.type === 'out' ? t('stockDocumentCreate.type.out') : t('stockDocumentCreate.type.in') })
     isValid = false
   }
 
   if (props.type === 'in' && !form.supplierId) {
-    formErrors.supplierId = 'Vui lòng chọn nhà cung cấp.'
+    formErrors.supplierId = t('stockDocumentCreate.validation.selectSupplier')
     isValid = false
   }
 
   if (form.note && form.note.length > 255) {
-    formErrors.note = 'Ghi chú không được vượt quá 255 ký tự.'
+    formErrors.note = t('stockDocumentCreate.validation.noteLength')
     isValid = false
   }
 
@@ -307,22 +310,22 @@ function validateItem() {
   let isValid = true
 
   if (!itemDraft.productId) {
-    itemErrors.productId = 'Vui lòng chọn sản phẩm.'
+    itemErrors.productId = t('stockDocumentCreate.validation.selectProduct')
     isValid = false
   }
 
   if (!itemDraft.quantity || itemDraft.quantity <= 0) {
-    itemErrors.quantity = 'Số lượng phải lớn hơn 0.'
+    itemErrors.quantity = t('stockDocumentCreate.validation.quantityMin')
     isValid = false
   }
 
   if (itemDraft.unitPrice === null || itemDraft.unitPrice === undefined || itemDraft.unitPrice < 0) {
-    itemErrors.unitPrice = 'Đơn giá phải lớn hơn hoặc bằng 0.'
+    itemErrors.unitPrice = t('stockDocumentCreate.validation.unitPriceMin')
     isValid = false
   }
 
   if (itemDraft.productId && items.value.some(item => item.productId === itemDraft.productId)) {
-    itemErrors.productId = 'Sản phẩm đã được thêm vào danh sách.'
+    itemErrors.productId = t('stockDocumentCreate.validation.productExists')
     isValid = false
   }
 
@@ -334,7 +337,7 @@ function addItem() {
 
   const product = products.value.find(p => p.id === itemDraft.productId)
   if (!product) {
-    itemErrors.productId = 'Sản phẩm không hợp lệ.'
+    itemErrors.productId = t('stockDocumentCreate.validation.invalidProduct')
     return
   }
 
@@ -365,7 +368,7 @@ async function handleSaveDraft() {
   if (!canSave.value) return
 
   if (!validateForm()) {
-    errorMessage.value = 'Vui lòng kiểm tra lại thông tin phiếu.'
+    errorMessage.value = t('stockDocumentCreate.messages.checkFormInfo')
     return
   }
 
@@ -398,8 +401,8 @@ async function handleSaveDraft() {
 
     await applySavedReceipt(savedReceipt)
     successMessage.value = receiptStatus.value === 'TU_CHOI'
-      ? 'Đã lưu thay đổi. Bạn có thể gửi duyệt lại phiếu này.'
-      : 'Lưu nháp phiếu thành công.'
+      ? t('stockDocumentCreate.messages.saveDraftSuccessRejected')
+      : t('stockDocumentCreate.messages.saveDraftSuccess')
 
     if (isCreateMode.value) {
       scheduleRedirectToList(1500)
@@ -424,11 +427,11 @@ async function handleSaveDraft() {
 
 function handleSubmitForApproval() {
   if (!canSubmit.value) {
-    errorMessage.value = 'Phiếu cần có ít nhất một sản phẩm hợp lệ trước khi gửi duyệt.'
+    errorMessage.value = t('stockDocumentCreate.messages.submitValidProductRequired')
     return
   }
   if (isDirty.value) {
-    errorMessage.value = 'Vui lòng lưu nháp trước khi gửi duyệt.'
+    errorMessage.value = t('stockDocumentCreate.messages.saveDraftBeforeSubmit')
     return
   }
   confirmState.open = true
@@ -436,7 +439,7 @@ function handleSubmitForApproval() {
 }
 
 function submitButtonLabel() {
-  return receiptStatus.value === 'TU_CHOI' ? 'Gửi duyệt lại' : 'Gửi duyệt'
+  return receiptStatus.value === 'TU_CHOI' ? t('stockDocumentCreate.actions.resubmit') : t('stockDocumentCreate.actions.submit')
 }
 
 function handleCancelDraft() {
@@ -471,14 +474,14 @@ async function confirmSubmitForApproval() {
       ? await submitExportReceipt(receiptId.value, receiptVersion.value)
       : await submitForApproval(receiptId.value)
     await applySavedReceipt(receipt)
-    successMessage.value = 'Gửi duyệt thành công.'
+    successMessage.value = t('stockDocumentCreate.messages.submitSuccess')
     scheduleRedirectToList(1200)
   } catch (error) {
     if (error.status === 401) {
       router.replace('/login')
       return
     }
-    errorMessage.value = error.message || 'Thao tác thất bại, vui lòng thử lại.'
+    errorMessage.value = error.message || t('stockDocumentCreate.messages.actionFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -492,7 +495,7 @@ async function confirmCancelDraft() {
   try {
     const receipt = props.type === 'out' ? await cancelExportReceipt(receiptId.value) : await cancelDraft(receiptId.value)
     if (receipt) await applySavedReceipt(receipt)
-    successMessage.value = 'Hủy phiếu thành công.'
+    successMessage.value = t('stockDocumentCreate.messages.cancelSuccess')
     scheduleRedirectToList(1200)
   } catch (error) {
     if (error.status === 401) {
@@ -515,25 +518,25 @@ function formatCurrency(value) {
 }
 
 function confirmTitle() {
-  return confirmState.action === 'cancel' ? 'Xác nhận hủy' : 'Xác nhận gửi duyệt'
+  return confirmState.action === 'cancel' ? t('stockDocumentCreate.confirm.cancelTitle') : t('stockDocumentCreate.confirm.submitTitle')
 }
 
 function confirmMessage() {
   return confirmState.action === 'cancel'
-    ? `Hủy phiếu ${props.type === 'out' ? 'xuất' : 'nhập'} này?`
-    : `Gửi duyệt phiếu ${props.type === 'out' ? 'xuất' : 'nhập'} này?`
+    ? t('stockDocumentCreate.confirm.cancelMessage', { type: props.type === 'out' ? t('stockDocumentCreate.type.out') : t('stockDocumentCreate.type.in') })
+    : t('stockDocumentCreate.confirm.submitMessage', { type: props.type === 'out' ? t('stockDocumentCreate.type.out') : t('stockDocumentCreate.type.in') })
 }
 
 function confirmText() {
-  return confirmState.action === 'cancel' ? 'Hủy phiếu' : 'Gửi duyệt'
+  return confirmState.action === 'cancel' ? t('stockDocumentCreate.confirm.cancelBtn') : t('stockDocumentCreate.confirm.submitBtn')
 }
 </script>
 
 <template>
-  <PageHeader :title="pageTitle" :description="type === 'out' ? 'Nhập thông tin kho, đối tác và sản phẩm cần xuất.' : 'Nhập thông tin kho, nhà cung cấp và sản phẩm cần nhập.'">
+  <PageHeader :title="pageTitle" :description="type === 'out' ? t('stockDocumentCreate.headerDesc.out') : t('stockDocumentCreate.headerDesc.in')">
     <button class="btn btn-ghost" type="button" @click="goBack">
       <i class="mdi mdi-arrow-left"></i>
-      Quay lại
+      {{ t("stockDocumentCreate.actions.back") }}
     </button>
   </PageHeader>
 
@@ -550,36 +553,36 @@ function confirmText() {
 
     <div v-if="isLoading" class="import-receipt-form__alert import-receipt-form__alert--info">
       <i class="mdi mdi-loading mdi-spin"></i>
-      <span>Đang tải dữ liệu...</span>
+      <span>{{ t("stockDocumentCreate.loading") }}</span>
     </div>
 
     <form v-if="!isLoading" class="import-receipt-form pb-16" @submit.prevent="handleSaveDraft">
       <div v-if="isRejectedImportReceipt" class="import-receipt-form__alert import-receipt-form__alert--error">
         <i class="mdi mdi-information-outline"></i>
         <div>
-          <p class="import-receipt-form__rejection-title">Phiếu đã bị từ chối phê duyệt.</p>
+          <p class="import-receipt-form__rejection-title">{{ t("stockDocumentCreate.alerts.rejectedTitle") }}</p>
           <p class="import-receipt-form__rejection-reason">
-            <template v-if="normalizedRejectionReason">Lý do từ chối: {{ rejectionReasonMessage }}</template>
+            <template v-if="normalizedRejectionReason">{{ t("stockDocumentCreate.alerts.rejectReason") }}: {{ rejectionReasonMessage }}</template>
             <template v-else>{{ rejectionReasonMessage }}</template>
           </p>
-          <p class="import-receipt-form__rejection-reason mt-1">Vui lòng chỉnh sửa thông tin và lưu lại.</p>
+          <p class="import-receipt-form__rejection-reason mt-1">{{ t("stockDocumentCreate.alerts.editAndSave") }}</p>
         </div>
       </div>
 
-      <!-- Section: Thông tin chung -->
+      <!-- Section: {{ t("stockDocumentCreate.section.generalInfo") }} -->
       <section class="import-receipt-form__section">
         <h3 class="import-receipt-form__section-title">Thông tin chung</h3>
 
         <div class="import-receipt-form__grid import-receipt-form__grid--2">
           <div class="import-receipt-form__field">
-            <label class="import-receipt-form__label import-receipt-form__label--required">{{ type === 'out' ? 'Kho xuất' : 'Kho nhập' }}</label>
+            <label class="import-receipt-form__label import-receipt-form__label--required">{{ type === 'out' ? t('stockDocumentCreate.label.warehouseOut') : t('stockDocumentCreate.label.warehouseIn') }}</label>
             <select
               v-model="form.warehouseId"
               class="import-receipt-form__select"
               :class="{ 'import-receipt-form__select--error': formErrors.warehouseId || errorState.warehouses }"
-              :disabled="isProcessing || !isEditableStatus || warehouses.length === 0"
+              :disabled="isProcessing || !isEditableStatus || warehouses.length === 0 || items.length > 0"
             >
-              <option :value="null" disabled>{{ warehouses.length === 0 ? 'Không có kho' : 'Chọn kho' }}</option>
+              <option :value="null" disabled>{{ warehouses.length === 0 ? t('stockDocumentCreate.placeholder.noWarehouse') : t('stockDocumentCreate.placeholder.selectWarehouse') }}</option>
               <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
                 {{ warehouse.tenKho }}
               </option>
@@ -589,14 +592,14 @@ function confirmText() {
           </div>
 
           <div class="import-receipt-form__field">
-            <label class="import-receipt-form__label" :class="{ 'import-receipt-form__label--required': type === 'in' }">{{ type === 'out' ? 'Đối tác' : 'Nhà cung cấp' }}</label>
+            <label class="import-receipt-form__label" :class="{ 'import-receipt-form__label--required': type === 'in' }">{{ type === 'out' ? t('stockDocumentCreate.label.partner') : t('stockDocumentCreate.label.supplier') }}</label>
             <select
               v-model="form.supplierId"
               class="import-receipt-form__select"
               :class="{ 'import-receipt-form__select--error': formErrors.supplierId || errorState.suppliers }"
-              :disabled="isProcessing || !isEditableStatus || suppliers.length === 0"
+              :disabled="isProcessing || !isEditableStatus || suppliers.length === 0 || items.length > 0"
             >
-              <option :value="null" disabled>{{ suppliers.length === 0 ? 'Không có' : 'Chọn' }}</option>
+              <option :value="null" disabled>{{ suppliers.length === 0 ? t('stockDocumentCreate.placeholder.noSupplier') : t('stockDocumentCreate.placeholder.selectSupplier') }}</option>
               <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
                 {{ supplier.tenDoiTac }}
               </option>
@@ -606,12 +609,12 @@ function confirmText() {
           </div>
 
           <div class="import-receipt-form__field" style="grid-column: 1 / -1">
-            <label class="import-receipt-form__label">Ghi chú phiếu</label>
+            <label class="import-receipt-form__label">{{ t("stockDocumentCreate.label.note") }}</label>
             <textarea
               v-model="form.note"
               class="import-receipt-form__textarea"
               :class="{ 'import-receipt-form__textarea--error': formErrors.note }"
-              placeholder="Nhập ghi chú (tùy chọn)"
+              :placeholder="t('stockDocumentCreate.placeholder.note')"
               :disabled="isProcessing || !isEditableStatus"
             ></textarea>
             <span v-if="formErrors.note" class="import-receipt-form__error">{{ formErrors.note }}</span>
@@ -619,20 +622,20 @@ function confirmText() {
         </div>
       </section>
 
-      <!-- Section: Thêm sản phẩm -->
+      <!-- Section: {{ t("stockDocumentCreate.section.addProduct") }} -->
       <section class="import-receipt-form__section">
         <h3 class="import-receipt-form__section-title">Thêm sản phẩm</h3>
 
         <div class="import-receipt-form__grid import-receipt-form__grid--4">
           <div class="import-receipt-form__field">
-            <label class="import-receipt-form__label import-receipt-form__label--required">Sản phẩm</label>
+            <label class="import-receipt-form__label import-receipt-form__label--required">{{ t("stockDocumentCreate.label.product") }}</label>
             <select
               v-model="itemDraft.productId"
               class="import-receipt-form__select"
               :class="{ 'import-receipt-form__select--error': itemErrors.productId || errorState.products }"
               :disabled="isProcessing || !isEditableStatus || products.length === 0"
             >
-              <option :value="null" disabled>{{ products.length === 0 ? 'Không có sản phẩm' : 'Chọn sản phẩm' }}</option>
+              <option :value="null" disabled>{{ products.length === 0 ? t('stockDocumentCreate.placeholder.noProduct') : t('stockDocumentCreate.placeholder.selectProduct') }}</option>
               <option v-for="product in products" :key="product.id" :value="product.id">
                 {{ product.name }} ({{ product.code || product.sku }})
               </option>
@@ -642,41 +645,38 @@ function confirmText() {
           </div>
 
           <div class="import-receipt-form__field">
-            <label class="import-receipt-form__label import-receipt-form__label--required">Số lượng</label>
+            <label class="import-receipt-form__label import-receipt-form__label--required">{{ t("stockDocumentCreate.label.quantity") }}</label>
             <input
               v-model.number="itemDraft.quantity"
               type="number"
               min="1"
               class="import-receipt-form__input"
               :class="{ 'import-receipt-form__input--error': itemErrors.quantity }"
-              placeholder="Nhập số lượng"
+              :placeholder="t('stockDocumentCreate.placeholder.quantity')"
               :disabled="isProcessing || !isEditableStatus"
             />
             <span v-if="itemErrors.quantity" class="import-receipt-form__error">{{ itemErrors.quantity }}</span>
           </div>
 
           <div class="import-receipt-form__field">
-            <label class="import-receipt-form__label import-receipt-form__label--required">Đơn giá (đ)</label>
-            <input
-              v-model.number="itemDraft.unitPrice"
-              type="number"
-              min="0"
-              step="0.01"
+            <label class="import-receipt-form__label import-receipt-form__label--required">{{ t("stockDocumentCreate.label.unitPrice") }}</label>
+            <PriceInput
+              v-model="itemDraft.unitPrice"
               class="import-receipt-form__input"
               :class="{ 'import-receipt-form__input--error': itemErrors.unitPrice }"
-              placeholder="Nhập đơn giá"
+              :placeholder="t('stockDocumentCreate.placeholder.unitPrice')"
               :disabled="isProcessing || !isEditableStatus"
             />
             <span v-if="itemErrors.unitPrice" class="import-receipt-form__error">{{ itemErrors.unitPrice }}</span>
           </div>
 
           <div class="import-receipt-form__field">
-            <label class="import-receipt-form__label">Ghi chú dòng</label>
+            <label class="import-receipt-form__label">{{ t("stockDocumentCreate.label.lineNote") }}</label>
             <input
               v-model="itemDraft.note"
               type="text"
               class="import-receipt-form__input"
-              placeholder="Ghi chú (tùy chọn)"
+              :placeholder="t('stockDocumentCreate.placeholder.lineNote')"
               maxlength="255"
               :disabled="isProcessing || !isEditableStatus"
             />
@@ -692,7 +692,7 @@ function confirmText() {
 
       <!-- Section: Danh sách sản phẩm -->
       <section class="import-receipt-form__section">
-        <h3 class="import-receipt-form__section-title">Danh sách sản phẩm ({{ detailCount }} dòng)</h3>
+        <h3 class="import-receipt-form__section-title">{{ t("stockDocumentCreate.section.productList", { count: detailCount }) }}</h3>
 
         <!-- Desktop view table -->
         <div class="hidden md:block">
@@ -700,13 +700,13 @@ function confirmText() {
             <thead>
               <tr>
                 <th style="width: 50px; text-align: center">STT</th>
-                <th>Mã SP</th>
-                <th>Tên sản phẩm</th>
+                <th>{{ t("stockDocumentCreate.table.code") }}</th>
+                <th>{{ t("stockDocumentCreate.table.name") }}</th>
                 <th style="text-align: right">Số lượng</th>
                 <th v-if="type === 'out'" style="text-align: right">Tồn hiện tại</th>
                 <th style="text-align: right">Đơn giá</th>
                 <th style="text-align: right">Thành tiền</th>
-                <th>Ghi chú</th>
+                <th>{{ t("stockDocumentCreate.table.note") }}</th>
                 <th style="width: 80px"></th>
               </tr>
             </thead>
@@ -720,7 +720,7 @@ function confirmText() {
                   <span :class="{ 'text-danger font-bold': item.exceedsAvailableStock }">
                     {{ item.availableStock ?? '-' }}
                   </span>
-                  <span v-if="item.exceedsAvailableStock" class="text-danger block text-xxs font-normal"> (vượt tồn)</span>
+                  <span v-if="item.exceedsAvailableStock" class="text-danger block text-xxs font-normal"> ({{ t("stockDocumentCreate.table.exceedsStock") }})</span>
                 </td>
                 <td style="text-align: right">{{ formatCurrency(item.unitPrice) }}</td>
                 <td style="text-align: right; font-weight: 700" class="text-primary">{{ formatCurrency(item.lineTotal) }}</td>
@@ -734,7 +734,7 @@ function confirmText() {
             </tbody>
             <tfoot>
               <tr class="import-receipt-form__summary-row">
-                <td :colspan="type === 'out' ? 4 : 3" style="text-align: right; font-weight: 600">Tổng cộng:</td>
+                <td :colspan="type === 'out' ? 4 : 3" style="text-align: right; font-weight: 600">{{ t("stockDocumentCreate.table.total") }}:</td>
                 <td style="text-align: right; font-weight: 700">{{ totalQuantity }}</td>
                 <td style="text-align: right; font-weight: 700; font-size: 16px" class="import-receipt-form__summary-total">
                   {{ formatCurrency(totalAmountPreview) }}
@@ -745,8 +745,8 @@ function confirmText() {
           </table>
           <div v-else class="import-receipt-form__empty">
             <i class="mdi mdi-package-variant-closed" style="font-size: 48px; color: #cbd5e1"></i>
-            <p>Chưa có sản phẩm nào được thêm vào phiếu.</p>
-            <p class="muted">Thêm sản phẩm từ phần bên trên để bắt đầu.</p>
+            <p>{{ t("stockDocumentCreate.empty.title") }}</p>
+            <p class="muted">{{ t("stockDocumentCreate.empty.desc") }}</p>
           </div>
         </div>
 
@@ -768,7 +768,7 @@ function confirmText() {
                   <span class="font-semibold">{{ item.quantity }}</span>
                 </div>
                 <div v-if="type === 'out'">
-                  <span class="text-muted block text-xxs uppercase font-semibold">Tồn hiện tại</span>
+                  <span class="text-muted block text-xxs uppercase font-semibold">{{ t("stockDocumentCreate.table.currentStock") }}</span>
                   <span class="font-semibold" :class="{'text-danger font-bold': item.exceedsAvailableStock}">
                     {{ item.availableStock ?? '-' }}
                     <span v-if="item.exceedsAvailableStock" class="block text-xxs text-danger font-normal">(vượt tồn)</span>
@@ -785,12 +785,12 @@ function confirmText() {
               </div>
               
               <div v-if="item.note" class="text-xs text-muted border-t border-gray-200 pt-2 mt-1">
-                <strong>Ghi chú dòng:</strong> {{ item.note }}
+                <strong>{{ t("stockDocumentCreate.label.lineNote") }}:</strong> {{ item.note }}
               </div>
             </div>
             
             <div class="bg-blue-50 p-3 rounded-lg flex justify-between items-center text-sm font-bold text-primary">
-              <span>Tổng cộng ({{ totalQuantity }} SP):</span>
+              <span>{{ t("stockDocumentCreate.mobile.total", { count: totalQuantity }) }}:</span>
               <span>{{ formatCurrency(totalAmountPreview) }}</span>
             </div>
           </div>
@@ -804,7 +804,7 @@ function confirmText() {
       </section>
 
       <!-- Sticky Action Footer -->
-      <div class="sticky-footer border-t border-gray-200 bg-white p-4 flex items-center justify-between shadow-lg sticky bottom-0 z-10 rounded-b-xl">
+      <div class="sticky-footer p-4 flex items-center justify-between shadow-lg z-10 rounded-b-xl">
         <div class="text-sm font-semibold text-text hidden sm:block">
           {{ items.length }} mặt hàng · Tổng số lượng: {{ totalQuantity }} · Tổng tiền: <span class="text-primary font-bold">{{ formatCurrency(totalAmountPreview) }}</span>
         </div>
@@ -814,19 +814,19 @@ function confirmText() {
           <button v-if="canCancel" class="btn btn-danger" type="button" :disabled="isProcessing" @click="handleCancelDraft">
             <i v-if="isCancelling" class="mdi mdi-loading mdi-spin"></i>
             <i v-else class="mdi mdi-cancel"></i>
-            {{ isCancelling ? 'Đang hủy...' : 'Hủy' }}
+            {{ isCancelling ? t('stockDocumentCreate.actions.cancelling') : t('stockDocumentCreate.actions.cancel') }}
           </button>
           
           <button v-if="canSubmit" class="btn btn-secondary" type="button" :disabled="isProcessing" @click="handleSubmitForApproval">
             <i v-if="isSubmitting" class="mdi mdi-loading mdi-spin"></i>
             <i v-else class="mdi mdi-send-outline"></i>
-            {{ isSubmitting ? 'Đang gửi...' : submitButtonLabel() }}
+            {{ isSubmitting ? t('stockDocumentCreate.actions.submitting') : submitButtonLabel() }}
           </button>
           
           <button v-if="canSave" class="btn btn-primary" type="submit" :disabled="isProcessing">
             <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
             <i v-else class="mdi mdi-content-save-outline"></i>
-            {{ isSaving ? 'Đang lưu...' : (receiptStatus === 'TU_CHOI' ? 'Lưu thay đổi' : 'Lưu nháp') }}
+            {{ isSaving ? t('stockDocumentCreate.actions.saving') : (receiptStatus === 'TU_CHOI' ? t('stockDocumentCreate.actions.saveChanges') : t('stockDocumentCreate.actions.saveDraft')) }}
           </button>
         </div>
       </div>

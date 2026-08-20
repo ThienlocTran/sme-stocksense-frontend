@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref, reactive } from "vue";
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from "../stores/auth";
 import { getCurrentProfile, updateProfile, uploadAvatar } from "../services/profileService";
 import { formatRole } from "../services/authService";
@@ -7,6 +8,7 @@ import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
 
 const authStore = useAuthStore();
+const { t } = useI18n();
 const profile = ref(null);
 const isLoading = ref(true);
 const errorMessage = ref("");
@@ -34,9 +36,9 @@ function getStatusLabel(status) {
 }
 
 function getGenderLabel(gender) {
-  if (gender === 'MALE') return "Nam";
-  if (gender === 'FEMALE') return "Nữ";
-  if (gender === 'OTHER') return "Khác";
+  if (gender === 'MALE') return t("profile.gender.male");
+  if (gender === 'FEMALE') return t("profile.gender.female");
+  if (gender === 'OTHER') return t("profile.gender.other");
   return "—";
 }
 
@@ -48,7 +50,7 @@ async function loadProfile() {
     profile.value = data;
     resetForm();
   } catch (error) {
-    errorMessage.value = error?.message || "Không thể tải hồ sơ.";
+    errorMessage.value = error?.message || t("profile.error.load");
   } finally {
     isLoading.value = false;
   }
@@ -98,7 +100,7 @@ async function saveProfile() {
     pendingAvatarFile.value = null;
     previewAvatarUrl.value = "";
   } catch (error) {
-    alert(error?.message || "Lỗi khi cập nhật hồ sơ");
+    alert(error?.message || t("profile.error.update"));
   } finally {
     isSaving.value = false;
   }
@@ -113,14 +115,14 @@ async function handleFileChange(event) {
   if (!file) return;
 
   if (file.size > 5 * 1024 * 1024) {
-    alert("Kích thước file không được vượt quá 5MB.");
+    alert(t("profile.error.fileSize"));
     event.target.value = "";
     return;
   }
 
   const validTypes = ["image/jpeg", "image/png", "image/webp"];
   if (!validTypes.includes(file.type)) {
-    alert("Chỉ chấp nhận ảnh định dạng JPEG, PNG, WEBP.");
+    alert(t("profile.error.fileType"));
     event.target.value = "";
     return;
   }
@@ -185,8 +187,8 @@ onMounted(() => {
   <main class="w-full max-w-4xl mx-auto py-12 px-6">
     <header class="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-[var(--color-border)]">
       <div>
-        <h1 class="text-3xl font-medium tracking-tight text-[var(--color-text-primary)]">Hồ sơ cá nhân</h1>
-        <p class="mt-2 text-[var(--color-text-secondary)]">Xem và quản lý thông tin định danh nội bộ.</p>
+        <h1 class="text-3xl font-medium tracking-tight text-[var(--color-text-primary)]">{{ t("profile.title") }}</h1>
+        <p class="mt-2 text-[var(--color-text-secondary)]">{{ t("profile.description") }}</p>
       </div>
       <div class="flex items-center gap-3">
         <button 
@@ -208,7 +210,7 @@ onMounted(() => {
             @click="saveProfile" 
             :disabled="isSaving"
           >
-            {{ isSaving ? 'Đang lưu...' : 'Lưu thay đổi' }}
+            {{ isSaving ? t('profile.btn.saving') : t('profile.btn.save') }}
           </button>
         </template>
       </div>
@@ -216,13 +218,13 @@ onMounted(() => {
 
     <div v-if="isLoading" class="py-24 text-center">
       <i class="mdi mdi-loading mdi-spin text-3xl text-[var(--color-primary)]"></i>
-      <p class="mt-4 text-[var(--color-text-secondary)] font-medium">Đang đồng bộ dữ liệu...</p>
+      <p class="mt-4 text-[var(--color-text-secondary)] font-medium">{{ t("profile.loading") }}</p>
     </div>
 
     <div v-else-if="errorMessage" class="py-24 text-center rounded-xl bg-red-50 border border-red-100 mt-8">
       <i class="mdi mdi-alert-circle text-3xl text-red-500"></i>
       <p class="mt-4 text-red-700 font-medium">{{ errorMessage }}</p>
-      <button class="mt-6 btn btn-secondary" @click="loadProfile">Thử lại</button>
+      <button class="mt-6 btn btn-secondary" @click="loadProfile">{{ t("profile.btn.retry") }}</button>
     </div>
 
     <div v-else-if="profile" class="mt-12 space-y-12">
@@ -240,7 +242,7 @@ onMounted(() => {
             v-if="isEditing"
             @click="triggerFileInput"
             class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white border border-[var(--color-border)] shadow-sm flex items-center justify-center text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-            title="Đổi ảnh đại diện"
+            :title="t('profile.cropper.btn.change')"
           >
             <i class="mdi mdi-camera text-sm"></i>
           </button>
@@ -262,53 +264,53 @@ onMounted(() => {
       <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         <div class="col-span-1 md:col-span-2">
-          <h3 class="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide">Thông tin liên lạc</h3>
+          <h3 class="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide">{{ t("profile.section.contact") }}</h3>
         </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">Họ và tên</label>
+          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">{{ t("profile.field.fullName") }}</label>
           <input v-if="isEditing" type="text" v-model="formData.fullName" class="input" />
           <div v-else class="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] font-medium">{{ profile.fullName || "—" }}</div>
         </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">Số điện thoại</label>
+          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">{{ t("profile.field.phone") }}</label>
           <input v-if="isEditing" type="text" v-model="formData.phone" class="input" />
           <div v-else class="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] font-medium">{{ profile.phone || "—" }}</div>
         </div>
 
         <div class="col-span-1 md:col-span-2 mt-4">
-          <h3 class="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide">Định danh cá nhân</h3>
+          <h3 class="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide">{{ t("profile.section.identity") }}</h3>
         </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">Giới tính</label>
+          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">{{ t("profile.field.gender") }}</label>
           <select v-if="isEditing" v-model="formData.gender" class="select">
-            <option value="">Chọn giới tính</option>
-            <option value="MALE">Nam</option>
-            <option value="FEMALE">Nữ</option>
-            <option value="OTHER">Khác</option>
+            <option value="">{{ t("profile.gender.select") }}</option>
+            <option value="MALE">{{ t("profile.gender.male") }}</option>
+            <option value="FEMALE">{{ t("profile.gender.female") }}</option>
+            <option value="OTHER">{{ t("profile.gender.other") }}</option>
           </select>
           <div v-else class="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] font-medium">{{ getGenderLabel(profile.gender) }}</div>
         </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">Ngày sinh</label>
+          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">{{ t("profile.field.dob") }}</label>
           <input v-if="isEditing" type="date" v-model="formData.dateOfBirth" class="input" />
           <div v-else class="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] font-medium">{{ profile.dateOfBirth || "—" }}</div>
         </div>
 
         <div class="col-span-1 md:col-span-2 mt-4">
-          <h3 class="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide">Trạng thái hệ thống</h3>
+          <h3 class="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide">{{ t("profile.section.system") }}</h3>
         </div>
 
         <div class="space-y-2 opacity-70">
-          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">Email (Chỉ đọc)</label>
+          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">{{ t("profile.field.email") }}</label>
           <div class="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-md text-[var(--color-text-secondary)] font-medium cursor-not-allowed">{{ profile.email || "—" }}</div>
         </div>
 
         <div class="space-y-2 opacity-70">
-          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">Trạng thái (Chỉ đọc)</label>
+          <label class="block text-sm font-medium text-[var(--color-text-secondary)]">{{ t("profile.field.status") }}</label>
           <div class="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-md text-[var(--color-text-secondary)] font-medium cursor-not-allowed">{{ getStatusLabel(profile.status) }}</div>
         </div>
       </section>
@@ -316,9 +318,9 @@ onMounted(() => {
 
     <!-- Cropper Modal -->
     <div v-if="showCropper" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col transform transition-all">
+      <div class="bg-[var(--color-surface)] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col transform transition-all">
         <div class="px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]">
-          <h3 class="text-base font-semibold text-[var(--color-text-primary)]">Điều chỉnh ảnh đại diện</h3>
+          <h3 class="text-base font-semibold text-[var(--color-text-primary)]">{{ t("profile.cropper.title") }}</h3>
           <button @click="cancelCrop" class="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
             <i class="mdi mdi-close text-xl"></i>
           </button>

@@ -348,9 +348,10 @@ onBeforeUnmount(() => {
   gap: 10px;
   padding: 18px 18px 16px;
   border-radius: 16px;
-  background: #fff;
-  color: #0f172a;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
 }
 
 .tour-pill {
@@ -358,8 +359,8 @@ onBeforeUnmount(() => {
   width: fit-content;
   padding: 5px 10px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -374,7 +375,7 @@ onBeforeUnmount(() => {
 
 .tour-card p {
   margin: 0;
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.6;
 }
 

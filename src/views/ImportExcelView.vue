@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getCurrentRoleCode } from '../services/authService'
 import { canOperateImportExcel } from '../services/permissionService'
 import PageHeader from '../components/PageHeader.vue'
@@ -15,6 +16,7 @@ import {
 } from '../services/excelImportService'
 
 const router = useRouter()
+const { t } = useI18n()
 const canOperate = computed(() => canOperateImportExcel(getCurrentRoleCode()))
 
 // Config states
@@ -56,7 +58,7 @@ async function fetchWarehouseList() {
     const list = await getWarehouses({ status: 'HOAT_DONG' })
     warehouses.value = list || []
   } catch (error) {
-    warehouseError.value = error.message || 'Không thể tải danh sách kho hàng.'
+    warehouseError.value = error.message || t('importExcel.messages.loadWarehouseError')
   } finally {
     isLoadingWarehouses.value = false
   }
@@ -77,7 +79,7 @@ function onFileChange(event) {
 
   if (!file) { selectedFile.value = null; return }
   if (!file.name.toLowerCase().endsWith('.xlsx')) {
-    fileError.value = 'Chỉ chấp nhận file định dạng .xlsx'
+    fileError.value = t('importExcel.messages.invalidFileType')
     selectedFile.value = null
     event.target.value = ''
     return
@@ -111,7 +113,7 @@ async function handleDownloadTemplate() {
     link.remove()
     window.URL.revokeObjectURL(url)
   } catch (error) {
-    globalError.value = error.message || 'Không thể tải file mẫu.'
+    globalError.value = error.message || t('importExcel.messages.downloadTemplateError')
     if (error.status === 401) router.replace('/login')
   } finally {
     isDownloadingTemplate.value = false
@@ -120,7 +122,7 @@ async function handleDownloadTemplate() {
 
 // ─── Step 1: Upload & Validate (single call) ──────────────────────────────────
 async function handleUploadAndValidate() {
-  if (!selectedFile.value) { fileError.value = 'Vui lòng chọn file Excel trước.'; return }
+  if (!selectedFile.value) { fileError.value = t('importExcel.messages.selectFileFirst'); return }
 
   phase.value = 'validating'
   globalError.value = ''
@@ -139,12 +141,12 @@ async function handleUploadAndValidate() {
     phase.value = 'validated'
 
     if (result.valid) {
-      globalSuccess.value = `Tất cả ${result.tongSoDong} dòng dữ liệu hợp lệ. Nhấn "Xác nhận Import" để hoàn tất.`
+      globalSuccess.value = t('importExcel.messages.allRowsValid', { count: result.tongSoDong })
     } else {
-      globalError.value = `File có ${result.soDongLoi} dòng lỗi. Vui lòng sửa file và tải lại.`
+      globalError.value = t('importExcel.messages.hasErrors', { count: result.soDongLoi })
     }
   } catch (error) {
-    globalError.value = error.message || 'Không thể kiểm tra file Excel.'
+    globalError.value = error.message || t('importExcel.messages.validateError')
     if (error.status === 401) router.replace('/login')
     phase.value = 'idle'
   }
@@ -175,9 +177,9 @@ async function handleConfirmImport() {
     const result = await applyImportSession(session.id, selectedFile.value)
     applyResult.value = result
     phase.value = 'done'
-    globalSuccess.value = `Import thành công! ${result.validRows ?? result.totalRows} sản phẩm đã được tích hợp vào hệ thống.`
+    globalSuccess.value = t('importExcel.messages.importSuccess', { count: result.validRows ?? result.totalRows })
   } catch (error) {
-    globalError.value = error.message || 'Import thất bại. Vui lòng thử lại.'
+    globalError.value = error.message || t('importExcel.messages.importFailed')
     if (error.status === 401) router.replace('/login')
     phase.value = 'validated'
   }
@@ -206,19 +208,19 @@ function formatDate(dateStr) {
 <template>
   <div class="page-shell">
     <PageHeader
-      title="Import dữ liệu Excel"
-      description="Tải file Excel lên, hệ thống kiểm tra dữ liệu tự động. Nhấn xác nhận để import vào hệ thống."
+      :title="t('importExcel.title')"
+      :description="t('importExcel.description')"
     />
 
     <!-- Global messages -->
     <div class="mt-4 flex flex-col gap-2">
       <div v-if="globalError" class="alert alert-error animate-fade-in">
         <i class="mdi mdi-alert-circle-outline text-lg"></i>
-        <div><span class="font-bold">Lỗi: </span>{{ globalError }}</div>
+        <div><span class="font-bold">{{ t("importExcel.alerts.error") }}: </span>{{ globalError }}</div>
       </div>
       <div v-if="globalSuccess" class="alert alert-success animate-fade-in">
         <i class="mdi mdi-check-circle-outline text-lg"></i>
-        <div><span class="font-bold">Thành công: </span>{{ globalSuccess }}</div>
+        <div><span class="font-bold">{{ t("importExcel.alerts.success") }}: </span>{{ globalSuccess }}</div>
       </div>
     </div>
 
@@ -232,8 +234,8 @@ function formatDate(dateStr) {
             <span v-else>1</span>
           </div>
           <div>
-            <h3 class="section-title">Bước 1: Cấu hình & Tải file mẫu</h3>
-            <p class="muted mt-0.5">Chọn loại import, kho hàng đầu kỳ và tải về tệp Excel mẫu tiêu chuẩn.</p>
+            <h3 class="section-title">{{ t("importExcel.step1.title") }}</h3>
+            <p class="muted mt-0.5">{{ t("importExcel.step1.desc") }}</p>
           </div>
         </div>
 
@@ -241,38 +243,38 @@ function formatDate(dateStr) {
           <!-- Row: Import type + Warehouse -->
           <div class="grid grid-2 gap-4">
             <div class="field">
-              <label class="field-label">Cấu hình kiểu nhập liệu *</label>
+              <label class="field-label">{{ t("importExcel.step1.importTypeLabel") }}</label>
               <select
                 v-model="importType"
                 class="select"
                 :disabled="phase === 'validating' || phase === 'importing' || phase === 'done'"
               >
-                <option value="PRODUCT_ONLY">Chỉ danh mục sản phẩm</option>
-                <option value="PRODUCT_WITH_OPENING_STOCK">Sản phẩm + tồn kho ban đầu</option>
+                <option value="PRODUCT_ONLY">{{ t("importExcel.step1.typeProductOnly") }}</option>
+                <option value="PRODUCT_WITH_OPENING_STOCK">{{ t("importExcel.step1.typeProductWithStock") }}</option>
               </select>
               <span class="text-xs text-[var(--color-text-secondary)] mt-1 block">
                 {{ importType === 'PRODUCT_ONLY' 
-                  ? 'Nhập thông tin sản phẩm vào hệ thống, không thiết lập số lượng tồn kho ban đầu.' 
-                  : 'Nhập sản phẩm và số lượng hiện có tại thời điểm doanh nghiệp bắt đầu sử dụng StockSense.' }}
+                  ? t('importExcel.step1.typeProductOnlyDesc') 
+                  : t('importExcel.step1.typeProductWithStockDesc') }}
               </span>
             </div>
 
             <div v-if="importType === 'PRODUCT_WITH_OPENING_STOCK'" class="field">
-              <label class="field-label">Kho ghi nhận tồn ban đầu</label>
+              <label class="field-label">{{ t("importExcel.step1.warehouseLabel") }}</label>
               <select
                 v-model="selectedWarehouseId"
                 class="select"
                 :disabled="isLoadingWarehouses || phase === 'validating' || phase === 'importing' || phase === 'done'"
               >
-                <option value="">-- Chọn kho hàng (để trống nếu có trong file) --</option>
+                <option value="">{{ t("importExcel.step1.warehousePlaceholder") }}</option>
                 <option v-for="w in warehouses" :key="w.id" :value="w.id">
                   {{ w.tenKho }} ({{ w.maKho }})
                 </option>
               </select>
               <span class="text-xs text-[var(--color-text-secondary)] mt-1 block">
-                Số lượng tồn trong file sẽ được ghi nhận vào kho này nếu dòng dữ liệu không chỉ định kho riêng.
+                {{ t("importExcel.step1.warehouseDesc") }}
               </span>
-              <small v-if="isLoadingWarehouses" class="text-slate-400">Đang tải kho hàng...</small>
+              <small v-if="isLoadingWarehouses" class="text-slate-400">{{ t("importExcel.step1.loadingWarehouses") }}</small>
               <small v-if="warehouseError" class="text-red-600 font-semibold mt-1 block">{{ warehouseError }}</small>
             </div>
           </div>
@@ -282,9 +284,9 @@ function formatDate(dateStr) {
             <button class="btn btn-ghost" type="button" :disabled="isDownloadingTemplate" @click="handleDownloadTemplate">
               <i v-if="isDownloadingTemplate" class="mdi mdi-loading mdi-spin"></i>
               <i v-else class="mdi mdi-download-outline"></i>
-              Tải file mẫu Excel
+              {{ t("importExcel.step1.downloadTemplateBtn") }}
             </button>
-            <span class="text-xs text-slate-500">Sử dụng file mẫu này để nhập dữ liệu đúng định dạng của hệ thống.</span>
+            <span class="text-xs text-slate-500">{{ t("importExcel.step1.downloadTemplateDesc") }}</span>
           </div>
         </div>
       </div>
@@ -297,20 +299,20 @@ function formatDate(dateStr) {
             <span v-else>2</span>
           </div>
           <div>
-            <h3 class="section-title">Bước 2: Chọn & Kiểm tra file dữ liệu</h3>
-            <p class="muted mt-0.5">Tải lên tệp Excel của bạn và chạy quá trình kiểm tra lỗi tự động.</p>
+            <h3 class="section-title">{{ t("importExcel.step2.title") }}</h3>
+            <p class="muted mt-0.5">{{ t("importExcel.step2.desc") }}</p>
           </div>
         </div>
 
         <div class="card-body mt-4 flex flex-col gap-4">
           <div v-if="!canOperate" class="alert alert-error mb-2">
             <i class="mdi mdi-alert-circle-outline"></i>
-            <span>Bạn không có quyền tải lên hoặc xác nhận import file Excel (Chỉ khả dụng cho Admin và Nhân viên kho).</span>
+            <span>{{ t("importExcel.step2.noPermission") }}</span>
           </div>
 
           <!-- File picker row -->
           <div class="field">
-            <label>File dữ liệu Excel (.xlsx) *</label>
+            <label>{{ t("importExcel.step2.fileLabel") }}</label>
             <div class="file-picker-row">
               <button
                 class="btn btn-secondary"
@@ -319,7 +321,7 @@ function formatDate(dateStr) {
                 @click="fileInput.click()"
               >
                 <i class="mdi mdi-file-excel-outline"></i>
-                Chọn file từ máy tính
+                {{ t("importExcel.step2.selectFileBtn") }}
               </button>
               <input ref="fileInput" type="file" accept=".xlsx" class="hidden" @change="onFileChange" />
 
@@ -327,7 +329,7 @@ function formatDate(dateStr) {
                 <i class="mdi mdi-file-check-outline text-green-600"></i>
                 <span>{{ selectedFile.name }} <span class="text-slate-400">({{ formatFileSize(selectedFile.size) }})</span></span>
               </div>
-              <span v-else class="text-sm text-slate-400">Chưa có file nào được chọn</span>
+              <span v-else class="text-sm text-slate-400">{{ t("importExcel.step2.noFileSelected") }}</span>
             </div>
             <small v-if="fileError" class="text-red-600 font-semibold mt-1 block">{{ fileError }}</small>
           </div>
@@ -342,7 +344,7 @@ function formatDate(dateStr) {
             >
               <i v-if="phase === 'validating'" class="mdi mdi-loading mdi-spin"></i>
               <i v-else class="mdi mdi-upload-outline"></i>
-              {{ phase === 'validating' ? 'Đang kiểm tra...' : 'Tải lên & Kiểm tra dữ liệu' }}
+              {{ phase === 'validating' ? t('importExcel.step2.validatingBtn') : t('importExcel.step2.uploadValidateBtn') }}
             </button>
           </div>
         </div>
@@ -358,10 +360,10 @@ function formatDate(dateStr) {
               <span v-else>3</span>
             </div>
             <div>
-              <h3 class="section-title">Bước 3: Xem trước dữ liệu</h3>
+              <h3 class="section-title">{{ t("importExcel.step3.title") }}</h3>
               <p class="muted mt-0.5">
-                <template v-if="!validationResult.valid">Có lỗi được tìm thấy trong file Excel. Vui lòng sửa lại dữ liệu.</template>
-                <template v-else>Dữ liệu hợp lệ. Xem trước thống kê và nội dung file bên dưới.</template>
+                <template v-if="!validationResult.valid">{{ t("importExcel.step3.descInvalid") }}</template>
+                <template v-else>{{ t("importExcel.step3.descValid") }}</template>
               </p>
             </div>
           </div>
@@ -377,19 +379,19 @@ function formatDate(dateStr) {
               </div>
               <div class="summary-stats">
                 <span class="stat-item">
-                  Tổng dòng: <strong>{{ validationResult.tongSoDong }}</strong>
+                  {{ t("importExcel.step3.statsTotalRows") }}: <strong>{{ validationResult.tongSoDong }}</strong>
                 </span>
                 <span class="stat-sep">·</span>
                 <span class="stat-item text-green-700">
-                  Hợp lệ: <strong>{{ validationResult.soDongHopLe }}</strong>
+                  {{ t("importExcel.step3.statsValidRows") }}: <strong>{{ validationResult.soDongHopLe }}</strong>
                 </span>
                 <span class="stat-sep">·</span>
                 <span class="stat-item" :class="validationResult.soDongLoi > 0 ? 'text-red-700' : 'text-green-700'">
-                  Lỗi: <strong>{{ validationResult.soDongLoi }}</strong>
+                  {{ t("importExcel.step3.statsErrorRows") }}: <strong>{{ validationResult.soDongLoi }}</strong>
                 </span>
                 <span class="stat-sep">·</span>
                 <span class="font-bold" :class="validationResult.valid ? 'text-green-800' : 'text-red-800'">
-                  {{ validationResult.valid ? '✓ DỮ LIỆU HỢP LỆ' : '✗ CÓ LỖI DỮ LIỆU' }}
+                  {{ validationResult.valid ? t('importExcel.step3.statusValid') : t('importExcel.step3.statusInvalid') }}
                 </span>
               </div>
             </div>
@@ -398,7 +400,7 @@ function formatDate(dateStr) {
             <div v-if="!validationResult.valid && validationResult.errors?.length" class="mt-2 border border-red-200 rounded-lg overflow-hidden">
               <div class="error-table-header p-3 bg-red-50 text-red-900 border-b border-red-200 font-bold flex items-center gap-2">
                 <i class="mdi mdi-alert-box-outline"></i>
-                Chi tiết lỗi dữ liệu ({{ validationResult.errors.length }} lỗi)
+                {{ t("importExcel.step3.errorDetailsTitle", { count: validationResult.errors.length }) }}
               </div>
               <div class="table-wrap">
                 <table class="data-table">
@@ -408,8 +410,8 @@ function formatDate(dateStr) {
                       <th style="width: 60px;">Sheet</th>
                       <th style="width: 160px;">Cột dữ liệu</th>
                       <th style="width: 160px;">Giá trị trong file</th>
-                      <th>Chi tiết lỗi</th>
-                      <th>Gợi ý khắc phục</th>
+                      <th>{{ t("importExcel.step3.colErrorDetail") }}</th>
+                      <th>{{ t("importExcel.step3.colSuggestion") }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -418,7 +420,7 @@ function formatDate(dateStr) {
                       <td class="text-slate-500 text-xs">{{ err.sheetName ?? '-' }}</td>
                       <td class="text-red-700 font-semibold">{{ err.columnName }}</td>
                       <td>
-                        <code class="value-code">{{ (err.rawValue === null || err.rawValue === '') ? '(trống)' : err.rawValue }}</code>
+                        <code class="value-code">{{ (err.rawValue === null || err.rawValue === '') ? t('importExcel.step3.emptyValue') : err.rawValue }}</code>
                       </td>
                       <td class="text-red-600 font-semibold">{{ err.message }}</td>
                       <td class="text-green-700">{{ err.suggestion || '-' }}</td>
@@ -441,11 +443,11 @@ function formatDate(dateStr) {
               <span v-else>4</span>
             </div>
             <div>
-              <h3 class="section-title">Bước 4: Xác nhận Import dữ liệu</h3>
+              <h3 class="section-title">{{ t("importExcel.step4.title") }}</h3>
               <p class="muted mt-0.5">
-                <template v-if="!validationResult.valid">Không thể import do dữ liệu file Excel có lỗi. Hãy sửa và kiểm tra lại.</template>
-                <template v-else-if="phase === 'done'">Import dữ liệu thành công.</template>
-                <template v-else>Nhấn nút bên dưới để tiến hành import chính thức dữ liệu vào hệ thống.</template>
+                <template v-if="!validationResult.valid">{{ t("importExcel.step4.descInvalid") }}</template>
+                <template v-else-if="phase === 'done'">{{ t("importExcel.step4.descSuccess") }}</template>
+                <template v-else>{{ t("importExcel.step4.descReady") }}</template>
               </p>
             </div>
           </div>
@@ -454,15 +456,15 @@ function formatDate(dateStr) {
           <div v-if="applyResult" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-900 animate-fade-in">
             <div class="font-bold mb-2 flex items-center gap-2">
               <i class="mdi mdi-check-circle text-green-600 text-lg"></i>
-              Kết quả import thành công:
+              {{ t("importExcel.step4.resultTitle") }}
             </div>
             <ul class="list-disc pl-5 space-y-1">
-              <li>Mã import: <strong>{{ applyResult.importId }}</strong></li>
-              <li>Trạng thái: <strong class="text-green-700">{{ applyResult.status }}</strong></li>
-              <li>Thời gian: <strong>{{ formatDate(applyResult.completedAt) }}</strong></li>
-              <li>Tổng dòng xử lý: <strong>{{ applyResult.totalRows }}</strong></li>
-              <li>Thành công: <strong class="text-green-700">{{ applyResult.validRows }}</strong></li>
-              <li v-if="applyResult.message">Ghi chú: {{ applyResult.message }}</li>
+              <li>{{ t("importExcel.step4.importId") }}: <strong>{{ applyResult.importId }}</strong></li>
+              <li>{{ t("importExcel.step4.status") }}: <strong class="text-green-700">{{ applyResult.status }}</strong></li>
+              <li>{{ t("importExcel.step4.time") }}: <strong>{{ formatDate(applyResult.completedAt) }}</strong></li>
+              <li>{{ t("importExcel.step4.totalProcessed") }}: <strong>{{ applyResult.totalRows }}</strong></li>
+              <li>{{ t("importExcel.step4.successProcessed") }}: <strong class="text-green-700">{{ applyResult.validRows }}</strong></li>
+              <li v-if="applyResult.message">{{ t("importExcel.step4.note") }}: {{ applyResult.message }}</li>
             </ul>
           </div>
 
@@ -477,12 +479,12 @@ function formatDate(dateStr) {
             >
               <i v-if="phase === 'importing'" class="mdi mdi-loading mdi-spin"></i>
               <i v-else class="mdi mdi-database-import-outline"></i>
-              {{ phase === 'importing' ? 'Đang import...' : 'Xác nhận Import vào hệ thống' }}
+              {{ phase === 'importing' ? t('importExcel.step4.importingBtn') : t('importExcel.step4.confirmBtn') }}
             </button>
 
             <button class="btn" type="button" @click="handleReset">
               <i class="mdi mdi-refresh"></i>
-              Import file khác
+              {{ t("importExcel.step4.importAnotherBtn") }}
             </button>
           </div>
         </div>
@@ -493,9 +495,9 @@ function formatDate(dateStr) {
     <!-- Confirm dialog -->
     <ConfirmDialog
       :open="showConfirmDialog"
-      title="Xác nhận import dữ liệu"
-      message="Thao tác này sẽ ghi chính thức dữ liệu sản phẩm và tồn kho vào hệ thống. Bạn có chắc chắn muốn thực hiện?"
-      confirm-text="Đồng ý, Import ngay"
+      :title="t('importExcel.confirmDialog.title')"
+      :message="t('importExcel.confirmDialog.message')"
+      :confirm-text="t('importExcel.confirmDialog.confirmBtn')"
       :loading="phase === 'importing'"
       @cancel="showConfirmDialog = false"
       @confirm="handleConfirmImport"

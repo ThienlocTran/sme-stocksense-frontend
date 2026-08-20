@@ -63,31 +63,37 @@ onMounted(() => {
 const menuSections = [
   {
     title: "Vận hành",
+    titleKey: "operations",
     items: [
       {
         label: "Tổng quan",
+        labelKey: "dashboard",
         to: "/dashboard",
         icon: "mdi-view-dashboard-outline",
       },
       {
         label: "Sản phẩm",
+        labelKey: "products",
         to: "/products",
         icon: "mdi-package-variant-closed",
       },
       {
         label: "Danh mục",
+        labelKey: "categories",
         to: "/categories",
         icon: "mdi-shape-outline",
       },
       {
         label: "Tồn kho",
+        labelKey: "inventory",
         to: "/inventory",
         icon: "mdi-clipboard-list-outline",
       },
-      { label: "Phiếu nhập kho", to: "/stock-in", icon: "mdi-tray-arrow-down" },
-      { label: "Phiếu xuất kho", to: "/stock-out", icon: "mdi-tray-arrow-up" },
+      { label: "Phiếu nhập kho", labelKey: "stockIn", to: "/stock-in", icon: "mdi-tray-arrow-down" },
+      { label: "Phiếu xuất kho", labelKey: "stockOut", to: "/stock-out", icon: "mdi-tray-arrow-up" },
       {
         label: "Kiểm kê kho",
+        labelKey: "inventoryCounts",
         to: "/inventory-counts",
         icon: "mdi-clipboard-check-outline",
       },
@@ -95,11 +101,13 @@ const menuSections = [
   },
   {
     title: "Phân tích",
+    titleKey: "analytics",
     items: [
-      { label: "Dự báo AI", to: "/forecast", icon: "mdi-chart-line" },
-      { label: "Cảnh báo tồn kho", to: "/alerts", icon: "mdi-alert-outline" },
+      { label: "Dự báo AI", labelKey: "forecast", to: "/forecast", icon: "mdi-chart-line" },
+      { label: "Cảnh báo tồn kho", labelKey: "alerts", to: "/alerts", icon: "mdi-alert-outline" },
       {
         label: "Lịch sử giao dịch",
+        labelKey: "transactions",
         to: "/inventory-transactions",
         icon: "mdi-history",
       },
@@ -107,14 +115,17 @@ const menuSections = [
   },
   {
     title: "Phê duyệt",
+    titleKey: "approvals",
     items: [
       {
         label: "Phiếu nhập chờ duyệt",
+        labelKey: "pendingImports",
         to: "/approvals",
         icon: "mdi-check-decagram-outline",
       },
       {
         label: "Phiếu xuất chờ duyệt",
+        labelKey: "pendingExports",
         to: "/pending-export-approvals",
         icon: "mdi-file-clock-outline",
       },
@@ -122,19 +133,23 @@ const menuSections = [
   },
   {
     title: "Quản lý",
+    titleKey: "management",
     items: [
       {
         label: "Đối tác",
+        labelKey: "partners",
         to: "/partners",
         icon: "mdi-truck-delivery-outline",
       },
       {
         label: "Nhân viên",
+        labelKey: "employees",
         to: "/employees",
         icon: "mdi-account-group-outline",
       },
       {
         label: "Import Excel",
+        labelKey: "importExcel",
         to: "/import-excel",
         icon: "mdi-file-excel-outline",
       },
@@ -176,7 +191,7 @@ const visibleSections = computed(() =>
         :key="section.title || 'main'"
       >
         <div v-if="section.title" class="sidebar-heading">
-          {{ section.title }}
+          {{ $t('sidebar.sections.' + section.titleKey) || section.title }}
         </div>
         <div class="sidebar-section">
           <RouterLink
@@ -184,11 +199,11 @@ const visibleSections = computed(() =>
             :key="item.to"
             :to="item.to"
             class="nav-item"
-            :data-tooltip="item.label"
+            :data-tooltip="$t('sidebar.menu.' + item.labelKey) || item.label"
             @click="layoutStore.closeMobileSidebar"
           >
             <i class="mdi" :class="item.icon" aria-hidden="true"></i>
-            <span>{{ item.label }}</span>
+            <span>{{ $t('sidebar.menu.' + item.labelKey) || item.label }}</span>
           </RouterLink>
         </div>
       </template>
@@ -225,7 +240,7 @@ const visibleSections = computed(() =>
   display: flex;
   flex-direction: column;
   z-index: 20;
-  transition: width 180ms ease, left 180ms ease;
+  transition: width 180ms ease, left 180ms ease, background-color 300ms ease, border-color 300ms ease;
 }
 .brand {
   display: flex;
@@ -454,5 +469,34 @@ const visibleSections = computed(() =>
   .sidebar.sidebar--mobile-open {
     left: 0;
   }
+}
+
+/* Dark Mode logo overrides */
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#01"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#021"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#022"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#032"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#033"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#052"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#0a2"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#112"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#122"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#173"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#193"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#223"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#294"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#2b4"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#324"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#344"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#3b5"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#445"]) {
+  fill: #f1f5f9 !important;
+}
+
+html.dark .sidebar-logo-full {
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.45));
+}
+html.dark .sidebar-logo-collapsed {
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.45));
 }
 </style>
