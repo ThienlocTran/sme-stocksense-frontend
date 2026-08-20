@@ -257,7 +257,21 @@ function applyPasswordBackendErrors(errors = {}) {
           @click="changeLang(currentLang === 'vi' ? 'en' : 'vi')"
           :title="currentLang === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'"
         >
-          <span class="lang-flag">{{ currentLang === 'vi' ? '🇻🇳' : '🇬🇧' }}</span>
+          <span class="lang-flag">
+            <!-- Vietnam Flag SVG -->
+            <svg v-if="currentLang === 'vi'" class="flag-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20">
+              <rect width="30" height="20" fill="#da251d"/>
+              <polygon points="15,4 16.2,8.5 20.8,8.5 17.1,11.3 18.5,15.8 15,13 11.5,15.8 12.9,11.3 9.2,8.5 13.8,8.5" fill="#ffff00"/>
+            </svg>
+            <!-- UK Flag SVG -->
+            <svg v-else class="flag-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 30">
+              <rect width="50" height="30" fill="#012169"/>
+              <path d="M0,0 L50,30 M0,30 L50,0" stroke="#fff" stroke-width="6"/>
+              <path d="M0,0 L50,30 M0,30 L50,0" stroke="#c8102e" stroke-width="2"/>
+              <path d="M25,0 v30 M0,15 h50" stroke="#fff" stroke-width="10"/>
+              <path d="M25,0 v30 M0,15 h50" stroke="#c8102e" stroke-width="6"/>
+            </svg>
+          </span>
           <span class="lang-code">{{ currentLang.toUpperCase() }}</span>
         </button>
       </div>
@@ -797,8 +811,16 @@ function applyPasswordBackendErrors(errors = {}) {
   border-color: var(--color-border-strong);
 }
 .lang-flag {
-  font-size: 16px;
+  display: flex;
+  align-items: center;
   line-height: 1;
+}
+.flag-icon {
+  width: 18px;
+  height: 12px;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  display: block;
 }
 .lang-code {
   font-size: 11px;
