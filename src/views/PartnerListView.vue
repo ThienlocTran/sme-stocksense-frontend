@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '../components/PageHeader.vue'
 import SearchFilterBar from '../components/SearchFilterBar.vue'
 import DataTable from '../components/DataTable.vue'
@@ -11,6 +12,7 @@ import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // State
 const partners = ref([])
@@ -54,43 +56,43 @@ const hasActiveFilters = computed(() => {
 
 const columns = computed(() => {
   const base = [
-    { key: 'maDoiTac', label: 'Mã đối tác', class: 'cell-compact' },
-    { key: 'tenDoiTac', label: 'Tên đối tác', class: 'cell-long' },
-    { key: 'loaiDoiTac', label: 'Loại đối tác', class: 'cell-medium' },
-    { key: 'nguoiLienHe', label: 'Người liên hệ', class: 'cell-medium' },
-    { key: 'lienHe', label: 'Thông tin liên hệ', class: 'cell-medium' },
-    { key: 'trangThai', label: 'Trạng thái', class: 'cell-nowrap' },
+    { key: 'maDoiTac', label: t('partner.columns.code'), class: 'cell-compact' },
+    { key: 'tenDoiTac', label: t('partner.columns.name'), class: 'cell-long' },
+    { key: 'loaiDoiTac', label: t('partner.columns.type'), class: 'cell-medium' },
+    { key: 'nguoiLienHe', label: t('partner.columns.contactPerson'), class: 'cell-medium' },
+    { key: 'lienHe', label: t('partner.columns.contactInfo'), class: 'cell-medium' },
+    { key: 'trangThai', label: t('partner.columns.status'), class: 'cell-nowrap' },
   ]
   if (canManage.value) {
-    base.push({ key: 'actions', label: 'Thao tác', class: 'cell-nowrap text-right' })
+    base.push({ key: 'actions', label: t('partner.columns.actions'), class: 'cell-nowrap text-right' })
   }
   return base
 })
 
 const confirmTitle = computed(() => {
-  return pendingPartner.value?.trangThai === 'HOAT_DONG' ? 'Ngừng hoạt động đối tác?' : 'Kích hoạt lại đối tác?'
+  return pendingPartner.value?.trangThai === 'HOAT_DONG' ? t('partner.confirm.inactiveTitle') : t('partner.confirm.activeTitle')
 })
 
 const confirmMessage = computed(() => {
   return pendingPartner.value 
-    ? `Bạn có chắc muốn ${pendingPartner.value.trangThai === 'HOAT_DONG' ? 'ngừng hoạt động' : 'kích hoạt lại'} đối tác "${pendingPartner.value.tenDoiTac}"?`
+    ? `${pendingPartner.value.trangThai === 'HOAT_DONG' ? t('partner.confirm.inactiveMsg') : t('partner.confirm.activeMsg')} "${pendingPartner.value.tenDoiTac}"?`
     : ''
 })
 
 // MAPPING LABEL
 const mapTypeLabel = (type) => {
   switch (type) {
-    case 'NHA_CUNG_CAP': return 'Nhà cung cấp'
-    case 'KHACH_HANG': return 'Khách hàng'
-    case 'CA_HAI': return 'Cả hai'
+    case 'NHA_CUNG_CAP': return t('partner.type.provider')
+    case 'KHACH_HANG': return t('partner.type.customer')
+    case 'CA_HAI': return t('partner.type.both')
     default: return type
   }
 }
 
 const mapStatusLabel = (status) => {
   switch (status) {
-    case 'HOAT_DONG': return 'Đang hoạt động'
-    case 'NGUNG_HOAT_DONG': return 'Ngừng hoạt động'
+    case 'HOAT_DONG': return t('partner.status.active')
+    case 'NGUNG_HOAT_DONG': return t('partner.status.inactive')
     default: return status
   }
 }
@@ -121,7 +123,7 @@ const fetchPartners = async () => {
   try {
     partners.value = await getPartners(filters)
   } catch (error) {
-    console.error('Không thể tải danh sách đối tác:', error)
+    console.error(t('partner.alert.fetchError'), error)
     partners.value = []
     errorMessage.value = error.message
     if (error.status === 401) router.replace('/login')
@@ -145,7 +147,7 @@ const openEditForm = (partner) => {
 
 // Post-saved handler
 const handlePartnerSaved = () => {
-  successMessage.value = selectedPartner.value ? 'Cập nhật thông tin đối tác thành công!' : 'Thêm mới đối tác thành công!'
+  successMessage.value = selectedPartner.value ? t('partner.alert.updateSuccess') : t('partner.alert.createSuccess')
   fetchPartners()
 }
 
@@ -186,10 +188,10 @@ const executeTogglePartnerStatus = async () => {
     if (idx !== -1) {
       partners.value[idx] = updated
     }
-    successMessage.value = newStatus === 'HOAT_DONG' ? 'Đã kích hoạt lại đối tác thành công.' : 'Đã ngừng hoạt động đối tác thành công.'
+    successMessage.value = newStatus === 'HOAT_DONG' ? t('partner.alert.activeSuccess') : t('partner.alert.inactiveSuccess')
   } catch (error) {
-    console.error('Lỗi khi thay đổi trạng thái đối tác:', error)
-    errorMessage.value = error.message || 'Thao tác thất bại. Vui lòng kiểm tra lại.'
+    console.error(t('partner.alert.toggleErrorPrefix'), error)
+    errorMessage.value = error.message || t('partner.alert.toggleError')
     if (error.status === 401) router.replace('/login')
   } finally {
     statusUpdatingId.value = null
@@ -225,7 +227,7 @@ onMounted(() => {
   <div class="page-container page-shell">
     
     <!-- Header Page -->
-    <PageHeader title="Đối tác" description="Quản lý danh sách nhà cung cấp, khách hàng và thông tin liên hệ của doanh nghiệp.">
+    <PageHeader :title="t('partner.title')" :description="t('partner.description')">
       <!-- Add Button (Visible only to Admin/Manager) -->
       <button v-if="canManage" class="btn btn-primary" @click="openAddForm" :disabled="loading">
         <i class="mdi mdi-plus"></i>
@@ -240,7 +242,7 @@ onMounted(() => {
           <i class="mdi mdi-account-multiple text-xl"></i>
         </div>
         <div>
-          <span class="text-xs text-zinc-500 block">Tổng đối tác</span>
+          <span class="text-xs text-zinc-500 block">{{ t('partner.stats.total') }}</span>
           <strong class="text-xl font-bold text-zinc-900">{{ stats.total }}</strong>
         </div>
       </div>
@@ -249,7 +251,7 @@ onMounted(() => {
           <i class="mdi mdi-truck-delivery-outline text-xl"></i>
         </div>
         <div>
-          <span class="text-xs text-zinc-500 block">Nhà cung cấp</span>
+          <span class="text-xs text-zinc-500 block">{{ t('partner.stats.providers') }}</span>
           <strong class="text-xl font-bold text-zinc-900">{{ stats.providers }}</strong>
         </div>
       </div>
@@ -258,7 +260,7 @@ onMounted(() => {
           <i class="mdi mdi-account-cash-outline text-xl"></i>
         </div>
         <div>
-          <span class="text-xs text-zinc-500 block">Khách hàng</span>
+          <span class="text-xs text-zinc-500 block">{{ t('partner.stats.customers') }}</span>
           <strong class="text-xl font-bold text-zinc-900">{{ stats.customers }}</strong>
         </div>
       </div>
@@ -267,26 +269,26 @@ onMounted(() => {
           <i class="mdi mdi-handshake text-xl"></i>
         </div>
         <div>
-          <span class="text-xs text-zinc-500 block">Cả hai vai trò</span>
+          <span class="text-xs text-zinc-500 block">{{ t('partner.stats.both') }}</span>
           <strong class="text-xl font-bold text-zinc-900">{{ stats.both }}</strong>
         </div>
       </div>
     </div>
 
     <!-- Filters Section -->
-    <SearchFilterBar v-model="searchDraft" class="mb-4" placeholder="Tìm theo mã, tên, SĐT...">
+    <SearchFilterBar v-model="searchDraft" class="mb-4" :placeholder="t('partner.searchPlaceholder')">
       <button class="btn btn-primary" type="button" :disabled="loading" @click="applySearch">
         <i class="mdi mdi-magnify"></i>
         Tìm kiếm
       </button>
       <select v-model="filters.loaiDoiTac" class="select" :disabled="loading" @change="applyFilter">
-        <option value="">Tất cả loại đối tác</option>
+        <option value="">{{ t('partner.type.all') }}</option>
         <option value="NHA_CUNG_CAP">Nhà cung cấp</option>
         <option value="KHACH_HANG">Khách hàng</option>
         <option value="CA_HAI">Cả hai</option>
       </select>
       <select v-model="filters.trangThai" class="select" :disabled="loading" @change="applyFilter">
-        <option value="">Tất cả trạng thái</option>
+        <option value="">{{ t('partner.status.all') }}</option>
         <option value="HOAT_DONG">Đang hoạt động</option>
         <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
       </select>
@@ -309,14 +311,14 @@ onMounted(() => {
     <div class="table-container">
       <div v-if="loading" class="loading-state card card-pad">
         <i class="mdi mdi-loading mdi-spin"></i>
-        <span>Đang tải danh sách đối tác...</span>
+        <span>{{ t('partner.alert.loading') }}</span>
       </div>
 
       <DataTable 
         v-else 
         :columns="columns" 
         :rows="partners" 
-        empty-text="Không tìm thấy đối tác nào phù hợp"
+        :empty-text="t('partner.table.empty')"
         min-width="1100px"
       >
         <template #maDoiTac="{ value }">
@@ -356,14 +358,14 @@ onMounted(() => {
 
         <template #actions="{ row }">
           <div class="actions justify-end">
-            <button class="btn btn-sm btn-secondary" @click="openEditForm(row)">Sửa</button>
+            <button class="btn btn-sm btn-secondary" @click="openEditForm(row)">{{ t('partner.btn.edit') }}</button>
             <button 
               class="btn btn-sm" 
               :class="row.trangThai === 'HOAT_DONG' ? 'btn-danger' : 'btn-success'"
               @click="confirmTogglePartner(row)"
               :disabled="statusUpdatingId === row.id"
             >
-              {{ row.trangThai === 'HOAT_DONG' ? 'Ngừng' : 'Mở' }}
+              {{ row.trangThai === 'HOAT_DONG' ? t('partner.btn.inactive') : t('partner.btn.active') }}
             </button>
           </div>
         </template>
@@ -382,7 +384,7 @@ onMounted(() => {
       :open="confirmOpen"
       :title="confirmTitle"
       :message="confirmMessage"
-      confirm-text="Xác nhận"
+      :confirm-text="t('partner.confirm.confirmBtn')"
       :danger="pendingPartner?.trangThai === 'HOAT_DONG'"
       :loading="statusUpdatingId !== null"
       @cancel="cancelToggle"

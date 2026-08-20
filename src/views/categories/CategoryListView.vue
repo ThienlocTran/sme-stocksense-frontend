@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import DataTable from '../../components/DataTable.vue'
@@ -10,6 +11,7 @@ import { createCategory, disableCategory, getCategories, updateCategory } from '
 import { canManageCategories } from '../../services/permissionService'
 
 const router = useRouter()
+const { t } = useI18n()
 const categories = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
@@ -29,33 +31,33 @@ const formErrors = reactive({ code: '', name: '', description: '', status: '' })
 const canManage = computed(() => canManageCategories())
 const columns = computed(() => {
   const baseColumns = [
-  { key: 'code', label: 'Mã danh mục', class: 'cell-compact' },
-  { key: 'name', label: 'Tên danh mục' },
-  { key: 'description', label: 'Mô tả' },
-  { key: 'status', label: 'Trạng thái', class: 'cell-nowrap' },
-  { key: 'createdAt', label: 'Ngày tạo', class: 'cell-nowrap' },
+  { key: 'code', label: t('category.code'), class: 'cell-compact' },
+  { key: 'name', label: t('category.name') },
+  { key: 'description', label: t('category.description') },
+  { key: 'status', label: t('category.status'), class: 'cell-nowrap' },
+  { key: 'createdAt', label: t('category.createdAt'), class: 'cell-nowrap' },
   ]
   return canManage.value
-    ? [...baseColumns, { key: 'actions', label: 'Thao tác', class: 'cell-nowrap' }]
+    ? [...baseColumns, { key: 'actions', label: t('category.actions'), class: 'cell-nowrap' }]
     : baseColumns
 })
 
-const statusOptions = [{ value: '', label: 'Tất cả trạng thái' }, ...categoryStatusOptions]
+const statusOptions = [{ value: '', label: t('category.allStatuses') }, ...categoryStatusOptions]
 const currentPage = computed(() => filters.page + 1)
 const canGoPrevious = computed(() => filters.page > 0 && !isLoading.value)
 const canGoNext = computed(() => filters.page + 1 < pageInfo.totalPages && !isLoading.value)
 const isEditMode = computed(() => formMode.value === 'edit')
-const formTitle = computed(() => (isEditMode.value ? 'Sửa danh mục' : 'Thêm danh mục'))
+const formTitle = computed(() => (isEditMode.value ? t('category.editCategory') : t('category.addCategory')))
 const hasActiveFilters = computed(() => searchDraft.value.trim() !== '' || filters.status !== '')
-const confirmTitle = computed(() => pendingCategory.value?.status === 'NGUNG_HOAT_DONG' ? 'Kích hoạt danh mục?' : 'Ngừng hoạt động danh mục?')
+const confirmTitle = computed(() => pendingCategory.value?.status === 'NGUNG_HOAT_DONG' ? t('category.activateConfirmTitle') : t('category.deactivateConfirmTitle'))
 const confirmMessage = computed(() => pendingCategory.value
-  ? `Bạn muốn ${getStatusToggleLabel(pendingCategory.value).toLowerCase()} "${pendingCategory.value.name}"?`
+  ? t('category.confirmToggleMsg', { action: getStatusToggleLabel(pendingCategory.value).toLowerCase(), name: pendingCategory.value.name })
   : '')
 const rangeText = computed(() => {
-  if (pageInfo.totalElements === 0) return '0 danh mục'
+  if (pageInfo.totalElements === 0) return t('category.zeroCategories')
   const start = filters.page * filters.size + 1
   const end = Math.min((filters.page + 1) * filters.size, pageInfo.totalElements)
-  return `${start}-${end} / ${pageInfo.totalElements} danh mục`
+  return t('category.categoriesRange', { start, end, total: pageInfo.totalElements })
 })
 
 onMounted(fetchCategories)
@@ -114,7 +116,7 @@ function goNext() {
 }
 
 function getStatusToggleLabel(category) {
-  return category.status === 'NGUNG_HOAT_DONG' ? 'Kích hoạt' : 'Ngừng hoạt động'
+  return category.status === 'NGUNG_HOAT_DONG' ? t('category.activate') : t('category.deactivate')
 }
 
 function requestCategoryStatus(category) {
@@ -143,8 +145,8 @@ async function confirmCategoryStatus() {
       })
     }
     successMessage.value = nextStatus === 'NGUNG_HOAT_DONG'
-      ? 'Đã ngừng hoạt động danh mục.'
-      : 'Đã kích hoạt danh mục.'
+      ? t('category.successDeactivate')
+      : t('category.successActivate')
     pendingCategory.value = null
     await fetchCategories()
   } catch (error) {
@@ -208,10 +210,10 @@ async function submitCategoryForm() {
   try {
     if (isEditMode.value) {
       await updateCategory(form.id, payload)
-      successMessage.value = 'Cập nhật danh mục thành công.'
+      successMessage.value = t('category.successUpdate')
     } else {
       await createCategory(payload)
-      successMessage.value = 'Thêm danh mục thành công.'
+      successMessage.value = t('category.successAdd')
     }
 
     isFormOpen.value = false
@@ -232,15 +234,15 @@ function validateForm() {
   clearFormFeedback()
   let isValid = true
   if (!form.code.trim()) {
-    formErrors.code = 'Vui lòng nhập mã danh mục.'
+    formErrors.code = t('category.errCodeEmpty')
     isValid = false
   }
   if (!form.name.trim()) {
-    formErrors.name = 'Vui lòng nhập tên danh mục.'
+    formErrors.name = t('category.errNameEmpty')
     isValid = false
   }
   if (!form.status) {
-    formErrors.status = 'Vui lòng chọn trạng thái.'
+    formErrors.status = t('category.errStatusEmpty')
     isValid = false
   }
   return isValid
@@ -275,29 +277,29 @@ function formatDate(value) {
 </script>
 
 <template>
-  <PageHeader title="Danh mục" description="Danh sách nhóm sản phẩm theo mã, tên và trạng thái.">
+  <PageHeader :title="t('category.pageTitle')" :description="t('category.pageDesc')">
     <button v-if="canManage" class="btn btn-primary" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
       <i class="mdi mdi-shape-plus-outline"></i>
-      Thêm danh mục
+      {{ t('category.btnAddCategory') }}
     </button>
   </PageHeader>
 
   <div v-if="!canManage" class="category-readonly card card-pad">
     <i class="mdi mdi-eye-outline"></i>
-    <span>Bạn đang xem ở chế độ chỉ xem.</span>
+    <span>{{ t('category.readonlyNote') }}</span>
   </div>
 
-  <SearchFilterBar v-model="searchDraft" placeholder="Tìm theo mã hoặc tên danh mục" @keyup.enter="applySearch">
+  <SearchFilterBar v-model="searchDraft" :placeholder="t('category.searchPlaceholder')" @keyup.enter="applySearch">
     <select v-model="filters.status" class="select" :disabled="isLoading" @change="applyFilter">
       <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
     </select>
     <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
       <i class="mdi mdi-magnify"></i>
-      Tìm kiếm
+      {{ t('category.btnSearch') }}
     </button>
     <button v-if="hasActiveFilters" class="btn btn-ghost" type="button" :disabled="isLoading" @click="clearFilters">
       <i class="mdi mdi-filter-remove-outline"></i>
-      Xóa lọc
+      {{ t('category.btnClearFilter') }}
     </button>
   </SearchFilterBar>
 
@@ -314,10 +316,10 @@ function formatDate(value) {
   <div class="category-table-shell">
     <div v-if="isLoading" class="category-loading card card-pad">
       <i class="mdi mdi-loading mdi-spin"></i>
-      <span>Đang tải danh sách danh mục...</span>
+      <span>{{ t('category.loadingText') }}</span>
     </div>
 
-    <DataTable v-else :columns="columns" :rows="categories" min-width="980px" empty-text="Không có danh mục phù hợp">
+    <DataTable v-else :columns="columns" :rows="categories" min-width="980px" :empty-text="t('category.emptyTable')">
       <template #description="{ value }">{{ value || '-' }}</template>
       <template #status="{ value }">
         <span class="category-status" :class="statusClass(value)">{{ getCategoryStatusLabel(value) }}</span>
@@ -327,7 +329,7 @@ function formatDate(value) {
         <div class="actions">
           <button class="btn btn-sm btn-primary" type="button" :disabled="isLoading || isSaving" @click="openEditForm(row)">
             <i class="mdi mdi-pencil-outline"></i>
-            Sửa
+            {{ t('category.edit') }}
           </button>
           <button class="btn btn-sm" type="button" :disabled="isLoading || disablingId" @click="requestCategoryStatus(row)">
             <i class="mdi" :class="row.status === 'NGUNG_HOAT_DONG' ? 'mdi-check-circle-outline' : 'mdi-block-helper'"></i>
@@ -342,17 +344,17 @@ function formatDate(value) {
     <span class="muted">{{ rangeText }}</span>
     <div class="pagination-actions">
       <select v-model.number="filters.size" class="select page-size" :disabled="isLoading" @change="applyFilter">
-        <option :value="10">10 / trang</option>
-        <option :value="20">20 / trang</option>
-        <option :value="50">50 / trang</option>
+        <option :value="10">10 / {{ t('category.pageUnit') }}</option>
+        <option :value="20">20 / {{ t('category.pageUnit') }}</option>
+        <option :value="50">50 / {{ t('category.pageUnit') }}</option>
       </select>
       <button class="btn btn-sm" type="button" :disabled="!canGoPrevious" @click="goPrevious">
         <i class="mdi mdi-chevron-left"></i>
-        Trước
+        {{ t('category.prev') }}
       </button>
-      <span class="page-indicator">Trang {{ currentPage }} / {{ pageInfo.totalPages || 1 }}</span>
+      <span class="page-indicator">{{ t('category.page') }} {{ currentPage }} / {{ pageInfo.totalPages || 1 }}</span>
       <button class="btn btn-sm" type="button" :disabled="!canGoNext" @click="goNext">
-        Sau
+        {{ t('category.next') }}
         <i class="mdi mdi-chevron-right"></i>
       </button>
     </div>
@@ -364,9 +366,9 @@ function formatDate(value) {
         <div class="modal-head between">
           <div>
             <h2 class="section-title">{{ formTitle }}</h2>
-            <p class="modal-desc">{{ isEditMode ? 'Cập nhật thông tin danh mục.' : 'Tạo danh mục mới cho nhóm sản phẩm.' }}</p>
+            <p class="modal-desc">{{ isEditMode ? t('category.modalDescEdit') : t('category.modalDescAdd') }}</p>
           </div>
-          <button class="btn btn-icon" type="button" :disabled="isSaving" aria-label="Đóng" @click="closeForm">
+          <button class="btn btn-icon" type="button" :disabled="isSaving" :aria-label="t('category.close')" @click="closeForm">
             <i class="mdi mdi-close"></i>
           </button>
         </div>
@@ -378,25 +380,25 @@ function formatDate(value) {
           </div>
 
           <label class="field">
-            <span>Mã danh mục</span>
-            <input v-model="form.code" class="input" type="text" placeholder="Nhập mã danh mục" :disabled="isSaving" />
+            <span>{{ t('category.code') }}</span>
+            <input v-model="form.code" class="input" type="text" :placeholder="t('category.placeholderCode')" :disabled="isSaving" />
             <small v-if="formErrors.code" class="field-error">{{ formErrors.code }}</small>
           </label>
 
           <label class="field">
-            <span>Tên danh mục</span>
-            <input v-model="form.name" class="input" type="text" placeholder="Nhập tên danh mục" :disabled="isSaving" />
+            <span>{{ t('category.name') }}</span>
+            <input v-model="form.name" class="input" type="text" :placeholder="t('category.placeholderName')" :disabled="isSaving" />
             <small v-if="formErrors.name" class="field-error">{{ formErrors.name }}</small>
           </label>
 
           <label class="field field-wide">
-            <span>Mô tả</span>
-            <textarea v-model="form.description" class="input textarea" rows="3" placeholder="Nhập mô tả" :disabled="isSaving"></textarea>
+            <span>{{ t('category.description') }}</span>
+            <textarea v-model="form.description" class="input textarea" rows="3" :placeholder="t('category.placeholderDesc')" :disabled="isSaving"></textarea>
             <small v-if="formErrors.description" class="field-error">{{ formErrors.description }}</small>
           </label>
 
           <label class="field">
-            <span>Trạng thái</span>
+            <span>{{ t('category.status') }}</span>
             <select v-model="form.status" class="select" :disabled="isSaving">
               <option v-for="option in categoryStatusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
@@ -405,10 +407,10 @@ function formatDate(value) {
         </div>
 
         <div class="modal-foot">
-          <button class="btn" type="button" :disabled="isSaving" @click="closeForm">Hủy</button>
+          <button class="btn" type="button" :disabled="isSaving" @click="closeForm">{{ t('category.cancel') }}</button>
           <button class="btn btn-primary" type="submit" :disabled="isSaving">
             <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
-            {{ isSaving ? 'Đang lưu' : 'Lưu' }}
+            {{ isSaving ? t('category.saving') : t('category.save') }}
           </button>
         </div>
       </form>
@@ -421,7 +423,7 @@ function formatDate(value) {
     :message="confirmMessage"
     :danger="pendingCategory?.status !== 'NGUNG_HOAT_DONG'"
     :loading="!!disablingId"
-    :confirm-text="pendingCategory?.status === 'NGUNG_HOAT_DONG' ? 'Kích hoạt' : 'Ngừng hoạt động'"
+    :confirm-text="pendingCategory?.status === 'NGUNG_HOAT_DONG' ? t('category.activate') : t('category.deactivate')"
     @cancel="pendingCategory = null"
     @confirm="confirmCategoryStatus"
   />

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import ApexCharts from "vue3-apexcharts";
 import PageHeader from "../components/PageHeader.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -22,6 +23,7 @@ defineOptions({
 });
 
 const router = useRouter();
+const { t } = useI18n();
 const authStore = useAuthStore();
 
 const products = ref([]);
@@ -128,7 +130,7 @@ async function handleSeedHistory() {
   errorMessage.value = "";
   try {
     const result = await seedForecastHistory();
-    seedMessage.value = `Đã sinh dữ liệu demo cho ${result.productsSeeded} cặp sản phẩm/kho (${result.rowsInserted} dòng).`;
+    seedMessage.value = t("forecast.msg.seedSuccess", { products: result.productsSeeded, rows: result.rowsInserted });
   } catch (error) {
     errorMessage.value = error.message;
   } finally {
@@ -147,15 +149,15 @@ function formatDateTime(value) {
 }
 
 function driftBadgeVariant(status) {
-  if (status === "DRIFT") return "Từ chối";
-  if (status === "OK") return "Đã duyệt";
-  return "Chờ duyệt";
+  if (status === "DRIFT") return t("forecast.drift.rejected");
+  if (status === "OK") return t("forecast.drift.approved");
+  return t("forecast.drift.pending");
 }
 
 // Đường tồn kho dự kiến: 4 điểm neo đúng theo tốc độ tiêu thụ dự báo của từng mốc
 // (ngày 0 = hôm nay, dùng forecast7d/14d/30d để suy ra tồn kho còn lại tại mỗi mốc)
 const depletionSeries = computed(() => {
-  if (!forecast.value) return [{ name: "Tồn kho dự kiến", data: [] }];
+  if (!forecast.value) return [{ name: t("forecast.chart.seriesName"), data: [] }];
   const stock = forecast.value.currentStock ?? 0;
   const point = (day, forecastValue) => ({
     x: day,
@@ -186,11 +188,11 @@ const depletionOptions = computed(() => ({
   markers: { size: 5 },
   xaxis: {
     type: "numeric",
-    title: { text: "Số ngày kể từ hôm nay" },
+    title: { text: t("forecast.chart.xAxis") },
     tickAmount: 4,
   },
   yaxis: {
-    title: { text: "Tồn kho (đơn vị)" },
+    title: { text: t("forecast.chart.yAxis") },
     min: 0,
     decimalsInFloat: 0,
     labels: {
@@ -205,14 +207,14 @@ const depletionOptions = computed(() => ({
         borderColor: "#ef4444",
         strokeDashArray: 6,
         label: {
-          text: `Ngưỡng tối thiểu (${formatNumber(forecast.value?.minStock)})`,
+          text: `${t("forecast.chart.minThreshold")} (${formatNumber(forecast.value?.minStock)})`,
           style: { color: "#fff", background: "#ef4444" },
         },
       },
     ],
   },
   tooltip: {
-    x: { formatter: (value) => `Ngày +${value}` },
+    x: { formatter: (value) => `${t("forecast.chart.day")} +${value}` },
     y: { formatter: (value) => new Intl.NumberFormat("vi-VN").format(Math.round(value)) },
   },
 }));
@@ -226,20 +228,20 @@ const summaryText = computed(() => {
   const rateText = formatNumber(rate);
 
   if (rate <= 0) {
-    return `Chưa đủ dữ liệu để ước lượng tốc độ tiêu thụ trung bình mỗi ngày.`;
+    return t("forecast.summary.noData");
   }
   if (stock <= minStock) {
-    return `Dự kiến tiêu thụ trung bình ${rateText} sản phẩm/ngày. Tồn kho hiện tại (${formatNumber(stock)}) đã ở mức tối thiểu hoặc thấp hơn (${formatNumber(minStock)}) — nên nhập hàng ngay.`;
+    return t("forecast.summary.urgent", { rate: rateText, stock: formatNumber(stock), min: formatNumber(minStock) });
   }
   const daysUntilMin = Math.max(0, Math.floor((stock - minStock) / rate));
-  return `Dự kiến tiêu thụ trung bình ${rateText} sản phẩm/ngày trong 30 ngày tới. Với tồn kho hiện tại (${formatNumber(stock)}), đủ dùng khoảng ${daysUntilMin} ngày trước khi chạm ngưỡng tối thiểu (${formatNumber(minStock)}).`;
+  return t("forecast.summary.normal", { rate: rateText, stock: formatNumber(stock), days: daysUntilMin, min: formatNumber(minStock) });
 });
 </script>
 
 <template>
   <PageHeader
-    title="Dự báo AI"
-    description="Dự báo nhu cầu tiêu thụ 7/14/30 ngày bằng XGBoost và đề xuất số lượng cần đặt hàng."
+    :title="t('forecast.title')"
+    :description="t('forecast.description')"
   >
     <button
       v-if="canSeed"
@@ -258,18 +260,18 @@ const summaryText = computed(() => {
 
   <div class="card card-pad selector-bar">
     <div class="selector-field">
-      <label class="field-label">Sản phẩm *</label>
+      <label class="field-label">{{ t("forecast.filter.product") }}</label>
       <select v-model="selectedProductId" class="select" :disabled="isLoadingDropdowns">
-        <option value="">{{ isLoadingDropdowns ? "Đang tải sản phẩm..." : "Chọn sản phẩm" }}</option>
+        <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingProduct") : t("forecast.filter.selectProduct") }}</option>
         <option v-for="product in products" :key="product.id" :value="product.id">
           {{ product.code || product.maSanPham }} - {{ product.name || product.tenSanPham }}
         </option>
       </select>
     </div>
     <div class="selector-field">
-      <label class="field-label">Kho hàng *</label>
+      <label class="field-label">{{ t("forecast.filter.warehouse") }}</label>
       <select v-model="selectedWarehouseId" class="select" :disabled="isLoadingDropdowns">
-        <option value="">{{ isLoadingDropdowns ? "Đang tải kho..." : "Chọn kho" }}</option>
+        <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingWarehouse") : t("forecast.filter.selectWarehouse") }}</option>
         <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
           {{ warehouse.code || warehouse.maKho }} - {{ warehouse.name || warehouse.tenKho }}
         </option>
@@ -284,7 +286,7 @@ const summaryText = computed(() => {
         @click="handleRunForecast"
       >
         <i class="mdi" :class="isRunningForecast ? 'mdi-loading mdi-spin' : 'mdi-chart-timeline-variant'"></i>
-        {{ isRunningForecast ? "Đang dự báo..." : "Dự báo ngay" }}
+        {{ isRunningForecast ? t("forecast.button.running") : t("forecast.button.run") }}
       </button>
       <button
         v-if="canRun"
@@ -301,20 +303,20 @@ const summaryText = computed(() => {
 
   <div v-if="isLoadingForecast" class="inventory-loading card card-pad">
     <i class="mdi mdi-loading mdi-spin"></i>
-    <span>Đang tính toán dự báo...</span>
+    <span>{{ t("forecast.loading") }}</span>
   </div>
 
   <EmptyState
     v-else-if="!forecast && canSelect"
-    title="Chưa có kết quả dự báo"
-    description="Vui lòng bấm nút 'Dự báo ngay' để bắt đầu tính toán dự báo lần đầu cho sản phẩm và kho này."
+    :title="t('forecast.empty.noResultTitle')"
+    :description="t('forecast.empty.noResultDesc')"
     icon="mdi-chart-line"
   />
 
   <EmptyState
     v-else-if="!forecast"
-    title="Lựa chọn sản phẩm & kho hàng"
-    description="Chọn một cặp sản phẩm và kho hàng hoạt động ở bộ lọc trên để xem biểu đồ và đề xuất tồn kho."
+    :title="t('forecast.empty.selectTitle')"
+    :description="t('forecast.empty.selectDesc')"
     icon="mdi-cursor-default-click-outline"
   />
 
@@ -326,68 +328,68 @@ const summaryText = computed(() => {
 
     <div class="stat-grid">
       <div class="card card-pad stat-card">
-        <span class="stat-label">Chế độ dự báo</span>
+        <span class="stat-label">{{ t("forecast.stats.mode") }}</span>
         <strong class="stat-value">{{ getForecastModeLabel(forecast.mode) }}</strong>
         <span class="text-xs text-[var(--color-text-secondary)] mt-1" v-if="forecast.mode === 'COLD_START_AVG'">
-          Chưa đủ lịch sử để chạy XGBoost; hệ thống đang dùng mức tiêu thụ trung bình gần đây.
+          {{ t("forecast.stats.coldStartNote") }}
         </span>
         <span class="text-xs text-[var(--color-text-secondary)] mt-1" v-else>
-          Dựa trên {{ formatNumber(forecast.dataDays) }} ngày dữ liệu bán hàng.
+          {{ t("forecast.stats.dataDaysNote", { days: formatNumber(forecast.dataDays) }) }}
         </span>
       </div>
       <div class="card card-pad stat-card">
-        <span class="stat-label">Sai số dự báo (sMAPE)</span>
+        <span class="stat-label">{{ t("forecast.stats.smape") }}</span>
         <strong class="stat-value">{{ formatNumber(forecast.smape) }}%</strong>
-        <span class="text-xs text-[var(--color-text-secondary)] mt-1">Chỉ số sai số (càng thấp càng chính xác).</span>
+        <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t("forecast.stats.smapeNote") }}</span>
       </div>
       <div class="card card-pad stat-card">
-        <span class="stat-label">Tồn kho thực tế</span>
+        <span class="stat-label">{{ t("forecast.stats.currentStock") }}</span>
         <strong class="stat-value">{{ formatNumber(forecast.currentStock) }}</strong>
-        <span class="text-xs text-[var(--color-text-secondary)] mt-1">Ngưỡng tối thiểu thiết lập: {{ formatNumber(forecast.minStock) }}</span>
+        <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t("forecast.stats.minStockNote", { min: formatNumber(forecast.minStock) }) }}</span>
       </div>
     </div>
 
     <div class="card card-pad chart-card">
-      <h3 class="section-title">Cần nhập thêm để duy trì tồn kho</h3>
+      <h3 class="section-title">{{ t("forecast.reorder.title") }}</h3>
       <div class="reorder-grid">
         <div class="reorder-item">
-          <span class="reorder-label">Giữ đủ 7 ngày tới</span>
+          <span class="reorder-label">{{ t("forecast.reorder.7d") }}</span>
           <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty7d > 0 }">
             {{ formatNumber(forecast.reorderQty7d) }}
           </strong>
         </div>
         <div class="reorder-item">
-          <span class="reorder-label">Giữ đủ 14 ngày tới</span>
+          <span class="reorder-label">{{ t("forecast.reorder.14d") }}</span>
           <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty14d > 0 }">
             {{ formatNumber(forecast.reorderQty14d) }}
           </strong>
         </div>
         <div class="reorder-item">
-          <span class="reorder-label">Giữ đủ 30 ngày tới</span>
+          <span class="reorder-label">{{ t("forecast.reorder.30d") }}</span>
           <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty30d > 0 }">
             {{ formatNumber(forecast.reorderQty30d) }}
           </strong>
         </div>
       </div>
       <span class="text-xs text-[var(--color-text-secondary)] mt-1">
-        Số lượng cần đặt mua ngay để mức tồn kho thực tế không bị giảm dưới ngưỡng tối thiểu trong khung thời gian tương ứng. "0" biểu thị tồn kho hiện thời đã đủ đáp ứng nhu cầu.
+        {{ t("forecast.reorder.note") }}
       </span>
     </div>
 
     <div class="card card-pad chart-card">
-      <h3 class="section-title">Xu hướng tồn kho dự kiến (30 ngày tiếp theo)</h3>
+      <h3 class="section-title">{{ t("forecast.chart.title") }}</h3>
       <ApexCharts type="line" :options="depletionOptions" :series="depletionSeries" height="300" />
-      <span class="text-xs text-[var(--color-text-secondary)]">Phiên bản dự báo #{{ forecast.version }} — Huấn luyện lúc {{ formatDateTime(forecast.trainedAt) }}</span>
+      <span class="text-xs text-[var(--color-text-secondary)]">{{ t("forecast.chart.versionNote", { version: forecast.version, time: formatDateTime(forecast.trainedAt) }) }}</span>
     </div>
 
     <div v-if="drift" class="card card-pad drift-card">
-      <h3 class="section-title">Kết quả kiểm tra độ lệch mô hình</h3>
+      <h3 class="section-title">{{ t("forecast.drift.title") }}</h3>
       <div class="drift-row">
         <StatusBadge :status="driftBadgeVariant(drift.status)" />
         <span class="font-semibold">{{ getDriftStatusLabel(drift.status) }}</span>
       </div>
       <div v-if="drift.rollingSmape !== null && drift.rollingSmape !== undefined" class="drift-row text-xs text-[var(--color-text-secondary)]">
-        <span>sMAPE thực tế 30 ngày gần đây: {{ formatNumber(drift.rollingSmape) }}% (ngưỡng giới hạn cho phép: {{ formatNumber(drift.threshold) }}%, dựa trên {{ drift.overlapDays }} ngày đối chiếu).</span>
+        <span>{{ t("forecast.drift.note", { smape: formatNumber(drift.rollingSmape), threshold: formatNumber(drift.threshold), days: drift.overlapDays }) }}</span>
       </div>
     </div>
   </template>

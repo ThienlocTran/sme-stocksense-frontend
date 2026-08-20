@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
+import { useI18n } from 'vue-i18n';
 import { useRouter } from "vue-router";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
 import DataTable from "../components/DataTable.vue";
@@ -19,6 +20,7 @@ import {
 } from "../services/productService";
 
 const router = useRouter();
+const { t } = useI18n();
 const products = ref([]);
 const categories = ref([]);
 const suppliers = ref([]);
@@ -42,7 +44,7 @@ const filters = reactive({ keyword: "", categoryId: "", status: "" });
 const canManage = computed(() => canManageProducts());
 const isEditMode = computed(() => formMode.value === "edit");
 const formTitle = computed(() =>
-  isEditMode.value ? "Sửa sản phẩm" : "Thêm sản phẩm",
+  isEditMode.value ? t('products.editProduct') : t('products.addProduct'),
 );
 const hasPreviousPage = computed(() => page.value > 0);
 const hasNextPage = computed(() => page.value + 1 < totalPages.value);
@@ -53,32 +55,30 @@ const hasActiveFilters = computed(
     filters.status !== "",
 );
 const confirmTitle = computed(() =>
-  pendingProduct.value?.status === "HOAT_DONG"
-    ? "Ngừng hoạt động sản phẩm?"
-    : "Kích hoạt sản phẩm?",
+  pendingProduct.value?.status === "HOAT_DONG" ? t('products.deactivateConfirmTitle') : t('products.activateConfirmTitle'),
 );
 const confirmMessage = computed(() =>
   pendingProduct.value
-    ? `Bạn muốn ${pendingProduct.value.status === "HOAT_DONG" ? "ngừng hoạt động" : "kích hoạt"} "${pendingProduct.value.name}"?`
+    ? pendingProduct.value.status === "HOAT_DONG" ? t('products.confirmDeactivateMsg', { name: pendingProduct.value.name }) : t('products.confirmActivateMsg', { name: pendingProduct.value.name })
     : "",
 );
 
 const columns = computed(() => {
   const baseColumns = [
-    { key: "code", label: "Mã SP", class: "cell-compact" },
-    { key: "sku", label: "SKU", class: "cell-compact" },
-    { key: "name", label: "Tên sản phẩm" },
-    { key: "categoryName", label: "Danh mục" },
-    { key: "partnerName", label: "Nhà cung cấp" },
-    { key: "unit", label: "Đơn vị", class: "cell-compact" },
-    { key: "minStock", label: "Ngưỡng tối thiểu", class: "cell-compact" },
-    { key: "price", label: "Đơn giá", class: "cell-nowrap" },
-    { key: "status", label: "Trạng thái", class: "cell-nowrap" },
+    { key: "code", label: t('products.productCode'), class: "cell-compact" },
+    { key: "sku", label: t('products.sku'), class: "cell-compact" },
+    { key: "name", label: t('products.productName') },
+    { key: "categoryName", label: t('products.category') },
+    { key: "partnerName", label: t('products.supplier') },
+    { key: "unit", label: t('products.unit'), class: "cell-compact" },
+    { key: "minStock", label: t('products.minStock'), class: "cell-compact" },
+    { key: "price", label: t('products.price'), class: "cell-nowrap" },
+    { key: "status", label: t('products.status'), class: "cell-nowrap" },
   ];
   return canManage.value
     ? [
         ...baseColumns,
-        { key: "actions", label: "Thao tác", class: "cell-nowrap" },
+        { key: "actions", label: t('products.actions'), class: "cell-nowrap" },
       ]
     : baseColumns;
 });
@@ -243,27 +243,27 @@ function validateForm() {
   clearFormFeedback();
   let valid = true;
   if (!form.code.trim()) {
-    formErrors.code = "Mã sản phẩm không được để trống.";
+    formErrors.code = t('products.errCodeEmpty');
     valid = false;
   }
   if (!form.name.trim()) {
-    formErrors.name = "Tên sản phẩm không được để trống.";
+    formErrors.name = t('products.errNameEmpty');
     valid = false;
   }
   if (!form.unit.trim()) {
-    formErrors.unit = "Đơn vị tính không được để trống.";
+    formErrors.unit = t('products.errUnitEmpty');
     valid = false;
   }
   if (form.price === "" || Number(form.price) < 0) {
-    formErrors.price = "Đơn giá phải lớn hơn hoặc bằng 0.";
+    formErrors.price = t('products.errPriceInvalid');
     valid = false;
   }
   if (form.minStock !== "" && Number(form.minStock) < 0) {
-    formErrors.minStock = "Ngưỡng tồn phải lớn hơn hoặc bằng 0.";
+    formErrors.minStock = t('products.errMinStockInvalid');
     valid = false;
   }
   if (isEditMode.value && !form.status) {
-    formErrors.status = "Trạng thái không được để trống.";
+    formErrors.status = t('products.errStatusEmpty');
     valid = false;
   }
   return valid;
@@ -292,10 +292,10 @@ async function submitForm() {
   try {
     if (isEditMode.value) {
       await updateProduct(form.id, toPayload());
-      successMessage.value = "Cập nhật sản phẩm thành công.";
+      successMessage.value = t('products.successUpdate');
     } else {
       await createProduct(toPayload());
-      successMessage.value = "Thêm sản phẩm thành công.";
+      successMessage.value = t('products.successAdd');
     }
     isFormOpen.value = false;
     await fetchProducts();
@@ -326,8 +326,8 @@ async function confirmStatus() {
     await updateProductStatus(product.id, nextStatus);
     successMessage.value =
       nextStatus === "HOAT_DONG"
-        ? "Đã kích hoạt sản phẩm."
-        : "Đã ngừng hoạt động sản phẩm.";
+        ? t('products.successActivate')
+        : t('products.successDeactivate');
     pendingProduct.value = null;
     await fetchProducts();
   } catch (error) {
@@ -340,9 +340,9 @@ async function confirmStatus() {
 
 function displayStatus(status) {
   return status === "HOAT_DONG"
-    ? "Đang hoạt động"
+    ? t('products.statusActive')
     : status === "NGUNG_HOAT_DONG"
-      ? "Ngừng hoạt động"
+      ? t('products.statusInactive')
       : status || "-";
 }
 
@@ -353,8 +353,8 @@ function formatCurrency(value) {
 
 <template>
   <PageHeader
-    title="Sản phẩm"
-    description="Quản lý danh mục sản phẩm cơ bản cho tồn kho."
+    :title="t('products.pageTitle')"
+    :description="t('products.pageDesc')"
   >
     <button
       v-if="canManage"
@@ -364,18 +364,18 @@ function formatCurrency(value) {
       @click="openCreateForm"
     >
       <i class="mdi mdi-plus"></i>
-      Thêm sản phẩm
+      {{ t('products.btnAddProduct') }}
     </button>
   </PageHeader>
 
   <div v-if="!canManage" class="readonly-note card card-pad">
     <i class="mdi mdi-eye-outline"></i>
-    <span>Bạn đang xem ở chế độ chỉ xem.</span>
+    <span>{{ t('products.readonlyNote') }}</span>
   </div>
 
   <SearchFilterBar
     v-model="searchDraft"
-    placeholder="Tìm theo mã, SKU hoặc tên sản phẩm"
+    :placeholder="t('products.searchPlaceholder')"
     @keyup.enter="applySearch"
   >
     <select
@@ -384,7 +384,7 @@ function formatCurrency(value) {
       :disabled="isLoading"
       @change="applyFilter"
     >
-      <option value="">Tất cả danh mục</option>
+      <option value="">{{ t('products.allCategories') }}</option>
       <option
         v-for="category in categories"
         :key="category.id"
@@ -399,9 +399,9 @@ function formatCurrency(value) {
       :disabled="isLoading"
       @change="applyFilter"
     >
-      <option value="">Tất cả trạng thái</option>
-      <option value="HOAT_DONG">Đang hoạt động</option>
-      <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
+      <option value="">{{ t('products.allStatuses') }}</option>
+      <option value="HOAT_DONG">{{ t('products.statusActive') }}</option>
+      <option value="NGUNG_HOAT_DONG">{{ t('products.statusInactive') }}</option>
     </select>
     <button
       class="btn btn-primary"
@@ -410,7 +410,7 @@ function formatCurrency(value) {
       @click="applySearch"
     >
       <i class="mdi mdi-magnify"></i>
-      Tìm kiếm
+      {{ t('products.btnSearch') }}
     </button>
     <button
       v-if="hasActiveFilters"
@@ -420,7 +420,7 @@ function formatCurrency(value) {
       @click="clearFilters"
     >
       <i class="mdi mdi-filter-remove-outline"></i>
-      Xóa lọc
+      {{ t('products.btnClearFilter') }}
     </button>
   </SearchFilterBar>
 
@@ -436,14 +436,14 @@ function formatCurrency(value) {
       <i class="mdi mdi-loading mdi-spin"></i>
     </div>
     <div class="state-card__body">
-      <h3>Đang tải sản phẩm</h3>
-      <p>Hệ thống đang chuẩn bị danh sách dữ liệu cho bạn.</p>
+      <h3>{{ t('products.loadingTitle') }}</h3>
+      <p>{{ t('products.loadingDesc') }}</p>
     </div>
   </div>
 
   <!-- Table Summary -->
   <div v-if="products.length > 0 && !isLoading" class="table-summary">
-    <strong>{{ totalElements }}</strong> sản phẩm được tìm thấy
+    <strong>{{ totalElements }}</strong> {{ t('products.productsFound') }}
   </div>
 
   <div class="product-desktop-table">
@@ -452,7 +452,7 @@ function formatCurrency(value) {
       :columns="columns"
       :rows="products"
       min-width="1180px"
-      empty-text="Chưa có sản phẩm từ backend"
+      :empty-text="t('products.emptyTable')"
     >
       <template #code="{ value }">
         <code class="sku-code">{{ value }}</code>
@@ -487,7 +487,7 @@ function formatCurrency(value) {
             v-if="canManage"
             class="btn btn-sm btn-secondary btn-icon-only"
             type="button"
-            title="Chỉnh sửa sản phẩm"
+            :title="t('products.editProductTitle')"
             :disabled="isLoading || isSaving"
             @click="openEditForm(row)"
           >
@@ -497,7 +497,7 @@ function formatCurrency(value) {
             v-if="canManage"
             class="btn btn-sm btn-icon-only"
             type="button"
-            :title="row.status === 'HOAT_DONG' ? 'Ngừng hoạt động' : 'Kích hoạt'"
+            :title="row.status === 'HOAT_DONG' ? t('products.deactivate') : t('products.activate')"
             :disabled="isLoading || togglingId"
             @click="requestStatus(row)"
           >
@@ -567,7 +567,7 @@ function formatCurrency(value) {
           @click="openEditForm(row)"
         >
           <i class="mdi mdi-pencil-outline"></i>
-          Sửa
+          {{ t('products.edit') }}
         </button>
         <button
           class="btn btn-sm"
@@ -583,7 +583,7 @@ function formatCurrency(value) {
                 : 'mdi-check-circle-outline text-emerald-600'
             "
           ></i>
-          {{ row.status === 'HOAT_DONG' ? 'Ngừng' : 'Kích hoạt' }}
+          {{ row.status === 'HOAT_DONG' ? t('products.deactivateShort') : t('products.activate') }}
         </button>
       </div>
     </div>
@@ -591,12 +591,12 @@ function formatCurrency(value) {
 
   <EmptyState
     v-if="!isLoading && !errorMessage && products.length === 0"
-    title="Không có sản phẩm"
-    description="Thử thay đổi bộ lọc hoặc thêm sản phẩm mới."
+    :title="t('products.emptyStateTitle')"
+    :description="t('products.emptyStateDesc')"
   />
 
   <div class="pagination-bar card card-pad">
-    <span class="muted">{{ totalElements }} sản phẩm</span>
+    <span class="muted">{{ totalElements }} {{ t('products.productsCount') }}</span>
     <div class="pagination-actions">
       <button
         class="btn btn-sm"
@@ -605,10 +605,10 @@ function formatCurrency(value) {
         @click="previousPage"
       >
         <i class="mdi mdi-chevron-left"></i>
-        Trước
+        {{ t('products.prev') }}
       </button>
       <span class="page-indicator"
-        >Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span
+        >{{ t('products.page') }} {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span
       >
       <button
         class="btn btn-sm"
@@ -616,7 +616,7 @@ function formatCurrency(value) {
         :disabled="!hasNextPage || isLoading"
         @click="nextPage"
       >
-        Sau
+        {{ t('products.next') }}
         <i class="mdi mdi-chevron-right"></i>
       </button>
     </div>
@@ -627,13 +627,13 @@ function formatCurrency(value) {
       <div class="modal-head">
         <div>
           <h2>{{ formTitle }}</h2>
-          <p class="modal-desc">Dữ liệu được lưu qua API backend.</p>
+          <p class="modal-desc">{{ t('products.modalDesc') }}</p>
         </div>
         <button
           class="btn btn-icon"
           type="button"
           :disabled="isSaving"
-          aria-label="Đóng"
+          :aria-label="t('products.close')"
           @click="closeForm"
         >
           <i class="mdi mdi-close"></i>
@@ -647,10 +647,10 @@ function formatCurrency(value) {
       <div class="form-sections">
         <!-- Section 1: Thông tin cơ bản -->
         <fieldset class="form-fieldset">
-          <legend class="form-legend">Thông tin cơ bản</legend>
+          <legend class="form-legend">{{ t('products.sectionBasicInfo') }}</legend>
           <div class="form-grid">
             <div class="field">
-              <label class="field-label">Mã sản phẩm *</label>
+              <label class="field-label">{{ t('products.labelProductCode') }}</label>
               <input
                 v-model="form.code"
                 class="input"
@@ -661,7 +661,7 @@ function formatCurrency(value) {
             </div>
 
             <div class="field">
-              <label class="field-label">Tên sản phẩm *</label>
+              <label class="field-label">{{ t('products.labelProductName') }}</label>
               <input
                 v-model="form.name"
                 class="input"
@@ -672,7 +672,7 @@ function formatCurrency(value) {
             </div>
 
             <div class="field">
-              <label class="field-label">SKU</label>
+              <label class="field-label">{{ t('products.sku') }}</label>
               <input
                 v-model="form.sku"
                 class="input"
@@ -683,7 +683,7 @@ function formatCurrency(value) {
             </div>
 
             <div class="field">
-              <label class="field-label">Mã vạch</label>
+              <label class="field-label">{{ t('products.labelBarcode') }}</label>
               <input
                 v-model="form.barcode"
                 class="input"
@@ -697,10 +697,10 @@ function formatCurrency(value) {
 
         <!-- Section 2: Phân loại & Giá cả -->
         <fieldset class="form-fieldset">
-          <legend class="form-legend">Phân loại & Giá cả</legend>
+          <legend class="form-legend">{{ t('products.sectionCategoryPrice') }}</legend>
           <div class="form-grid">
             <div class="field">
-              <label class="field-label">Đơn vị *</label>
+              <label class="field-label">{{ t('products.labelUnit') }}</label>
               <input
                 v-model="form.unit"
                 class="input"
@@ -711,7 +711,7 @@ function formatCurrency(value) {
             </div>
 
             <div class="field">
-              <label class="field-label">Đơn giá *</label>
+              <label class="field-label">{{ t('products.labelPrice') }}</label>
               <input
                 v-model="form.price"
                 class="input"
@@ -725,7 +725,7 @@ function formatCurrency(value) {
             </div>
 
             <div class="field">
-              <label class="field-label">Ngưỡng tối thiểu</label>
+              <label class="field-label">{{ t('products.labelMinStock') }}</label>
               <input
                 v-model="form.minStock"
                 class="input"
@@ -738,14 +738,14 @@ function formatCurrency(value) {
             </div>
 
             <div class="field">
-              <label class="field-label">Danh mục</label>
+              <label class="field-label">{{ t('products.category') }}</label>
               <select
                 v-model="form.categoryId"
                 class="select"
                 :class="{ 'input--error': formErrors.categoryId }"
                 :disabled="isSaving"
               >
-                <option value="">Không chọn</option>
+                <option value="">{{ t('products.noSelection') }}</option>
                 <option
                   v-for="category in categories"
                   :key="category.id"
@@ -758,14 +758,14 @@ function formatCurrency(value) {
             </div>
 
             <div class="field">
-              <label class="field-label">Nhà cung cấp</label>
+              <label class="field-label">{{ t('products.supplier') }}</label>
               <select
                 v-model="form.partnerId"
                 class="select"
                 :class="{ 'input--error': formErrors.partnerId }"
                 :disabled="isSaving"
               >
-                <option value="">Không chọn</option>
+                <option value="">{{ t('products.noSelection') }}</option>
                 <option
                   v-for="supplier in suppliers"
                   :key="supplier.id"
@@ -778,15 +778,15 @@ function formatCurrency(value) {
             </div>
 
             <div class="field" v-if="isEditMode">
-              <label class="field-label">Trạng thái *</label>
+              <label class="field-label">{{ t('products.status') }} *</label>
               <select
                 v-model="form.status"
                 class="select"
                 :class="{ 'input--error': formErrors.status }"
                 :disabled="isSaving"
               >
-                <option value="HOAT_DONG">Đang hoạt động</option>
-                <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
+                <option value="HOAT_DONG">{{ t('products.statusActive') }}</option>
+                <option value="NGUNG_HOAT_DONG">{{ t('products.statusInactive') }}</option>
               </select>
               <small class="field-error">{{ formErrors.status }}</small>
             </div>

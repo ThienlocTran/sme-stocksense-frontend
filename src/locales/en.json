@@ -312,5 +312,1014 @@
   },
   "7 ngày": "7 days",
   "30 ngày": "30 days",
-  "90 ngày": "90 days"
+  "90 ngày": "90 days",
+  "employee": {
+    "title": "Employees",
+    "description": "Manage personnel records, roles, and system access.",
+    "status": {
+      "all": "All statuses"
+    },
+    "role": {
+      "all": "All roles"
+    },
+    "columns": {
+      "name": "Employee",
+      "email": "Email",
+      "phone": "Phone number",
+      "role": "Role",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "formTitle": {
+      "edit": "Edit employee",
+      "create": "Add new employee"
+    },
+    "formDesc": {
+      "edit": "Update personnel records and system access.",
+      "create": "Create a new employee with initial role and status."
+    },
+    "pagination": {
+      "zero": "0 employees",
+      "suffix": "employees",
+      "pageSize": " / page",
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page"
+    },
+    "btn": {
+      "create": "Add employee",
+      "search": "Search",
+      "edit": "Edit",
+      "lock": "Lock account",
+      "unlock": "Unlock account",
+      "resetPassword": "Reset password",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving"
+    },
+    "confirm": {
+      "lockTitle": "Lock account?",
+      "unlockTitle": "Unlock account?",
+      "lockMsgPrefix": "Are you sure you want to lock the account of employee",
+      "unlockMsgPrefix": "Are you sure you want to unlock the account of employee",
+      "msgSuffix": "?",
+      "confirmBtn": "Confirm"
+    },
+    "alert": {
+      "lockSuccess": "Account locked successfully.",
+      "unlockSuccess": "Account unlocked successfully.",
+      "updateSuccess": "Employee updated successfully.",
+      "createSuccess": "Employee added successfully.",
+      "resetSuccess": "Password reset successfully.",
+      "loading": "Loading employee list"
+    },
+    "validation": {
+      "fullNameRequired": "Please enter full name.",
+      "emailRequired": "Please enter email.",
+      "emailInvalid": "Invalid email.",
+      "phoneDuplicate": "Phone number already exists.",
+      "passwordRequired": "Please enter password.",
+      "passwordMin": "Password must be at least 8 characters.",
+      "roleRequired": "Please select a role.",
+      "statusRequired": "Please select a status.",
+      "newPasswordRequired": "Please enter new password.",
+      "newPasswordMin": "New password must be at least 8 characters.",
+      "confirmPasswordRequired": "Please confirm new password.",
+      "passwordMismatch": "Passwords do not match."
+    },
+    "roleLabel": {
+      "admin": "Administrator",
+      "manager": "Warehouse Manager",
+      "employee": "Warehouse Employee"
+    },
+    "statusLabel": {
+      "active": "Working",
+      "locked": "Temporarily Locked",
+      "inactive": "Resigned"
+    },
+    "table": {
+      "empty": "No matching data found"
+    },
+    "form": {
+      "sectionPersonal": "PERSONAL INFORMATION",
+      "sectionAccount": "SYSTEM ACCOUNT",
+      "sectionSecurity": "ACCOUNT SECURITY",
+      "fullName": "Full name",
+      "email": "Email",
+      "phone": "Phone number",
+      "status": "Personnel status",
+      "password": "Initial password",
+      "role": "Role",
+      "placeholder": {
+        "fullName": "Enter full name",
+        "email": "Enter email",
+        "phone": "Enter phone number",
+        "password": "Minimum 8 characters",
+        "role": "Select role"
+      }
+    },
+    "reset": {
+      "title": "Reset password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "placeholder": {
+        "confirm": "Re-enter new password"
+      },
+      "btn": "Reset password"
+    },
+    "searchPlaceholder": "Search by name or email"
+  },
+  "partner": {
+    "title": "Partners",
+    "description": "Manage list of suppliers, customers, and business contact information.",
+    "columns": {
+      "code": "Partner Code",
+      "name": "Partner Name",
+      "type": "Partner Type",
+      "contactPerson": "Contact Person",
+      "contactInfo": "Contact Info",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "confirm": {
+      "inactiveTitle": "Deactivate partner?",
+      "activeTitle": "Reactivate partner?",
+      "inactiveMsg": "Are you sure you want to deactivate partner",
+      "activeMsg": "Are you sure you want to reactivate partner",
+      "confirmBtn": "Confirm"
+    },
+    "type": {
+      "provider": "Supplier",
+      "customer": "Customer",
+      "both": "Both",
+      "all": "All partner types"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "all": "All statuses"
+    },
+    "alert": {
+      "fetchError": "Cannot load partner list:",
+      "updateSuccess": "Partner information updated successfully!",
+      "createSuccess": "New partner added successfully!",
+      "activeSuccess": "Partner reactivated successfully.",
+      "inactiveSuccess": "Partner deactivated successfully.",
+      "toggleErrorPrefix": "Error changing partner status:",
+      "toggleError": "Operation failed. Please check again.",
+      "loading": "Loading partner list..."
+    },
+    "btn": {
+      "create": "Add partner",
+      "search": "Search",
+      "clearFilter": "Clear filter",
+      "edit": "Edit",
+      "inactive": "Deactivate",
+      "active": "Activate"
+    },
+    "stats": {
+      "total": "Total Partners",
+      "providers": "Suppliers",
+      "customers": "Customers",
+      "both": "Both Roles"
+    },
+    "searchPlaceholder": "Search by code, name, phone...",
+    "table": {
+      "empty": "No matching partners found"
+    }
+  },
+  "profile": {
+    "title": "Personal Profile",
+    "description": "View and manage internal identity information.",
+    "gender": {
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "select": "Select gender"
+    },
+    "error": {
+      "load": "Cannot load profile.",
+      "update": "Error updating profile",
+      "fileSize": "File size must not exceed 5MB.",
+      "fileType": "Only accept JPEG, PNG, WEBP images."
+    },
+    "btn": {
+      "edit": "Edit Profile",
+      "cancel": "Cancel",
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "retry": "Retry"
+    },
+    "loading": "Synchronizing data...",
+    "section": {
+      "contact": "Contact Information",
+      "identity": "Personal Identity",
+      "system": "System Status"
+    },
+    "field": {
+      "fullName": "Full Name",
+      "phone": "Phone Number",
+      "gender": "Gender",
+      "dob": "Date of Birth",
+      "email": "Email (Read-only)",
+      "status": "Status (Read-only)"
+    },
+    "cropper": {
+      "title": "Adjust Avatar",
+      "btn": {
+        "apply": "Apply",
+        "change": "Change avatar"
+      }
+    }
+  },
+  "products": {
+    "editProduct": "Edit product",
+    "addProduct": "Add product",
+    "deactivateConfirmTitle": "Deactivate product?",
+    "activateConfirmTitle": "Activate product?",
+    "confirmDeactivateMsg": "Do you want to deactivate \"{name}\"?",
+    "confirmActivateMsg": "Do you want to activate \"{name}\"?",
+    "productCode": "Product Code",
+    "sku": "SKU",
+    "productName": "Product Name",
+    "category": "Category",
+    "supplier": "Supplier",
+    "unit": "Unit",
+    "minStock": "Min Stock",
+    "price": "Price",
+    "status": "Status",
+    "actions": "Actions",
+    "errCodeEmpty": "Product code cannot be empty.",
+    "errNameEmpty": "Product name cannot be empty.",
+    "errUnitEmpty": "Unit cannot be empty.",
+    "errPriceInvalid": "Price must be >= 0.",
+    "errMinStockInvalid": "Min stock must be >= 0.",
+    "errStatusEmpty": "Status cannot be empty.",
+    "successUpdate": "Product updated successfully.",
+    "successAdd": "Product added successfully.",
+    "successActivate": "Product activated.",
+    "successDeactivate": "Product deactivated.",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "pageTitle": "Products",
+    "pageDesc": "Manage basic product catalog for inventory.",
+    "btnAddProduct": "Add Product",
+    "readonlyNote": "You are viewing in read-only mode.",
+    "searchPlaceholder": "Search by code, SKU or name",
+    "allCategories": "All categories",
+    "allStatuses": "All statuses",
+    "btnSearch": "Search",
+    "btnClearFilter": "Clear filters",
+    "loadingTitle": "Loading products",
+    "loadingDesc": "The system is preparing data list for you.",
+    "productsFound": "products found",
+    "emptyTable": "No products found",
+    "editProductTitle": "Edit product",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "edit": "Edit",
+    "deactivateShort": "Stop",
+    "emptyStateTitle": "No products",
+    "emptyStateDesc": "Try changing filters or add a new product.",
+    "productsCount": "products",
+    "prev": "Prev",
+    "page": "Page",
+    "next": "Next",
+    "modalDesc": "Data is saved via backend API.",
+    "close": "Close",
+    "sectionBasicInfo": "Basic info",
+    "labelProductCode": "Product Code *",
+    "labelProductName": "Product Name *",
+    "labelBarcode": "Barcode",
+    "sectionCategoryPrice": "Category & Pricing",
+    "labelUnit": "Unit *",
+    "labelPrice": "Price *",
+    "labelMinStock": "Min Stock",
+    "noSelection": "No selection",
+    "cancel": "Cancel",
+    "saving": "Saving",
+    "save": "Save"
+  },
+  "category": {
+    "editCategory": "Edit category",
+    "addCategory": "Add category",
+    "activateConfirmTitle": "Activate category?",
+    "deactivateConfirmTitle": "Deactivate category?",
+    "confirmToggleMsg": "Do you want to {action} \"{name}\"?",
+    "zeroCategories": "0 categories",
+    "categoriesRange": "{start}-{end} / {total} categories",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "successDeactivate": "Category deactivated.",
+    "successActivate": "Category activated.",
+    "successUpdate": "Category updated successfully.",
+    "successAdd": "Category added successfully.",
+    "errCodeEmpty": "Please enter category code.",
+    "errNameEmpty": "Please enter category name.",
+    "errStatusEmpty": "Please select a status.",
+    "code": "Category Code",
+    "name": "Category Name",
+    "description": "Description",
+    "status": "Status",
+    "createdAt": "Created At",
+    "actions": "Actions",
+    "allStatuses": "All statuses",
+    "pageTitle": "Categories",
+    "pageDesc": "List of product groups by code, name and status.",
+    "btnAddCategory": "Add Category",
+    "readonlyNote": "You are viewing in read-only mode.",
+    "searchPlaceholder": "Search by code or name",
+    "btnSearch": "Search",
+    "btnClearFilter": "Clear filters",
+    "loadingText": "Loading categories...",
+    "emptyTable": "No matching categories",
+    "edit": "Edit",
+    "pageUnit": "page",
+    "prev": "Prev",
+    "page": "Page",
+    "next": "Next",
+    "modalDescEdit": "Update category information.",
+    "modalDescAdd": "Create new category for product groups.",
+    "close": "Close",
+    "placeholderCode": "Enter category code",
+    "placeholderName": "Enter category name",
+    "placeholderDesc": "Enter description",
+    "cancel": "Cancel",
+    "saving": "Saving",
+    "save": "Save"
+  },
+  "login": {
+    "errEmailEmpty": "Please enter email.",
+    "errPasswordEmpty": "Please enter password.",
+    "successLogin": "Login successful.",
+    "brandTagline": "Smart Inventory Management",
+    "loginSubtitle": "Login to internal system",
+    "email": "Email",
+    "password": "Password",
+    "placeholderPassword": "Enter password",
+    "hidePassword": "Hide password",
+    "showPassword": "Show password",
+    "loggingIn": "Logging in",
+    "loginBtn": "Logging in",
+    "devReplayTitle": "Dev Replay: Replay Intro",
+    "devReplayAria": "Replay Intro",
+    "introReplay": "Intro Replay"
+  },
+  "warehouse": {
+    "title": "Warehouses",
+    "description": "Manage the basic warehouse list, without rack/bin layouts.",
+    "readonly": "You are viewing in read-only mode.",
+    "searchPlaceholder": "Search by code or name",
+    "button": {
+      "addWarehouse": "Add Warehouse",
+      "addWarehouseTitle": "Add a new warehouse"
+    },
+    "filter": {
+      "allStatus": "All statuses",
+      "search": "Search",
+      "clear": "Clear filters"
+    },
+    "loading": {
+      "title": "Loading warehouses",
+      "desc": "The system is preparing warehouse data for you."
+    },
+    "table": {
+      "name": "Warehouse",
+      "address": "Address",
+      "status": "Status",
+      "actions": "Actions",
+      "addressEmpty": "Address:",
+      "viewInventory": "View Inventory",
+      "viewInventoryTitle": "View inventory here",
+      "edit": "Edit",
+      "editTitle": "Edit warehouse information",
+      "toggleTitle": "Activate or deactivate warehouse",
+      "deactivate": "Deactivate",
+      "activate": "Activate"
+    },
+    "empty": {
+      "title": "No warehouses found",
+      "descManage": "Try changing the filters or add a new warehouse.",
+      "descReadonly": "Try changing the filters to find a warehouse."
+    },
+    "form": {
+      "titleCreate": "Add Warehouse",
+      "titleEdit": "Edit Warehouse",
+      "descCreate": "Create a new warehouse in the system.",
+      "descEdit": "Update warehouse information.",
+      "labelCode": "Warehouse Code *",
+      "placeholderCode": "Enter code (e.g. WAREHOUSE_A)",
+      "noteCode": "Warehouse code cannot be changed after creation.",
+      "labelName": "Warehouse Name *",
+      "placeholderName": "Enter warehouse name",
+      "labelAddress": "Address",
+      "placeholderAddress": "Enter warehouse address",
+      "labelStatus": "Status *",
+      "btnCancel": "Cancel",
+      "btnSaving": "Saving",
+      "btnSave": "Save"
+    },
+    "confirm": {
+      "titleDeactivate": "Deactivate warehouse?",
+      "titleActivate": "Activate warehouse?",
+      "msgDeactivate": "Do you want to deactivate \"{name}\"?",
+      "msgActivate": "Do you want to activate \"{name}\"?",
+      "btnDeactivate": "Deactivate",
+      "btnActivate": "Activate"
+    },
+    "msg": {
+      "successUpdate": "Warehouse updated successfully.",
+      "successCreate": "New warehouse added successfully.",
+      "successActivated": "Warehouse activated.",
+      "successDeactivated": "Warehouse deactivated."
+    },
+    "error": {
+      "codeEmpty": "Warehouse code cannot be empty.",
+      "codeMax": "Warehouse code cannot exceed 50 characters.",
+      "nameEmpty": "Warehouse name cannot be empty.",
+      "nameMax": "Warehouse name cannot exceed 150 characters.",
+      "addressMax": "Address cannot exceed 255 characters.",
+      "statusEmpty": "Status cannot be empty."
+    }
+  },
+  "alerts": {
+    "title": "Inventory Alerts",
+    "description": "Displays products whose actual stock is below the minimum threshold.",
+    "searchPlaceholder": "Search by product code, name or barcode",
+    "loading": "Loading inventory alerts data...",
+    "metrics": {
+      "total": "Total Alerts",
+      "critical": "Critical (Out of Stock)",
+      "warning": "Attention (Low Stock)"
+    },
+    "filter": {
+      "allWarehouse": "All warehouses",
+      "loadingWarehouse": "Loading warehouses...",
+      "allStatus": "All warehouse statuses",
+      "active": "Active warehouses",
+      "inactive": "Inactive warehouses",
+      "search": "Search",
+      "clear": "Clear filters"
+    },
+    "table": {
+      "productCode": "Product Code",
+      "productName": "Product Name",
+      "warehouse": "Warehouse",
+      "currentQuantity": "Actual Stock / Min",
+      "currentQuantityLabel": "Current Stock",
+      "minStock": "min",
+      "severity": "Severity",
+      "status": "Status",
+      "lastUpdatedAt": "Last Updated",
+      "actions": "Actions",
+      "viewInventory": "View Inventory",
+      "viewInventoryTitle": "View inventory details"
+    },
+    "status": {
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock",
+      "normal": "Normal",
+      "overStock": "Over Stock"
+    },
+    "pagination": {
+      "records": "records",
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page"
+    },
+    "empty": {
+      "filteredTitle": "No alerts found",
+      "filteredDesc": "There are no inventory alerts matching the current filters.",
+      "safeTitle": "Safe Inventory",
+      "safeDesc": "All products are at safe inventory levels, no alerts recorded."
+    }
+  },
+  "forecast": {
+    "title": "AI Forecast",
+    "description": "Forecast 7/14/30 days consumption demand using XGBoost and recommend order quantity.",
+    "loading": "Calculating forecast...",
+    "button": {
+      "seed": "Seed Demo Data",
+      "run": "Run Forecast",
+      "running": "Running...",
+      "checkDrift": "Check Model Drift"
+    },
+    "filter": {
+      "product": "Product *",
+      "selectProduct": "Select product",
+      "loadingProduct": "Loading products...",
+      "warehouse": "Warehouse *",
+      "selectWarehouse": "Select warehouse",
+      "loadingWarehouse": "Loading warehouses..."
+    },
+    "empty": {
+      "noResultTitle": "No forecast results yet",
+      "noResultDesc": "Please click 'Run Forecast' to calculate the initial forecast for this product and warehouse.",
+      "selectTitle": "Select Product & Warehouse",
+      "selectDesc": "Choose an active product and warehouse from the filters above to view charts and inventory recommendations."
+    },
+    "stats": {
+      "mode": "Forecast Mode",
+      "coldStartNote": "Not enough history to run XGBoost; system is using recent average consumption.",
+      "dataDaysNote": "Based on {days} days of sales data.",
+      "smape": "Forecast Error (sMAPE)",
+      "smapeNote": "Error metric (lower is more accurate).",
+      "currentStock": "Actual Stock",
+      "minStockNote": "Configured minimum threshold: {min}"
+    },
+    "reorder": {
+      "title": "Restock Needed to Maintain Inventory",
+      "7d": "Cover next 7 days",
+      "14d": "Cover next 14 days",
+      "30d": "Cover next 30 days",
+      "note": "Quantity to order immediately so that actual inventory doesn't fall below the minimum threshold in the corresponding timeframe. \"0\" indicates current inventory is sufficient."
+    },
+    "chart": {
+      "title": "Projected Inventory Trend (Next 30 Days)",
+      "versionNote": "Forecast version #{version} — Trained at {time}",
+      "seriesName": "Projected Inventory",
+      "xAxis": "Days from today",
+      "yAxis": "Inventory (units)",
+      "minThreshold": "Minimum threshold",
+      "day": "Day"
+    },
+    "drift": {
+      "title": "Model Drift Check Results",
+      "note": "Actual sMAPE over the last 30 days: {smape}% (allowed threshold limit: {threshold}%, based on {days} comparison days).",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "pending": "Pending"
+    },
+    "summary": {
+      "noData": "Not enough data to estimate average daily consumption rate.",
+      "urgent": "Expected average consumption of {rate} products/day. Current stock ({stock}) is at or below the minimum threshold ({min}) — restock immediately.",
+      "normal": "Expected average consumption of {rate} products/day over the next 30 days. With current stock ({stock}), it will last for about {days} days before hitting the minimum threshold ({min})."
+    },
+    "msg": {
+      "seedSuccess": "Successfully seeded demo data for {products} product/warehouse pairs ({rows} rows)."
+    }
+  },
+  "transactions": {
+    "title": "Inventory Transaction History",
+    "description": "View detailed history of inventory fluctuations by product, warehouse, and real time.",
+    "allTransactionTypes": "All transaction types",
+    "inbound": "Inbound",
+    "outbound": "Outbound",
+    "initialInbound": "Initial inbound",
+    "adjustIncrease": "Adjust increase",
+    "adjustDecrease": "Adjust decrease",
+    "createdAt": "Created at",
+    "transactionType": "Transaction type",
+    "product": "Product",
+    "warehouse": "Warehouse",
+    "delta": "Delta",
+    "transition": "Before → After",
+    "reference": "Reference / Note",
+    "createdBy": "Created by",
+    "unknown": "Unknown",
+    "totalTransactions": "Total transactions",
+    "inboundCount": "Inbound transactions (on page)",
+    "outboundCount": "Outbound transactions (on page)",
+    "searchPlaceholder": "Search by SKU, product name, or user",
+    "loadingWarehouses": "Loading warehouses...",
+    "allWarehouses": "All warehouses",
+    "fromDate": "From date",
+    "toDate": "To date",
+    "to": "to",
+    "search": "Search",
+    "clearFilter": "Clear filter",
+    "loadingHistory": "Loading transaction history...",
+    "importReceipt": "Import receipt #",
+    "exportReceipt": "Export receipt #",
+    "originalDocument": "Original document",
+    "records": "records",
+    "previous": "Previous",
+    "page": "Page",
+    "next": "Next",
+    "noResultsTitle": "No results found",
+    "noResultsDesc": "No transaction history matched the current filters.",
+    "noTransactionsTitle": "No transactions yet",
+    "noTransactionsDesc": "The system has not recorded any inventory transactions."
+  },
+  "inventoryCounts": {
+    "title": "Inventory count",
+    "description": "Physically check and balance system inventory.",
+    "allStatuses": "All statuses",
+    "counting": "Counting",
+    "finalized": "Finalized",
+    "cancelled": "Cancelled",
+    "countCode": "Count code",
+    "warehouse": "Warehouse",
+    "status": "Status",
+    "createdBy": "Created by",
+    "createdAt": "Created at",
+    "finalizedAt": "Finalized at",
+    "actions": "Actions",
+    "errorLoadList": "Failed to load inventory counts.",
+    "errorSelectWarehouse": "Please select a warehouse to count.",
+    "errorCreateCount": "Failed to create inventory count.",
+    "createCount": "Create count",
+    "allWarehouses": "All warehouses",
+    "retry": "Retry",
+    "loading": "Loading inventory counts...",
+    "noCountsTitle": "No inventory counts found",
+    "noCountsDesc": "Create a new count to start auditing actual inventory.",
+    "continueCount": "Continue count",
+    "viewResult": "View result",
+    "viewDetail": "View details",
+    "finalizedDate": "Finalized date",
+    "cancelledDate": "Cancelled date",
+    "records": "records",
+    "previous": "Previous",
+    "page": "Page",
+    "next": "Next",
+    "modalCreateTitle": "Create new inventory count",
+    "modalCreateDesc": "The system will capture current inventory data for actual comparison.",
+    "close": "Close",
+    "selectWarehouseLabel": "Select warehouse to count",
+    "selectWarehousePlaceholder": "-- Select warehouse --",
+    "warehouseHelperText": "All actual quantity changes will be compared directly with system inventory in this warehouse.",
+    "note": "Note",
+    "notePlaceholder": "Enter reason, additional info...",
+    "cancel": "Cancel",
+    "creating": "Creating...",
+    "confirmCreate": "Confirm create"
+  },
+  "inventoryCountDetail": {
+    "productCode": "SKU",
+    "productName": "Product name",
+    "systemQuantity": "System Qty",
+    "actualQuantity": "Actual",
+    "differenceQuantity": "Diff",
+    "note": "Note",
+    "save": "Save",
+    "errorLoadDetail": "Failed to load inventory count details.",
+    "errorInvalidActual": "Product {productCode} has invalid actual quantity.",
+    "errorInvalidQty": "Quantity for {productCode} must be >= 0.",
+    "noChanges": "No changes to save.",
+    "saveAllSuccess": "Successfully saved all {count} modified lines!",
+    "savePartial": "Saved {success} lines, failed {fail} lines. Last error: {error}",
+    "saveFailed": "Save failed. Error: {error}",
+    "invalidActualQty": "Please enter a valid actual quantity.",
+    "actualQtyMustBePositive": "Actual quantity must be a non-negative integer.",
+    "updateLineSuccess": "Successfully updated line quantity!",
+    "updateLineFailed": "Failed to update line quantity.",
+    "errorUncounted": "You must enter actual quantities for all products before finalizing.",
+    "finalizeSuccess": "Count finalized successfully!",
+    "finalizeFailed": "Failed to finalize count.",
+    "errorCancelReason": "Please enter a reason to cancel.",
+    "cancelSuccess": "Count cancelled successfully!",
+    "cancelFailed": "Failed to cancel count.",
+    "counting": "Counting",
+    "finalized": "Finalized",
+    "cancelled": "Cancelled",
+    "titleWithCode": "Count Details: {code}",
+    "title": "Count Details",
+    "description": "Track reconciliation and update actual inventory quantities.",
+    "back": "Back",
+    "saveChanges": "Save changes",
+    "cancelCount": "Cancel",
+    "finalizeCount": "Finalize count",
+    "loadingInfo": "Loading count information...",
+    "retry": "Retry",
+    "totalLines": "Total lines",
+    "matchingLines": "Matched lines",
+    "overageLines": "Overage lines",
+    "shortageLines": "Shortage lines",
+    "uncountedLines": "Uncounted",
+    "countInfo": "Count Information",
+    "warehouse": "Warehouse",
+    "status": "Status",
+    "createdBy": "Created by",
+    "createdAt": "Created at",
+    "finalizedAt": "Finalized at",
+    "cancelReasonLabel": "Cancel reason (Date: {date})",
+    "noSpecificReason": "No specific reason",
+    "generalNote": "General note",
+    "productList": "Product list",
+    "totalItems": "Total: {count} items",
+    "actions": "Actions",
+    "placeholderActual": "Enter actual",
+    "ariaActual": "Actual quantity",
+    "placeholderNote": "E.g., Missing 2 boxes...",
+    "ariaNote": "Product line note",
+    "saveLine": "Save this line",
+    "placeholderActualMobile": "Enter actual",
+    "placeholderNoteMobile": "Specific note for this product...",
+    "finalizeTitle": "Finalize count",
+    "finalizeMessage": "Once finalized, system inventory will be updated directly with the actual quantities entered. Inventory changes will be recorded in transaction history. This action cannot be undone. Are you sure you want to finalize?",
+    "finalizeConfirm": "Confirm finalize",
+    "cancelTitle": "Cancel count",
+    "cancelMessage": "Are you sure you want to cancel this count? All entered actual quantities will be discarded and system inventory will remain unchanged.",
+    "cancelConfirm": "Confirm cancel",
+    "cancelReasonInputLabel": "Cancel reason",
+    "cancelReasonPlaceholder": "Enter detailed reason..."
+  },
+  "approvals": {
+    "titleIn": "Pending Import Receipts",
+    "titleOut": "Pending Export Receipts",
+    "description": "Manage approvals or rejections of stock documents.",
+    "columns": {
+      "code": "Code",
+      "warehouse": "Warehouse",
+      "customer": "Customer",
+      "supplier": "Supplier",
+      "creator": "Creator",
+      "submitDate": "Submit Date",
+      "status": "Status",
+      "totalAmount": "Total Amount",
+      "actions": "Actions"
+    },
+    "documentType": {
+      "in": "Import Receipt",
+      "out": "Export Receipt",
+      "inName": "import",
+      "outName": "export",
+      "default": "Receipt"
+    },
+    "status": {
+      "pending": "Pending",
+      "pendingLevel1": "Pending Level 1",
+      "pendingLevel2": "Pending Level 2",
+      "approved": "Approved",
+      "completed": "Completed"
+    },
+    "messages": {
+      "loadDetailError": "Cannot load receipt details.",
+      "approveSuccess": "Successfully approved receipt {code}.",
+      "actionFailed": "Action failed, please try again.",
+      "rejectReasonRequired": "Please enter a rejection reason.",
+      "rejectReasonMaxLength": "Rejection reason cannot exceed {max} characters.",
+      "rejectSuccess": "Successfully rejected {type} receipt.",
+      "rejectOutError": "Cannot reject export receipt.",
+      "rejectInError": "Cannot reject import receipt."
+    },
+    "filters": {
+      "type": "Type",
+      "warehouse": "Warehouse",
+      "allWarehouses": "All Warehouses",
+      "status": "Status",
+      "all": "All"
+    },
+    "actions": {
+      "clearFilter": "Clear Filter",
+      "view": "View",
+      "history": "History",
+      "reject": "Reject",
+      "approving": "Approving...",
+      "approve": "Approve",
+      "rejectReceipt": "Reject Receipt",
+      "cancel": "Cancel",
+      "processing": "Processing...",
+      "confirmReject": "Confirm Rejection"
+    },
+    "loading": "Loading pending receipts...",
+    "emptyList": "No pending receipts found",
+    "pagination": {
+      "total": "{total} pending receipts",
+      "prev": "Prev",
+      "pageInfo": "Page {current}/{total}",
+      "next": "Next"
+    },
+    "modal": {
+      "detailTitle": "Receipt Details",
+      "detailSuffix": "(Pending)",
+      "loadingDetail": "Loading receipt details...",
+      "rejectionReason": "Rejection Reason"
+    },
+    "detail": {
+      "code": "Code",
+      "status": "Status",
+      "type": "Type",
+      "warehouse": "Warehouse",
+      "creator": "Creator",
+      "submitter": "Submitter",
+      "submitDate": "Submit Date",
+      "totalAmount": "Total Amount",
+      "note": "Note",
+      "productList": "Product List"
+    },
+    "table": {
+      "productCode": "SKU",
+      "productName": "Product Name",
+      "quantity": "Quantity",
+      "unitPrice": "Unit Price",
+      "lineTotal": "Total",
+      "emptyProduct": "No products in this receipt"
+    },
+    "rejectModal": {
+      "title": "Reject {type} receipt",
+      "description": "Please provide a reason so the creator can adjust the information if needed.",
+      "reasonLabel": "Rejection Reason *",
+      "reasonPlaceholder": "Enter reason (max 500 characters)..."
+    }
+  },
+  "importExcel": {
+    "title": "Import Excel Data",
+    "description": "Upload an Excel file, the system will check the data automatically. Confirm to import into the system.",
+    "messages": {
+      "loadWarehouseError": "Cannot load warehouse list.",
+      "invalidFileType": "Only .xlsx files are accepted",
+      "downloadTemplateError": "Cannot download template.",
+      "selectFileFirst": "Please select an Excel file first.",
+      "allRowsValid": "All {count} rows are valid. Click \"Confirm Import\" to complete.",
+      "hasErrors": "The file contains {count} invalid rows. Please fix and re-upload.",
+      "validateError": "Cannot validate Excel file.",
+      "importSuccess": "Import successful! {count} products were integrated into the system.",
+      "importFailed": "Import failed. Please try again."
+    },
+    "alerts": {
+      "error": "Error",
+      "success": "Success"
+    },
+    "step1": {
+      "title": "Step 1: Configuration & Template Download",
+      "desc": "Select the import type, opening stock warehouse, and download the standard Excel template.",
+      "importTypeLabel": "Data Import Type *",
+      "typeProductOnly": "Product Catalog Only",
+      "typeProductWithStock": "Products + Opening Stock",
+      "typeProductOnlyDesc": "Import product details into the system without setting opening stock.",
+      "typeProductWithStockDesc": "Import products and their existing quantities at the time of system initialization.",
+      "warehouseLabel": "Opening Stock Warehouse",
+      "warehousePlaceholder": "-- Select warehouse (leave empty if specified in file) --",
+      "warehouseDesc": "File quantities will be assigned to this warehouse if the data row doesn't specify one.",
+      "loadingWarehouses": "Loading warehouses...",
+      "downloadTemplateBtn": "Download Excel Template",
+      "downloadTemplateDesc": "Use this template to enter data in the correct system format."
+    },
+    "step2": {
+      "title": "Step 2: Select & Validate File",
+      "desc": "Upload your Excel file and run the automatic error checking process.",
+      "noPermission": "You do not have permission to upload or confirm Excel imports (Available for Admin and Warehouse Staff).",
+      "fileLabel": "Excel Data File (.xlsx) *",
+      "selectFileBtn": "Select File from Computer",
+      "noFileSelected": "No file selected",
+      "validatingBtn": "Checking...",
+      "uploadValidateBtn": "Upload & Check Data"
+    },
+    "step3": {
+      "title": "Step 3: Data Preview",
+      "descInvalid": "Errors were found in the Excel file. Please fix the data.",
+      "descValid": "Data is valid. Preview the statistics and file content below.",
+      "statsTotalRows": "Total Rows",
+      "statsValidRows": "Valid",
+      "statsErrorRows": "Errors",
+      "statusValid": "✓ VALID DATA",
+      "statusInvalid": "✗ DATA ERRORS",
+      "errorDetailsTitle": "Data Error Details ({count} errors)",
+      "colRow": "Row",
+      "colSheet": "Sheet",
+      "colColumn": "Column",
+      "colValue": "Value in file",
+      "colErrorDetail": "Error Detail",
+      "colSuggestion": "Suggestion",
+      "emptyValue": "(empty)"
+    },
+    "step4": {
+      "title": "Step 4: Confirm Data Import",
+      "descInvalid": "Cannot import due to data errors in the Excel file. Please fix and check again.",
+      "descSuccess": "Data imported successfully.",
+      "descReady": "Click the button below to officially import data into the system.",
+      "resultTitle": "Successful Import Result:",
+      "importId": "Import ID",
+      "status": "Status",
+      "time": "Time",
+      "totalProcessed": "Total Processed",
+      "successProcessed": "Successful",
+      "note": "Note",
+      "importingBtn": "Importing...",
+      "confirmBtn": "Confirm Import",
+      "importAnotherBtn": "Import Another File"
+    },
+    "confirmDialog": {
+      "title": "Confirm Data Import",
+      "message": "This action will officially write product data and inventory into the system. Are you sure you want to proceed?",
+      "confirmBtn": "Yes, Import Now"
+    }
+  },
+  "stockDocumentCreate": {
+    "title": {
+      "editOut": "Edit Export Receipt",
+      "createOut": "Create Export Receipt",
+      "editIn": "Edit Import Receipt",
+      "createIn": "Create Import Receipt"
+    },
+    "messages": {
+      "noActiveWarehouses": "No active warehouses.",
+      "loadWarehouseError": "Cannot load warehouses.",
+      "noActiveSuppliers": "No active suppliers.",
+      "loadSupplierError": "Cannot load suppliers.",
+      "noActiveProducts": "No active products.",
+      "loadProductError": "Cannot load products.",
+      "loadBaseDataError": "Cannot load base data. Please try again later.",
+      "loadReceiptError": "Cannot load receipt information.",
+      "checkFormInfo": "Please check the receipt information.",
+      "saveDraftSuccessRejected": "Changes saved. You can now resubmit this receipt.",
+      "saveDraftSuccess": "Draft saved successfully.",
+      "submitValidProductRequired": "The receipt must have at least one valid product before submission.",
+      "saveDraftBeforeSubmit": "Please save as draft before submitting.",
+      "submitSuccess": "Successfully submitted.",
+      "actionFailed": "Action failed, please try again.",
+      "cancelSuccess": "Receipt cancelled successfully."
+    },
+    "validation": {
+      "selectWarehouse": "Please select {type} warehouse.",
+      "selectSupplier": "Please select a supplier.",
+      "noteLength": "Note cannot exceed 255 characters.",
+      "selectProduct": "Please select a product.",
+      "quantityMin": "Quantity must be greater than 0.",
+      "unitPriceMin": "Unit price must be at least 0.",
+      "productExists": "Product is already in the list.",
+      "invalidProduct": "Invalid product."
+    },
+    "type": {
+      "out": "export",
+      "in": "import"
+    },
+    "actions": {
+      "resubmit": "Resubmit",
+      "submit": "Submit",
+      "back": "Back",
+      "cancelDraft": "Cancel Draft",
+      "saveDraft": "Save Draft",
+      "saveChanges": "Save Changes",
+      "cancelling": "Cancelling...",
+      "cancel": "Cancel",
+      "submitting": "Submitting...",
+      "saving": "Saving..."
+    },
+    "confirm": {
+      "cancelMessage": "Cancel this {type} receipt?",
+      "submitMessage": "Submit this {type} receipt?",
+      "cancelTitle": "Confirm Cancellation",
+      "submitTitle": "Confirm Submission",
+      "cancelBtn": "Cancel Receipt",
+      "submitBtn": "Submit"
+    },
+    "headerDesc": {
+      "out": "Enter warehouse, partner, and product details for export.",
+      "in": "Enter warehouse, supplier, and product details for import."
+    },
+    "loading": "Loading data...",
+    "alerts": {
+      "rejectedTitle": "The receipt was rejected.",
+      "rejectReason": "Rejection Reason",
+      "noRejectReason": "No rejection reason provided.",
+      "editAndSave": "Please edit the information and save."
+    },
+    "section": {
+      "generalInfo": "General Information",
+      "addProduct": "Add Product",
+      "productList": "Product List ({count} items)"
+    },
+    "label": {
+      "warehouseOut": "Export Warehouse",
+      "warehouseIn": "Import Warehouse",
+      "partner": "Partner",
+      "supplier": "Supplier",
+      "note": "Receipt Note",
+      "product": "Product",
+      "quantity": "Quantity",
+      "unitPrice": "Unit Price",
+      "lineNote": "Line Note"
+    },
+    "placeholder": {
+      "noWarehouse": "No warehouses",
+      "selectWarehouse": "Select warehouse",
+      "noSupplier": "None",
+      "selectSupplier": "Select",
+      "note": "Enter note (optional)",
+      "noProduct": "No products",
+      "selectProduct": "Select product",
+      "quantity": "Enter quantity",
+      "unitPrice": "Enter unit price",
+      "lineNote": "Note (optional)"
+    },
+    "table": {
+      "code": "SKU",
+      "name": "Product Name",
+      "quantity": "Quantity",
+      "currentStock": "Current Stock",
+      "unitPrice": "Unit Price",
+      "lineTotal": "Total",
+      "note": "Note",
+      "exceedsStock": "exceeds stock",
+      "total": "Total"
+    },
+    "empty": {
+      "title": "No products added to the receipt yet.",
+      "desc": "Add products from the section above to begin."
+    },
+    "mobile": {
+      "total": "Total ({count} items)"
+    }
+  },
+  "stockDocumentDetail": {
+    "titleOut": "Export Receipt Details",
+    "titleIn": "Import Receipt Details",
+    "descOut": "Details of the export document.",
+    "descIn": "Details, confirmation and inspection of the import document.",
+    "errorNoImportId": "Cannot find import receipt ID to load details.",
+    "errorNoExportId": "Cannot find export receipt ID to load details."
+  }
 }
