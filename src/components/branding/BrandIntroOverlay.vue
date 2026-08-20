@@ -28,6 +28,7 @@ const props = defineProps({
 // Anim references for cleanup
 let mainTimeline = null;
 let humTween = null;
+let startTimelineRef = null;
 
 // Storage Keys
 const PLAYBACK_LOAD_KEY = 'stocksense_intro_played_load';
@@ -234,7 +235,9 @@ onMounted(() => {
     }
 
     // --- FULL CHOREOGRAPHED ANIMATION TIMELINE ---
+    // Start timeline paused to wait for audio playing event
     mainTimeline = gsap.timeline({
+      paused: true,
       onComplete: () => {
         if (typeof document !== 'undefined') {
           document.body.classList.remove('scroll-locked');
@@ -252,9 +255,26 @@ onMounted(() => {
     // Play pre-initialized intro audio in sync with GSAP timeline
     if (introAudio) {
       introAudio.currentTime = 0;
+      
+      let timelineStarted = false;
+      const startTimeline = () => {
+        if (timelineStarted) return;
+        timelineStarted = true;
+        mainTimeline.play();
+      };
+      
+      startTimelineRef = startTimeline;
+      introAudio.addEventListener('playing', startTimelineRef, { once: true });
+
       introAudio.play().catch((error) => {
         console.warn("Intro audio autoplay was blocked by browser:", error);
+        startTimeline();
       });
+
+      // Safety fallback: if audio doesn't start in 500ms, start timeline anyway
+      setTimeout(startTimeline, 500);
+    } else {
+      mainTimeline.play();
     }
 
     // Select all dynamic elements
@@ -592,6 +612,9 @@ onUnmounted(() => {
   if (introAudio) {
     introAudio.pause();
     introAudio.currentTime = 0;
+    if (startTimelineRef) {
+      introAudio.removeEventListener('playing', startTimelineRef);
+    }
   }
   if (typeof document !== 'undefined') {
     document.body.classList.remove('scroll-locked');
