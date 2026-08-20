@@ -672,15 +672,6 @@ onUnmounted(() => {
     <div class="exit-panel panel-left" id="panel-l"></div>
     <div class="exit-panel panel-right" id="panel-r"></div>
 
-    <!-- Subtle hint shown only when audio is blocked -->
-    <div v-if="audioBlocked" class="sound-hint">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
-        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-      Nhấn phím bất kỳ hoặc click để bật âm thanh
-    </div>
-
     <!-- Background visual effects (Radial gradients that fade out before slide) -->
     <div class="bg-effects">
       <div class="radial-glow"></div>
@@ -1058,35 +1049,5 @@ onUnmounted(() => {
 :global(.scroll-locked) {
   overflow: hidden !important;
   touch-action: none !important;
-}
-
-/* Subtle hint at bottom — appears only when autoplay is blocked */
-.sound-hint {
-  position: absolute;
-  bottom: 1.75rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  color: rgba(151, 248, 19, 0.55);
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  pointer-events: none; /* overlay handles the click */
-  animation: hintFadeIn 1s ease-out;
-  white-space: nowrap;
-}
-
-.sound-hint svg {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-
-@keyframes hintFadeIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 </style>
