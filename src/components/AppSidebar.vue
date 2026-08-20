@@ -118,6 +118,12 @@ const menuSections = [
       { label: "Dự báo AI", labelKey: "forecast", to: "/forecast", icon: "mdi-chart-line" },
       { label: "Cảnh báo tồn kho", labelKey: "alerts", to: "/alerts", icon: "mdi-alert-outline" },
       {
+        label: "Gợi ý nhập hàng",
+        labelKey: "replenishment",
+        to: "/replenishment-suggestions",
+        icon: "mdi-clipboard-text-play-outline",
+      },
+      {
         label: "Lịch sử giao dịch",
         labelKey: "transactions",
         to: "/inventory-transactions",
