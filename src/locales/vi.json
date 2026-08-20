@@ -1496,7 +1496,9 @@
       "exportPdfSuccess": "Xuất phiếu PDF thành công.",
       "exportExcelSuccess": "Xuất file Excel thành công.",
       "unknownStatus": "Trạng thái không xác định.",
-      "exportFailed": "Không thể {label}."
+      "exportFailed": "Không thể {label}.",
+      "missingVolumesWarning": "Một số sản phẩm chưa được cấu hình thể tích đơn vị. Hệ thống không thể tính toán chính xác dung tích dự kiến. Bạn có chắc chắn muốn tiếp tục?",
+      "exceedCapacityWarning": "Tổng thể tích hàng nhập ({incoming} m3) vượt quá dung tích còn lại của kho ({remaining} m3). Bạn có chắc chắn muốn tiếp tục?"
     },
     "exportLabels": {
       "pdf": "xuất phiếu PDF",

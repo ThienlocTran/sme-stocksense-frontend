@@ -1496,7 +1496,9 @@
       "exportPdfSuccess": "Exported PDF successfully.",
       "exportExcelSuccess": "Exported Excel successfully.",
       "unknownStatus": "Unknown status.",
-      "exportFailed": "Cannot {label}."
+      "exportFailed": "Cannot {label}.",
+      "missingVolumesWarning": "Some products do not have unit volumes configured. System cannot calculate projected capacity. Do you want to proceed?",
+      "exceedCapacityWarning": "Projected inbound volume ({incoming} m3) exceeds warehouse remaining capacity ({remaining} m3). Do you want to proceed?"
     },
     "exportLabels": {
       "pdf": "export PDF",
