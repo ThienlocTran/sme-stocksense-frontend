@@ -489,14 +489,14 @@ function editModalToggleStatus() {
   <PageHeader :title="t('employee.title')" :description="t('employee.description')">
     <button v-if="canManageEmployees" class="btn btn-primary employee-create-btn" type="button" :disabled="isLoading || isSaving" @click="openCreateForm">
       <i class="mdi mdi-account-plus-outline"></i>
-      Thêm nhân viên
+      {{ t('employee.btn.create') }}
     </button>
   </PageHeader>
 
   <SearchFilterBar v-model="searchDraft" class="employee-filter-bar" :placeholder="t('employee.searchPlaceholder')">
     <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
       <i class="mdi mdi-magnify"></i>
-      Tìm kiếm
+      {{ t('employee.btn.search') }}
     </button>
     <select v-model="filters.status" class="select" :disabled="isLoading" @change="applyFilter">
       <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
@@ -519,7 +519,7 @@ function editModalToggleStatus() {
   <div class="employee-table-shell">
     <div v-if="isLoading" class="employee-loading card card-pad">
       <i class="mdi mdi-loading mdi-spin"></i>
-      Đang tải danh sách nhân viên
+      {{ t('employee.alert.loading') }}
     </div>
 
     <DataTable v-else :columns="columns" :rows="employees" :empty-text="t('employee.table.empty')" min-width="1000px">
@@ -544,7 +544,7 @@ function editModalToggleStatus() {
                 {{ getToggleStatusLabel(row) }}
               </button>
               <button class="dropdown-item" type="button" :disabled="isResetting" @click="openResetPassword(row)">
-                Reset mật khẩu
+                {{ t('employee.btn.resetPassword') }}
               </button>
             </div>
           </div>

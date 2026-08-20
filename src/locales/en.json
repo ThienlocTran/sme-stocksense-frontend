@@ -20,7 +20,8 @@
     "error": "Error",
     "warning": "Warning",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "confirmActionSubtitle": "This action will directly affect current data."
   },
   "stockDocument": {
     "title": {
@@ -1028,8 +1029,19 @@
       "submitDate": "Submit Date",
       "status": "Status",
       "totalAmount": "Total Amount",
-      "actions": "Actions"
+      "actions": "Actions",
+      "approvalLevel": "Approval Level"
     },
+    "pendingExportDesc": "List of export receipts waiting for warehouse manager review.",
+    "listTitle": "Export Receipts List",
+    "listDesc": "Displays list and navigates to detail screen.",
+    "documentCount": "{count} receipts",
+    "loadingPendingExport": "Loading pending export receipts...",
+    "emptyPendingExport": "No pending export receipts found. Click on a receipt code to view quick details.",
+    "quickDetail": "Quick Detail",
+    "loadingDetail": "Loading details...",
+    "openFullDetail": "Open Full Details",
+    "clickToViewQuickDetail": "Click on a receipt code in the list to view quick details here.",
     "documentType": {
       "in": "Import Receipt",
       "out": "Export Receipt",
@@ -1321,5 +1333,137 @@
     "descIn": "Details, confirmation and inspection of the import document.",
     "errorNoImportId": "Cannot find import receipt ID to load details.",
     "errorNoExportId": "Cannot find export receipt ID to load details."
+  },
+  "exportReceiptDetail": {
+    "errorMessage": {
+      "loadFailed": "Cannot load export receipt details."
+    },
+    "actionMessage": {
+      "printUnderDevelopment": "Print PDF feature is under development.",
+      "submitSuccess": "Export receipt submitted for approval successfully.",
+      "cancelSuccess": "Export receipt cancelled successfully."
+    },
+    "actionErrorMessage": {
+      "submitFailed": "Error submitting for approval.",
+      "cancelFailed": "Error cancelling receipt."
+    },
+    "btn": {
+      "back": "Back to list",
+      "edit": "Edit Receipt",
+      "print": "Print"
+    },
+    "loading": "Loading details...",
+    "title": "Export Receipt Details #{code}",
+    "note": "Note",
+    "noNote": "No notes",
+    "productListTitle": "Exported Products",
+    "table": {
+      "productCode": "SKU",
+      "productName": "Product Name",
+      "unit": "Unit",
+      "quantity": "Qty",
+      "note": "Note",
+      "empty": "No products found."
+    },
+    "confirm": {
+      "submitTitle": "Confirm Submit",
+      "cancelTitle": "Confirm Cancel",
+      "submitMsg": "Are you sure you want to submit this export receipt for approval?",
+      "cancelMsg": "Are you sure you want to cancel this export receipt? (This action cannot be undone)"
+    }
+  },
+  "importInspection": {
+    "title": "Import Receipt: {code}",
+    "btn": {
+      "export": "Export Receipt",
+      "print": "Print",
+      "exportPdf": "Export PDF",
+      "exportExcel": "Export Excel",
+      "cancelReceipt": "Cancel Import Receipt",
+      "confirmArrival": "Confirm Arrival",
+      "saveDiscrepancy": "Save discrepancy report",
+      "completeImport": "Complete Import",
+      "reload": "Reload"
+    },
+    "step2Title": "Step 2: Physical Inspection",
+    "table": {
+      "product": "Product",
+      "expectedQty": "Expected Qty",
+      "actualReceivedQty": "Actual Qty",
+      "physicalStatus": "Condition",
+      "expiryDate": "Expiry Date",
+      "pcs": "pcs",
+      "discrepancy": "Diff",
+      "unitPrice": "Unit Price",
+      "lineTotal": "Document Total",
+      "actualReceivedTotal": "Actual Total"
+    },
+    "physicalStatus": {
+      "good": "Good",
+      "damaged": "Damaged",
+      "missing": "Missing",
+      "other": "Other"
+    },
+    "discrepancyTitle": "Discrepancy Report",
+    "discrepancyNote": "General Report Note",
+    "discrepancyReason": "Discrepancy Reason",
+    "discrepancyAction": "Proposed Action",
+    "productListTitle": "Product List",
+    "emptyList": "No products to inspect.",
+    "approvalHistory": "Approval History",
+    "emptyHistory": "No approval history for this receipt.",
+    "actorLabel": "Executed by:",
+    "reasonLabel": "Reason:",
+    "cancelReasonDesc": "Cancellation Reason",
+    "cancelReasonPlaceholder": "Enter reason for cancellation...",
+    "messages": {
+      "loadError": "Error loading import receipt data.",
+      "confirmArrivalSuccess": "Arrival confirmed successfully.",
+      "confirmArrivalError": "Error confirming arrival.",
+      "reasonRequired": "Cancellation reason is required.",
+      "reasonMaxLength": "Cancellation reason cannot exceed 500 characters.",
+      "cancelSuccess": "Cancelled receipt {code} successfully.",
+      "cancelError": "Cannot cancel import receipt.",
+      "emptyInspect": "No products to inspect.",
+      "invalidQty": "Actual quantity of \"{name}\" is invalid.",
+      "discrepancyWarning": "Discrepancy detected. Please save discrepancy report before completing.",
+      "completeSuccess": "Import completed successfully.",
+      "completeError": "Error completing import receipt.",
+      "emptyDiscrepancyReport": "No discrepancy to report.",
+      "fillDiscrepancyReason": "Please enter reason and proposed action for \"{name}\".",
+      "discrepancyReportSaved": "Discrepancy report saved. You can now complete import based on actual quantities.",
+      "printPopupBlocked": "Cannot open print preview. Please allow popups.",
+      "loadingPrintPdf": "Loading PDF print preview...",
+      "exportPdfSuccess": "Exported PDF successfully.",
+      "exportExcelSuccess": "Exported Excel successfully.",
+      "unknownStatus": "Unknown status.",
+      "exportFailed": "Cannot {label}."
+    },
+    "exportLabels": {
+      "pdf": "export PDF",
+      "excel": "export Excel",
+      "print": "open print preview"
+    }
+  },
+  "stockOutApprovalDetail": {
+    "currentStatus": "Current Status",
+    "checkInfoDesc": "Verify all information before deciding to approve or reject.",
+    "productListDesc": "Displays export quantity and current stock for each product.",
+    "overstockWarning": "There are {count} items exceeding stock limits",
+    "insufficientStock": "Insufficient Stock",
+    "actionsDesc": "Approve or reject this export receipt based on your role.",
+    "btn": {
+      "completeExport": "Complete Export"
+    },
+    "rejectReasonPlaceholder": "Enter rejection reason to let staff know why...",
+    "messages": {
+      "loadingDetail": "Loading export receipt details...",
+      "loadFailed": "Cannot load export receipt details.",
+      "noData": "No export receipt data.",
+      "noDataDesc": "Export receipt does not exist or has not been provided.",
+      "unknownStatus": "Unknown status.",
+      "noPermission": "You currently do not have permission to approve or reject.",
+      "completePermissionOnly": "Only Admin or Warehouse Employees can complete export."
+    }
   }
 }

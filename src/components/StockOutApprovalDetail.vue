@@ -47,7 +47,7 @@ const confirmState = reactive({
   open: false,
   title: "",
   message: "",
-  confirmText: "Xác nhận",
+  confirmText: t("common.confirm"),
   action: "",
 });
 
@@ -150,18 +150,18 @@ async function loadDetail() {
 
 function triggerApproveConfirm() {
   if (!canApprove.value) return;
-  confirmState.title = "Xác nhận duyệt";
-  confirmState.message = `Duyệt phiếu xuất kho ${receipt.value?.code || props.receiptId} này?`;
-  confirmState.confirmText = "Duyệt phiếu";
+  confirmState.title = t("approvals.confirmApprove");
+  confirmState.message = t("approvals.approveReceiptQuestion", { code: receipt.value?.code || props.receiptId });
+  confirmState.confirmText = t("approvals.actions.approve");
   confirmState.action = "approve";
   confirmState.open = true;
 }
 
 function triggerCompleteConfirm() {
   if (!canComplete.value) return;
-  confirmState.title = "Xác nhận hoàn tất";
-  confirmState.message = `Hoàn tất xuất kho cho phiếu ${receipt.value?.code || props.receiptId} này?`;
-  confirmState.confirmText = "Hoàn tất";
+  confirmState.title = t("approvals.confirmComplete");
+  confirmState.message = t("approvals.completeQuestion", { code: receipt.value?.code || props.receiptId });
+  confirmState.confirmText = t("approvals.complete");
   confirmState.action = "complete";
   confirmState.open = true;
 }
@@ -176,16 +176,16 @@ async function executeConfirmedAction() {
     if (confirmState.action === "approve") {
       const approvedReceipt = await approveExportReceipt(String(props.receiptId));
       receipt.value = approvedReceipt;
-      actionMessage.value = `Đã duyệt phiếu thành công cho phiếu ${approvedReceipt?.code || props.receiptId}.`;
+      actionMessage.value = t("approvals.messages.approveSuccess", { code: approvedReceipt?.code || props.receiptId });
       await loadDetail();
     } else if (confirmState.action === "complete") {
       const completedReceipt = await completeExportReceipt(String(props.receiptId));
       receipt.value = completedReceipt;
-      actionMessage.value = `Hoàn tất xuất kho thành công cho phiếu ${completedReceipt?.code || props.receiptId}.`;
+      actionMessage.value = t("approvals.messages.completeSuccess", { code: completedReceipt?.code || props.receiptId });
       await loadDetail();
     }
   } catch (err) {
-    actionError.value = err.message || "Không thể thực hiện hành động.";
+    actionError.value = err.message || t("approvals.messages.actionFailed");
   } finally {
     actionLoading.value = false;
   }
@@ -214,12 +214,12 @@ function closeRejectModal() {
 async function confirmReject() {
   const reason = rejectState.value.reason.trim();
   if (!reason) {
-    rejectState.value.error = "Vui lòng nhập lý do từ chối.";
+    rejectState.value.error = t("approvals.messages.rejectReasonRequired");
     return;
   }
 
   if (reason.length > REJECT_REASON_MAX) {
-    rejectState.value.error = `{{ t('stockDocument.rejectionReason') }} không được vượt quá ${REJECT_REASON_MAX} ký tự.`;
+    rejectState.value.error = t("approvals.messages.rejectReasonMaxLength", { max: REJECT_REASON_MAX });
     return;
   }
 
@@ -241,11 +241,11 @@ async function confirmReject() {
       error: "",
       submitting: false,
     };
-    actionMessage.value = `Đã từ chối phiếu ${rejectedReceipt?.code || props.receiptId} thành công.`;
+    actionMessage.value = t("approvals.messages.rejectSuccessCode", { code: rejectedReceipt?.code || props.receiptId });
     await loadDetail();
   } catch (err) {
     rejectState.value.submitting = false;
-    rejectState.value.error = err.message || "Không thể từ chối phiếu xuất.";
+    rejectState.value.error = err.message || t("approvals.messages.rejectOutError");
   } finally {
     actionLoading.value = false;
   }
@@ -423,7 +423,7 @@ watch(
         <i class="mdi mdi-information-outline info-icon"></i>
         <div>
           <span class="strong text-sm">{{ t('stockOutApprovalDetail.currentStatus') }}: </span>
-          <span class="text-sm text-text">{{ statusHelpers[receipt.status] || '{{ t('stockOutApprovalDetail.messages.unknownStatus') }}' }}</span>
+          <span class="text-sm text-text">{{ statusHelpers[receipt.status] || t('stockOutApprovalDetail.messages.unknownStatus') }}</span>
         </div>
       </div>
     </div>
@@ -432,7 +432,7 @@ watch(
     <div class="card card-pad">
       <div class="between">
         <div>
-          <h3 class="section-title">Thông tin chung</h3>
+          <h3 class="section-title">{{ t("stockDocumentCreate.section.generalInfo") }}</h3>
           <p class="muted">
             {{ t('stockOutApprovalDetail.checkInfoDesc') }}
           </p>
@@ -607,7 +607,7 @@ watch(
               <span class="text-xs text-muted">{{ formatDate(item.createdAt) }}</span>
             </div>
             <div class="text-sm text-slate-700 mt-1">
-              <strong>{{ t('importInspection.actorLabel') }}</strong> {{ item.actorName || 'Không rõ' }}
+              <strong>{{ t('importInspection.actorLabel') }}</strong> {{ item.actorName || t('common.unknown') }}
             </div>
             <div v-if="item.note" class="text-sm text-danger mt-1 italic pl-2 border-l-2 border-red-500 bg-red-50 p-1.5 rounded">
               {{ t('importInspection.reasonLabel') }} {{ item.note }}

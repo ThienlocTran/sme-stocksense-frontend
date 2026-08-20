@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
 import StatusBadge from "../components/StatusBadge.vue";
@@ -10,6 +11,7 @@ import {
 } from "../services/stockOutApprovalService";
 
 const router = useRouter();
+const { t } = useI18n();
 
 const rows = ref([]);
 const isLoading = ref(false);
@@ -25,14 +27,14 @@ const detailError = ref("");
 const hasPreviousPage = computed(() => page.value > 0);
 const hasNextPage = computed(() => page.value + 1 < totalPages.value);
 
-const columns = [
-  { key: "code", label: "Mã phiếu" },
-  { key: "createdByName", label: "Người tạo" },
-  { key: "warehouseName", label: "Kho xuất" },
-  { key: "submittedAt", label: "Ngày gửi" },
-  { key: "status", label: "Trạng thái" },
-  { key: "approvalLevelLabel", label: "Cấp duyệt" },
-];
+const columns = computed(() => [
+  { key: "code", label: t('approvals.columns.code') },
+  { key: "createdByName", label: t('approvals.columns.creator') },
+  { key: "warehouseName", label: t('approvals.columns.warehouse') },
+  { key: "submittedAt", label: t('approvals.columns.submitDate') },
+  { key: "status", label: t('approvals.columns.status') },
+  { key: "approvalLevelLabel", label: t('approvals.columns.approvalLevel') },
+]);
 
 onMounted(() => {
   fetchPendingApprovals();
@@ -53,7 +55,7 @@ async function fetchPendingApprovals() {
   } catch (error) {
     rows.value = [];
     errorMessage.value =
-      error.message || "Không thể tải danh sách phiếu xuất chờ duyệt.";
+      error.message || t('approvals.messages.loadDetailError');
   } finally {
     isLoading.value = false;
   }
@@ -81,7 +83,7 @@ async function openDetail(receipt) {
   try {
     selectedReceipt.value = await getPendingExportApprovalDetail(receipt.id);
   } catch (error) {
-    detailError.value = error.message || "Không thể tải chi tiết phiếu xuất.";
+    detailError.value = error.message || t('approvals.messages.loadDetailError');
   } finally {
     detailLoading.value = false;
   }
@@ -105,30 +107,30 @@ function formatDate(value) {
 }
 
 function statusLabel(status) {
-  return status === "CHO_DUYET" ? "Chờ duyệt" : status || "-";
+  return status === "CHO_DUYET" ? t('approvals.status.pending') : status || "-";
 }
 </script>
 
 <template>
   <PageHeader
-    title="Phiếu xuất chờ duyệt"
-    description="Danh sách phiếu xuất kho đang chờ quản lý kho xem xét."
+    :title="t('approvals.titleOut')"
+    :description="t('approvals.pendingExportDesc')"
   />
 
   <div class="card card-pad mb-4">
     <div class="between">
       <div>
-        <h2 class="section-title">Danh sách phiếu xuất</h2>
+        <h2 class="section-title">{{ t('approvals.listTitle') }}</h2>
         <p class="muted">
-          Chỉ hiển thị danh sách và điều hướng sang màn hình chi tiết.
+          {{ t('approvals.listDesc') }}
         </p>
       </div>
-      <span class="muted font-bold">{{ totalElements }} phiếu</span>
+      <span class="muted font-bold">{{ t('approvals.documentCount', { count: totalElements }) }}</span>
     </div>
   </div>
 
   <div v-if="isLoading" class="card card-pad muted">
-    Đang tải danh sách phiếu xuất chờ duyệt...
+    {{ t('approvals.loadingPendingExport') }}
   </div>
   <div v-else-if="errorMessage" class="card card-pad error-state">
     {{ errorMessage }}
@@ -140,7 +142,7 @@ function statusLabel(status) {
         :columns="columns"
         :rows="rows"
         :clickable="true"
-        empty-text="Không có phiếu xuất nào đang chờ duyệt. Nhấp vào mã phiếu để mở chi tiết nhanh."
+        :empty-text="t('approvals.emptyPendingExport')"
         @row-click="goToDetail"
       >
         <template #code="{ row }">
@@ -169,7 +171,7 @@ function statusLabel(status) {
     <!-- Mobile Responsive Cards View -->
     <div class="block md:hidden space-y-4">
       <div v-if="rows.length === 0" class="card card-pad text-center muted py-8">
-        Không có phiếu xuất nào đang chờ duyệt.
+        {{ t('approvals.emptyPendingExport') }}
       </div>
       <div v-else v-for="row in rows" :key="row.id" class="card card-pad space-y-3" @click="goToDetail(row)">
         <div class="between">
@@ -181,19 +183,19 @@ function statusLabel(status) {
         
         <div class="grid grid-cols-2 gap-2 text-sm">
           <div>
-            <span class="text-muted block text-xs uppercase font-semibold">Kho xuất</span>
+            <span class="text-muted block text-xs uppercase font-semibold">{{ t('approvals.columns.warehouse') }}</span>
             <span class="font-medium text-text">{{ row.warehouseName || '-' }}</span>
           </div>
           <div>
-            <span class="text-muted block text-xs uppercase font-semibold">Người tạo</span>
+            <span class="text-muted block text-xs uppercase font-semibold">{{ t('approvals.columns.creator') }}</span>
             <span class="font-medium text-text">{{ row.createdByName || '-' }}</span>
           </div>
           <div>
-            <span class="text-muted block text-xs uppercase font-semibold">Ngày gửi</span>
+            <span class="text-muted block text-xs uppercase font-semibold">{{ t('approvals.columns.submitDate') }}</span>
             <span class="font-medium text-text">{{ formatDate(row.submittedAt) }}</span>
           </div>
           <div>
-            <span class="text-muted block text-xs uppercase font-semibold">Cấp duyệt</span>
+            <span class="text-muted block text-xs uppercase font-semibold">{{ t('approvals.columns.approvalLevel') }}</span>
             <span class="font-medium text-text">{{ row.approvalLevelLabel || '-' }}</span>
           </div>
         </div>
@@ -202,7 +204,7 @@ function statusLabel(status) {
 
     <div class="pagination-row">
       <span class="muted"
-        >Trang {{ page + 1 }} / {{ Math.max(totalPages, 1) }}</span
+        >{{ t('approvals.pagination.pageInfo', { current: page + 1, total: Math.max(totalPages, 1) }) }}</span
       >
       <div class="actions">
         <button
@@ -211,7 +213,7 @@ function statusLabel(status) {
           :disabled="isLoading || !hasPreviousPage"
           @click="previousPage"
         >
-          Trước
+          {{ t('approvals.pagination.prev') }}
         </button>
         <button
           class="btn btn-sm"
@@ -219,41 +221,41 @@ function statusLabel(status) {
           :disabled="isLoading || !hasNextPage"
           @click="nextPage"
         >
-          Sau
+          {{ t('approvals.pagination.next') }}
         </button>
       </div>
     </div>
   </template>
 
   <div class="card card-pad mt-4">
-    <h3 class="section-title">Chi tiết nhanh</h3>
-    <div v-if="detailLoading" class="muted">Đang tải chi tiết...</div>
+    <h3 class="section-title">{{ t('approvals.quickDetail') }}</h3>
+    <div v-if="detailLoading" class="muted">{{ t('approvals.loadingDetail') }}</div>
     <div v-else-if="detailError" class="error-state">{{ detailError }}</div>
     <div v-else-if="selectedReceipt" class="detail-grid card card-pad bg-slate-50 border-dashed">
       <div>
-        <div class="detail-label">Mã phiếu</div>
+        <div class="detail-label">{{ t('approvals.columns.code') }}</div>
         <div class="detail-value text-primary font-bold">{{ selectedReceipt.code }}</div>
       </div>
       <div>
-        <div class="detail-label">Người tạo</div>
+        <div class="detail-label">{{ t('approvals.columns.creator') }}</div>
         <div class="detail-value">{{ selectedReceipt.createdByName }}</div>
       </div>
       <div>
-        <div class="detail-label">Kho xuất</div>
+        <div class="detail-label">{{ t('approvals.columns.warehouse') }}</div>
         <div class="detail-value">{{ selectedReceipt.warehouseName }}</div>
       </div>
       <div>
-        <div class="detail-label">Cấp duyệt</div>
+        <div class="detail-label">{{ t('approvals.columns.approvalLevel') }}</div>
         <div class="detail-value">{{ selectedReceipt.approvalLevelLabel }}</div>
       </div>
       <div class="mt-3 flex justify-end w-full" style="grid-column: 1 / -1;">
         <button class="btn btn-sm btn-primary" type="button" @click="goToDetail(selectedReceipt)">
-          Mở chi tiết đầy đủ
+          {{ t('approvals.openFullDetail') }}
         </button>
       </div>
     </div>
     <div v-else class="muted text-center py-4">
-      Nhấp vào mã phiếu trên danh sách để xem thông tin chi tiết nhanh tại đây.
+      {{ t('approvals.clickToViewQuickDetail') }}
     </div>
   </div>
 </template>

@@ -463,7 +463,7 @@ async function handleExport(format) {
     if (printWindow) {
       printWindow.close()
     }
-    const actionLabel = format === 'pdf' ? 'xuất phiếu PDF' : format === 'excel' ? 'xuất file Excel' : 'mở bản in'
+    const actionLabel = format === 'pdf' ? t('importInspection.exportLabels.pdf') : format === 'excel' ? t('importInspection.exportLabels.excel') : t('importInspection.exportLabels.print')
     error.value = err.message || t('importInspection.messages.exportFailed', { label: actionLabel })
   } finally {
     exporting.value = false
@@ -504,9 +504,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
               append-icon="mdi-chevron-down"
               size="small"
               class="font-weight-medium text-capitalize ml-2"
-            >
-              Xuất phiếu
-            </v-btn>
+            > {{ t('importInspection.btn.export') }} </v-btn>
           </template>
           <v-list density="compact" nav class="py-1">
             <v-list-item prepend-icon="mdi-printer" :title="t('importInspection.btn.print')" @click="handleExport('print')" />
@@ -836,7 +834,7 @@ watch(() => props.receiptId, loadData, { immediate: true })
                 <span class="text-caption text-grey">{{ formatDate(item.createdAt) }}</span>
               </div>
               <div class="text-body-2 mt-1">
-                <strong>{{ t('importInspection.actorLabel') }}</strong> {{ item.actorName || 'Hệ thống' }}
+                <strong>{{ t('importInspection.actorLabel') }}</strong> {{ item.actorName || t('common.system') }}
               </div>
               <div v-if="item.note" class="text-body-2 text-error mt-1 italic pl-3 border-left-error">
                 {{ t('importInspection.reasonLabel') }} {{ item.note }}
@@ -881,9 +879,9 @@ watch(() => props.receiptId, loadData, { immediate: true })
       </v-card-text>
       <v-card-actions class="px-6 pb-4">
         <v-spacer></v-spacer>
-        <v-btn color="grey-darken-1" variant="text" :disabled="cancelLateState.submitting" @click="closeCancelLateModal">Hủy</v-btn>
+        <v-btn color="grey-darken-1" variant="text" :disabled="cancelLateState.submitting" @click="closeCancelLateModal">{{ t('common.cancel') }}</v-btn>
         <v-btn color="error" variant="flat" :loading="cancelLateState.submitting" @click="confirmCancelLate">
-          {{ t('importInspection.btn.cancelReceipt') }}Xác nhận hủy</v-btn>
+          {{ t('importInspection.btn.cancelReceipt') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

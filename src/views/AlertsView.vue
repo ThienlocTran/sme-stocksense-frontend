@@ -303,7 +303,7 @@ function navigateToInventory(row) {
           @click="applySearch"
         >
           <i class="mdi mdi-magnify"></i>
-          Tìm kiếm
+          {{ t("alerts.filter.search") }}
         </button>
         <button
           v-if="hasActiveFilters"
@@ -313,7 +313,7 @@ function navigateToInventory(row) {
           @click="clearFilters"
         >
           <i class="mdi mdi-filter-remove-outline"></i>
-          Xóa lọc
+          {{ t("alerts.filter.clear") }}
         </button>
       </div>
     </SearchFilterBar>
@@ -388,7 +388,7 @@ function navigateToInventory(row) {
                 :title="t('alerts.table.viewInventoryTitle')"
               >
                 <i class="mdi mdi-eye-outline"></i>
-                Xem tồn kho
+                {{ t("alerts.table.viewInventory") }}
               </button>
             </div>
           </template>
@@ -422,7 +422,7 @@ function navigateToInventory(row) {
                 class="detail-val tabular-num font-semibold"
                 :class="row.status === 'OUT_OF_STOCK' ? 'text-red-600' : 'text-amber-600'"
               >
-                {{ row.currentQuantity ?? 0 }} / tối thiểu {{ row.minStock }}
+                {{ row.currentQuantity ?? 0 }} / {{ t("alerts.table.minStock") }} {{ row.minStock }}
               </span>
             </div>
             <div class="detail-row">
@@ -441,7 +441,7 @@ function navigateToInventory(row) {
               @click="navigateToInventory(row)"
             >
               <i class="mdi mdi-eye-outline"></i>
-              Xem tồn kho
+              {{ t("alerts.table.viewInventory") }}
             </button>
           </div>
         </div>
@@ -458,7 +458,7 @@ function navigateToInventory(row) {
             @click="previousPage"
           >
             <i class="mdi mdi-chevron-left"></i>
-            Trước
+            {{ t("alerts.pagination.prev") }}
           </button>
           <span class="page-indicator">{{ t("alerts.pagination.page") }} {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
           <button
@@ -467,7 +467,7 @@ function navigateToInventory(row) {
             :disabled="!hasNextPage || isLoading"
             @click="nextPage"
           >
-            Sau
+            {{ t("alerts.pagination.next") }}
             <i class="mdi mdi-chevron-right"></i>
           </button>
         </div>

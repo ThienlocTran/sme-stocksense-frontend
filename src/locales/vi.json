@@ -20,7 +20,8 @@
     "error": "Lỗi",
     "warning": "Cảnh báo",
     "yes": "Có",
-    "no": "Không"
+    "no": "Không",
+    "confirmActionSubtitle": "Hành động này sẽ ảnh hưởng trực tiếp đến dữ liệu hiện tại."
   },
   "stockDocument": {
     "title": {
@@ -1028,8 +1029,19 @@
       "submitDate": "Ngày gửi duyệt",
       "status": "Trạng thái",
       "totalAmount": "Tổng tiền",
-      "actions": "Thao tác"
+      "actions": "Thao tác",
+      "approvalLevel": "Cấp duyệt"
     },
+    "pendingExportDesc": "Danh sách phiếu xuất kho đang chờ quản lý kho xem xét.",
+    "listTitle": "Danh sách phiếu xuất",
+    "listDesc": "Chỉ hiển thị danh sách và điều hướng sang màn hình chi tiết.",
+    "documentCount": "{count} phiếu",
+    "loadingPendingExport": "Đang tải danh sách phiếu xuất chờ duyệt...",
+    "emptyPendingExport": "Không có phiếu xuất nào đang chờ duyệt. Nhấp vào mã phiếu để mở chi tiết nhanh.",
+    "quickDetail": "Chi tiết nhanh",
+    "loadingDetail": "Đang tải chi tiết...",
+    "openFullDetail": "Mở chi tiết đầy đủ",
+    "clickToViewQuickDetail": "Nhấp vào mã phiếu trên danh sách để xem thông tin chi tiết nhanh tại đây.",
     "documentType": {
       "in": "Phiếu nhập",
       "out": "Phiếu xuất",
@@ -1321,5 +1333,137 @@
     "descIn": "Chi tiết, xác nhận và kiểm hàng phiếu nhập kho.",
     "errorNoImportId": "Không tìm thấy mã phiếu nhập để tải chi tiết.",
     "errorNoExportId": "Không tìm thấy mã phiếu xuất để tải chi tiết."
+  },
+  "exportReceiptDetail": {
+    "errorMessage": {
+      "loadFailed": "Không thể tải chi tiết phiếu xuất."
+    },
+    "actionMessage": {
+      "printUnderDevelopment": "Chức năng In PDF đang được phát triển.",
+      "submitSuccess": "Gửi duyệt phiếu xuất thành công.",
+      "cancelSuccess": "Đã hủy phiếu xuất thành công."
+    },
+    "actionErrorMessage": {
+      "submitFailed": "Lỗi khi gửi duyệt.",
+      "cancelFailed": "Lỗi khi hủy phiếu."
+    },
+    "btn": {
+      "back": "Quay lại danh sách",
+      "edit": "Sửa phiếu",
+      "print": "In phiếu"
+    },
+    "loading": "Đang tải thông tin chi tiết...",
+    "title": "Chi tiết Phiếu Xuất #{code}",
+    "note": "Ghi chú",
+    "noNote": "Không có ghi chú",
+    "productListTitle": "Sản phẩm xuất kho",
+    "table": {
+      "productCode": "Mã SP",
+      "productName": "Tên SP",
+      "unit": "ĐVT",
+      "quantity": "SL Xuất",
+      "note": "Ghi chú",
+      "empty": "Không có sản phẩm nào."
+    },
+    "confirm": {
+      "submitTitle": "Xác nhận Gửi duyệt",
+      "cancelTitle": "Xác nhận Hủy phiếu",
+      "submitMsg": "Bạn có chắc chắn muốn gửi duyệt phiếu xuất này không?",
+      "cancelMsg": "Bạn có chắc chắn muốn hủy phiếu xuất này không? (Không thể hoàn tác)"
+    }
+  },
+  "importInspection": {
+    "title": "Phiếu Nhập: {code}",
+    "btn": {
+      "export": "Xuất phiếu",
+      "print": "In phiếu",
+      "exportPdf": "Xuất PDF",
+      "exportExcel": "Xuất Excel",
+      "cancelReceipt": "Hủy Phiếu Nhập",
+      "confirmArrival": "Xác Nhận Hàng Về",
+      "saveDiscrepancy": "Lưu biên bản chênh lệch",
+      "completeImport": "Hoàn Tất Nhập Kho",
+      "reload": "Tải lại"
+    },
+    "step2Title": "Bước 2: Kiểm Hàng Thực Tế",
+    "table": {
+      "product": "Sản phẩm",
+      "expectedQty": "SL Gốc",
+      "actualReceivedQty": "Thực nhận",
+      "physicalStatus": "Tình trạng",
+      "expiryDate": "Hạn sử dụng",
+      "pcs": "Cái",
+      "discrepancy": "Lệch",
+      "unitPrice": "Đơn giá",
+      "lineTotal": "Thành tiền trên phiếu",
+      "actualReceivedTotal": "Giá trị thực nhận"
+    },
+    "physicalStatus": {
+      "good": "Tốt",
+      "damaged": "Hư hỏng",
+      "missing": "Thiếu",
+      "other": "Khác"
+    },
+    "discrepancyTitle": "Biên Bản Chênh Lệch",
+    "discrepancyNote": "Ghi chú tổng quát biên bản",
+    "discrepancyReason": "Lý do chênh lệch",
+    "discrepancyAction": "Hướng xử lý đề xuất",
+    "productListTitle": "Danh sách sản phẩm",
+    "emptyList": "Không có sản phẩm nào để kiểm tra.",
+    "approvalHistory": "Lịch sử phê duyệt",
+    "emptyHistory": "Chưa có lịch sử phê duyệt nào cho phiếu này.",
+    "actorLabel": "Người thực hiện:",
+    "reasonLabel": "Lý do:",
+    "cancelReasonDesc": "Lý do hủy",
+    "cancelReasonPlaceholder": "Nhập lý do hủy...",
+    "messages": {
+      "loadError": "Lỗi tải dữ liệu phiếu nhập",
+      "confirmArrivalSuccess": "Đã xác nhận hàng về thành công.",
+      "confirmArrivalError": "Lỗi khi xác nhận hàng về",
+      "reasonRequired": "Vui lòng nhập lý do hủy.",
+      "reasonMaxLength": "Lý do hủy không được vượt quá 500 ký tự.",
+      "cancelSuccess": "Đã hủy phiếu {code} thành công.",
+      "cancelError": "Không thể hủy phiếu nhập.",
+      "emptyInspect": "Không có sản phẩm nào để kiểm tra.",
+      "invalidQty": "Số lượng thực nhận của \"{name}\" không hợp lệ.",
+      "discrepancyWarning": "Có chênh lệch số lượng/tình trạng hàng. Vui lòng lưu biên bản chênh lệch trước khi hoàn tất nhập kho.",
+      "completeSuccess": "Đã hoàn tất nhập kho thành công.",
+      "completeError": "Lỗi khi hoàn tất phiếu nhập",
+      "emptyDiscrepancyReport": "Không có chênh lệch để lập biên bản.",
+      "fillDiscrepancyReason": "Vui lòng nhập lý do và hướng xử lý cho \"{name}\".",
+      "discrepancyReportSaved": "Đã lưu biên bản chênh lệch. Bạn có thể hoàn tất nhập kho theo số lượng thực nhận.",
+      "printPopupBlocked": "Không thể mở bản in. Vui lòng cho phép trình duyệt hiển thị popup.",
+      "loadingPrintPdf": "Đang tải bản in PDF...",
+      "exportPdfSuccess": "Xuất phiếu PDF thành công.",
+      "exportExcelSuccess": "Xuất file Excel thành công.",
+      "unknownStatus": "Trạng thái không xác định.",
+      "exportFailed": "Không thể {label}."
+    },
+    "exportLabels": {
+      "pdf": "xuất phiếu PDF",
+      "excel": "xuất file Excel",
+      "print": "mở bản in"
+    }
+  },
+  "stockOutApprovalDetail": {
+    "currentStatus": "Trạng thái hiện tại",
+    "checkInfoDesc": "Kiểm tra toàn bộ thông tin trước khi quyết định duyệt hoặc từ chối.",
+    "productListDesc": "Hiển thị số lượng xuất và tồn hiện tại của từng sản phẩm.",
+    "overstockWarning": "Có {count} mặt hàng vượt tồn kho",
+    "insufficientStock": "Không đủ tồn kho",
+    "actionsDesc": "Duyệt hoặc từ chối phiếu xuất này dựa trên vai trò của bạn.",
+    "btn": {
+      "completeExport": "Hoàn tất xuất kho"
+    },
+    "rejectReasonPlaceholder": "Nhập lý do từ chối để nhân viên biết nguyên nhân...",
+    "messages": {
+      "loadingDetail": "Đang tải chi tiết phiếu xuất...",
+      "loadFailed": "Không thể tải chi tiết phiếu xuất",
+      "noData": "Không có dữ liệu phiếu xuất",
+      "noDataDesc": "Phiếu xuất không tồn tại hoặc chưa được cung cấp cho giao diện này.",
+      "unknownStatus": "Trạng thái không rõ.",
+      "noPermission": "Bạn hiện không có quyền thực hiện duyệt hoặc từ chối.",
+      "completePermissionOnly": "Chỉ Admin hoặc Nhân viên kho được hoàn tất xuất kho."
+    }
   }
 }

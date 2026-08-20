@@ -1,15 +1,17 @@
 <script setup>
 import { onBeforeUnmount, watch } from "vue";
+import { useI18n } from "vue-i18n";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  title: { type: String, default: "Xác nhận" },
+  title: { type: String, default: "" },
   message: { type: String, default: "" },
-  confirmText: { type: String, default: "Xác nhận" },
+  confirmText: { type: String, default: "" },
   loading: { type: Boolean, default: false },
   danger: { type: Boolean, default: false },
 });
 const emit = defineEmits(["cancel", "confirm"]);
+const { t } = useI18n();
 
 function handleKeydown(event) {
   if (event.key === "Escape" && !props.loading) emit("cancel");
@@ -40,16 +42,16 @@ onBeforeUnmount(() => {
     <div class="modal small-modal">
       <div class="modal-head between">
         <div>
-          <h2 class="section-title">{{ title }}</h2>
+          <h2 class="section-title">{{ title || t('common.confirm') }}</h2>
           <p class="modal-subtitle">
-            Hành động này sẽ ảnh hưởng trực tiếp đến dữ liệu hiện tại.
+            {{ t('common.confirmActionSubtitle') }}
           </p>
         </div>
         <button
           class="btn btn-icon"
           :disabled="loading"
           @click="$emit('cancel')"
-          aria-label="Đóng"
+          :aria-label="t('common.close')"
         >
           <i class="mdi mdi-close"></i>
         </button>
@@ -64,7 +66,7 @@ onBeforeUnmount(() => {
           :disabled="loading"
           @click="$emit('cancel')"
         >
-          Hủy
+          {{ t('common.cancel') }}
         </button>
         <button
           class="btn"
@@ -73,7 +75,7 @@ onBeforeUnmount(() => {
           @click="$emit('confirm')"
         >
           <i v-if="loading" class="mdi mdi-loading mdi-spin"></i>
-          {{ loading ? "Đang xử lý" : confirmText }}
+          {{ loading ? t('common.loading') : (confirmText || t('common.confirm')) }}
         </button>
       </div>
     </div>
