@@ -271,11 +271,16 @@ export async function getSuppliers() {
   }
 }
 
-export async function getProducts() {
+export async function getProducts({ page = 0, size = 1000, keyword = '', trangThai = 'HOAT_DONG' } = {}) {
   try {
     const { data } = await importReceiptClient.get('/api/products', {
       headers: getAuthorizationHeader(),
-      params: { page: 0, size: 1000, trangThai: 'HOAT_DONG' },
+      params: {
+        page,
+        size,
+        keyword: keyword || undefined,
+        trangThai: trangThai || undefined,
+      },
     })
     return data.content || []
   } catch (error) {

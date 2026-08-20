@@ -68,6 +68,24 @@ const supplierOptions = computed(() => {
 });
 
 const products = ref([])
+const isSearchingProducts = ref(false)
+
+async function searchProducts(query = '') {
+  isSearchingProducts.value = true
+  try {
+    const list = await getProducts({
+      page: 0,
+      size: 20,
+      keyword: query,
+      trangThai: 'HOAT_DONG'
+    })
+    products.value = list || []
+  } catch (error) {
+    console.error('Failed to remote search products:', error)
+  } finally {
+    isSearchingProducts.value = false
+  }
+}
 
 const productOptions = computed(() => {
   return products.value.map(product => ({
@@ -220,7 +238,7 @@ async function loadDropdowns() {
   const results = await Promise.allSettled([
     getWarehouses(),
     getSuppliers(),
-    getProducts(),
+    getProducts({ page: 0, size: 20 }),
   ])
 
   const [whResult, suppResult, prodResult] = results
@@ -693,6 +711,9 @@ function confirmText() {
               :placeholder="products.length === 0 ? t('stockDocumentCreate.placeholder.noProduct') : t('stockDocumentCreate.placeholder.selectProduct')"
               :disabled="isProcessing || !isEditableStatus || products.length === 0"
               :error="itemErrors.productId || errorState.products"
+              :remote="true"
+              :loading="isSearchingProducts"
+              @search="searchProducts"
             />
             <span v-if="itemErrors.productId" class="import-receipt-form__error">{{ itemErrors.productId }}</span>
             <span v-else-if="errorState.products" class="import-receipt-form__error">{{ errorState.products }}</span>
