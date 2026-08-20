@@ -177,7 +177,8 @@
       "pendingExports": "Phiếu xuất chờ duyệt",
       "partners": "Đối tác",
       "employees": "Nhân viên",
-      "importExcel": "Import Excel"
+      "importExcel": "Import Excel",
+      "warehouses": "Kho hàng"
     }
   },
   "topbar": {

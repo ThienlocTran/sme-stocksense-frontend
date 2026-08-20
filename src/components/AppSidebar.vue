@@ -136,6 +136,12 @@ const menuSections = [
     titleKey: "management",
     items: [
       {
+        label: "Kho hàng",
+        labelKey: "warehouses",
+        to: "/warehouses",
+        icon: "mdi-store-24-hour",
+      },
+      {
         label: "Đối tác",
         labelKey: "partners",
         to: "/partners",

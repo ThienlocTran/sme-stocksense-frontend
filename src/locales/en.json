@@ -177,7 +177,8 @@
       "pendingExports": "Pending Exports",
       "partners": "Partners",
       "employees": "Employees",
-      "importExcel": "Import Excel"
+      "importExcel": "Import Excel",
+      "warehouses": "Warehouses"
     }
   },
   "topbar": {
