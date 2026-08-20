@@ -6,8 +6,8 @@ const introAudio = (typeof window !== 'undefined' && typeof Audio !== 'undefined
 
 if (introAudio) {
   introAudio.preload = 'auto';
-  introAudio.volume = 0;   // Start muted — browser allows muted autoplay
-  introAudio.muted = true;
+  introAudio.volume = 0.7;
+  introAudio.muted = false;
   introAudio.loop = false;
 }
 </script>
@@ -187,14 +187,24 @@ const setCompletedStates = (svg) => {
   primaryPaths.forEach(p => { if (p) p.style.opacity = 0; });
 };
 
-// Start intro audio + GSAP timeline.
-// Uses muted autoplay trick: browser always allows muted playback,
-// then we unmute immediately and fade volume up to bypass the autoplay policy.
+// Whether the browser blocked audio autoplay
+const audioBlocked = ref(false);
+
+// Called when user clicks the 🔊 button after browser blocked autoplay
+const enableSound = () => {
+  if (!introAudio) return;
+  introAudio.volume = 0.7;
+  introAudio.muted = false;
+  introAudio.play().catch(() => {});
+  audioBlocked.value = false;
+};
+
+// Start animation timeline + attempt audio play
 const startIntro = () => {
   if (introAudio) {
     introAudio.currentTime = 0;
-    introAudio.muted = true;
-    introAudio.volume = 0;
+    introAudio.volume = 0.7;
+    introAudio.muted = false;
 
     let timelineStarted = false;
     const startTimeline = () => {
@@ -206,17 +216,14 @@ const startIntro = () => {
     startTimelineRef = startTimeline;
     introAudio.addEventListener('playing', startTimelineRef, { once: true });
 
-    // Muted play always succeeds → unmute + fade volume in immediately
-    introAudio.play().then(() => {
-      introAudio.muted = false;
-      // Smooth volume fade-in over 0.4s via GSAP proxy
-      gsap.to(introAudio, { volume: 0.7, duration: 0.4, ease: 'power1.in' });
-    }).catch((error) => {
-      console.warn("Intro audio play failed:", error);
+    introAudio.play().catch((error) => {
+      // Autoplay blocked → start timeline silently, show small sound button
+      console.warn("Intro audio autoplay blocked:", error);
+      audioBlocked.value = true;
       startTimeline();
     });
 
-    // Safety fallback: if audio doesn't fire 'playing' within 500ms, start timeline anyway
+    // Safety fallback: start timeline after 500ms regardless
     setTimeout(startTimeline, 500);
   } else {
     if (mainTimeline) mainTimeline.play();
@@ -649,21 +656,15 @@ onUnmounted(() => {
     <div class="exit-panel panel-left" id="panel-l"></div>
     <div class="exit-panel panel-right" id="panel-r"></div>
 
-    <!-- Interaction Prompt Overlay (shown before user clicks) -->
-    <div v-if="isReadyToShowPrompt && !hasInteracted" class="interaction-prompt">
-      <div class="prompt-content">
-        <div class="brand-logo-glow">
-          <div class="pulse-ring"></div>
-          <div class="pulse-dot"></div>
-        </div>
-        <h2 class="prompt-title">StockSense</h2>
-        <p class="prompt-subtitle">Sẵn sàng khởi động hệ thống với âm thanh sống động</p>
-        <button @click="startIntro" class="start-btn">
-          <span class="btn-glow"></span>
-          <span class="btn-text">Bấm để bắt đầu</span>
-        </button>
-      </div>
-    </div>
+    <!-- Small sound button (shown only if browser blocked autoplay) -->
+    <button v-if="audioBlocked" @click="enableSound" class="sound-btn" title="Bật âm thanh">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
+        <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>Bật tiếng</span>
+    </button>
 
     <!-- Background visual effects (Radial gradients that fade out before slide) -->
     <div class="bg-effects">
@@ -1044,148 +1045,44 @@ onUnmounted(() => {
   touch-action: none !important;
 }
 
-/* Interaction Prompt Overlay */
-.interaction-prompt {
+/* Small sound toggle button — appears in bottom-right corner only when autoplay is blocked */
+.sound-btn {
   position: absolute;
-  inset: 0;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 200;
   display: flex;
-  justify-content: center;
   align-items: center;
-  background-color: rgba(2, 8, 23, 0.95); /* Deep dark background */
-  z-index: 100; /* On top of everything */
-  transition: opacity 0.5s ease;
-}
-
-.prompt-content {
-  text-align: center;
-  max-width: 400px;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  animation: fadeIn 0.8s ease-out;
-}
-
-.brand-logo-glow {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  margin-bottom: 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.pulse-ring {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border: 2px solid #97f813;
-  border-radius: 50%;
-  animation: pulseOuter 2s infinite ease-out;
-}
-
-.pulse-dot {
-  width: 24px;
-  height: 24px;
-  background-color: #97f813;
-  border-radius: 50%;
-  box-shadow: 0 0 20px #97f813;
-  animation: pulseInner 2s infinite ease-in-out;
-}
-
-.prompt-title {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 2.25rem;
-  font-weight: 800;
-  color: #ffffff;
-  margin: 0 0 0.75rem 0;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 15px rgba(151, 248, 19, 0.2);
-}
-
-.prompt-subtitle {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 0.95rem;
-  color: #94a3b8; /* Slate 400 */
-  margin: 0 0 2rem 0;
-  line-height: 1.5;
-}
-
-.start-btn {
-  position: relative;
-  background-color: #0c944e; /* Brand dark green */
-  color: #ffffff;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.85rem 2.25rem;
-  border: 1px solid rgba(151, 248, 19, 0.4);
+  gap: 0.5rem;
+  padding: 0.55rem 1rem 0.55rem 0.75rem;
+  background: rgba(2, 8, 23, 0.75);
+  border: 1px solid rgba(151, 248, 19, 0.45);
   border-radius: 50px;
+  color: #97f813;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px rgba(12, 148, 78, 0.3);
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  animation: soundBtnIn 0.4s ease-out;
 }
 
-.start-btn:hover {
-  background-color: #97f813; /* Brand neon green */
-  color: #020817; /* Dark background text */
+.sound-btn:hover {
+  background: rgba(12, 148, 78, 0.35);
   border-color: #97f813;
+  box-shadow: 0 0 16px rgba(151, 248, 19, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(151, 248, 19, 0.5);
 }
 
-.start-btn:active {
-  transform: translateY(0);
+.sound-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
-.btn-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 120%;
-  height: 120%;
-  background: radial-gradient(circle, rgba(151, 248, 19, 0.4) 0%, transparent 70%);
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.5s ease-out;
-  pointer-events: none;
-}
-
-.start-btn:hover .btn-glow {
-  transform: translate(-50%, -50%) scale(1.5);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulseOuter {
-  0% {
-    transform: scale(0.6);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.4);
-    opacity: 0;
-  }
-}
-
-@keyframes pulseInner {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 15px #97f813;
-  }
-  50% {
-    transform: scale(1.15);
-    box-shadow: 0 0 25px #97f813, 0 0 40px #22d3ee;
-  }
+@keyframes soundBtnIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 </style>
