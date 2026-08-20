@@ -1934,6 +1934,13 @@ const warehouseDistOptions = computed(() => {
   .kpi-divider {
     display: none;
   }
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .compact-activity-table {
+    min-width: 720px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1964,12 +1971,6 @@ const warehouseDistOptions = computed(() => {
   }
   .quick-actions-grid {
     grid-template-columns: 1fr;
-  }
-  .table-wrap {
-    overflow-x: auto;
-  }
-  .compact-activity-table {
-    min-width: 500px;
   }
 }
 .legend-dot {
