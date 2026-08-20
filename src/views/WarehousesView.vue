@@ -13,6 +13,7 @@ import {
   warehouseStatusOptions,
 } from "../constants/warehouseOptions";
 import { canManageWarehouses } from "../services/permissionService";
+import { getCurrentRoleCode } from "../services/authService";
 import {
   createWarehouse,
   getWarehouseCapacity,
@@ -41,6 +42,7 @@ const statusOptions = [
   ...warehouseStatusOptions,
 ];
 const canManage = computed(() => canManageWarehouses());
+const isAdmin = computed(() => getCurrentRoleCode() === "ADMIN");
 const isEditMode = computed(() => formMode.value === "edit");
 const formTitle = computed(() =>
   isEditMode.value ? t("warehouse.form.titleEdit") : t("warehouse.form.titleCreate"),
@@ -441,7 +443,7 @@ function capacityStatusLabel(status) {
           </template>
           <template #diaChi="{ value }">{{ value || "-" }}</template>
           <template #sucChua="{ row }">
-            <div v-if="capacityMap[row.id]" class="cap-bar-wrap">
+            <div v-if="capacityMap[row.id]" class="cap-bar-wrap" style="display: flex; flex-direction: column; gap: 4px;">
               <div class="cap-bar">
                 <div
                   class="cap-bar__fill"
@@ -453,10 +455,26 @@ function capacityStatusLabel(status) {
                 {{ capacityMap[row.id]?.usagePercent?.toFixed(0) }}%
                 {{ capacityStatusLabel(capacityMap[row.id]?.status) }}
               </span>
-              <span class="cap-bar__detail text-xs text-slate-400">
-                {{ capacityMap[row.id]?.usedCapacityM3?.toFixed(2) }} /
-                {{ capacityMap[row.id]?.maxCapacityM3?.toFixed(2) }} m³
-              </span>
+              <div class="cap-bar__detail text-xs text-slate-400" style="display: flex; flex-direction: column; gap: 2px; line-height: 1.4;">
+                <div>
+                  Đã dùng: {{ capacityMap[row.id]?.usedCapacityM3?.toFixed(2) }} / {{ capacityMap[row.id]?.maxCapacityM3?.toFixed(2) }} m³
+                </div>
+                <div>
+                  Còn trống: {{ capacityMap[row.id]?.remainingCapacityM3?.toFixed(2) }} m³
+                </div>
+                <div v-if="capacityMap[row.id]?.minimumSafeVolumeM3 !== null && capacityMap[row.id]?.minimumSafeVolumeM3 !== undefined" style="display: flex; align-items: center; gap: 4px;">
+                  <span>{{ t('warehouse.minimumSafeVolume') }}:</span>
+                  <span class="font-semibold text-zinc-700 dark:text-zinc-300">{{ capacityMap[row.id]?.minimumSafeVolumeM3?.toFixed(2) }} m³</span>
+                </div>
+              </div>
+              <div 
+                v-if="isAdmin && capacityMap[row.id]?.minimumSafeVolumeM3 !== null && capacityMap[row.id]?.minimumSafeVolumeM3 > capacityMap[row.id]?.maxCapacityM3"
+                class="text-xs text-red-500 font-semibold mt-1 p-1.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded"
+                style="display: flex; flex-direction: column; gap: 2px; line-height: 1.3;"
+              >
+                <span>⚠️ {{ t('warehouse.minimumStockConflict') }}</span>
+                <span>{{ t('warehouse.minimumStockConflictExceeded', { amount: (capacityMap[row.id].minimumSafeVolumeM3 - capacityMap[row.id].maxCapacityM3).toFixed(2) }) }}</span>
+              </div>
             </div>
             <span v-else class="text-xs text-slate-400 italic">Chưa cấu hình</span>
           </template>
@@ -529,7 +547,7 @@ function capacityStatusLabel(status) {
 
           <div class="warehouse-mobile-card__body" v-if="capacityMap[row.id]">
             <span class="text-xs text-slate-500">Sức chứa</span>
-            <div class="cap-bar-wrap mt-1">
+            <div class="cap-bar-wrap mt-1" style="display: flex; flex-direction: column; gap: 4px;">
               <div class="cap-bar">
                 <div
                   class="cap-bar__fill"
@@ -541,9 +559,26 @@ function capacityStatusLabel(status) {
                 {{ capacityMap[row.id]?.usagePercent?.toFixed(0) }}%
                 {{ capacityStatusLabel(capacityMap[row.id]?.status) }}
               </span>
-              <span class="cap-bar__detail text-xs text-slate-400">
-                {{ capacityMap[row.id]?.usedCapacityM3?.toFixed(2) }} / {{ capacityMap[row.id]?.maxCapacityM3?.toFixed(2) }} m³
-              </span>
+              <div class="cap-bar__detail text-xs text-slate-400" style="display: flex; flex-direction: column; gap: 2px; line-height: 1.4;">
+                <div>
+                  Đã dùng: {{ capacityMap[row.id]?.usedCapacityM3?.toFixed(2) }} / {{ capacityMap[row.id]?.maxCapacityM3?.toFixed(2) }} m³
+                </div>
+                <div>
+                  Còn trống: {{ capacityMap[row.id]?.remainingCapacityM3?.toFixed(2) }} m³
+                </div>
+                <div v-if="capacityMap[row.id]?.minimumSafeVolumeM3 !== null && capacityMap[row.id]?.minimumSafeVolumeM3 !== undefined" style="display: flex; align-items: center; gap: 4px;">
+                  <span>{{ t('warehouse.minimumSafeVolume') }}:</span>
+                  <span class="font-semibold text-zinc-700 dark:text-zinc-300">{{ capacityMap[row.id]?.minimumSafeVolumeM3?.toFixed(2) }} m³</span>
+                </div>
+              </div>
+              <div 
+                v-if="isAdmin && capacityMap[row.id]?.minimumSafeVolumeM3 !== null && capacityMap[row.id]?.minimumSafeVolumeM3 > capacityMap[row.id]?.maxCapacityM3"
+                class="text-xs text-red-500 font-semibold mt-1 p-1.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded"
+                style="display: flex; flex-direction: column; gap: 2px; line-height: 1.3;"
+              >
+                <span>⚠️ {{ t('warehouse.minimumStockConflict') }}</span>
+                <span>{{ t('warehouse.minimumStockConflictExceeded', { amount: (capacityMap[row.id].minimumSafeVolumeM3 - capacityMap[row.id].maxCapacityM3).toFixed(2) }) }}</span>
+              </div>
             </div>
           </div>
 
