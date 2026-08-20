@@ -101,7 +101,7 @@ function openMinStockConfig(row) {
   configForm.productCode = row.productCode;
   configForm.productName = row.productName;
   configForm.warehouseName = row.warehouse;
-  configForm.minStock = row.minStock || 0;
+  configForm.minStock = (row.minStock !== null && row.minStock !== undefined) ? String(row.minStock) : "";
   configErrorMessage.value = "";
   isConfigOpen.value = true;
 }
@@ -113,9 +113,14 @@ function closeConfigModal() {
 
 async function submitConfigForm() {
   if (!canManage.value) return;
-  const val = Number(configForm.minStock);
-  if (configForm.minStock === "" || configForm.minStock === null || isNaN(val) || !Number.isInteger(val) || val < 0) {
-    configErrorMessage.value = t('inventory.errors.invalidMinStock');
+  const rawVal = String(configForm.minStock).trim();
+  if (rawVal === "") {
+    configErrorMessage.value = t('products.errMinStockRequired');
+    return;
+  }
+  const val = Number(rawVal);
+  if (isNaN(val) || !Number.isFinite(val) || !Number.isInteger(val) || val < 0 || rawVal !== String(val)) {
+    configErrorMessage.value = t('products.errMinStockInvalid');
     return;
   }
   isSavingConfig.value = true;
@@ -520,10 +525,9 @@ function formatDate(value) {
           <div class="field">
             <label class="field-label font-semibold text-slate-700 block mb-1">Định mức tồn tối thiểu</label>
             <input
-              v-model.number="configForm.minStock"
+              v-model="configForm.minStock"
               class="input"
-              type="number"
-              min="0"
+              type="text"
               required
               :disabled="isSavingConfig"
               placeholder="Nhập định mức tồn tối thiểu (Min)..."
