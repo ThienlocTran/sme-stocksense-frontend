@@ -1,10 +1,10 @@
 <script setup>
 import { computed, reactive, ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { changeOwnPassword, clearAuth, formatRole } from '../services/authService'
 import { useAuthStore } from '../stores/auth'
 import { useLayoutStore } from '../stores/layout'
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +19,16 @@ const passwordErrorMessage = ref('')
 const passwordSuccessMessage = ref('')
 const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const passwordErrors = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+const { locale, t } = useI18n()
+const currentLang = computed(() => locale.value)
+
+function changeLang(lang) {
+  locale.value = lang
+  localStorage.setItem('stocksense_lang', lang)
+  // Dispatch dynamic event to notify other components if necessary
+  window.dispatchEvent(new CustomEvent('stocksense-lang-change', { detail: lang }))
+}
 
 const isUserMenuOpen = ref(false)
 
@@ -80,7 +90,7 @@ async function submitChangePassword() {
       newPassword: passwordForm.newPassword,
       confirmPassword: passwordForm.confirmPassword,
     })
-    passwordSuccessMessage.value = data?.message || 'Đổi mật khẩu thành công.'
+    passwordSuccessMessage.value = data?.message || t('topbar.changePasswordSuccess')
     isPasswordModalOpen.value = false
     clearPasswordForm()
   } catch (error) {
@@ -103,26 +113,26 @@ function validatePasswordForm() {
   let isValid = true
 
   if (!passwordForm.currentPassword) {
-    passwordErrors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại.'
+    passwordErrors.currentPassword = t('topbar.currentPasswordRequired')
     isValid = false
   }
 
   if (!passwordForm.newPassword) {
-    passwordErrors.newPassword = 'Vui lòng nhập mật khẩu mới.'
+    passwordErrors.newPassword = t('topbar.newPasswordRequired')
     isValid = false
   } else if (passwordForm.newPassword.length < 8) {
-    passwordErrors.newPassword = 'Mật khẩu mới tối thiểu 8 ký tự.'
+    passwordErrors.newPassword = t('topbar.newPasswordMinLength')
     isValid = false
   } else if (passwordForm.newPassword === passwordForm.currentPassword) {
-    passwordErrors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại.'
+    passwordErrors.newPassword = t('topbar.newPasswordMustBeDifferent')
     isValid = false
   }
 
   if (!passwordForm.confirmPassword) {
-    passwordErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới.'
+    passwordErrors.confirmPassword = t('topbar.confirmPasswordRequired')
     isValid = false
   } else if (passwordForm.confirmPassword !== passwordForm.newPassword) {
-    passwordErrors.confirmPassword = 'Mật khẩu xác nhận không khớp.'
+    passwordErrors.confirmPassword = t('topbar.confirmPasswordMismatch')
     isValid = false
   }
 
@@ -153,18 +163,31 @@ function applyPasswordBackendErrors(errors = {}) {
 <template>
   <header class="topbar">
     <div style="display: flex; align-items: center; gap: 12px;">
-      <button class="mobile-menu-btn" type="button" @click="layoutStore.toggleMobileSidebar" aria-label="Menu">
+      <button class="mobile-menu-btn" type="button" @click="layoutStore.toggleMobileSidebar" :aria-label="t('common.close')">
         <i class="mdi mdi-menu"></i>
       </button>
       <div>
-        <strong>{{ route.meta.title || 'SME StockSense' }}</strong>
-        <span>Doanh nghiệp SME duy nhất</span>
+        <strong>{{ $t('routes.' + route.meta.title) || route.meta.title || 'SME StockSense' }}</strong>
+        <span>{{ $t('topbar.subtitle') }}</span>
       </div>
     </div>
     <div class="topbar-actions">
       <div v-if="passwordSuccessMessage" class="password-success">
         <i class="mdi mdi-check-circle-outline"></i>
         <span>{{ passwordSuccessMessage }}</span>
+      </div>
+
+      <!-- Language Selector Toggle -->
+      <div class="lang-selector">
+        <button 
+          class="lang-btn" 
+          type="button" 
+          @click="changeLang(currentLang === 'vi' ? 'en' : 'vi')"
+          :title="currentLang === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'"
+        >
+          <span class="lang-flag">{{ currentLang === 'vi' ? '🇻🇳' : '🇬🇧' }}</span>
+          <span class="lang-code">{{ currentLang.toUpperCase() }}</span>
+        </button>
       </div>
 
       <!-- Clickable User Profile Toggle with Dropdown -->
@@ -195,11 +218,11 @@ function applyPasswordBackendErrors(errors = {}) {
             <div class="dropdown-divider"></div>
             <button class="dropdown-item" type="button" :disabled="isLoggingOut" @click="triggerChangePassword">
               <i class="mdi mdi-lock-reset"></i>
-              Đổi mật khẩu
+              {{ $t('topbar.changePassword') }}
             </button>
             <button class="dropdown-item logout-item" type="button" :disabled="isLoggingOut" @click="triggerLogout">
               <i class="mdi mdi-logout"></i>
-              Đăng xuất
+              {{ $t('topbar.logout') }}
             </button>
           </div>
         </transition>
@@ -212,10 +235,10 @@ function applyPasswordBackendErrors(errors = {}) {
       <form class="password-form" @submit.prevent="submitChangePassword">
         <div class="modal-head between">
           <div>
-            <h2 class="section-title">Đổi mật khẩu</h2>
-            <p class="modal-desc">Cập nhật mật khẩu cho tài khoản hiện tại.</p>
+            <h2 class="section-title">{{ $t('topbar.changePassword') }}</h2>
+            <p class="modal-desc">{{ $t('topbar.updatingPassword') }}</p>
           </div>
-          <button class="btn btn-icon" type="button" :disabled="isChangingPassword" aria-label="Đóng" @click="closePasswordModal">
+          <button class="btn btn-icon" type="button" :disabled="isChangingPassword" :aria-label="$t('common.close')" @click="closePasswordModal">
             <i class="mdi mdi-close"></i>
           </button>
         </div>
@@ -227,29 +250,29 @@ function applyPasswordBackendErrors(errors = {}) {
           </div>
 
           <label class="field">
-            <span>Mật khẩu hiện tại</span>
-            <input v-model="passwordForm.currentPassword" class="input" type="password" placeholder="Nhập mật khẩu hiện tại" :disabled="isChangingPassword" autocomplete="current-password" />
+            <span>{{ $t('topbar.currentPassword') }}</span>
+            <input v-model="passwordForm.currentPassword" class="input" type="password" :placeholder="$t('topbar.enterCurrentPassword')" :disabled="isChangingPassword" autocomplete="current-password" />
             <small v-if="passwordErrors.currentPassword" class="field-error">{{ passwordErrors.currentPassword }}</small>
           </label>
 
           <label class="field">
-            <span>Mật khẩu mới</span>
-            <input v-model="passwordForm.newPassword" class="input" type="password" placeholder="Tối thiểu 8 ký tự" :disabled="isChangingPassword" autocomplete="new-password" />
+            <span>{{ $t('topbar.newPassword') }}</span>
+            <input v-model="passwordForm.newPassword" class="input" type="password" :placeholder="$t('topbar.min8Chars')" :disabled="isChangingPassword" autocomplete="new-password" />
             <small v-if="passwordErrors.newPassword" class="field-error">{{ passwordErrors.newPassword }}</small>
           </label>
 
           <label class="field">
-            <span>Xác nhận mật khẩu mới</span>
-            <input v-model="passwordForm.confirmPassword" class="input" type="password" placeholder="Nhập lại mật khẩu mới" :disabled="isChangingPassword" autocomplete="new-password" />
+            <span>{{ $t('topbar.confirmPassword') }}</span>
+            <input v-model="passwordForm.confirmPassword" class="input" type="password" :placeholder="$t('topbar.enterNewPasswordConfirm')" :disabled="isChangingPassword" autocomplete="new-password" />
             <small v-if="passwordErrors.confirmPassword" class="field-error">{{ passwordErrors.confirmPassword }}</small>
           </label>
         </div>
 
         <div class="modal-foot">
-          <button class="btn" type="button" :disabled="isChangingPassword" @click="closePasswordModal">Hủy</button>
+          <button class="btn" type="button" :disabled="isChangingPassword" @click="closePasswordModal">{{ $t('common.cancel') }}</button>
           <button class="btn btn-primary" type="submit" :disabled="isChangingPassword">
             <i v-if="isChangingPassword" class="mdi mdi-loading mdi-spin"></i>
-            {{ isChangingPassword ? 'Đang lưu' : 'Lưu' }}
+            {{ isChangingPassword ? $t('topbar.saving') : $t('topbar.save') }}
           </button>
         </div>
       </form>
@@ -446,6 +469,36 @@ function applyPasswordBackendErrors(errors = {}) {
 .dropdown-fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+.lang-selector {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.lang-btn:hover {
+  background: var(--color-bg);
+  border-color: var(--color-border-strong);
+}
+.lang-flag {
+  font-size: 16px;
+  line-height: 1;
+}
+.lang-code {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
 }
 
 @media (max-width: 720px) {
