@@ -190,13 +190,21 @@ const setCompletedStates = (svg) => {
 // Whether the browser blocked audio autoplay
 const audioBlocked = ref(false);
 
-// Called when user clicks the 🔊 button after browser blocked autoplay
+// Ref for the any-interaction listener so we can remove it after use
+let anyInteractionHandler = null;
+
+// Enable sound — called from click/keydown on the overlay
 const enableSound = () => {
-  if (!introAudio) return;
+  if (!introAudio || !audioBlocked.value) return;
   introAudio.volume = 0.7;
   introAudio.muted = false;
   introAudio.play().catch(() => {});
   audioBlocked.value = false;
+  // Clean up listeners
+  if (anyInteractionHandler) {
+    document.removeEventListener('keydown', anyInteractionHandler);
+    anyInteractionHandler = null;
+  }
 };
 
 // Start animation timeline + attempt audio play
@@ -217,10 +225,14 @@ const startIntro = () => {
     introAudio.addEventListener('playing', startTimelineRef, { once: true });
 
     introAudio.play().catch((error) => {
-      // Autoplay blocked → start timeline silently, show small sound button
+      // Autoplay blocked → start timeline silently
       console.warn("Intro audio autoplay blocked:", error);
       audioBlocked.value = true;
       startTimeline();
+
+      // Listen for ANY keydown or click on the overlay to enable sound
+      anyInteractionHandler = () => enableSound();
+      document.addEventListener('keydown', anyInteractionHandler, { once: true });
     });
 
     // Safety fallback: start timeline after 500ms regardless
@@ -643,6 +655,10 @@ onUnmounted(() => {
       introAudio.removeEventListener('playing', startTimelineRef);
     }
   }
+  if (anyInteractionHandler) {
+    document.removeEventListener('keydown', anyInteractionHandler);
+    anyInteractionHandler = null;
+  }
   if (typeof document !== 'undefined') {
     document.body.classList.remove('scroll-locked');
     document.documentElement.classList.remove('scroll-locked');
@@ -651,20 +667,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="brand-intro-preloader" class="brand-intro-overlay">
+  <div id="brand-intro-preloader" class="brand-intro-overlay" @click="enableSound">
     <!-- Exit Panels (Solid slide elements that open left/right) -->
     <div class="exit-panel panel-left" id="panel-l"></div>
     <div class="exit-panel panel-right" id="panel-r"></div>
 
-    <!-- Small sound button (shown only if browser blocked autoplay) -->
-    <button v-if="audioBlocked" @click="enableSound" class="sound-btn" title="Bật âm thanh">
+    <!-- Subtle hint shown only when audio is blocked -->
+    <div v-if="audioBlocked" class="sound-hint">
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
-        <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
-      <span>Bật tiếng</span>
-    </button>
+      Nhấn phím bất kỳ hoặc click để bật âm thanh
+    </div>
 
     <!-- Background visual effects (Radial gradients that fade out before slide) -->
     <div class="bg-effects">
@@ -1045,44 +1060,33 @@ onUnmounted(() => {
   touch-action: none !important;
 }
 
-/* Small sound toggle button — appears in bottom-right corner only when autoplay is blocked */
-.sound-btn {
+/* Subtle hint at bottom — appears only when autoplay is blocked */
+.sound-hint {
   position: absolute;
-  bottom: 1.5rem;
-  right: 1.5rem;
+  bottom: 1.75rem;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 200;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 1rem 0.55rem 0.75rem;
-  background: rgba(2, 8, 23, 0.75);
-  border: 1px solid rgba(151, 248, 19, 0.45);
-  border-radius: 50px;
-  color: #97f813;
+  gap: 0.45rem;
+  color: rgba(151, 248, 19, 0.55);
   font-family: system-ui, -apple-system, sans-serif;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  transition: all 0.2s ease;
-  animation: soundBtnIn 0.4s ease-out;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  pointer-events: none; /* overlay handles the click */
+  animation: hintFadeIn 1s ease-out;
+  white-space: nowrap;
 }
 
-.sound-btn:hover {
-  background: rgba(12, 148, 78, 0.35);
-  border-color: #97f813;
-  box-shadow: 0 0 16px rgba(151, 248, 19, 0.3);
-  transform: translateY(-2px);
-}
-
-.sound-btn svg {
-  width: 18px;
-  height: 18px;
+.sound-hint svg {
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
 }
 
-@keyframes soundBtnIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes hintFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 </style>
