@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, reactive } from "vue";
+import { computed, onMounted, ref, reactive, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
 import StatusBadge from "../components/StatusBadge.vue";
@@ -31,7 +31,7 @@ defineOptions({
 const router = useRouter();
 const authStore = useAuthStore();
 const layoutStore = useLayoutStore();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const isLoading = ref(true);
 const isRetrying = ref(false);
@@ -68,13 +68,25 @@ const warehouseDistFailed = ref(false);
 
 const movementWarehouseId = ref("");
 const warehouseList = ref([]);
-const selectedPeriodDays = ref(30);
+// Date Picker & Calendar State for Chart
+const movementStartDate = ref(new Date());
+// Default to 90 days ending today (start date is today - 89 days)
+const defaultStart = new Date();
+defaultStart.setDate(defaultStart.getDate() - 89);
+movementStartDate.value = defaultStart;
 
-const periodPresets = [
-  { label: "7 ngày", days: 7 },
-  { label: "30 ngày", days: 30 },
-  { label: "90 ngày", days: 90 },
-];
+const movementEndDate = computed(() => {
+  const end = new Date(movementStartDate.value);
+  end.setDate(end.getDate() + 89);
+  return end;
+});
+
+const isCalendarOpen = ref(false);
+const datepickerContainer = ref(null);
+
+const calendarMonth = ref(new Date().getMonth());
+const calendarYear = ref(new Date().getFullYear());
+const selectedTempDate = ref(new Date());
 
 const currentUser = computed(() => authStore.currentUser);
 const currentUserName = computed(() => currentUser.value?.hoTen || currentUser.value?.fullName || "");
@@ -578,27 +590,209 @@ function viewDocumentDetail(type, documentId) {
   router.push(path);
 }
 
-// Local Vietnam-timezone-safe date calculations
-function getLocalDateString(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+// Format display date: DD/MM/YYYY
+function formatLocalDateDisplay(date) {
+  if (!date) return "";
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+// Format API date: YYYY-MM-DD
+function formatLocalDateApi(date) {
+  if (!date) return "";
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
-function getRangeDates(days) {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(to.getDate() - (days - 1));
-  return {
-    from: getLocalDateString(from),
-    to: getLocalDateString(to)
-  };
+function previous90Days() {
+  const newStart = new Date(movementStartDate.value);
+  newStart.setDate(newStart.getDate() - 90);
+  movementStartDate.value = newStart;
+  fetchMovementData();
 }
 
-function changePeriod(days) {
-  selectedPeriodDays.value = days;
+function next90Days() {
+  const newStart = new Date(movementStartDate.value);
+  newStart.setDate(newStart.getDate() + 90);
+  movementStartDate.value = newStart;
   fetchMovementData();
+}
+
+function toggleCalendar(event) {
+  if (isCalendarOpen.value) {
+    closeCalendar();
+  } else {
+    if (event) event.stopPropagation();
+    openCalendar();
+  }
+}
+
+function openCalendar() {
+  selectedTempDate.value = new Date(movementStartDate.value);
+  calendarMonth.value = selectedTempDate.value.getMonth();
+  calendarYear.value = selectedTempDate.value.getFullYear();
+  isCalendarOpen.value = true;
+  document.addEventListener("click", handleDocumentClick);
+}
+
+function closeCalendar() {
+  isCalendarOpen.value = false;
+  document.removeEventListener("click", handleDocumentClick);
+}
+
+function handleDocumentClick(event) {
+  if (
+    isCalendarOpen.value &&
+    datepickerContainer.value &&
+    !datepickerContainer.value.contains(event.target)
+  ) {
+    closeCalendar();
+  }
+}
+
+function applyCalendar() {
+  movementStartDate.value = new Date(selectedTempDate.value);
+  closeCalendar();
+  fetchMovementData();
+}
+
+function prevMonth() {
+  if (calendarMonth.value === 0) {
+    calendarMonth.value = 11;
+    calendarYear.value -= 1;
+  } else {
+    calendarMonth.value -= 1;
+  }
+}
+
+function nextMonth() {
+  if (calendarMonth.value === 11) {
+    calendarMonth.value = 0;
+    calendarYear.value += 1;
+  } else {
+    calendarMonth.value += 1;
+  }
+}
+
+function selectTempDate(date) {
+  selectedTempDate.value = new Date(date);
+  calendarMonth.value = date.getMonth();
+  calendarYear.value = date.getFullYear();
+}
+
+const calendarWeekdays = computed(() => {
+  return locale.value === "en"
+    ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+});
+
+const calendarTitle = computed(() => {
+  const month = calendarMonth.value;
+  const year = calendarYear.value;
+  if (locale.value === "en") {
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    return `${monthNames[month]} ${year}`;
+  } else {
+    return `Tháng ${String(month + 1).padStart(2, '0')} / ${year}`;
+  }
+});
+
+const calendarDays = computed(() => {
+  const days = [];
+  const year = calendarYear.value;
+  const month = calendarMonth.value;
+
+  const firstDay = new Date(year, month, 1);
+  let startOffset = firstDay.getDay() - 1; // 0 for Mon, 6 for Sun
+  if (startOffset === -1) startOffset = 6;
+
+  // Previous month tail days
+  const prevMonthDate = new Date(year, month, 0);
+  const prevMonthDaysCount = prevMonthDate.getDate();
+  for (let i = startOffset - 1; i >= 0; i--) {
+    const dayNum = prevMonthDaysCount - i;
+    const d = new Date(year, month - 1, dayNum);
+    days.push({
+      id: `prev-${dayNum}`,
+      dayNumber: dayNum,
+      date: d,
+      isCurrentMonth: false,
+    });
+  }
+
+  // Current month days
+  const currentMonthDaysCount = new Date(year, month + 1, 0).getDate();
+  for (let i = 1; i <= currentMonthDaysCount; i++) {
+    const d = new Date(year, month, i);
+    days.push({
+      id: `curr-${i}`,
+      dayNumber: i,
+      date: d,
+      isCurrentMonth: true,
+    });
+  }
+
+  // Next month leading days (complete 42 cells)
+  const remaining = 42 - days.length;
+  for (let i = 1; i <= remaining; i++) {
+    const d = new Date(year, month + 1, i);
+    days.push({
+      id: `next-${i}`,
+      dayNumber: i,
+      date: d,
+      isCurrentMonth: false,
+    });
+  }
+
+  return days;
+});
+
+function getDayClass(day) {
+  const isSelected =
+    selectedTempDate.value &&
+    day.date.getDate() === selectedTempDate.value.getDate() &&
+    day.date.getMonth() === selectedTempDate.value.getMonth() &&
+    day.date.getFullYear() === selectedTempDate.value.getFullYear();
+
+  const today = new Date();
+  const isToday =
+    day.date.getDate() === today.getDate() &&
+    day.date.getMonth() === today.getMonth() &&
+    day.date.getFullYear() === today.getFullYear();
+
+  let classes = "";
+  if (isSelected) {
+    classes = "selected";
+  } else if (isToday) {
+    classes = "today";
+  }
+
+  if (day.isCurrentMonth) {
+    classes += " current-month";
+  } else {
+    classes += " other-month";
+  }
+
+  return classes;
 }
 
 async function loadWarehouseDropdown() {
@@ -614,7 +808,8 @@ async function fetchMovementData() {
   isMovementLoading.value = true;
   movementFailed.value = false;
   
-  const { from, to } = getRangeDates(selectedPeriodDays.value);
+  const from = formatLocalDateApi(movementStartDate.value);
+  const to = formatLocalDateApi(movementEndDate.value);
   const params = {
     from,
     to,
@@ -763,7 +958,20 @@ const movementChartOptions = computed(() => {
       labels: {
         style: { colors: "var(--color-text-secondary)", fontSize: "11px" },
         rotate: 0,
-        hideOverlappingLabels: true
+        hideOverlappingLabels: true,
+        formatter: function(val, timestamp, opts) {
+          if (!opts || typeof opts.index !== 'number') return val;
+          const idx = opts.index;
+          const totalPoints = dates.length;
+          if (totalPoints > 20) {
+            const step = Math.floor(totalPoints / 6);
+            if (idx === 0 || idx === totalPoints - 1 || idx % step === 0) {
+              return val;
+            }
+            return "";
+          }
+          return val;
+        }
       },
       axisBorder: { show: false },
       axisTicks: { show: false }
@@ -788,7 +996,22 @@ const movementChartOptions = computed(() => {
       shared: true,
       intersect: false,
       theme: layoutStore.theme === 'dark' ? 'dark' : 'light',
-      x: { show: true },
+      x: {
+        show: true,
+        formatter: function(val, opts) {
+          if (opts && typeof opts.dataPointIndex === 'number') {
+            const item = movementData.value[opts.dataPointIndex];
+            if (item && item.date) {
+              const parts = item.date.split('-');
+              if (parts.length === 3) {
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+              }
+              return item.date;
+            }
+          }
+          return val;
+        }
+      },
       y: {
         formatter: (val) => `${formatNumber(val)} sản phẩm`
       }
@@ -1047,16 +1270,82 @@ const warehouseDistOptions = computed(() => {
                   {{ w.maKho || w.code ? `${w.maKho || w.code} - ${w.tenKho || w.name || '-'}` : (w.tenKho || w.name || '-') }}
                 </option>
               </select>
-              <div class="tabs tabs-sm">
+              <div ref="datepickerContainer" class="date-navigation flex items-center gap-1.5">
                 <button 
-                  v-for="p in periodPresets" 
-                  :key="p.days" 
-                  class="tab tab-sm" 
-                  :class="{ active: selectedPeriodDays === p.days }"
-                  @click="changePeriod(p.days)"
+                  class="btn btn-secondary btn-icon btn-sm" 
+                  type="button"
+                  @click="previous90Days" 
                   :disabled="isMovementLoading"
+                  title="90 ngày trước"
                 >
-                  {{ $t(p.label) || p.label }}
+                  <i class="mdi mdi-chevron-left text-base"></i>
+                </button>
+                
+                <div class="relative">
+                  <button 
+                    class="btn btn-secondary btn-sm flex items-center gap-2 cursor-pointer select-none whitespace-nowrap" 
+                    type="button"
+                    @click.stop="toggleCalendar" 
+                    :disabled="isMovementLoading"
+                  >
+                    <i class="mdi mdi-calendar text-blue-600 text-base"></i>
+                    <span>{{ formatLocalDateDisplay(movementStartDate) }}</span>
+                    <span class="text-zinc-400">→</span>
+                    <span class="text-zinc-500 font-medium">{{ formatLocalDateDisplay(movementEndDate) }}</span>
+                  </button>
+                  
+                  <!-- Calendar Popup -->
+                  <div v-if="isCalendarOpen" class="calendar-popup animate-in fade-in duration-150">
+                    <!-- Calendar Header -->
+                    <div class="calendar-header">
+                      <button class="btn btn-ghost btn-icon btn-sm" type="button" @click="prevMonth">
+                        <i class="mdi mdi-chevron-left"></i>
+                      </button>
+                      <span class="calendar-header-title">{{ calendarTitle }}</span>
+                      <button class="btn btn-ghost btn-icon btn-sm" type="button" @click="nextMonth">
+                        <i class="mdi mdi-chevron-right"></i>
+                      </button>
+                    </div>
+                    
+                    <!-- Weekday Labels -->
+                    <div class="calendar-weekdays">
+                      <span v-for="day in calendarWeekdays" :key="day">{{ day }}</span>
+                    </div>
+                    
+                    <!-- Days Grid -->
+                    <div class="calendar-days-grid">
+                      <button 
+                        v-for="day in calendarDays" 
+                        :key="day.id"
+                        class="calendar-day-btn"
+                        :class="getDayClass(day)"
+                        type="button"
+                        @click="selectTempDate(day.date)"
+                      >
+                        {{ day.dayNumber }}
+                      </button>
+                    </div>
+                    
+                    <!-- Calendar Footer Actions -->
+                    <div class="calendar-footer">
+                      <button class="btn btn-ghost btn-sm text-zinc-500 font-medium" type="button" @click="closeCalendar">
+                        {{ $t('common.cancel') }}
+                      </button>
+                      <button class="btn btn-primary btn-sm font-semibold" type="button" @click="applyCalendar">
+                        {{ $t('common.apply') }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <button 
+                  class="btn btn-secondary btn-icon btn-sm" 
+                  type="button"
+                  @click="next90Days" 
+                  :disabled="isMovementLoading"
+                  title="90 ngày tiếp theo"
+                >
+                  <i class="mdi mdi-chevron-right text-base"></i>
                 </button>
               </div>
             </div>
@@ -2083,5 +2372,108 @@ const warehouseDistOptions = computed(() => {
   align-items: center;
   justify-content: center;
   padding: 16px;
+}
+
+/* Custom Calendar Styles */
+.date-navigation {
+  display: inline-flex;
+  align-items: center;
+}
+
+.calendar-popup {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 8px;
+  width: 280px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.calendar-header-title {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--color-text-primary);
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.calendar-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day-btn {
+  height: 30px;
+  width: 30px;
+  margin: 0 auto;
+  border: 0;
+  background: transparent;
+  border-radius: 9999px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.calendar-day-btn.selected {
+  background: var(--color-action-primary);
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.calendar-day-btn.today {
+  border: 1px solid var(--color-action-primary);
+  color: var(--color-action-primary);
+}
+
+.calendar-day-btn.current-month {
+  color: var(--color-text-primary);
+}
+
+.calendar-day-btn.other-month {
+  color: var(--color-text-muted);
+}
+
+.calendar-day-btn.current-month:hover {
+  background: var(--color-btn-hover-bg);
+}
+
+.calendar-day-btn.other-month:hover {
+  background: var(--color-btn-hover-bg);
+}
+
+.calendar-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
 }
 </style>

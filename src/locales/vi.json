@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Lưu",
+    "apply": "Áp dụng",
     "cancel": "Hủy",
     "refresh": "Làm mới",
     "search": "Tìm kiếm...",
@@ -256,6 +257,8 @@
     "stockMovement": "Biến động Nhập / Xuất kho",
     "stockMovementDesc": "Xu hướng dòng chảy hàng hóa qua các kho",
     "allWarehouses": "Tất cả kho",
+    "timePeriod": "Khoảng thời gian",
+    "days": "{count} ngày",
     "loadingChart": "Đang tải biểu đồ biến động...",
     "failedLoadMovement": "Không thể tải dữ liệu biến động kho",
     "noMovementData": "Chưa có dữ liệu biến động",

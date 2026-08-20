@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Save",
+    "apply": "Apply",
     "cancel": "Cancel",
     "refresh": "Refresh",
     "search": "Search...",
@@ -256,6 +257,8 @@
     "stockMovement": "Stock In / Out Movement",
     "stockMovementDesc": "Stock flow trends across warehouses",
     "allWarehouses": "All Warehouses",
+    "timePeriod": "Period",
+    "days": "{count} days",
     "loadingChart": "Loading movement chart...",
     "failedLoadMovement": "Unable to load stock movement data",
     "noMovementData": "No movement data",
