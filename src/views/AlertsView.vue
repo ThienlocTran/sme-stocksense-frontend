@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import PageHeader from "../components/PageHeader.vue";
@@ -7,12 +7,14 @@ import DataTable from "../components/DataTable.vue";
 import SearchFilterBar from "../components/SearchFilterBar.vue";
 import EmptyState from "../components/EmptyState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { getLowStockInventory } from "../services/inventoryService";
-import { getWarehouses } from "../services/warehouseService";
+import { getWarehouses, getWarehouseCapacity } from "../services/warehouseService";
 
 const router = useRouter();
 const { t } = useI18n();
-const alerts = ref([]);
+const lowStockAlerts = ref([]);
+const capacityAlerts = ref([]);
 const warehouses = ref([]);
 const isLoading = ref(false);
 const isLoadingDropdowns = ref(false);
@@ -23,8 +25,7 @@ const searchKeyword = ref("");
 const page = ref(0);
 const size = ref(20);
 const totalPages = ref(0);
-const totalElements = ref(0);
-const filters = reactive({ warehouseId: "", warehouseStatus: "" });
+const filters = reactive({ warehouseId: "", warehouseStatus: "", alertType: "ALL" });
 const fetchRequestId = ref(0);
 const latestRequestId = ref(0);
 const dropdownRequestId = ref(0);
@@ -47,26 +48,106 @@ const hasActiveFilters = computed(() => {
   return (
     searchKeyword.value.trim() !== "" ||
     filters.warehouseId !== "" ||
-    filters.warehouseStatus !== ""
+    filters.warehouseStatus !== "" ||
+    filters.alertType !== "ALL"
   );
 });
 
+const warehouseOptions = computed(() => {
+  return [
+    { value: "", label: isLoadingDropdowns.value ? t('alerts.filter.loadingWarehouse') : t('alerts.filter.allWarehouse') },
+    ...warehouses.value.map(w => {
+      const code = w.maKho || w.code;
+      const name = w.tenKho || w.name;
+      const label = code ? `${code} - ${name || "-"}` : name || "-";
+      return {
+        value: w.id,
+        label,
+        sublabel: w.diaChi || '',
+        searchKey: `${code || ''} ${name || ''}`.toLowerCase()
+      };
+    })
+  ];
+});
+
+// Load Warehouse Capacity Alerts (Usage >= 95%)
+async function loadWarehouseCapacities() {
+  if (warehouses.value.length === 0) return;
+  try {
+    const results = await Promise.allSettled(warehouses.value.map(w => getWarehouseCapacity(w.id)));
+    const capAlerts = [];
+    
+    warehouses.value.forEach((w, i) => {
+      if (results[i].status === 'fulfilled' && results[i].value) {
+        const cap = results[i].value;
+        const usagePercentage = Number(cap.usagePercentage || 0);
+        
+        if (usagePercentage >= 95) {
+          capAlerts.push({
+            id: `cap-${w.id}`,
+            productId: null,
+            productCode: 'N/A',
+            productName: usagePercentage > 100 
+              ? `${t('capacity.status.QUA_TAI')}: ${w.tenKho}` 
+              : `${t('capacity.status.NGUY_HIEM')}: ${w.tenKho}`,
+            warehouse: w.tenKho,
+            warehouseId: w.id,
+            currentQuantity: `${usagePercentage.toFixed(0)}%`,
+            minStock: 100,
+            severity: usagePercentage > 100 ? 'CRITICAL' : 'WARNING',
+            alertType: 'CAPACITY',
+            lastUpdatedAt: new Date().toISOString()
+          });
+        }
+      }
+    });
+    capacityAlerts.value = capAlerts;
+  } catch (err) {
+    console.error('Failed to load warehouse capacities:', err);
+  }
+}
+
+// Combined Alerts
+const combinedAlerts = computed(() => {
+  let list = [];
+  if (filters.alertType === 'ALL' || filters.alertType === 'LOW_STOCK') {
+    list = [...list, ...lowStockAlerts.value];
+  }
+  if (filters.alertType === 'ALL' || filters.alertType === 'CAPACITY') {
+    list = [...list, ...capacityAlerts.value];
+  }
+
+  // Apply filters locally on capacity alerts
+  if (filters.warehouseId) {
+    list = list.filter(a => String(a.warehouseId) === String(filters.warehouseId));
+  }
+  if (searchKeyword.value.trim()) {
+    const kw = searchKeyword.value.trim().toLowerCase();
+    list = list.filter(a => 
+      a.productCode.toLowerCase().includes(kw) || 
+      a.productName.toLowerCase().includes(kw) || 
+      a.warehouse.toLowerCase().includes(kw)
+    );
+  }
+
+  return list;
+});
+
+const totalElements = computed(() => combinedAlerts.value.length);
+
 // Dynamic Page Metrics
 const criticalCount = computed(() => {
-  return alerts.value.filter((a) => Number(a.currentQuantity ?? 0) === 0).length;
+  return combinedAlerts.value.filter((a) => a.severity === 'CRITICAL').length;
 });
 
 const warningCount = computed(() => {
-  return alerts.value.filter((a) => {
-    const cur = Number(a.currentQuantity ?? 0);
-    const min = Number(a.minStock ?? 0);
-    return cur > 0 && cur < min;
-  }).length;
+  return combinedAlerts.value.filter((a) => a.severity === 'WARNING').length;
 });
 
 onMounted(async () => {
   const loaded = await loadDropdowns(filters.warehouseStatus);
   if (loaded) {
+    await loadWarehouseCapacities();
     fetchAlerts();
   }
 });
@@ -128,15 +209,21 @@ async function fetchAlerts() {
       return;
     }
 
-    alerts.value = data.content || [];
+    lowStockAlerts.value = (data.content || []).map(a => ({
+      ...a,
+      alertType: 'LOW_STOCK',
+      severity: Number(a.currentQuantity ?? 0) === 0 ? 'CRITICAL' : 'WARNING'
+    }));
+    
+    await loadWarehouseCapacities();
+    
     totalPages.value = data.totalPages || 0;
-    totalElements.value = data.totalElements || 0;
   } catch (error) {
     if (requestId !== latestRequestId.value) {
       return;
     }
 
-    alerts.value = [];
+    lowStockAlerts.value = [];
     errorMessage.value = error.message;
     if (error.status === 401) {
       router.replace("/login");
@@ -153,6 +240,16 @@ async function applySearch() {
   searchKeyword.value = searchDraft.value.trim();
   await fetchAlerts();
 }
+
+const searchDebounceTimer = ref(null);
+watch(searchDraft, (newVal) => {
+  if (searchDebounceTimer.value) clearTimeout(searchDebounceTimer.value);
+  searchDebounceTimer.value = setTimeout(() => {
+    page.value = 0;
+    searchKeyword.value = newVal.trim();
+    fetchAlerts();
+  }, 300);
+});
 
 async function applyFilter() {
   page.value = 0;
@@ -177,6 +274,7 @@ async function clearFilters() {
   searchKeyword.value = "";
   filters.warehouseId = "";
   filters.warehouseStatus = "";
+  filters.alertType = "ALL";
   page.value = 0;
 
   const loaded = await loadDropdowns();
@@ -191,7 +289,11 @@ function displayWarehouseName(row) {
     : row.warehouse || "-";
 }
 
-function formatInventoryStatus(status) {
+function formatInventoryStatus(row) {
+  if (row.alertType === 'CAPACITY') {
+    return row.severity === 'CRITICAL' ? t('capacity.status.QUA_TAI') : t('capacity.status.NGUY_HIEM');
+  }
+  const status = row.status;
   if (status === "LOW_STOCK") return t("alerts.status.lowStock");
   if (status === "OUT_OF_STOCK") return t("alerts.status.outOfStock");
   if (status === "NORMAL") return t("alerts.status.normal");
@@ -200,6 +302,9 @@ function formatInventoryStatus(status) {
 }
 
 function computeSeverity(row) {
+  if (row.alertType === 'CAPACITY') {
+    return row.severity;
+  }
   const current = Number(row.currentQuantity ?? 0);
   if (current <= 0) {
     return "CRITICAL";
@@ -225,6 +330,10 @@ function nextPage() {
 }
 
 function navigateToInventory(row) {
+  if (row.alertType === 'CAPACITY') {
+    router.push("/warehouses");
+    return;
+  }
   router.push({
     path: "/inventory",
     query: {
@@ -264,24 +373,23 @@ function navigateToInventory(row) {
       :placeholder="t('alerts.searchPlaceholder')"
       @keyup.enter="applySearch"
     >
-      <select
+      <SearchableSelect
         v-model="filters.warehouseId"
-        class="select"
+        :options="warehouseOptions"
+        :placeholder="t('alerts.filter.allWarehouse')"
         :disabled="isLoadingDropdowns || isLoading"
         @change="applyFilter"
+      />
+
+      <select
+        v-model="filters.alertType"
+        class="select"
+        :disabled="isLoading || isLoadingDropdowns"
+        @change="applyFilter"
       >
-        <option value="">
-          {{ isLoadingDropdowns ? t("alerts.filter.loadingWarehouse") : t("alerts.filter.allWarehouse") }}
-        </option>
-        <option
-          v-for="warehouse in warehouses"
-          :key="warehouse.id"
-          :value="warehouse.id"
-        >
-          {{
-            `${warehouse.maKho || warehouse.code || ""}${warehouse.tenKho || warehouse.name ? " - " : ""}${warehouse.tenKho || warehouse.name || ""}`
-          }}
-        </option>
+        <option value="ALL">{{ t("alerts.filter.allAlertTypes") }}</option>
+        <option value="LOW_STOCK">{{ t("alerts.filter.lowStock") }}</option>
+        <option value="CAPACITY">{{ t("alerts.filter.capacity") }}</option>
       </select>
 
       <select
@@ -335,12 +443,12 @@ function navigateToInventory(row) {
     </div>
 
     <!-- Main Content Container -->
-    <div v-else-if="alerts.length > 0">
+    <div v-else-if="combinedAlerts.length > 0">
       <!-- Desktop Table -->
       <div class="inventory-desktop-table animate-in fade-in duration-200">
         <DataTable
           :columns="columns"
-          :rows="alerts"
+          :rows="combinedAlerts"
           min-width="1200px"
         >
           <template #productCode="{ value }">
@@ -362,11 +470,12 @@ function navigateToInventory(row) {
             <div class="quantity-cell text-right">
               <span
                 class="tabular-num font-semibold"
-                :class="row.status === 'OUT_OF_STOCK' ? 'text-red-600 font-bold' : 'text-amber-600 font-bold'"
+                :class="row.severity === 'CRITICAL' ? 'text-red-600 font-bold' : 'text-amber-600 font-bold'"
               >
                 {{ row.currentQuantity ?? 0 }}
               </span>
-              <span class="threshold-hint">/ {{ t("alerts.table.minStock") }} {{ row.minStock }}</span>
+              <span v-if="row.alertType !== 'CAPACITY'" class="threshold-hint">/ {{ t("alerts.table.minStock") }} {{ row.minStock }}</span>
+              <span v-else class="threshold-hint"> sử dụng</span>
             </div>
           </template>
           <template #severity="{ row }">
@@ -375,7 +484,7 @@ function navigateToInventory(row) {
             </div>
           </template>
           <template #status="{ row }">
-            <StatusBadge :status="formatInventoryStatus(row.status)" />
+            <StatusBadge :status="formatInventoryStatus(row)" />
           </template>
           <template #lastUpdatedAt="{ value }">
             <span class="tabular-num text-xs">{{ formatDate(value) }}</span>
@@ -385,10 +494,10 @@ function navigateToInventory(row) {
               <button
                 class="btn btn-secondary btn-sm flex items-center gap-1 ml-auto"
                 @click="navigateToInventory(row)"
-                :title="t('alerts.table.viewInventoryTitle')"
+                :title="row.alertType === 'CAPACITY' ? 'Xem kho hàng' : t('alerts.table.viewInventoryTitle')"
               >
-                <i class="mdi mdi-eye-outline"></i>
-                {{ t("alerts.table.viewInventory") }}
+                <i class="mdi" :class="row.alertType === 'CAPACITY' ? 'mdi-warehouse' : 'mdi-eye-outline'"></i>
+                {{ row.alertType === 'CAPACITY' ? 'Xem kho hàng' : t("alerts.table.viewInventory") }}
               </button>
             </div>
           </template>
@@ -397,7 +506,7 @@ function navigateToInventory(row) {
 
       <!-- Mobile List Cards -->
       <div class="inventory-mobile-list animate-in fade-in duration-200">
-        <div v-for="row in alerts" :key="row.id || row.productCode" class="mobile-alert-card card card-pad">
+        <div v-for="row in combinedAlerts" :key="row.id || row.productCode" class="mobile-alert-card card card-pad">
           <div class="card-header-row">
             <div class="product-cell">
               <div class="product-thumbnail">
@@ -408,7 +517,7 @@ function navigateToInventory(row) {
                 <code class="sku-code text-xs w-fit">{{ row.productCode }}</code>
               </div>
             </div>
-            <StatusBadge :status="formatInventoryStatus(row.status)" />
+            <StatusBadge :status="formatInventoryStatus(row)" />
           </div>
 
           <div class="card-body-details">
@@ -420,9 +529,9 @@ function navigateToInventory(row) {
               <span class="detail-label">{{ t("alerts.table.currentQuantityLabel") }}</span>
               <span
                 class="detail-val tabular-num font-semibold"
-                :class="row.status === 'OUT_OF_STOCK' ? 'text-red-600' : 'text-amber-600'"
+                :class="row.severity === 'CRITICAL' ? 'text-red-600' : 'text-amber-600'"
               >
-                {{ row.currentQuantity ?? 0 }} / {{ t("alerts.table.minStock") }} {{ row.minStock }}
+                {{ row.currentQuantity ?? 0 }} <span v-if="row.alertType !== 'CAPACITY'">/ {{ t("alerts.table.minStock") }} {{ row.minStock }}</span><span v-else> sử dụng</span>
               </span>
             </div>
             <div class="detail-row">
@@ -440,8 +549,8 @@ function navigateToInventory(row) {
               class="btn btn-secondary btn-sm w-full justify-center gap-1"
               @click="navigateToInventory(row)"
             >
-              <i class="mdi mdi-eye-outline"></i>
-              {{ t("alerts.table.viewInventory") }}
+              <i class="mdi" :class="row.alertType === 'CAPACITY' ? 'mdi-warehouse' : 'mdi-eye-outline'"></i>
+              {{ row.alertType === 'CAPACITY' ? 'Xem kho hàng' : t("alerts.table.viewInventory") }}
             </button>
           </div>
         </div>

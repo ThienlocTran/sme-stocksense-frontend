@@ -6,9 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SME StockSense - Quản lý tồn kho</title>
     <script>
-      if (localStorage.getItem('stocksense_theme') === 'dark') {
-        document.documentElement.classList.add('dark');
-      }
+      (function() {
+        const theme = localStorage.getItem('stocksense-theme') || localStorage.getItem('stocksense_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
     </script>
   </head>
   <body>

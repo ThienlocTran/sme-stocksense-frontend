@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from 'vue-i18n';
 import PageHeader from "../components/PageHeader.vue";
@@ -7,6 +7,7 @@ import SearchFilterBar from "../components/SearchFilterBar.vue";
 import DataTable from "../components/DataTable.vue";
 import EmptyState from "../components/EmptyState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { getInventoryTransactions } from "../services/inventoryService";
 import { getWarehouses } from "../services/warehouseService";
 
@@ -36,6 +37,7 @@ const transactionTypeOptions = [
   { value: "NHAP_DAU_KY", label: t("transactions.initialInbound") },
   { value: "DIEU_CHINH_TANG", label: t("transactions.adjustIncrease") },
   { value: "DIEU_CHINH_GIAM", label: t("transactions.adjustDecrease") },
+  { value: "DIEU_CHINH_KIEM_KE", label: t("transactions.adjustCount") },
 ];
 
 const columns = [
@@ -57,6 +59,23 @@ const hasActiveFilters = computed(() => {
     filters.from !== "" ||
     filters.to !== ""
   );
+});
+
+const warehouseOptions = computed(() => {
+  return [
+    { value: "", label: isLoadingDropdowns.value ? t('transactions.loadingWarehouses') : t('transactions.allWarehouses') },
+    ...warehouses.value.map(w => {
+      const code = w.maKho || w.code;
+      const name = w.tenKho || w.name;
+      const label = code ? `${code} - ${name || "-"}` : name || "-";
+      return {
+        value: w.id,
+        label,
+        sublabel: w.diaChi || '',
+        searchKey: `${code || ''} ${name || ''}`.toLowerCase()
+      };
+    })
+  ];
 });
 
 const hasPreviousPage = computed(() => page.value > 0);
@@ -122,6 +141,15 @@ function applySearch() {
   page.value = 0;
   fetchTransactions();
 }
+
+const searchDebounceTimer = ref(null);
+watch(searchDraft, (newVal) => {
+  if (searchDebounceTimer.value) clearTimeout(searchDebounceTimer.value);
+  searchDebounceTimer.value = setTimeout(() => {
+    page.value = 0;
+    fetchTransactions();
+  }, 300);
+});
 
 function applyFilter() {
   page.value = 0;
@@ -217,12 +245,13 @@ function viewDocumentDetail(type, documentId) {
         </option>
       </select>
 
-      <select v-model="filters.warehouseId" class="select" :disabled="isLoadingDropdowns || isLoading" @change="applyFilter">
-        <option value="">{{ isLoadingDropdowns ? t("transactions.loadingWarehouses") : t("transactions.allWarehouses") }}</option>
-        <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-          {{ displayWarehouseOption(warehouse) }}
-        </option>
-      </select>
+      <SearchableSelect
+        v-model="filters.warehouseId"
+        :options="warehouseOptions"
+        :placeholder="t('transactions.allWarehouses')"
+        :disabled="isLoadingDropdowns || isLoading"
+        @change="applyFilter"
+      />
 
       <div class="date-filter-group">
         <input

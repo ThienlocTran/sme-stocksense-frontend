@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Lưu",
+    "apply": "Áp dụng",
     "cancel": "Hủy",
     "refresh": "Làm mới",
     "search": "Tìm kiếm...",
@@ -21,7 +22,11 @@
     "warning": "Cảnh báo",
     "yes": "Có",
     "no": "Không",
-    "confirmActionSubtitle": "Hành động này sẽ ảnh hưởng trực tiếp đến dữ liệu hiện tại."
+    "confirmActionSubtitle": "Hành động này sẽ ảnh hưởng trực tiếp đến dữ liệu hiện tại.",
+    "viewAll": "Xem tất cả",
+    "retry": "Thử lại",
+    "system": "Hệ thống",
+    "unknown": "Không xác định"
   },
   "stockDocument": {
     "title": {
@@ -55,7 +60,11 @@
       "createdAt": "Ngày tạo",
       "status": "Trạng thái",
       "totalAmount": "Tổng tiền",
-      "actions": "Thao tác"
+      "actions": "Thao tác",
+      "creator": "Người tạo"
+    },
+    "table": {
+      "currentStock": "Tồn hiện tại"
     },
     "actionView": "Xem",
     "actionEdit": "Sửa",
@@ -78,6 +87,8 @@
     "status": {
       "draft": "Nháp",
       "pending": "Chờ duyệt",
+      "pending_level1": "Chờ duyệt cấp 1",
+      "pending_level2": "Chờ duyệt cấp 2",
       "approved": "Đã duyệt",
       "pending_delivery": "Chờ hàng về",
       "pending_inspection": "Chờ kiểm hàng",
@@ -153,14 +164,23 @@
       "previous": "Trước",
       "next": "Sau",
       "pageIndicator": "Trang {current}/{total}"
+    },
+    "errors": {
+      "invalidMinStock": "Định mức tồn tối thiểu phải là số nguyên không âm."
     }
   },
   "sidebar": {
     "sections": {
       "operations": "Vận hành",
       "analytics": "Phân tích",
+      "analyticsAndTracking": "Phân tích & Theo dõi",
       "approvals": "Phê duyệt",
-      "management": "Quản lý"
+      "management": "Quản lý",
+      "generalOperations": "Vận hành chung",
+      "warehouseOps": "Nghiệp vụ kho",
+      "systemManagement": "Quản lý hệ thống",
+      "overview": "Tổng quan",
+      "baseData": "Dữ liệu nền tảng"
     },
     "menu": {
       "dashboard": "Tổng quan",
@@ -175,9 +195,13 @@
       "transactions": "Lịch sử giao dịch",
       "pendingImports": "Phiếu nhập chờ duyệt",
       "pendingExports": "Phiếu xuất chờ duyệt",
+      "pendingApprovals": "Phiếu chờ duyệt",
       "partners": "Đối tác",
       "employees": "Nhân viên",
-      "importExcel": "Import Excel"
+      "importExcel": "Import Excel",
+      "warehouses": "Kho hàng",
+      "replenishment": "Gợi ý nhập hàng",
+      "settings": "Cấu hình hệ thống"
     }
   },
   "topbar": {
@@ -241,6 +265,8 @@
     "stockMovement": "Biến động Nhập / Xuất kho",
     "stockMovementDesc": "Xu hướng dòng chảy hàng hóa qua các kho",
     "allWarehouses": "Tất cả kho",
+    "timePeriod": "Khoảng thời gian",
+    "days": "{count} ngày",
     "loadingChart": "Đang tải biểu đồ biến động...",
     "failedLoadMovement": "Không thể tải dữ liệu biến động kho",
     "noMovementData": "Chưa có dữ liệu biến động",
@@ -309,7 +335,10 @@
     "initialInbound": "Nhập đầu kỳ",
     "adjustmentIncrease": "Điều chỉnh tăng",
     "adjustmentDecrease": "Điều chỉnh giảm",
-    "unknown": "Không xác định"
+    "unknown": "Không xác định",
+    "warehouseCapacity": "Dung tích kho hàng",
+    "warehouseCapacityDesc": "Tình trạng lấp đầy thể tích thực tế của các kho",
+    "noWarehouseCapacityData": "Chưa cấu hình dung tích kho"
   },
   "7 ngày": "7 ngày",
   "30 ngày": "30 ngày",
@@ -546,6 +575,9 @@
     "category": "Danh mục",
     "supplier": "Nhà cung cấp",
     "unit": "Đơn vị",
+    "unitVolumeM3": "Thể tích (m³)",
+    "labelUnitVolume": "Thể tích đơn vị (m³)",
+    "unconfigured": "Chưa cấu hình",
     "minStock": "Ngưỡng tối thiểu",
     "price": "Đơn giá",
     "status": "Trạng thái",
@@ -554,6 +586,7 @@
     "errNameEmpty": "Tên sản phẩm không được để trống.",
     "errUnitEmpty": "Đơn vị tính không được để trống.",
     "errPriceInvalid": "Đơn giá phải lớn hơn hoặc bằng 0.",
+    "errUnitVolumeInvalid": "Thể tích đơn vị phải lớn hơn 0.",
     "errMinStockInvalid": "Ngưỡng tồn phải lớn hơn hoặc bằng 0.",
     "errStatusEmpty": "Trạng thái không được để trống.",
     "successUpdate": "Cập nhật sản phẩm thành công.",
@@ -599,7 +632,15 @@
     "noSelection": "Không chọn",
     "cancel": "Hủy",
     "saving": "Đang lưu",
-    "save": "Lưu"
+    "save": "Lưu",
+    "volumeHelper": "Nếu đơn vị tính là Thùng, giá trị này là m3/thùng.",
+    "sectionInitialStockConfig": "Cấu hình tồn kho ban đầu",
+    "enableForWarehouse": "Thiết lập định mức tại kho này",
+    "placeholderMinStock": "Nhập tồn tối thiểu...",
+    "errMinStockRequired": "Định mức tồn tối thiểu là bắt buộc khi đã kích hoạt.",
+    "errorSaveConfigPartial": "Sản phẩm đã được tạo nhưng cấu hình tồn tối thiểu của một số kho chưa lưu thành công. Vui lòng thử lại.",
+    "errorUpdateConfigPartial": "Sản phẩm đã được cập nhật nhưng cấu hình tồn tối thiểu của một số kho chưa lưu thành công. Vui lòng thử lại.",
+    "btnRetrySaveConfig": "Thử lại lưu cấu hình"
   },
   "category": {
     "editCategory": "Sửa danh mục",
@@ -741,7 +782,48 @@
       "nameMax": "Tên kho không được vượt quá 150 ký tự.",
       "addressMax": "Địa chỉ không được vượt quá 255 ký tự.",
       "statusEmpty": "Trạng thái không được để trống."
-    }
+    },
+    "minimumSafeVolume": "Mức tồn an toàn",
+    "minimumSafeVolumeHelp": "Mức thể tích tối thiểu cần duy trì dựa trên định mức tồn tối thiểu của các sản phẩm trong kho.",
+    "minimumStockConflict": "Cấu hình tồn tối thiểu vượt sức chứa kho.",
+    "minimumStockConflictExceeded": "Vượt: {amount} m³"
+  },
+  "replenishment": {
+    "title": "Gợi ý nhập hàng",
+    "description": "Đề xuất số lượng cần nhập dựa trên mức tồn tối thiểu - tối đa thiết lập.",
+    "searchPlaceholder": "Tìm theo mã hoặc tên sản phẩm...",
+    "filters": {
+      "allWarehouses": "Tất cả kho hàng",
+      "loadingWarehouses": "Đang tải kho...",
+      "searchBtn": "Tìm kiếm",
+      "clearFiltersBtn": "Xóa lọc"
+    },
+    "loading": "Đang tải đề xuất nhập hàng...",
+    "table": {
+      "product": "Sản phẩm",
+      "warehouse": "Kho hàng",
+      "stockInfo": "Tồn kho thực tế / Min - Max",
+      "shortage": "Số lượng thiếu",
+      "suggested": "Số lượng gợi ý",
+      "priority": "Mức độ ưu tiên",
+      "reason": "Lý do đề xuất"
+    },
+    "reason": {
+      "OUT_OF_STOCK": "Hết hàng",
+      "BELOW_MINIMUM": "Dưới mức tối thiểu",
+      "AT_MINIMUM": "Bằng mức tối thiểu"
+    },
+    "priority": {
+      "CRITICAL": "Khẩn cấp",
+      "HIGH": "Cao",
+      "MEDIUM": "Trung bình"
+    },
+    "empty": {
+      "title": "Không có đề xuất nhập hàng",
+      "desc": "Tất cả các sản phẩm hiện có mức tồn kho an toàn và nằm ngoài ngưỡng cần bổ sung."
+    },
+    "suggested": "Đề xuất: ",
+    "capacityAllowed": "Duyệt (Sức chứa): "
   },
   "alerts": {
     "title": "Cảnh báo tồn kho",
@@ -760,7 +842,10 @@
       "active": "Kho đang hoạt động",
       "inactive": "Kho ngừng hoạt động",
       "search": "Tìm kiếm",
-      "clear": "Xóa lọc"
+      "clear": "Xóa lọc",
+      "allAlertTypes": "Tất cả loại cảnh báo",
+      "lowStock": "Cảnh báo tồn kho thấp",
+      "capacity": "Cảnh báo sức chứa"
     },
     "table": {
       "productCode": "Mã SP",
@@ -858,7 +943,9 @@
     },
     "msg": {
       "seedSuccess": "Đã sinh dữ liệu demo cho {products} cặp sản phẩm/kho ({rows} dòng)."
-    }
+    },
+    "capacityAllowed": "Duyệt (Sức chứa): ",
+    "capacityLimitedDesc": "Sức chứa kho bị giới hạn! Một số đề xuất đã được giảm để phù hợp với không gian trống của kho."
   },
   "transactions": {
     "title": "Lịch sử giao dịch kho",
@@ -900,7 +987,8 @@
     "noResultsTitle": "Không tìm thấy kết quả",
     "noResultsDesc": "Không tìm thấy lịch sử giao dịch kho phù hợp với bộ lọc hiện tại.",
     "noTransactionsTitle": "Chưa có giao dịch",
-    "noTransactionsDesc": "Hệ thống chưa ghi nhận bất kỳ giao dịch biến động kho nào."
+    "noTransactionsDesc": "Hệ thống chưa ghi nhận bất kỳ giao dịch biến động kho nào.",
+    "adjustCount": "Điều chỉnh kiểm kê"
   },
   "inventoryCounts": {
     "title": "Kiểm kê kho",
@@ -1014,7 +1102,10 @@
     "cancelMessage": "Bạn có chắc chắn muốn hủy đợt kiểm kê này không? Mọi số lượng thực tế đã nhập sẽ bị loại bỏ và tồn kho hệ thống sẽ được giữ nguyên.",
     "cancelConfirm": "Xác nhận hủy",
     "cancelReasonInputLabel": "Lý do hủy đợt kiểm kê",
-    "cancelReasonPlaceholder": "Nhập lý do hủy chi tiết..."
+    "cancelReasonPlaceholder": "Nhập lý do hủy chi tiết...",
+    "reasonRequired": "Lý do chênh lệch bắt buộc khi số lượng thực tế khác tồn hệ thống.",
+    "createAdjustmentVoucher": "Lập phiếu điều chỉnh",
+    "viewAdjustmentVoucher": "Xem phiếu điều chỉnh"
   },
   "approvals": {
     "titleIn": "Phiếu nhập chờ duyệt",
@@ -1045,6 +1136,8 @@
     "documentType": {
       "in": "Phiếu nhập",
       "out": "Phiếu xuất",
+      "inbound_discrepancy": "Biên bản chênh lệch",
+      "inventory_adjustment": "Phiếu kiểm kê kho",
       "inName": "nhập",
       "outName": "xuất",
       "default": "Phiếu"
@@ -1064,7 +1157,9 @@
       "rejectReasonMaxLength": "Lý do từ chối không được vượt quá {max} ký tự.",
       "rejectSuccess": "Đã từ chối phiếu {type} thành công.",
       "rejectOutError": "Không thể từ chối phiếu xuất.",
-      "rejectInError": "Không thể từ chối phiếu nhập."
+      "rejectInError": "Không thể từ chối phiếu nhập.",
+      "completeSuccess": "Đã hoàn thành phiếu {code} thành công.",
+      "rejectSuccessCode": "Đã từ chối phiếu {code} thành công."
     },
     "filters": {
       "type": "Loại",
@@ -1083,8 +1178,14 @@
       "rejectReceipt": "Từ chối phiếu",
       "cancel": "Hủy",
       "processing": "Đang xử lý...",
-      "confirmReject": "Xác nhận từ chối"
+      "confirmReject": "Xác nhận từ chối",
+      "approveLevel": "Duyệt cấp {level}"
     },
+    "approveReceiptQuestion": "Bạn có chắc chắn muốn duyệt phiếu xuất {code} này không?",
+    "complete": "Hoàn thành",
+    "completeQuestion": "Bạn có chắc chắn muốn hoàn thành xuất kho cho phiếu {code} này không?",
+    "confirmApprove": "Xác nhận duyệt",
+    "confirmComplete": "Xác nhận hoàn thành",
     "loading": "Đang tải danh sách phiếu chờ duyệt...",
     "emptyList": "Không có phiếu nào đang chờ duyệt",
     "pagination": {
@@ -1167,7 +1268,9 @@
       "selectFileBtn": "Chọn file từ máy tính",
       "noFileSelected": "Chưa có file nào được chọn",
       "validatingBtn": "Đang kiểm tra...",
-      "uploadValidateBtn": "Tải lên & Kiểm tra dữ liệu"
+      "uploadValidateBtn": "Tải lên & Kiểm tra dữ liệu",
+      "dragDropOrSelect": "Kéo thả file vào đây hoặc click để chọn",
+      "limitFormat": "Chỉ chấp nhận file định dạng .xlsx với dung lượng < 10MB"
     },
     "step3": {
       "title": "Bước 3: Xem trước dữ liệu",
@@ -1242,7 +1345,8 @@
       "quantityMin": "Số lượng phải lớn hơn 0.",
       "unitPriceMin": "Đơn giá phải lớn hơn hoặc bằng 0.",
       "productExists": "Sản phẩm đã được thêm vào danh sách.",
-      "invalidProduct": "Sản phẩm không hợp lệ."
+      "invalidProduct": "Sản phẩm không hợp lệ.",
+      "quantityExceedsStock": "Số lượng xuất vượt quá tồn kho khả dụng ({stock})."
     },
     "type": {
       "out": "xuất",
@@ -1363,7 +1467,8 @@
       "unit": "ĐVT",
       "quantity": "SL Xuất",
       "note": "Ghi chú",
-      "empty": "Không có sản phẩm nào."
+      "empty": "Không có sản phẩm nào.",
+      "actions": "Thao tác"
     },
     "confirm": {
       "submitTitle": "Xác nhận Gửi duyệt",
@@ -1396,7 +1501,8 @@
       "discrepancy": "Lệch",
       "unitPrice": "Đơn giá",
       "lineTotal": "Thành tiền trên phiếu",
-      "actualReceivedTotal": "Giá trị thực nhận"
+      "actualReceivedTotal": "Giá trị thực nhận",
+      "unit": "ĐVT"
     },
     "physicalStatus": {
       "good": "Tốt",
@@ -1437,7 +1543,9 @@
       "exportPdfSuccess": "Xuất phiếu PDF thành công.",
       "exportExcelSuccess": "Xuất file Excel thành công.",
       "unknownStatus": "Trạng thái không xác định.",
-      "exportFailed": "Không thể {label}."
+      "exportFailed": "Không thể {label}.",
+      "missingVolumesWarning": "Một số sản phẩm chưa được cấu hình thể tích đơn vị. Hệ thống không thể tính toán chính xác dung tích dự kiến. Bạn có chắc chắn muốn tiếp tục?",
+      "exceedCapacityWarning": "Tổng thể tích hàng nhập ({incoming} m3) vượt quá dung tích còn lại của kho ({remaining} m3). Bạn có chắc chắn muốn tiếp tục?"
     },
     "exportLabels": {
       "pdf": "xuất phiếu PDF",
@@ -1464,6 +1572,71 @@
       "unknownStatus": "Trạng thái không rõ.",
       "noPermission": "Bạn hiện không có quyền thực hiện duyệt hoặc từ chối.",
       "completePermissionOnly": "Chỉ Admin hoặc Nhân viên kho được hoàn tất xuất kho."
+    }
+  },
+  "settings": {
+    "title": "Cấu hình hệ thống",
+    "description": "Quản lý và thay đổi các cấu hình hoạt động của hệ thống kho.",
+    "thresholdLabel": "Ngưỡng phê duyệt cấp 2 (phiếu nhập kho)",
+    "thresholdDescription": "Phiếu nhập kho có tổng giá trị lớn hơn con số này sẽ bắt buộc phải qua 2 cấp phê duyệt từ 2 người khác nhau.",
+    "saveButton": "Lưu cấu hình",
+    "saving": "Đang lưu...",
+    "changeReason": "Lý do thay đổi",
+    "changeReasonPlaceholder": "Nhập lý do thay đổi cấu hình này (bắt buộc)...",
+    "historyTitle": "Lịch sử thay đổi cấu hình",
+    "oldValue": "Giá trị cũ",
+    "newValue": "Giá trị mới",
+    "reason": "Lý do thay đổi",
+    "changedBy": "Người cập nhật",
+    "changedAt": "Thời gian",
+    "confirmUpdateTitle": "Xác nhận thay đổi cấu hình",
+    "confirmUpdateMessage": "Bạn có chắc chắn muốn thay đổi cấu hình ngưỡng phê duyệt này?",
+    "messages": {
+      "saveSuccess": "Lưu cấu hình thành công!",
+      "saveError": "Không thể lưu cấu hình. Vui lòng thử lại.",
+      "loadError": "Không thể tải thông tin cấu hình.",
+      "invalidValue": "Vui lòng nhập giá trị lớn hơn 0.",
+      "errorReasonRequired": "Vui lòng nhập lý do thay đổi cấu hình."
+    }
+  },
+  "capacity": {
+    "status": {
+      "BINH_THUONG": "Bình thường",
+      "CAN_LUU_Y": "Cần lưu ý",
+      "CAO": "Cao",
+      "NGUY_HIEM": "Nguy hiểm",
+      "QUA_TAI": "Quá tải"
+    }
+  },
+  "adjustment": {
+    "title": "Phiếu điều chỉnh tồn kho",
+    "description": "Xem chi tiết và xử lý chênh lệch kiểm kê tồn kho.",
+    "status": {
+      "draft": "Nháp",
+      "pending": "Chờ duyệt",
+      "approved": "Đã duyệt",
+      "rejected": "Từ chối",
+      "applied": "Đã áp dụng"
+    },
+    "rejectReason": "Lý do từ chối",
+    "columns": {
+      "adjustmentQty": "Lượng điều chỉnh",
+      "discrepancyReason": "Lý do chênh lệch"
+    },
+    "actions": {
+      "submit": "Nộp phiếu",
+      "reject": "Từ chối",
+      "approve": "Duyệt phiếu",
+      "apply": "Áp dụng"
+    },
+    "confirmApplyTitle": "Xác nhận áp dụng điều chỉnh",
+    "confirmApplyMessage": "Thao tác này sẽ cập nhật tồn kho thực tế. Bạn có chắc chắn muốn thực hiện?",
+    "msg": {
+      "submitted": "Đã nộp phiếu điều chỉnh chờ duyệt.",
+      "approved": "Đã duyệt phiếu điều chỉnh tồn kho.",
+      "rejected": "Đã từ chối phiếu điều chỉnh.",
+      "appliedSuccess": "Đã áp dụng điều chỉnh và cập nhật tồn kho thực tế!",
+      "alreadyApplied": "Đợt kiểm kê đã chốt."
     }
   }
 }

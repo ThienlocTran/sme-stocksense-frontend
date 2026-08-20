@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import PageHeader from '../components/PageHeader.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import PriceInput from '../components/PriceInput.vue'
+import SearchableSelect from '../components/SearchableSelect.vue'
 import {
   cancelDraft,
   createImportReceipt,
@@ -18,6 +19,7 @@ import {
 } from '../services/importReceiptService'
 import { cancelExportReceipt, createExportReceipt, getExportReceipt, submitExportReceipt, updateExportReceipt } from '../services/exportReceiptService'
 import { getCurrentRoleCode, getCurrentUser } from '../services/authService'
+import { getInventory } from '../services/inventoryService'
 
 const props = defineProps({
   type: { type: String, default: 'in' },
@@ -46,7 +48,53 @@ let redirectTimer = null
 
 const warehouses = ref([])
 const suppliers = ref([])
+
+const warehouseOptions = computed(() => {
+  return warehouses.value.map(w => ({
+    value: w.id,
+    label: w.tenKho || w.name || '',
+    sublabel: w.maKho || w.code || w.diaChi || '',
+    searchKey: `${w.tenKho || w.name || ''} ${w.maKho || w.code || ''}`.toLowerCase()
+  }));
+});
+
+const supplierOptions = computed(() => {
+  return suppliers.value.map(s => ({
+    value: s.id,
+    label: s.tenDoiTac || s.name || '',
+    sublabel: s.maDoiTac || s.code || s.soDienThoai || '',
+    searchKey: `${s.tenDoiTac || s.name || ''} ${s.maDoiTac || s.code || ''}`.toLowerCase()
+  }));
+});
+
 const products = ref([])
+const isSearchingProducts = ref(false)
+
+async function searchProducts(query = '') {
+  isSearchingProducts.value = true
+  try {
+    const list = await getProducts({
+      page: 0,
+      size: 20,
+      keyword: query,
+      trangThai: 'HOAT_DONG'
+    })
+    products.value = list || []
+  } catch (error) {
+    console.error('Failed to remote search products:', error)
+  } finally {
+    isSearchingProducts.value = false
+  }
+}
+
+const productOptions = computed(() => {
+  return products.value.map(product => ({
+    value: product.id,
+    label: product.name,
+    sublabel: product.code || product.sku || '',
+    searchKey: `${product.name} ${product.code || product.sku || ''}`.toLowerCase()
+  }));
+});
 
 function scheduleRedirectToList(delay) {
   if (redirectTimer) clearTimeout(redirectTimer)
@@ -80,13 +128,15 @@ const form = reactive({
 const itemDraft = reactive({
   productId: null,
   quantity: 1,
-  unitPrice: 0,
+  unitPrice: '',
   note: '',
 })
 
 const items = ref([])
 const formErrors = reactive({ warehouseId: '', supplierId: '', note: '' })
 const itemErrors = reactive({ productId: '', quantity: '', unitPrice: '' })
+const selectedProductStock = ref(null)
+const isLoadingStock = ref(false)
 
 const hasOperationalPermission = computed(() => ['ADMIN', 'EMPLOYEE'].includes(getCurrentRoleCode()))
 const isCreateMode = computed(() => props.mode === 'create')
@@ -149,6 +199,35 @@ watch(items, () => {
   if (!isHydrating.value) isDirty.value = true
 }, { deep: true })
 
+watch(() => itemDraft.productId, (newProductId) => {
+  if (newProductId) {
+    const product = products.value.find(p => String(p.id) === String(newProductId))
+    if (product) {
+      itemDraft.unitPrice = product.price ?? ''
+    }
+  } else {
+    itemDraft.unitPrice = ''
+  }
+})
+
+watch(() => [form.warehouseId, itemDraft.productId], async ([newWarehouseId, newProductId]) => {
+  if (newWarehouseId && newProductId) {
+    isLoadingStock.value = true
+    try {
+      const data = await getInventory({ warehouseId: newWarehouseId, productId: newProductId, page: 0, size: 1 })
+      const inventoryItem = data.content?.[0]
+      selectedProductStock.value = inventoryItem ? inventoryItem.currentQuantity : 0
+    } catch (error) {
+      console.error('Error fetching selected product stock:', error)
+      selectedProductStock.value = 0
+    } finally {
+      isLoadingStock.value = false
+    }
+  } else {
+    selectedProductStock.value = null
+  }
+})
+
 async function loadDropdowns() {
   isLoading.value = true
   errorMessage.value = ''
@@ -159,7 +238,7 @@ async function loadDropdowns() {
   const results = await Promise.allSettled([
     getWarehouses(),
     getSuppliers(),
-    getProducts(),
+    getProducts({ page: 0, size: 20 }),
   ])
 
   const [whResult, suppResult, prodResult] = results
@@ -319,13 +398,18 @@ function validateItem() {
     isValid = false
   }
 
-  if (itemDraft.unitPrice === null || itemDraft.unitPrice === undefined || itemDraft.unitPrice < 0) {
+  if (itemDraft.unitPrice === null || itemDraft.unitPrice === undefined || itemDraft.unitPrice === '' || Number(itemDraft.unitPrice) < 0) {
     itemErrors.unitPrice = t('stockDocumentCreate.validation.unitPriceMin')
     isValid = false
   }
 
   if (itemDraft.productId && items.value.some(item => item.productId === itemDraft.productId)) {
     itemErrors.productId = t('stockDocumentCreate.validation.productExists')
+    isValid = false
+  }
+
+  if (props.type === 'out' && selectedProductStock.value !== null && itemDraft.quantity > selectedProductStock.value) {
+    itemErrors.quantity = t('stockDocumentCreate.validation.quantityExceedsStock', { stock: selectedProductStock.value })
     isValid = false
   }
 
@@ -346,14 +430,14 @@ function addItem() {
     productCode: product.code || product.sku,
     productName: product.name,
     quantity: itemDraft.quantity,
-    unitPrice: itemDraft.unitPrice,
+    unitPrice: Number(itemDraft.unitPrice) || 0,
     note: itemDraft.note.trim(),
-    lineTotal: itemDraft.quantity * itemDraft.unitPrice,
+    lineTotal: itemDraft.quantity * (Number(itemDraft.unitPrice) || 0),
   })
 
   itemDraft.productId = null
   itemDraft.quantity = 1
-  itemDraft.unitPrice = 0
+  itemDraft.unitPrice = ''
   itemDraft.note = ''
   itemErrors.productId = ''
   itemErrors.quantity = ''
@@ -576,34 +660,26 @@ function confirmText() {
         <div class="import-receipt-form__grid import-receipt-form__grid--2">
           <div class="import-receipt-form__field">
             <label class="import-receipt-form__label import-receipt-form__label--required">{{ type === 'out' ? t('stockDocumentCreate.label.warehouseOut') : t('stockDocumentCreate.label.warehouseIn') }}</label>
-            <select
+            <SearchableSelect
               v-model="form.warehouseId"
-              class="import-receipt-form__select"
-              :class="{ 'import-receipt-form__select--error': formErrors.warehouseId || errorState.warehouses }"
+              :options="warehouseOptions"
+              :placeholder="warehouses.length === 0 ? t('stockDocumentCreate.placeholder.noWarehouse') : t('stockDocumentCreate.placeholder.selectWarehouse')"
               :disabled="isProcessing || !isEditableStatus || warehouses.length === 0 || items.length > 0"
-            >
-              <option :value="null" disabled>{{ warehouses.length === 0 ? t('stockDocumentCreate.placeholder.noWarehouse') : t('stockDocumentCreate.placeholder.selectWarehouse') }}</option>
-              <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-                {{ warehouse.tenKho }}
-              </option>
-            </select>
+              :error="formErrors.warehouseId || errorState.warehouses"
+            />
             <span v-if="formErrors.warehouseId" class="import-receipt-form__error">{{ formErrors.warehouseId }}</span>
             <span v-else-if="errorState.warehouses" class="import-receipt-form__error">{{ errorState.warehouses }}</span>
           </div>
 
           <div class="import-receipt-form__field">
             <label class="import-receipt-form__label" :class="{ 'import-receipt-form__label--required': type === 'in' }">{{ type === 'out' ? t('stockDocumentCreate.label.partner') : t('stockDocumentCreate.label.supplier') }}</label>
-            <select
+            <SearchableSelect
               v-model="form.supplierId"
-              class="import-receipt-form__select"
-              :class="{ 'import-receipt-form__select--error': formErrors.supplierId || errorState.suppliers }"
+              :options="supplierOptions"
+              :placeholder="suppliers.length === 0 ? t('stockDocumentCreate.placeholder.noSupplier') : t('stockDocumentCreate.placeholder.selectSupplier')"
               :disabled="isProcessing || !isEditableStatus || suppliers.length === 0 || items.length > 0"
-            >
-              <option :value="null" disabled>{{ suppliers.length === 0 ? t('stockDocumentCreate.placeholder.noSupplier') : t('stockDocumentCreate.placeholder.selectSupplier') }}</option>
-              <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
-                {{ supplier.tenDoiTac }}
-              </option>
-            </select>
+              :error="formErrors.supplierId || errorState.suppliers"
+            />
             <span v-if="formErrors.supplierId" class="import-receipt-form__error">{{ formErrors.supplierId }}</span>
             <span v-else-if="errorState.suppliers" class="import-receipt-form__error">{{ errorState.suppliers }}</span>
           </div>
@@ -629,19 +705,31 @@ function confirmText() {
         <div class="import-receipt-form__grid import-receipt-form__grid--4">
           <div class="import-receipt-form__field">
             <label class="import-receipt-form__label import-receipt-form__label--required">{{ t("stockDocumentCreate.label.product") }}</label>
-            <select
+            <SearchableSelect
               v-model="itemDraft.productId"
-              class="import-receipt-form__select"
-              :class="{ 'import-receipt-form__select--error': itemErrors.productId || errorState.products }"
+              :options="productOptions"
+              :placeholder="products.length === 0 ? t('stockDocumentCreate.placeholder.noProduct') : t('stockDocumentCreate.placeholder.selectProduct')"
               :disabled="isProcessing || !isEditableStatus || products.length === 0"
-            >
-              <option :value="null" disabled>{{ products.length === 0 ? t('stockDocumentCreate.placeholder.noProduct') : t('stockDocumentCreate.placeholder.selectProduct') }}</option>
-              <option v-for="product in products" :key="product.id" :value="product.id">
-                {{ product.name }} ({{ product.code || product.sku }})
-              </option>
-            </select>
+              :error="itemErrors.productId || errorState.products"
+              :remote="true"
+              :loading="isSearchingProducts"
+              @search="searchProducts"
+            />
             <span v-if="itemErrors.productId" class="import-receipt-form__error">{{ itemErrors.productId }}</span>
             <span v-else-if="errorState.products" class="import-receipt-form__error">{{ errorState.products }}</span>
+
+            <!-- Stock indicator helper -->
+            <div v-if="itemDraft.productId" class="mt-1.5 text-sm" style="display: flex; align-items: center; gap: 6px; line-height: 1.4; font-weight: 600;">
+              <span v-if="!form.warehouseId" style="color: #d97706;">
+                ⚠️ Vui lòng chọn kho để xem tồn kho
+              </span>
+              <span v-else-if="isLoadingStock" style="color: #64748b;">
+                🔄 Đang kiểm tra tồn kho...
+              </span>
+              <span v-else-if="selectedProductStock !== null" :style="{ color: selectedProductStock > 0 ? '#16825d' : '#dc2626' }">
+                📦 Tồn kho hiện tại: {{ selectedProductStock }}
+              </span>
+            </div>
           </div>
 
           <div class="import-receipt-form__field">
@@ -844,9 +932,11 @@ function confirmText() {
   </template>
 </template>
 
-<style scoped>
+<style>
 @import '../assets/styles/import-receipt-form.css';
+</style>
 
+<style scoped>
 .mdi-spin {
   animation: spin 0.8s linear infinite;
 }

@@ -62,8 +62,8 @@ onMounted(() => {
 
 const menuSections = [
   {
-    title: "Vận hành",
-    titleKey: "operations",
+    title: "Tổng quan",
+    titleKey: "overview",
     items: [
       {
         label: "Tổng quan",
@@ -71,69 +71,11 @@ const menuSections = [
         to: "/dashboard",
         icon: "mdi-view-dashboard-outline",
       },
-      {
-        label: "Sản phẩm",
-        labelKey: "products",
-        to: "/products",
-        icon: "mdi-package-variant-closed",
-      },
-      {
-        label: "Danh mục",
-        labelKey: "categories",
-        to: "/categories",
-        icon: "mdi-shape-outline",
-      },
-      {
-        label: "Tồn kho",
-        labelKey: "inventory",
-        to: "/inventory",
-        icon: "mdi-clipboard-list-outline",
-      },
-      { label: "Phiếu nhập kho", labelKey: "stockIn", to: "/stock-in", icon: "mdi-tray-arrow-down" },
-      { label: "Phiếu xuất kho", labelKey: "stockOut", to: "/stock-out", icon: "mdi-tray-arrow-up" },
-      {
-        label: "Kiểm kê kho",
-        labelKey: "inventoryCounts",
-        to: "/inventory-counts",
-        icon: "mdi-clipboard-check-outline",
-      },
     ],
   },
   {
-    title: "Phân tích",
-    titleKey: "analytics",
-    items: [
-      { label: "Dự báo AI", labelKey: "forecast", to: "/forecast", icon: "mdi-chart-line" },
-      { label: "Cảnh báo tồn kho", labelKey: "alerts", to: "/alerts", icon: "mdi-alert-outline" },
-      {
-        label: "Lịch sử giao dịch",
-        labelKey: "transactions",
-        to: "/inventory-transactions",
-        icon: "mdi-history",
-      },
-    ],
-  },
-  {
-    title: "Phê duyệt",
-    titleKey: "approvals",
-    items: [
-      {
-        label: "Phiếu nhập chờ duyệt",
-        labelKey: "pendingImports",
-        to: "/approvals",
-        icon: "mdi-check-decagram-outline",
-      },
-      {
-        label: "Phiếu xuất chờ duyệt",
-        labelKey: "pendingExports",
-        to: "/pending-export-approvals",
-        icon: "mdi-file-clock-outline",
-      },
-    ],
-  },
-  {
-    title: "Quản lý",
-    titleKey: "management",
+    title: "Dữ liệu nền tảng",
+    titleKey: "baseData",
     items: [
       {
         label: "Đối tác",
@@ -142,10 +84,52 @@ const menuSections = [
         icon: "mdi-truck-delivery-outline",
       },
       {
-        label: "Nhân viên",
-        labelKey: "employees",
-        to: "/employees",
-        icon: "mdi-account-group-outline",
+        label: "Kho hàng",
+        labelKey: "warehouses",
+        to: "/warehouses",
+        icon: "mdi-store-24-hour",
+      },
+      {
+        label: "Danh mục",
+        labelKey: "categories",
+        to: "/categories",
+        icon: "mdi-shape-outline",
+      },
+      {
+        label: "Sản phẩm",
+        labelKey: "products",
+        to: "/products",
+        icon: "mdi-package-variant-closed",
+      },
+    ],
+  },
+  {
+    title: "Nghiệp vụ kho",
+    titleKey: "warehouseOps",
+    items: [
+      {
+        label: "Tồn kho",
+        labelKey: "inventory",
+        to: "/inventory",
+        icon: "mdi-clipboard-list-outline",
+      },
+      {
+        label: "Phiếu nhập kho",
+        labelKey: "stockIn",
+        to: "/stock-in",
+        icon: "mdi-tray-arrow-down",
+      },
+      {
+        label: "Phiếu xuất kho",
+        labelKey: "stockOut",
+        to: "/stock-out",
+        icon: "mdi-tray-arrow-up",
+      },
+      {
+        label: "Kiểm kê kho",
+        labelKey: "inventoryCounts",
+        to: "/inventory-counts",
+        icon: "mdi-clipboard-check-outline",
       },
       {
         label: "Import Excel",
@@ -155,7 +139,58 @@ const menuSections = [
       },
     ],
   },
+  {
+    title: "Phê duyệt",
+    titleKey: "approvals",
+    items: [
+      {
+        label: "Phiếu chờ duyệt",
+        labelKey: "pendingApprovals",
+        to: "/approvals",
+        icon: "mdi-check-decagram-outline",
+      },
+    ],
+  },
+  {
+    title: "Phân tích & Theo dõi",
+    titleKey: "analyticsAndTracking",
+    items: [
+      { label: "Dự báo AI", labelKey: "forecast", to: "/forecast", icon: "mdi-chart-line" },
+      { label: "Cảnh báo tồn kho", labelKey: "alerts", to: "/alerts", icon: "mdi-alert-outline" },
+      {
+        label: "Gợi ý nhập hàng",
+        labelKey: "replenishment",
+        to: "/replenishment-suggestions",
+        icon: "mdi-clipboard-text-play-outline",
+      },
+      {
+        label: "Lịch sử giao dịch",
+        labelKey: "transactions",
+        to: "/inventory-transactions",
+        icon: "mdi-history",
+      },
+    ],
+  },
+  {
+    title: "Quản lý hệ thống",
+    titleKey: "systemManagement",
+    items: [
+      {
+        label: "Nhân viên",
+        labelKey: "employees",
+        to: "/employees",
+        icon: "mdi-account-group-outline",
+      },
+      {
+        label: "Cấu hình hệ thống",
+        labelKey: "settings",
+        to: "/settings",
+        icon: "mdi-cog-outline",
+      },
+    ],
+  },
 ];
+
 
 const visibleSections = computed(() =>
   menuSections

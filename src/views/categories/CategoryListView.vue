@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
@@ -89,6 +89,16 @@ function applySearch() {
   filters.page = 0
   fetchCategories()
 }
+
+const searchDebounceTimer = ref(null)
+watch(searchDraft, (newVal) => {
+  if (searchDebounceTimer.value) clearTimeout(searchDebounceTimer.value)
+  searchDebounceTimer.value = setTimeout(() => {
+    filters.keyword = newVal.trim()
+    filters.page = 0
+    fetchCategories()
+  }, 300)
+})
 
 function applyFilter() {
   filters.page = 0

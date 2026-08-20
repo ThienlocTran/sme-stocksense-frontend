@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
@@ -14,6 +14,9 @@ import {
   exportImportReceiptExcel
 , cancelLateImportReceipt } from '../services/importReceiptService'
 import { downloadBlobResponse, setPrintWindowBlob } from '../utils/downloadHelper'
+import ConfirmDialog from './ConfirmDialog.vue'
+import { getProduct } from '../services/productService'
+import { getWarehouseCapacity } from '../services/warehouseService'
 
 
 const props = defineProps({
@@ -331,6 +334,9 @@ async function confirmCancelLate() {
   }
 }
 
+const isCapacityWarningOpen = ref(false)
+const capacityWarningMsg = ref('')
+
 async function handleComplete() {
   submitting.value = true
   error.value = ''
@@ -338,6 +344,7 @@ async function handleComplete() {
   try {
     if (inspectItems.value.length === 0) {
       error.value = t('importInspection.messages.emptyInspect')
+      submitting.value = false
       return
     }
 
@@ -349,16 +356,79 @@ async function handleComplete() {
 
     if (invalidItem) {
       error.value = t('importInspection.messages.invalidQty', { name: invalidItem.productName })
+      submitting.value = false
       return
     }
 
     if (hasDiscrepancy.value && !isDiscrepancyReportCurrent.value) {
       error.value = t('importInspection.messages.discrepancyWarning')
+      submitting.value = false
       return
     }
 
-    await completeImport(props.receiptId, buildInspectPayload())
+    // Capacity & Product Volume Checks
+    const productIds = inspectItems.value.map(item => item.productId)
+    const productResults = await Promise.allSettled(productIds.map(id => getProduct(id)))
     
+    let totalIncomingVolume = 0
+    let hasMissingVolumes = false
+    
+    inspectItems.value.forEach((item, i) => {
+      const qty = Number(item.actualReceivedQuantity || 0)
+      if (productResults[i].status === 'fulfilled' && productResults[i].value) {
+        const prod = productResults[i].value
+        const vol = prod.unitVolumeM3
+        if (vol !== null && vol !== undefined && vol > 0) {
+          totalIncomingVolume += qty * Number(vol)
+        } else {
+          if (qty > 0) hasMissingVolumes = true
+        }
+      } else {
+        if (qty > 0) hasMissingVolumes = true
+      }
+    })
+
+    const warehouseId = receipt.value?.khoHangId || receipt.value?.warehouseId
+    let capacity = null
+    if (warehouseId) {
+      try {
+        capacity = await getWarehouseCapacity(warehouseId)
+      } catch (err) {
+        console.error('Failed to fetch warehouse capacity:', err)
+      }
+    }
+
+    if (capacity && capacity.maxCapacityM3 !== null && capacity.maxCapacityM3 > 0) {
+      const remaining = capacity.remainingCapacityM3 || (capacity.maxCapacityM3 - (capacity.usedCapacityM3 || 0))
+      
+      if (hasMissingVolumes) {
+        capacityWarningMsg.value = t('importInspection.messages.missingVolumesWarning')
+        isCapacityWarningOpen.value = true
+        submitting.value = false
+        return
+      } else if (totalIncomingVolume > remaining) {
+        capacityWarningMsg.value = t('importInspection.messages.exceedCapacityWarning', {
+          incoming: totalIncomingVolume.toFixed(3),
+          remaining: remaining.toFixed(3)
+        })
+        isCapacityWarningOpen.value = true
+        submitting.value = false
+        return
+      }
+    }
+
+    await proceedWithComplete()
+  } catch (err) {
+    error.value = err.message || t('importInspection.messages.completeError')
+    submitting.value = false
+  }
+}
+
+async function proceedWithComplete() {
+  submitting.value = true
+  isCapacityWarningOpen.value = false
+  try {
+    await completeImport(props.receiptId, buildInspectPayload())
     successMessage.value = t('importInspection.messages.completeSuccess')
     await loadData()
   } catch (err) {
@@ -383,7 +453,12 @@ async function handleSaveDiscrepancyReport() {
       return
     }
     await inspectReceipt(props.receiptId, buildInspectPayload())
-    await createDiscrepancyReport(props.receiptId, buildDiscrepancyPayload())
+    const reportRes = await createDiscrepancyReport(props.receiptId, buildDiscrepancyPayload())
+    if (reportRes && reportRes.id) {
+      const mapping = JSON.parse(localStorage.getItem('discrepancy_report_ids') || '{}')
+      mapping[props.receiptId] = reportRes.id
+      localStorage.setItem('discrepancy_report_ids', JSON.stringify(mapping))
+    }
     discrepancyReportSaved.value = true
     savedDiscrepancySignature.value = currentDiscrepancySignature.value
     successMessage.value = t('importInspection.messages.discrepancyReportSaved')
@@ -885,6 +960,16 @@ watch(() => props.receiptId, loadData, { immediate: true })
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!-- Capacity Projection Warning ConfirmDialog -->
+  <ConfirmDialog
+    :open="isCapacityWarningOpen"
+    :title="t('adjustment.confirmApplyTitle')"
+    :message="capacityWarningMsg"
+    :confirmText="t('inventoryCountDetail.finalizeConfirm')"
+    @cancel="isCapacityWarningOpen = false"
+    @confirm="proceedWithComplete"
+  />
 </template>
 
 <style scoped>

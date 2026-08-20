@@ -271,11 +271,16 @@ export async function getSuppliers() {
   }
 }
 
-export async function getProducts() {
+export async function getProducts({ page = 0, size = 1000, keyword = '', trangThai = 'HOAT_DONG' } = {}) {
   try {
     const { data } = await importReceiptClient.get('/api/products', {
       headers: getAuthorizationHeader(),
-      params: { page: 0, size: 1000, trangThai: 'HOAT_DONG' },
+      params: {
+        page,
+        size,
+        keyword: keyword || undefined,
+        trangThai: trangThai || undefined,
+      },
     })
     return data.content || []
   } catch (error) {
@@ -336,6 +341,30 @@ export async function cancelLateImportReceipt(receiptId, reason) {
     return data
   } catch (error) {
     throw normalizeImportReceiptError(error, 'Không thể hủy phiếu.')
+  }
+}
+
+export async function approveDiscrepancyReport(receiptId, reportId) {
+  try {
+    const { data } = await importReceiptClient.post(`/api/import-receipts/${receiptId}/discrepancy-reports/${reportId}/approve`, null, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể duyệt biên bản chênh lệch.')
+  }
+}
+
+export async function rejectDiscrepancyReport(receiptId, reportId, reason) {
+  try {
+    const { data } = await importReceiptClient.post(
+      `/api/import-receipts/${receiptId}/discrepancy-reports/${reportId}/reject`,
+      { reason },
+      { headers: getAuthorizationHeader() }
+    )
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể từ chối biên bản chênh lệch.')
   }
 }
 

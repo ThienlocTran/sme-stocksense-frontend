@@ -149,15 +149,22 @@ async function saveAllLines() {
         return
       }
       const actualQty = Number(localActual)
-      if (isNaN(actualQty) || actualQty < 0) {
+      if (isNaN(actualQty) || actualQty < 0 || !Number.isInteger(actualQty)) {
         showToast(t('inventoryCountDetail.errorInvalidQty', { productCode: d.productCode }), 'error')
         return
       }
       
+      const diff = actualQty - d.systemQuantity
+      const noteVal = localNote ? localNote.trim() : ''
+      if (diff !== 0 && !noteVal) {
+        showToast(t('inventoryCountDetail.reasonRequired'), 'error')
+        return
+      }
+
       modifiedLines.push({
         detail: d,
         actualQuantity: actualQty,
-        note: localNote ? localNote.trim() : null
+        note: noteVal || null
       })
     }
   }
@@ -221,8 +228,15 @@ async function saveLine(detail) {
     return
   }
   const actualQty = Number(actualVal)
-  if (isNaN(actualQty) || actualQty < 0) {
+  if (isNaN(actualQty) || actualQty < 0 || !Number.isInteger(actualQty)) {
     showToast(t('inventoryCountDetail.actualQtyMustBePositive'), 'error')
+    return
+  }
+
+  const diff = actualQty - detail.systemQuantity
+  const noteVal = localNotes.value[detail.id] ? localNotes.value[detail.id].trim() : ''
+  if (diff !== 0 && !noteVal) {
+    showToast(t('inventoryCountDetail.reasonRequired'), 'error')
     return
   }
 
@@ -230,7 +244,7 @@ async function saveLine(detail) {
   try {
     const payload = {
       actualQuantity: actualQty,
-      note: localNotes.value[detail.id] ? localNotes.value[detail.id].trim() : null,
+      note: noteVal || null,
       version: detail.version
     }
     const updatedCount = await updateInventoryCountDetail(countId, detail.id, payload)
@@ -357,9 +371,19 @@ function formatDate(dateString) {
         <template v-if="isActive && canManage">
           <button class="btn btn-danger" @click="openCancel">
             <i class="mdi mdi-close-circle-outline"></i> {{ t("inventoryCountDetail.cancelCount") }} </button>
-          <button class="btn btn-primary" @click="openFinalize">
+          <button v-if="matchingLines === totalLines" class="btn btn-primary" @click="openFinalize">
             <i class="mdi mdi-check-all"></i> {{ t("inventoryCountDetail.finalizeCount") }} </button>
         </template>
+
+        <!-- CTA for discrepancy adjustment -->
+        <button
+          v-if="count && count.status !== 'DA_HUY' && (matchingLines !== totalLines || count.status === 'DA_CHOT') && uncountedLines === 0"
+          class="btn btn-warning text-zinc-900"
+          @click="router.push(`/inventory-adjustments/${countId}`)"
+        >
+          <i class="mdi mdi-clipboard-text-play-outline"></i>
+          <span>{{ count.status === 'DA_CHOT' ? t('inventoryCountDetail.viewAdjustmentVoucher') : t('inventoryCountDetail.createAdjustmentVoucher') }}</span>
+        </button>
       </div>
     </PageHeader>
 

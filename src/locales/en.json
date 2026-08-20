@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Save",
+    "apply": "Apply",
     "cancel": "Cancel",
     "refresh": "Refresh",
     "search": "Search...",
@@ -21,7 +22,8 @@
     "warning": "Warning",
     "yes": "Yes",
     "no": "No",
-    "confirmActionSubtitle": "This action will directly affect current data."
+    "confirmActionSubtitle": "This action will directly affect current data.",
+    "viewAll": "View all"
   },
   "stockDocument": {
     "title": {
@@ -78,6 +80,8 @@
     "status": {
       "draft": "Draft",
       "pending": "Pending Approval",
+      "pending_level1": "Level 1 Pending",
+      "pending_level2": "Level 2 Pending",
       "approved": "Approved",
       "pending_delivery": "Pending Delivery",
       "pending_inspection": "Pending Inspection",
@@ -153,14 +157,23 @@
       "previous": "Prev",
       "next": "Next",
       "pageIndicator": "Page {current}/{total}"
+    },
+    "errors": {
+      "invalidMinStock": "Minimum stock must be a non-negative integer."
     }
   },
   "sidebar": {
     "sections": {
       "operations": "Operations",
       "analytics": "Analytics",
+      "analyticsAndTracking": "Analytics & Tracking",
       "approvals": "Approvals",
-      "management": "Management"
+      "management": "Management",
+      "generalOperations": "General Operations",
+      "warehouseOps": "Warehouse Operations",
+      "systemManagement": "System Management",
+      "overview": "Overview",
+      "baseData": "Master Data"
     },
     "menu": {
       "dashboard": "Overview",
@@ -175,9 +188,13 @@
       "transactions": "Transaction History",
       "pendingImports": "Pending Imports",
       "pendingExports": "Pending Exports",
+      "pendingApprovals": "Pending Approvals",
       "partners": "Partners",
       "employees": "Employees",
-      "importExcel": "Import Excel"
+      "importExcel": "Import Excel",
+      "warehouses": "Warehouses",
+      "replenishment": "Replenishment Suggestions",
+      "settings": "System Settings"
     }
   },
   "topbar": {
@@ -241,6 +258,8 @@
     "stockMovement": "Stock In / Out Movement",
     "stockMovementDesc": "Stock flow trends across warehouses",
     "allWarehouses": "All Warehouses",
+    "timePeriod": "Period",
+    "days": "{count} days",
     "loadingChart": "Loading movement chart...",
     "failedLoadMovement": "Unable to load stock movement data",
     "noMovementData": "No movement data",
@@ -309,7 +328,10 @@
     "initialInbound": "Initial Import",
     "adjustmentIncrease": "Adjustment Increase",
     "adjustmentDecrease": "Adjustment Decrease",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "warehouseCapacity": "Warehouse Capacity",
+    "warehouseCapacityDesc": "Actual occupancy of warehouse volume",
+    "noWarehouseCapacityData": "No warehouse capacity configured"
   },
   "7 ngày": "7 days",
   "30 ngày": "30 days",
@@ -546,6 +568,9 @@
     "category": "Category",
     "supplier": "Supplier",
     "unit": "Unit",
+    "unitVolumeM3": "Volume (m³)",
+    "labelUnitVolume": "Unit Volume (m³)",
+    "unconfigured": "Unconfigured",
     "minStock": "Min Stock",
     "price": "Price",
     "status": "Status",
@@ -554,6 +579,7 @@
     "errNameEmpty": "Product name cannot be empty.",
     "errUnitEmpty": "Unit cannot be empty.",
     "errPriceInvalid": "Price must be >= 0.",
+    "errUnitVolumeInvalid": "Unit volume must be greater than 0.",
     "errMinStockInvalid": "Min stock must be >= 0.",
     "errStatusEmpty": "Status cannot be empty.",
     "successUpdate": "Product updated successfully.",
@@ -599,7 +625,15 @@
     "noSelection": "No selection",
     "cancel": "Cancel",
     "saving": "Saving",
-    "save": "Save"
+    "save": "Save",
+    "volumeHelper": "If the unit of measure is Carton, this value represents m3/carton.",
+    "sectionInitialStockConfig": "Initial stock configuration",
+    "enableForWarehouse": "Configure minimum stock for this warehouse",
+    "placeholderMinStock": "Enter minimum stock...",
+    "errMinStockRequired": "Minimum stock is required when enabled.",
+    "errorSaveConfigPartial": "Product created, but minimum stock configurations for some warehouses failed to save. Please retry.",
+    "errorUpdateConfigPartial": "Product updated, but minimum stock configurations for some warehouses failed to save. Please retry.",
+    "btnRetrySaveConfig": "Retry saving configurations"
   },
   "category": {
     "editCategory": "Edit category",
@@ -741,7 +775,48 @@
       "nameMax": "Warehouse name cannot exceed 150 characters.",
       "addressMax": "Address cannot exceed 255 characters.",
       "statusEmpty": "Status cannot be empty."
-    }
+    },
+    "minimumSafeVolume": "Safe Stock Volume",
+    "minimumSafeVolumeHelp": "Minimum volume required based on products' minimum stock thresholds.",
+    "minimumStockConflict": "Safe stock volume exceeds physical capacity.",
+    "minimumStockConflictExceeded": "Exceeded: {amount} m³"
+  },
+  "replenishment": {
+    "title": "Replenishment Suggestions",
+    "description": "Recommended order quantities based on configured Min-Max thresholds.",
+    "searchPlaceholder": "Search by product name or code...",
+    "filters": {
+      "allWarehouses": "All warehouses",
+      "loadingWarehouses": "Loading warehouses...",
+      "searchBtn": "Search",
+      "clearFiltersBtn": "Clear filters"
+    },
+    "loading": "Loading replenishment suggestions...",
+    "table": {
+      "product": "Product",
+      "warehouse": "Warehouse",
+      "stockInfo": "Current Stock / Min - Max",
+      "shortage": "Shortage Qty",
+      "suggested": "Suggested Qty",
+      "priority": "Priority",
+      "reason": "Reason"
+    },
+    "reason": {
+      "OUT_OF_STOCK": "Out of Stock",
+      "BELOW_MINIMUM": "Below Minimum",
+      "AT_MINIMUM": "At Minimum"
+    },
+    "priority": {
+      "CRITICAL": "Critical",
+      "HIGH": "High",
+      "MEDIUM": "Medium"
+    },
+    "empty": {
+      "title": "No replenishment suggestions",
+      "desc": "All products currently have safe stock levels above minimum thresholds."
+    },
+    "suggested": "Suggested: ",
+    "capacityAllowed": "Approved (Capacity): "
   },
   "alerts": {
     "title": "Inventory Alerts",
@@ -760,7 +835,10 @@
       "active": "Active warehouses",
       "inactive": "Inactive warehouses",
       "search": "Search",
-      "clear": "Clear filters"
+      "clear": "Clear filters",
+      "allAlertTypes": "All Alert Types",
+      "lowStock": "Low Stock Alerts",
+      "capacity": "Capacity Alerts"
     },
     "table": {
       "productCode": "Product Code",
@@ -858,7 +936,9 @@
     },
     "msg": {
       "seedSuccess": "Successfully seeded demo data for {products} product/warehouse pairs ({rows} rows)."
-    }
+    },
+    "capacityAllowed": "Allowed (Capacity): ",
+    "capacityLimitedDesc": "Warehouse capacity limited! Some reorder suggestions have been reduced to fit the remaining space."
   },
   "transactions": {
     "title": "Inventory Transaction History",
@@ -900,7 +980,8 @@
     "noResultsTitle": "No results found",
     "noResultsDesc": "No transaction history matched the current filters.",
     "noTransactionsTitle": "No transactions yet",
-    "noTransactionsDesc": "The system has not recorded any inventory transactions."
+    "noTransactionsDesc": "The system has not recorded any inventory transactions.",
+    "adjustCount": "Inventory Count Adjustment"
   },
   "inventoryCounts": {
     "title": "Inventory count",
@@ -1014,7 +1095,10 @@
     "cancelMessage": "Are you sure you want to cancel this count? All entered actual quantities will be discarded and system inventory will remain unchanged.",
     "cancelConfirm": "Confirm cancel",
     "cancelReasonInputLabel": "Cancel reason",
-    "cancelReasonPlaceholder": "Enter detailed reason..."
+    "cancelReasonPlaceholder": "Enter detailed reason...",
+    "reasonRequired": "A discrepancy reason (Note) is required when there is a difference.",
+    "createAdjustmentVoucher": "Create Adjustment",
+    "viewAdjustmentVoucher": "View Adjustment"
   },
   "approvals": {
     "titleIn": "Pending Import Receipts",
@@ -1045,6 +1129,8 @@
     "documentType": {
       "in": "Import Receipt",
       "out": "Export Receipt",
+      "inbound_discrepancy": "Discrepancy Report",
+      "inventory_adjustment": "Inventory Adjustment",
       "inName": "import",
       "outName": "export",
       "default": "Receipt"
@@ -1064,7 +1150,9 @@
       "rejectReasonMaxLength": "Rejection reason cannot exceed {max} characters.",
       "rejectSuccess": "Successfully rejected {type} receipt.",
       "rejectOutError": "Cannot reject export receipt.",
-      "rejectInError": "Cannot reject import receipt."
+      "rejectInError": "Cannot reject import receipt.",
+      "completeSuccess": "Successfully completed receipt {code}.",
+      "rejectSuccessCode": "Successfully rejected receipt {code}."
     },
     "filters": {
       "type": "Type",
@@ -1083,8 +1171,14 @@
       "rejectReceipt": "Reject Receipt",
       "cancel": "Cancel",
       "processing": "Processing...",
-      "confirmReject": "Confirm Rejection"
+      "confirmReject": "Confirm Rejection",
+      "approveLevel": "Approve Level {level}"
     },
+    "approveReceiptQuestion": "Are you sure you want to approve this export receipt {code}?",
+    "complete": "Complete",
+    "completeQuestion": "Are you sure you want to complete the stock out for receipt {code}?",
+    "confirmApprove": "Confirm Approval",
+    "confirmComplete": "Confirm Completion",
     "loading": "Loading pending receipts...",
     "emptyList": "No pending receipts found",
     "pagination": {
@@ -1242,7 +1336,8 @@
       "quantityMin": "Quantity must be greater than 0.",
       "unitPriceMin": "Unit price must be at least 0.",
       "productExists": "Product is already in the list.",
-      "invalidProduct": "Invalid product."
+      "invalidProduct": "Invalid product.",
+      "quantityExceedsStock": "Export quantity exceeds available stock ({stock})."
     },
     "type": {
       "out": "export",
@@ -1437,7 +1532,9 @@
       "exportPdfSuccess": "Exported PDF successfully.",
       "exportExcelSuccess": "Exported Excel successfully.",
       "unknownStatus": "Unknown status.",
-      "exportFailed": "Cannot {label}."
+      "exportFailed": "Cannot {label}.",
+      "missingVolumesWarning": "Some products do not have unit volumes configured. System cannot calculate projected capacity. Do you want to proceed?",
+      "exceedCapacityWarning": "Projected inbound volume ({incoming} m3) exceeds warehouse remaining capacity ({remaining} m3). Do you want to proceed?"
     },
     "exportLabels": {
       "pdf": "export PDF",
@@ -1464,6 +1561,71 @@
       "unknownStatus": "Unknown status.",
       "noPermission": "You currently do not have permission to approve or reject.",
       "completePermissionOnly": "Only Admin or Warehouse Employees can complete export."
+    }
+  },
+  "settings": {
+    "title": "System Settings",
+    "description": "Manage and update active system configuration parameters.",
+    "thresholdLabel": "Second Approval Threshold (VND)",
+    "thresholdDescription": "Import receipts with total value exceeding this threshold will require two approval levels by two distinct managers.",
+    "saveButton": "Save Settings",
+    "saving": "Saving...",
+    "changeReason": "Change Reason",
+    "changeReasonPlaceholder": "Enter reason for this configuration change (required)...",
+    "historyTitle": "Configuration Change History",
+    "oldValue": "Old Value",
+    "newValue": "New Value",
+    "reason": "Reason",
+    "changedBy": "Updated By",
+    "changedAt": "Time",
+    "confirmUpdateTitle": "Confirm Configuration Change",
+    "confirmUpdateMessage": "Are you sure you want to change the second approval threshold configuration?",
+    "messages": {
+      "saveSuccess": "Configuration saved successfully!",
+      "saveError": "Failed to save configuration. Please try again.",
+      "loadError": "Failed to load system configuration.",
+      "invalidValue": "Please enter a valid numeric value greater than 0.",
+      "errorReasonRequired": "Please enter the reason for this change."
+    }
+  },
+  "capacity": {
+    "status": {
+      "BINH_THUONG": "Normal",
+      "CAN_LUU_Y": "Caution",
+      "CAO": "High",
+      "NGUY_HIEM": "Dangerous",
+      "QUA_TAI": "Overloaded"
+    }
+  },
+  "adjustment": {
+    "title": "Inventory Adjustment",
+    "description": "Reconcile count discrepancies and update inventory levels.",
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending Approval",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "applied": "Applied"
+    },
+    "rejectReason": "Reject Reason",
+    "columns": {
+      "adjustmentQty": "Adjustment Qty",
+      "discrepancyReason": "Discrepancy Reason"
+    },
+    "actions": {
+      "submit": "Submit Voucher",
+      "reject": "Reject",
+      "approve": "Approve",
+      "apply": "Apply"
+    },
+    "confirmApplyTitle": "Confirm Adjustment Application",
+    "confirmApplyMessage": "This action will update physical inventory levels. Are you sure you want to proceed?",
+    "msg": {
+      "submitted": "Adjustment voucher submitted for approval.",
+      "approved": "Adjustment voucher approved.",
+      "rejected": "Adjustment voucher rejected.",
+      "appliedSuccess": "Adjustment applied and inventory updated successfully!",
+      "alreadyApplied": "The count is already finalized."
     }
   }
 }

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../../components/PageHeader.vue'
@@ -123,6 +123,16 @@ function applySearch() {
   filters.page = 0
   fetchEmployees()
 }
+
+const searchDebounceTimer = ref(null)
+watch(searchDraft, (newVal) => {
+  if (searchDebounceTimer.value) clearTimeout(searchDebounceTimer.value)
+  searchDebounceTimer.value = setTimeout(() => {
+    filters.keyword = newVal.trim()
+    filters.page = 0
+    fetchEmployees()
+  }, 300)
+})
 
 function applyFilter() {
   filters.page = 0

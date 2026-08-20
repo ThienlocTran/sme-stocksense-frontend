@@ -70,18 +70,29 @@ const columns = computed(() => [
   { key: 'actions', label: t('stockDocument.columns.actions') },
 ])
 
-const statusOptions = computed(() => [
-  { value: 'NHAP', label: t('stockDocument.status.draft') },
-  { value: 'CHO_DUYET', label: t('stockDocument.status.pending') },
-  { value: 'CHO_DUYET_CAP_1', label: t('stockDocument.status.pending') },
-  { value: 'CHO_DUYET_CAP_2', label: t('stockDocument.status.pending') },
-  { value: 'DA_DUYET', label: t('stockDocument.status.approved') },
-  { value: 'CHO_HANG_VE', label: t('stockDocument.status.pending_delivery') },
-  { value: 'CHO_KIEM_HANG', label: t('stockDocument.status.pending_inspection') },
-  { value: 'HOAN_THANH', label: t('stockDocument.status.completed') },
-  { value: 'TU_CHOI', label: t('stockDocument.status.rejected') },
-  { value: 'HUY', label: t('stockDocument.status.cancelled') },
-])
+const statusOptions = computed(() => {
+  if (isOut.value) {
+    return [
+      { value: 'NHAP', label: t('stockDocument.status.draft') },
+      { value: 'CHO_DUYET', label: t('stockDocument.status.pending') },
+      { value: 'DA_DUYET', label: t('stockDocument.status.approved') },
+      { value: 'HOAN_THANH', label: t('stockDocument.status.completed') },
+      { value: 'TU_CHOI', label: t('stockDocument.status.rejected') },
+      { value: 'HUY', label: t('stockDocument.status.cancelled') },
+    ]
+  } else {
+    return [
+      { value: 'NHAP', label: t('stockDocument.status.draft') },
+      { value: 'CHO_DUYET_CAP_1', label: t('stockDocument.status.pending_level1') },
+      { value: 'CHO_DUYET_CAP_2', label: t('stockDocument.status.pending_level2') },
+      { value: 'CHO_HANG_VE', label: t('stockDocument.status.pending_delivery') },
+      { value: 'CHO_KIEM_HANG', label: t('stockDocument.status.pending_inspection') },
+      { value: 'HOAN_THANH', label: t('stockDocument.status.completed') },
+      { value: 'TU_CHOI', label: t('stockDocument.status.rejected') },
+      { value: 'HUY', label: t('stockDocument.status.cancelled') },
+    ]
+  }
+})
 
 const statusHelpers = computed(() => ({
   NHAP: t('stockDocument.statusDesc.draft'),
@@ -286,8 +297,8 @@ function statusLabel(status) {
   const mapping = {
     NHAP: t('stockDocument.status.draft'),
     CHO_DUYET: t('stockDocument.status.pending'),
-    CHO_DUYET_CAP_1: t('stockDocument.status.pending'),
-    CHO_DUYET_CAP_2: t('stockDocument.status.pending'),
+    CHO_DUYET_CAP_1: t('stockDocument.status.pending_level1'),
+    CHO_DUYET_CAP_2: t('stockDocument.status.pending_level2'),
     DA_DUYET: t('stockDocument.status.approved'),
     CHO_HANG_VE: t('stockDocument.status.pending_delivery'),
     CHO_KIEM_HANG: t('stockDocument.status.pending_inspection'),
