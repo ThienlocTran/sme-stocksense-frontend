@@ -69,6 +69,7 @@ const warehouseDistFailed = ref(false);
 const movementWarehouseId = ref("");
 const warehouseList = ref([]);
 // Date Picker & Calendar State for Chart
+const selectedDaysRange = ref(90);
 const movementStartDate = ref(new Date());
 // Default to 90 days ending today (start date is today - 89 days)
 const defaultStart = new Date();
@@ -77,9 +78,17 @@ movementStartDate.value = defaultStart;
 
 const movementEndDate = computed(() => {
   const end = new Date(movementStartDate.value);
-  end.setDate(end.getDate() + 89);
+  end.setDate(end.getDate() + selectedDaysRange.value - 1);
   return end;
 });
+
+function changeDaysRange(days) {
+  selectedDaysRange.value = days;
+  const newStart = new Date();
+  newStart.setDate(newStart.getDate() - days + 1);
+  movementStartDate.value = newStart;
+  fetchMovementData();
+}
 
 const isCalendarOpen = ref(false);
 const datepickerContainer = ref(null);
@@ -612,14 +621,14 @@ function formatLocalDateApi(date) {
 
 function previous90Days() {
   const newStart = new Date(movementStartDate.value);
-  newStart.setDate(newStart.getDate() - 90);
+  newStart.setDate(newStart.getDate() - selectedDaysRange.value);
   movementStartDate.value = newStart;
   fetchMovementData();
 }
 
 function next90Days() {
   const newStart = new Date(movementStartDate.value);
-  newStart.setDate(newStart.getDate() + 90);
+  newStart.setDate(newStart.getDate() + selectedDaysRange.value);
   movementStartDate.value = newStart;
   fetchMovementData();
 }
@@ -1270,13 +1279,26 @@ const warehouseDistOptions = computed(() => {
                   {{ w.maKho || w.code ? `${w.maKho || w.code} - ${w.tenKho || w.name || '-'}` : (w.tenKho || w.name || '-') }}
                 </option>
               </select>
+              <div class="btn-group flex gap-0.5 bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <button 
+                  v-for="days in [7, 30, 90]" 
+                  :key="days"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-md transition-all select-none"
+                  :class="selectedDaysRange === days ? 'bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'"
+                  type="button"
+                  @click="changeDaysRange(days)"
+                  :disabled="isMovementLoading"
+                >
+                  {{ days }} ngày
+                </button>
+              </div>
               <div ref="datepickerContainer" class="date-navigation flex items-center gap-1.5">
                 <button 
                   class="btn btn-secondary btn-icon btn-sm" 
                   type="button"
                   @click="previous90Days" 
                   :disabled="isMovementLoading"
-                  title="90 ngày trước"
+                  :title="selectedDaysRange + ' ngày trước'"
                 >
                   <i class="mdi mdi-chevron-left text-base"></i>
                 </button>
@@ -1343,7 +1365,7 @@ const warehouseDistOptions = computed(() => {
                   type="button"
                   @click="next90Days" 
                   :disabled="isMovementLoading"
-                  title="90 ngày tiếp theo"
+                  :title="selectedDaysRange + ' ngày tiếp theo'"
                 >
                   <i class="mdi mdi-chevron-right text-base"></i>
                 </button>
