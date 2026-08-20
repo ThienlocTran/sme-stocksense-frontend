@@ -815,7 +815,10 @@
       "active": "Active warehouses",
       "inactive": "Inactive warehouses",
       "search": "Search",
-      "clear": "Clear filters"
+      "clear": "Clear filters",
+      "allAlertTypes": "All Alert Types",
+      "lowStock": "Low Stock Alerts",
+      "capacity": "Capacity Alerts"
     },
     "table": {
       "productCode": "Product Code",

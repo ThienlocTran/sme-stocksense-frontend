@@ -815,7 +815,10 @@
       "active": "Kho đang hoạt động",
       "inactive": "Kho ngừng hoạt động",
       "search": "Tìm kiếm",
-      "clear": "Xóa lọc"
+      "clear": "Xóa lọc",
+      "allAlertTypes": "Tất cả loại cảnh báo",
+      "lowStock": "Cảnh báo tồn kho thấp",
+      "capacity": "Cảnh báo sức chứa"
     },
     "table": {
       "productCode": "Mã SP",
