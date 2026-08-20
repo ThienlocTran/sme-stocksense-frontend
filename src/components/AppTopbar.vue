@@ -194,10 +194,11 @@ function applyPasswordBackendErrors(errors = {}) {
         <span>{{ passwordSuccessMessage }}</span>
       </div>
 
-      <!-- Dark Mode Toggle Slider -->
+      <!-- Dark Mode Toggle (Scaled like the repo) -->
       <div class="theme-selector">
         <div 
-          class="theme-switch" 
+          class="mode-button-container" 
+          :class="isDark ? 'dark' : 'light'"
           @click="toggleTheme" 
           role="button" 
           tabindex="0"
@@ -205,14 +206,45 @@ function applyPasswordBackendErrors(errors = {}) {
           @keydown.enter="toggleTheme"
           @keydown.space.prevent="toggleTheme"
         >
-          <span class="theme-switch-icon theme-switch-icon--left">
-            <i class="mdi mdi-sun-wireless text-amber-500"></i>
-          </span>
-          <span class="theme-switch-icon theme-switch-icon--right">
-            <i class="mdi mdi-weather-night text-zinc-400"></i>
-          </span>
-          <div class="theme-switch-thumb">
-            <i class="mdi" :class="isDark ? 'mdi-weather-night text-blue-400' : 'mdi-sun-wireless text-amber-500'"></i>
+          <div class="mode-button">
+            <!-- Glow layers -->
+            <div class="layer">
+              <div>
+                <div></div>
+              </div>
+            </div>
+            <!-- Sun / Moon indicator -->
+            <div class="indicator">
+              <div>
+                <div></div>
+                <div></div>
+                <div></div>
+              </div>
+            </div>
+            <!-- Clouds (for day mode) -->
+            <div class="cloud">
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+            <div class="cloud-background">
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+            <!-- Stars (for night mode) -->
+            <div class="star">
+              <div class="star-dot dot-1"></div>
+              <div class="star-dot dot-2"></div>
+              <div class="star-dot dot-3"></div>
+              <div class="star-dot dot-4"></div>
+              <div class="star-dot dot-5"></div>
+              <div class="star-dot dot-6"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -516,59 +548,232 @@ function applyPasswordBackendErrors(errors = {}) {
   display: flex;
   align-items: center;
 }
-.theme-switch {
-  position: relative;
-  display: inline-flex;
+.mode-button-container {
+  --toggle-width: 56px; 
+  --toggle-height: 24px; 
+  --layer-size: 56px;
+  --indicator-size: 18px;
+  --indicator-padding: 3px;
+  
+  display: flex;
   align-items: center;
-  width: 62px;
-  height: 28px;
-  background: var(--color-border-strong);
-  border-radius: 99px;
-  padding: 4px;
-  cursor: pointer;
-  transition: background-color 300ms ease;
+  justify-content: center;
   user-select: none;
 }
-html.dark .theme-switch {
-  background: #1f2937;
+
+.mode-button {
+  width: var(--toggle-width);
+  height: var(--toggle-height);
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--toggle-height) / 2);
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4), 0.5px 0.5px 1px rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: background-color 0.5s ease-in-out;
 }
-.theme-switch-icon {
+
+.mode-button:hover .layer {
+  transform: scale(1.1);
+}
+
+.layer {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.theme-switch-icon--left {
-  left: 6px;
-}
-.theme-switch-icon--right {
-  right: 6px;
-}
-.theme-switch-thumb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), background-color 300ms ease;
   z-index: 2;
+  top: -110%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--layer-size);
+  height: var(--layer-size);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.08);
+  transition: all 0.5s ease-in-out;
 }
-html.dark .theme-switch-thumb {
-  background: #151d30;
-  transform: translateX(34px);
+
+.layer div {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--layer-size) / 4 * 3);
+  height: calc(var(--layer-size) / 4 * 3);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.12);
 }
-.theme-switch-thumb i {
-  font-size: 12px;
-  transition: transform 300ms ease, color 300ms ease;
+
+.layer div div {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--layer-size) / 4 * 2);
+  height: calc(var(--layer-size) / 4 * 2);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.15);
 }
-.theme-switch:hover .theme-switch-thumb i {
-  transform: rotate(45deg);
+
+.indicator {
+  position: absolute;
+  z-index: 4;
+  top: var(--indicator-padding);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--indicator-size);
+  height: var(--indicator-size);
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #fbbf24; /* Sun */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.4), inset 1px 1px 2px rgba(255,255,255,0.4);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicator > div {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--indicator-size);
+  height: var(--indicator-size);
+  border-radius: 50%;
+  background-color: #cbd5e1; /* Moon */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.4), inset 1px 1px 2px rgba(255,255,255,0.4);
+  transition: all 0.5s ease-in-out;
+}
+
+/* Moon Craters */
+.indicator div div:first-child {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  box-shadow: inset 0.5px 0.5px 1px rgba(0,0,0,0.3);
+}
+
+.indicator div div:nth-child(2) {
+  position: absolute;
+  top: 8px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  box-shadow: inset 0.5px 0.5px 1px rgba(0,0,0,0.3);
+}
+
+.indicator div div:last-child {
+  position: absolute;
+  top: 10px;
+  left: 11px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  box-shadow: inset 0.5px 0.5px 1px rgba(0,0,0,0.3);
+}
+
+/* Clouds styling */
+.cloud, .cloud-background {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  transition: all 0.5s ease-in-out;
+  width: 100%;
+  height: 100%;
+}
+
+.cloud div, .cloud-background div {
+  position: absolute;
+  border-radius: 50%;
+  background-color: #ffffff;
+}
+
+.cloud div:first-child { left: 24px; top: 12px; width: 16px; height: 16px; }
+.cloud div:nth-child(2) { left: 32px; top: 8px; width: 18px; height: 18px; }
+.cloud div:nth-child(3) { left: 40px; top: 10px; width: 14px; height: 14px; }
+.cloud div:nth-child(4) { left: 16px; top: 14px; width: 12px; height: 12px; }
+.cloud div:last-child { left: 8px; top: 16px; width: 10px; height: 10px; }
+
+.cloud-background div {
+  background-color: #93c5fd; /* Soft blue shadow cloud */
+}
+.cloud-background div:first-child { left: 22px; top: 10px; width: 16px; height: 16px; }
+.cloud-background div:nth-child(2) { left: 30px; top: 6px; width: 18px; height: 18px; }
+.cloud-background div:nth-child(3) { left: 38px; top: 8px; width: 14px; height: 14px; }
+.cloud-background div:nth-child(4) { left: 14px; top: 12px; width: 12px; height: 12px; }
+.cloud-background div:last-child { left: 6px; top: 14px; width: 10px; height: 10px; }
+
+/* Stars styling */
+.star {
+  position: absolute;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  transition: all 0.5s ease-in-out;
+}
+
+.star-dot {
+  position: absolute;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 1px rgba(255, 255, 255, 0.8);
+}
+.dot-1 { left: 12px; top: 4px; width: 1.5px; height: 1.5px; }
+.dot-2 { left: 18px; top: 14px; width: 1px; height: 1px; }
+.dot-3 { left: 24px; top: 6px; width: 2px; height: 2px; }
+.dot-4 { left: 28px; top: 16px; width: 1px; height: 1px; }
+.dot-5 { left: 34px; top: 8px; width: 1.5px; height: 1.5px; }
+.dot-6 { left: 8px; top: 12px; width: 1px; height: 1px; }
+
+/* Light Mode active styles */
+.light .indicator {
+  left: var(--indicator-padding);
+}
+.light .indicator > div {
+  left: 120%; /* Hide moon surface */
+}
+.light .layer {
+  left: -20%;
+}
+.light .cloud {
+  bottom: 0;
+}
+.light .cloud-background {
+  bottom: 2px;
+}
+.light .mode-button {
+  background-color: #3b82f6; /* Blue sky */
+}
+.light .star {
+  top: -100%;
+}
+
+/* Dark Mode active styles */
+.dark .indicator {
+  left: calc(var(--toggle-width) - var(--indicator-padding) - var(--indicator-size));
+}
+.dark .indicator > div {
+  left: 0; /* Show moon surface */
+}
+.dark .layer {
+  left: 10%;
+}
+.dark .cloud {
+  bottom: -100%;
+}
+.dark .cloud-background {
+  bottom: -100%;
+}
+.dark .mode-button {
+  background-color: #0f172a; /* Slate 900 night sky */
+}
+.dark .star {
+  top: 0;
 }
 
 .lang-selector {
