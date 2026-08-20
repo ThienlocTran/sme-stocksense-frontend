@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useRouter } from 'vue-router'
 import { changeOwnPassword, clearAuth, formatRole } from '../services/authService'
@@ -19,6 +19,33 @@ const passwordErrorMessage = ref('')
 const passwordSuccessMessage = ref('')
 const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const passwordErrors = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+const isUserMenuOpen = ref(false)
+
+function handleDocumentClick(event) {
+  const wrapper = document.querySelector('.user-menu-wrapper')
+  if (wrapper && !wrapper.contains(event.target)) {
+    isUserMenuOpen.value = false
+  }
+}
+
+function triggerChangePassword() {
+  isUserMenuOpen.value = false
+  openPasswordModal()
+}
+
+function triggerLogout() {
+  isUserMenuOpen.value = false
+  logout()
+}
+
+onMounted(() => {
+  window.addEventListener('click', handleDocumentClick)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleDocumentClick)
+})
 
 function logout() {
   if (isLoggingOut.value) return
@@ -139,26 +166,44 @@ function applyPasswordBackendErrors(errors = {}) {
         <i class="mdi mdi-check-circle-outline"></i>
         <span>{{ passwordSuccessMessage }}</span>
       </div>
-      <div v-if="currentUser" class="user-chip" style="display: flex; align-items: center; gap: 8px;">
-        <div 
-          style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
-          :style="currentUser.avatarUrl && !currentUser.avatarUrl.includes('/null') ? { backgroundImage: `url(${currentUser.avatarUrl})` } : {}"
+
+      <!-- Clickable User Profile Toggle with Dropdown -->
+      <div v-if="currentUser" class="user-menu-wrapper">
+        <button 
+          class="user-menu-trigger" 
+          type="button" 
+          @click.stop="isUserMenuOpen = !isUserMenuOpen"
+          aria-label="User Menu"
         >
-          <i v-if="!currentUser.avatarUrl || currentUser.avatarUrl.includes('/null')" class="mdi mdi-account" style="color: #94a3b8;"></i>
-        </div>
-        <div>
-          <strong>{{ currentUser.fullName }}</strong>
-          <span>{{ currentUserRole }}</span>
-        </div>
+          <div 
+            class="user-avatar-circle"
+            :style="currentUser.avatarUrl && !currentUser.avatarUrl.includes('/null') ? { backgroundImage: `url(${currentUser.avatarUrl})` } : {}"
+          >
+            <i v-if="!currentUser.avatarUrl || currentUser.avatarUrl.includes('/null')" class="mdi mdi-account"></i>
+          </div>
+          <span class="user-trigger-name">{{ currentUser.fullName }}</span>
+          <i class="mdi mdi-chevron-down trigger-chevron" :class="{ 'chevron-rotated': isUserMenuOpen }"></i>
+        </button>
+
+        <!-- Floating Dropdown Menu -->
+        <transition name="dropdown-fade">
+          <div v-if="isUserMenuOpen" class="user-dropdown-menu">
+            <div class="dropdown-header">
+              <strong>{{ currentUser.fullName }}</strong>
+              <span class="role-badge">{{ currentUserRole }}</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" type="button" :disabled="isLoggingOut" @click="triggerChangePassword">
+              <i class="mdi mdi-lock-reset"></i>
+              Đổi mật khẩu
+            </button>
+            <button class="dropdown-item logout-item" type="button" :disabled="isLoggingOut" @click="triggerLogout">
+              <i class="mdi mdi-logout"></i>
+              Đăng xuất
+            </button>
+          </div>
+        </transition>
       </div>
-      <button v-if="currentUser" class="btn btn-sm" type="button" :disabled="isLoggingOut" @click="openPasswordModal">
-        <i class="mdi mdi-lock-reset"></i>
-        Đổi mật khẩu
-      </button>
-      <button class="btn btn-sm" type="button" :disabled="isLoggingOut" @click="logout">
-        <i class="mdi mdi-logout"></i>
-        Đăng xuất
-      </button>
     </div>
   </header>
 
@@ -242,9 +287,6 @@ function applyPasswordBackendErrors(errors = {}) {
   font-size: 13px; 
   font-weight: 700; 
 }
-.user-chip { min-width: 150px; }
-.user-chip strong { font-size: 14px; line-height: 18px; color: var(--color-text-primary); }
-.user-chip span { display: block; line-height: 18px; color: var(--color-text-secondary); }
 .password-modal { width: min(520px, 100%); }
 .password-form { margin: 0; }
 .modal-desc { margin: 4px 0 0; color: var(--color-text-secondary); }
@@ -267,11 +309,154 @@ function applyPasswordBackendErrors(errors = {}) {
   to { transform: rotate(360deg); }
 }
 
+/* User Menu & Dropdown Styles */
+.user-menu-wrapper {
+  position: relative;
+}
+.user-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 12px 4px 4px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.user-menu-trigger:hover {
+  background: var(--color-bg);
+  border-color: var(--color-border-strong);
+}
+.user-avatar-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--color-border-strong);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+.user-avatar-circle i {
+  font-size: 18px;
+}
+.user-trigger-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trigger-chevron {
+  font-size: 16px;
+  color: var(--color-text-secondary);
+  transition: transform 150ms ease;
+}
+.chevron-rotated {
+  transform: rotate(180deg);
+}
+
+.user-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-header {
+  padding: 8px 12px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dropdown-header strong {
+  font-size: 14px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dropdown-header .role-badge {
+  font-size: 11px;
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+  font-weight: 700;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 6px 4px;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.dropdown-item i {
+  font-size: 16px;
+  color: var(--color-text-secondary);
+}
+.dropdown-item:hover {
+  background: var(--color-bg);
+}
+.logout-item:hover {
+  background: #fef2f2;
+  color: var(--color-danger);
+}
+.logout-item:hover i {
+  color: var(--color-danger);
+}
+
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 @media (max-width: 720px) {
-  .topbar, .topbar-actions { align-items: flex-start; height: auto; flex-direction: column; }
-  .topbar { padding: 12px 16px; }
-  .topbar-actions, .topbar-actions .btn, .password-success { width: 100%; }
-  .modal-foot { flex-direction: column-reverse; }
-  .modal-foot .btn { width: 100%; }
+  .topbar {
+    padding: 12px 16px;
+  }
+  .user-trigger-name {
+    display: none;
+  }
+  .user-menu-trigger {
+    padding: 4px;
+  }
 }
 </style>
