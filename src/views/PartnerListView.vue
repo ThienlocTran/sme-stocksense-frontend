@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../components/PageHeader.vue'
@@ -213,6 +213,15 @@ const applySearch = () => {
   filters.keyword = searchDraft.value.trim()
   fetchPartners()
 }
+
+const searchDebounceTimer = ref(null)
+watch(searchDraft, (newVal) => {
+  if (searchDebounceTimer.value) clearTimeout(searchDebounceTimer.value)
+  searchDebounceTimer.value = setTimeout(() => {
+    filters.keyword = newVal.trim()
+    fetchPartners()
+  }, 300)
+})
 
 const applyFilter = () => {
   fetchPartners()

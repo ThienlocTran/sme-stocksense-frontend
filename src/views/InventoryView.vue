@@ -206,6 +206,15 @@ function applySearch() {
   fetchInventory();
 }
 
+const searchDebounceTimer = ref(null);
+watch(searchDraft, (newVal) => {
+  if (searchDebounceTimer.value) clearTimeout(searchDebounceTimer.value);
+  searchDebounceTimer.value = setTimeout(() => {
+    page.value = 0;
+    fetchInventory();
+  }, 300);
+});
+
 function applyFilter() {
   page.value = 0;
   fetchInventory();

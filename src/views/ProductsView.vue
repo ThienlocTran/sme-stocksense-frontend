@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useI18n } from 'vue-i18n';
 import { useRouter } from "vue-router";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
@@ -179,6 +179,16 @@ function applySearch() {
   page.value = 0;
   fetchProducts();
 }
+
+const searchDebounceTimer = ref(null);
+watch(searchDraft, (newVal) => {
+  if (searchDebounceTimer.value) clearTimeout(searchDebounceTimer.value);
+  searchDebounceTimer.value = setTimeout(() => {
+    filters.keyword = newVal.trim();
+    page.value = 0;
+    fetchProducts();
+  }, 300);
+});
 
 function applyFilter() {
   page.value = 0;
