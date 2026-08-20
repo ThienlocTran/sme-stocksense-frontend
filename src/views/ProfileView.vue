@@ -318,7 +318,7 @@ onMounted(() => {
 
     <!-- Cropper Modal -->
     <div v-if="showCropper" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col transform transition-all">
+      <div class="bg-[var(--color-surface)] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col transform transition-all">
         <div class="px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]">
           <h3 class="text-base font-semibold text-[var(--color-text-primary)]">{{ t("profile.cropper.title") }}</h3>
           <button @click="cancelCrop" class="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors">
