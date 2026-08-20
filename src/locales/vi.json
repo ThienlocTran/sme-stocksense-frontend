@@ -178,7 +178,8 @@
       "partners": "Đối tác",
       "employees": "Nhân viên",
       "importExcel": "Import Excel",
-      "warehouses": "Kho hàng"
+      "warehouses": "Kho hàng",
+      "replenishment": "Gợi ý nhập hàng"
     }
   },
   "topbar": {
@@ -742,6 +743,41 @@
       "nameMax": "Tên kho không được vượt quá 150 ký tự.",
       "addressMax": "Địa chỉ không được vượt quá 255 ký tự.",
       "statusEmpty": "Trạng thái không được để trống."
+    }
+  },
+  "replenishment": {
+    "title": "Gợi ý nhập hàng",
+    "description": "Đề xuất số lượng cần nhập dựa trên mức tồn tối thiểu - tối đa thiết lập.",
+    "searchPlaceholder": "Tìm theo mã hoặc tên sản phẩm...",
+    "filters": {
+      "allWarehouses": "Tất cả kho hàng",
+      "loadingWarehouses": "Đang tải kho...",
+      "searchBtn": "Tìm kiếm",
+      "clearFiltersBtn": "Xóa lọc"
+    },
+    "loading": "Đang tải đề xuất nhập hàng...",
+    "table": {
+      "product": "Sản phẩm",
+      "warehouse": "Kho hàng",
+      "stockInfo": "Tồn kho thực tế / Min - Max",
+      "shortage": "Số lượng thiếu",
+      "suggested": "Số lượng gợi ý",
+      "priority": "Mức độ ưu tiên",
+      "reason": "Lý do đề xuất"
+    },
+    "reason": {
+      "OUT_OF_STOCK": "Hết hàng",
+      "BELOW_MINIMUM": "Dưới mức tối thiểu",
+      "AT_MINIMUM": "Bằng mức tối thiểu"
+    },
+    "priority": {
+      "CRITICAL": "Khẩn cấp",
+      "HIGH": "Cao",
+      "MEDIUM": "Trung bình"
+    },
+    "empty": {
+      "title": "Không có đề xuất nhập hàng",
+      "desc": "Tất cả các sản phẩm hiện có mức tồn kho an toàn và nằm ngoài ngưỡng cần bổ sung."
     }
   },
   "alerts": {

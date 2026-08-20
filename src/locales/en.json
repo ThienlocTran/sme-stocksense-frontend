@@ -178,7 +178,8 @@
       "partners": "Partners",
       "employees": "Employees",
       "importExcel": "Import Excel",
-      "warehouses": "Warehouses"
+      "warehouses": "Warehouses",
+      "replenishment": "Replenishment Suggestions"
     }
   },
   "topbar": {
@@ -742,6 +743,41 @@
       "nameMax": "Warehouse name cannot exceed 150 characters.",
       "addressMax": "Address cannot exceed 255 characters.",
       "statusEmpty": "Status cannot be empty."
+    }
+  },
+  "replenishment": {
+    "title": "Replenishment Suggestions",
+    "description": "Recommended order quantities based on configured Min-Max thresholds.",
+    "searchPlaceholder": "Search by product name or code...",
+    "filters": {
+      "allWarehouses": "All warehouses",
+      "loadingWarehouses": "Loading warehouses...",
+      "searchBtn": "Search",
+      "clearFiltersBtn": "Clear filters"
+    },
+    "loading": "Loading replenishment suggestions...",
+    "table": {
+      "product": "Product",
+      "warehouse": "Warehouse",
+      "stockInfo": "Current Stock / Min - Max",
+      "shortage": "Shortage Qty",
+      "suggested": "Suggested Qty",
+      "priority": "Priority",
+      "reason": "Reason"
+    },
+    "reason": {
+      "OUT_OF_STOCK": "Out of Stock",
+      "BELOW_MINIMUM": "Below Minimum",
+      "AT_MINIMUM": "At Minimum"
+    },
+    "priority": {
+      "CRITICAL": "Critical",
+      "HIGH": "High",
+      "MEDIUM": "Medium"
+    },
+    "empty": {
+      "title": "No replenishment suggestions",
+      "desc": "All products currently have safe stock levels above minimum thresholds."
     }
   },
   "alerts": {
