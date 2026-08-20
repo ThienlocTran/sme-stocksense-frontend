@@ -21,16 +21,28 @@ export async function getImportReceiptThreshold() {
   }
 }
 
-export async function updateImportReceiptThreshold(value) {
+export async function updateImportReceiptThreshold(value, reason) {
   try {
     const { data } = await systemSettingClient.put(
       '/api/system-settings/import-receipt-threshold',
-      { value: String(value) },
+      { value: String(value), reason: String(reason) },
       { headers: getAuthorizationHeader() }
     )
     return data
   } catch (error) {
     throw normalizeError(error, 'Không thể cập nhật cấu hình.')
+  }
+}
+
+export async function getImportReceiptThresholdHistory() {
+  try {
+    const { data } = await systemSettingClient.get(
+      '/api/system-settings/import-receipt-threshold/history',
+      { headers: getAuthorizationHeader() }
+    )
+    return data
+  } catch (error) {
+    throw normalizeError(error, 'Không thể tải lịch sử cấu hình.')
   }
 }
 

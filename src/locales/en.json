@@ -1525,11 +1525,22 @@
     "thresholdDescription": "Import receipts with total value exceeding this threshold will require two approval levels by two distinct managers.",
     "saveButton": "Save Settings",
     "saving": "Saving...",
+    "changeReason": "Change Reason",
+    "changeReasonPlaceholder": "Enter reason for this configuration change (required)...",
+    "historyTitle": "Configuration Change History",
+    "oldValue": "Old Value",
+    "newValue": "New Value",
+    "reason": "Reason",
+    "changedBy": "Updated By",
+    "changedAt": "Time",
+    "confirmUpdateTitle": "Confirm Configuration Change",
+    "confirmUpdateMessage": "Are you sure you want to change the second approval threshold configuration?",
     "messages": {
       "saveSuccess": "Configuration saved successfully!",
       "saveError": "Failed to save configuration. Please try again.",
       "loadError": "Failed to load system configuration.",
-      "invalidValue": "Please enter a valid numeric value greater than or equal to 0."
+      "invalidValue": "Please enter a valid numeric value greater than 0.",
+      "errorReasonRequired": "Please enter the reason for this change."
     }
   }
 }

@@ -1525,11 +1525,22 @@
     "thresholdDescription": "Phiếu nhập kho có tổng giá trị lớn hơn con số này sẽ bắt buộc phải qua 2 cấp phê duyệt từ 2 người khác nhau.",
     "saveButton": "Lưu cấu hình",
     "saving": "Đang lưu...",
+    "changeReason": "Lý do thay đổi",
+    "changeReasonPlaceholder": "Nhập lý do thay đổi cấu hình này (bắt buộc)...",
+    "historyTitle": "Lịch sử thay đổi cấu hình",
+    "oldValue": "Giá trị cũ",
+    "newValue": "Giá trị mới",
+    "reason": "Lý do thay đổi",
+    "changedBy": "Người cập nhật",
+    "changedAt": "Thời gian",
+    "confirmUpdateTitle": "Xác nhận thay đổi cấu hình",
+    "confirmUpdateMessage": "Bạn có chắc chắn muốn thay đổi cấu hình ngưỡng phê duyệt này?",
     "messages": {
       "saveSuccess": "Lưu cấu hình thành công!",
       "saveError": "Không thể lưu cấu hình. Vui lòng thử lại.",
       "loadError": "Không thể tải thông tin cấu hình.",
-      "invalidValue": "Vui lòng nhập giá trị số hợp lệ lớn hơn hoặc bằng 0."
+      "invalidValue": "Vui lòng nhập giá trị lớn hơn 0.",
+      "errorReasonRequired": "Vui lòng nhập lý do thay đổi cấu hình."
     }
   }
 }
