@@ -796,7 +796,9 @@
     "empty": {
       "title": "Không có đề xuất nhập hàng",
       "desc": "Tất cả các sản phẩm hiện có mức tồn kho an toàn và nằm ngoài ngưỡng cần bổ sung."
-    }
+    },
+    "suggested": "Đề xuất: ",
+    "capacityAllowed": "Duyệt (Sức chứa): "
   },
   "alerts": {
     "title": "Cảnh báo tồn kho",
@@ -916,7 +918,9 @@
     },
     "msg": {
       "seedSuccess": "Đã sinh dữ liệu demo cho {products} cặp sản phẩm/kho ({rows} dòng)."
-    }
+    },
+    "capacityAllowed": "Duyệt (Sức chứa): ",
+    "capacityLimitedDesc": "Sức chứa kho bị giới hạn! Một số đề xuất đã được giảm để phù hợp với không gian trống của kho."
   },
   "transactions": {
     "title": "Lịch sử giao dịch kho",
@@ -958,7 +962,8 @@
     "noResultsTitle": "Không tìm thấy kết quả",
     "noResultsDesc": "Không tìm thấy lịch sử giao dịch kho phù hợp với bộ lọc hiện tại.",
     "noTransactionsTitle": "Chưa có giao dịch",
-    "noTransactionsDesc": "Hệ thống chưa ghi nhận bất kỳ giao dịch biến động kho nào."
+    "noTransactionsDesc": "Hệ thống chưa ghi nhận bất kỳ giao dịch biến động kho nào.",
+    "adjustCount": "Điều chỉnh kiểm kê"
   },
   "inventoryCounts": {
     "title": "Kiểm kê kho",

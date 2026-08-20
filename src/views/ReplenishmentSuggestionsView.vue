@@ -334,11 +334,11 @@ function nextPage() {
                 Thiếu hụt: <strong>-{{ item.shortageQuantity }}</strong>
               </span>
               <div v-if="item.capacityLimited" class="flex flex-col items-end">
-                <span class="text-slate-400 text-[10px] line-through">Đề xuất: +{{ item.suggestedQuantity }}</span>
-                <span class="text-amber-600 font-bold">Duyệt: +{{ item.capacityAllowedQuantity }}</span>
+                <span class="text-slate-400 text-[10px] line-through">{{ t('replenishment.suggested') }}+{{ item.suggestedQuantity }}</span>
+                <span class="text-amber-600 font-bold">{{ t('replenishment.capacityAllowed') }}+{{ item.capacityAllowedQuantity }}</span>
               </div>
               <span class="text-emerald-700 font-semibold" v-else-if="item.suggestedQuantity > 0">
-                Đề xuất: <strong>+{{ item.suggestedQuantity }}</strong>
+                {{ t('replenishment.suggested') }}<strong>+{{ item.suggestedQuantity }}</strong>
               </span>
             </div>
           </div>

@@ -12,7 +12,7 @@ import {
 import { getPendingApprovals } from "../services/importReceiptService";
 import { getProducts } from "../services/productService";
 import { canAccessRoute, canCreateImportReceipt, canCreateExportReceipt } from "../services/permissionService";
-import { getWarehouses } from "../services/warehouseService";
+import { getWarehouses, getWarehouseCapacity } from "../services/warehouseService";
 import {
   getDashboardOverview,
   getInventoryMovement,
@@ -661,6 +661,36 @@ async function fetchWarehouseDistribution() {
   }
 }
 
+const warehouseCapacities = ref([]);
+const isLoadingCapacities = ref(false);
+
+async function fetchWarehouseCapacities() {
+  isLoadingCapacities.value = true;
+  try {
+    const list = await getWarehouses({ status: 'HOAT_DONG' });
+    const results = await Promise.allSettled(list.map(w => getWarehouseCapacity(w.id)));
+    const capacities = [];
+    list.forEach((w, i) => {
+      if (results[i].status === 'fulfilled' && results[i].value) {
+        const cap = results[i].value;
+        capacities.push({
+          id: w.id,
+          name: w.tenKho,
+          code: w.maKho,
+          usedVolume: cap.usedCapacityM3 || 0,
+          maxVolume: cap.maxCapacityM3 || 0,
+          usagePercentage: cap.usagePercentage || 0
+        });
+      }
+    });
+    warehouseCapacities.value = capacities.sort((a, b) => b.usagePercentage - a.usagePercentage);
+  } catch (err) {
+    console.error('Failed to load capacities for dashboard:', err);
+  } finally {
+    isLoadingCapacities.value = false;
+  }
+}
+
 function loadAnalyticsData() {
   loadWarehouseDropdown().then(() => {
     fetchMovementData();
@@ -668,7 +698,8 @@ function loadAnalyticsData() {
   
   Promise.allSettled([
     fetchStockHealth(),
-    fetchWarehouseDistribution()
+    fetchWarehouseDistribution(),
+    fetchWarehouseCapacities()
   ]);
 }
 
@@ -1233,6 +1264,51 @@ const warehouseDistOptions = computed(() => {
               </div>
               <div v-if="warehouseDistData.length > 5" class="mt-2 text-right">
                 <span class="text-3xs text-zinc-400 dark:text-zinc-500">{{ $t('dashboard.showingAllWarehousesCount', { count: warehouseDistData.length }) }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section: Warehouse Capacity -->
+          <section class="card card-pad">
+            <div class="section-head mb-4 flex items-center justify-between">
+              <div>
+                <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.warehouseCapacity') || 'Dung tích kho hàng' }}</h2>
+                <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.warehouseCapacityDesc') || 'Tình trạng lấp đầy thể tích thực tế của các kho' }}</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" @click="fetchWarehouseCapacities" :disabled="isLoadingCapacities">
+                <i class="mdi mdi-refresh"></i>
+              </button>
+            </div>
+
+            <div v-if="isLoadingCapacities" class="loading-state-mini py-6 text-center">
+              <i class="mdi mdi-loading mdi-spin text-xl text-blue-600"></i>
+            </div>
+
+            <div v-else-if="warehouseCapacities.length === 0" class="py-6 text-center text-zinc-400 text-sm">
+              — {{ $t('dashboard.noWarehouseCapacityData') || 'Chưa cấu hình dung tích kho' }} —
+            </div>
+
+            <div v-else class="space-y-4">
+              <div v-for="w in warehouseCapacities" :key="w.id" class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  <span class="truncate max-w-xs">{{ w.code }} - {{ w.name }}</span>
+                  <span :class="w.usagePercentage > 100 ? 'text-red-600 font-bold' : w.usagePercentage >= 95 ? 'text-amber-600 font-bold' : 'text-zinc-600 dark:text-zinc-400'">
+                    {{ w.usagePercentage.toFixed(0) }}% sử dụng
+                  </span>
+                </div>
+                
+                <div class="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div 
+                    class="h-full rounded-full transition-all duration-500" 
+                    :class="w.usagePercentage > 100 ? 'bg-red-700' : w.usagePercentage >= 95 ? 'bg-amber-500' : w.usagePercentage >= 80 ? 'bg-amber-400' : 'bg-green-500'"
+                    :style="{ width: Math.min(w.usagePercentage, 100) + '%' }"
+                  ></div>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-zinc-400">
+                  <span>{{ w.usedVolume.toFixed(2) }} / {{ w.maxVolume.toFixed(2) }} m³</span>
+                  <span v-if="w.maxVolume > 0 && w.maxVolume - w.usedVolume > 0">Còn trống: {{ (w.maxVolume - w.usedVolume).toFixed(2) }} m³</span>
+                  <span v-else-if="w.maxVolume > 0" class="text-red-500 font-medium">Quá tải</span>
+                </div>
               </div>
             </div>
           </section>

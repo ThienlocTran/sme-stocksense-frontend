@@ -37,6 +37,7 @@ const transactionTypeOptions = [
   { value: "NHAP_DAU_KY", label: t("transactions.initialInbound") },
   { value: "DIEU_CHINH_TANG", label: t("transactions.adjustIncrease") },
   { value: "DIEU_CHINH_GIAM", label: t("transactions.adjustDecrease") },
+  { value: "DIEU_CHINH_KIEM_KE", label: t("transactions.adjustCount") },
 ];
 
 const columns = [

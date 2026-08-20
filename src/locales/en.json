@@ -796,7 +796,9 @@
     "empty": {
       "title": "No replenishment suggestions",
       "desc": "All products currently have safe stock levels above minimum thresholds."
-    }
+    },
+    "suggested": "Suggested: ",
+    "capacityAllowed": "Approved (Capacity): "
   },
   "alerts": {
     "title": "Inventory Alerts",
@@ -916,7 +918,9 @@
     },
     "msg": {
       "seedSuccess": "Successfully seeded demo data for {products} product/warehouse pairs ({rows} rows)."
-    }
+    },
+    "capacityAllowed": "Allowed (Capacity): ",
+    "capacityLimitedDesc": "Warehouse capacity limited! Some reorder suggestions have been reduced to fit the remaining space."
   },
   "transactions": {
     "title": "Inventory Transaction History",
@@ -958,7 +962,8 @@
     "noResultsTitle": "No results found",
     "noResultsDesc": "No transaction history matched the current filters.",
     "noTransactionsTitle": "No transactions yet",
-    "noTransactionsDesc": "The system has not recorded any inventory transactions."
+    "noTransactionsDesc": "The system has not recorded any inventory transactions.",
+    "adjustCount": "Inventory Count Adjustment"
   },
   "inventoryCounts": {
     "title": "Inventory count",

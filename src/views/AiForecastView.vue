@@ -238,7 +238,7 @@ const summaryText = computed(() => {
     text = t("forecast.summary.normal", { rate: rateText, stock: formatNumber(stock), days: daysUntilMin, min: formatNumber(minStock) });
   }
   if (forecast.value.capacityLimited7d || forecast.value.capacityLimited14d || forecast.value.capacityLimited30d) {
-    text += " ⚠️ Sức chứa kho bị giới hạn! Một số đề xuất reorder đã được giảm để phù hợp với không gian trống của kho.";
+    text += " ⚠️ " + t('forecast.capacityLimitedDesc');
   }
   return text;
 });
@@ -366,7 +366,7 @@ const summaryText = computed(() => {
             </strong>
             <span v-if="forecast.capacityLimited7d" class="text-xs text-amber-600 font-bold flex items-center gap-0.5 mt-1">
               <i class="mdi mdi-alert-circle text-amber-500"></i>
-              Duyệt: {{ formatNumber(forecast.capacityAllowedQuantity7d) }}
+              {{ t('forecast.capacityAllowed') }}{{ formatNumber(forecast.capacityAllowedQuantity7d) }}
             </span>
           </div>
         </div>
@@ -378,7 +378,7 @@ const summaryText = computed(() => {
             </strong>
             <span v-if="forecast.capacityLimited14d" class="text-xs text-amber-600 font-bold flex items-center gap-0.5 mt-1">
               <i class="mdi mdi-alert-circle text-amber-500"></i>
-              Duyệt: {{ formatNumber(forecast.capacityAllowedQuantity14d) }}
+              {{ t('forecast.capacityAllowed') }}{{ formatNumber(forecast.capacityAllowedQuantity14d) }}
             </span>
           </div>
         </div>
@@ -390,7 +390,7 @@ const summaryText = computed(() => {
             </strong>
             <span v-if="forecast.capacityLimited30d" class="text-xs text-amber-600 font-bold flex items-center gap-0.5 mt-1">
               <i class="mdi mdi-alert-circle text-amber-500"></i>
-              Duyệt: {{ formatNumber(forecast.capacityAllowedQuantity30d) }}
+              {{ t('forecast.capacityAllowed') }}{{ formatNumber(forecast.capacityAllowedQuantity30d) }}
             </span>
           </div>
         </div>
