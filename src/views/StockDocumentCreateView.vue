@@ -48,6 +48,25 @@ let redirectTimer = null
 
 const warehouses = ref([])
 const suppliers = ref([])
+
+const warehouseOptions = computed(() => {
+  return warehouses.value.map(w => ({
+    value: w.id,
+    label: w.tenKho || w.name || '',
+    sublabel: w.maKho || w.code || w.diaChi || '',
+    searchKey: `${w.tenKho || w.name || ''} ${w.maKho || w.code || ''}`.toLowerCase()
+  }));
+});
+
+const supplierOptions = computed(() => {
+  return suppliers.value.map(s => ({
+    value: s.id,
+    label: s.tenDoiTac || s.name || '',
+    sublabel: s.maDoiTac || s.code || s.soDienThoai || '',
+    searchKey: `${s.tenDoiTac || s.name || ''} ${s.maDoiTac || s.code || ''}`.toLowerCase()
+  }));
+});
+
 const products = ref([])
 
 const productOptions = computed(() => {
@@ -623,34 +642,26 @@ function confirmText() {
         <div class="import-receipt-form__grid import-receipt-form__grid--2">
           <div class="import-receipt-form__field">
             <label class="import-receipt-form__label import-receipt-form__label--required">{{ type === 'out' ? t('stockDocumentCreate.label.warehouseOut') : t('stockDocumentCreate.label.warehouseIn') }}</label>
-            <select
+            <SearchableSelect
               v-model="form.warehouseId"
-              class="import-receipt-form__select"
-              :class="{ 'import-receipt-form__select--error': formErrors.warehouseId || errorState.warehouses }"
+              :options="warehouseOptions"
+              :placeholder="warehouses.length === 0 ? t('stockDocumentCreate.placeholder.noWarehouse') : t('stockDocumentCreate.placeholder.selectWarehouse')"
               :disabled="isProcessing || !isEditableStatus || warehouses.length === 0 || items.length > 0"
-            >
-              <option :value="null" disabled>{{ warehouses.length === 0 ? t('stockDocumentCreate.placeholder.noWarehouse') : t('stockDocumentCreate.placeholder.selectWarehouse') }}</option>
-              <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-                {{ warehouse.tenKho }}
-              </option>
-            </select>
+              :error="formErrors.warehouseId || errorState.warehouses"
+            />
             <span v-if="formErrors.warehouseId" class="import-receipt-form__error">{{ formErrors.warehouseId }}</span>
             <span v-else-if="errorState.warehouses" class="import-receipt-form__error">{{ errorState.warehouses }}</span>
           </div>
 
           <div class="import-receipt-form__field">
             <label class="import-receipt-form__label" :class="{ 'import-receipt-form__label--required': type === 'in' }">{{ type === 'out' ? t('stockDocumentCreate.label.partner') : t('stockDocumentCreate.label.supplier') }}</label>
-            <select
+            <SearchableSelect
               v-model="form.supplierId"
-              class="import-receipt-form__select"
-              :class="{ 'import-receipt-form__select--error': formErrors.supplierId || errorState.suppliers }"
+              :options="supplierOptions"
+              :placeholder="suppliers.length === 0 ? t('stockDocumentCreate.placeholder.noSupplier') : t('stockDocumentCreate.placeholder.selectSupplier')"
               :disabled="isProcessing || !isEditableStatus || suppliers.length === 0 || items.length > 0"
-            >
-              <option :value="null" disabled>{{ suppliers.length === 0 ? t('stockDocumentCreate.placeholder.noSupplier') : t('stockDocumentCreate.placeholder.selectSupplier') }}</option>
-              <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
-                {{ supplier.tenDoiTac }}
-              </option>
-            </select>
+              :error="formErrors.supplierId || errorState.suppliers"
+            />
             <span v-if="formErrors.supplierId" class="import-receipt-form__error">{{ formErrors.supplierId }}</span>
             <span v-else-if="errorState.suppliers" class="import-receipt-form__error">{{ errorState.suppliers }}</span>
           </div>
