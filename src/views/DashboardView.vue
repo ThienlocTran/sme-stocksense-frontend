@@ -1583,8 +1583,8 @@ const warehouseDistOptions = computed(() => {
           <section class="card card-pad">
             <div class="section-head mb-4 flex items-center justify-between">
               <div>
-                <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.warehouseCapacity') || 'Dung tích kho hàng' }}</h2>
-                <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.warehouseCapacityDesc') || 'Tình trạng lấp đầy thể tích thực tế của các kho' }}</p>
+                <h2 class="section-title text-zinc-900 dark:text-zinc-100">{{ $t('dashboard.warehouseCapacity') }}</h2>
+                <p class="eyebrow text-zinc-500 dark:text-zinc-400">{{ $t('dashboard.warehouseCapacityDesc') }}</p>
               </div>
               <button class="btn btn-ghost btn-sm" @click="fetchWarehouseCapacities" :disabled="isLoadingCapacities">
                 <i class="mdi mdi-refresh"></i>
@@ -1596,7 +1596,7 @@ const warehouseDistOptions = computed(() => {
             </div>
 
             <div v-else-if="warehouseCapacities.length === 0" class="py-6 text-center text-zinc-400 text-sm">
-              — {{ $t('dashboard.noWarehouseCapacityData') || 'Chưa cấu hình dung tích kho' }} —
+              — {{ $t('dashboard.noWarehouseCapacityData') }} —
             </div>
 
             <div v-else class="space-y-4">

@@ -22,7 +22,8 @@
     "warning": "Cảnh báo",
     "yes": "Có",
     "no": "Không",
-    "confirmActionSubtitle": "Hành động này sẽ ảnh hưởng trực tiếp đến dữ liệu hiện tại."
+    "confirmActionSubtitle": "Hành động này sẽ ảnh hưởng trực tiếp đến dữ liệu hiện tại.",
+    "viewAll": "Xem tất cả"
   },
   "stockDocument": {
     "title": {
@@ -327,7 +328,10 @@
     "initialInbound": "Nhập đầu kỳ",
     "adjustmentIncrease": "Điều chỉnh tăng",
     "adjustmentDecrease": "Điều chỉnh giảm",
-    "unknown": "Không xác định"
+    "unknown": "Không xác định",
+    "warehouseCapacity": "Dung tích kho hàng",
+    "warehouseCapacityDesc": "Tình trạng lấp đầy thể tích thực tế của các kho",
+    "noWarehouseCapacityData": "Chưa cấu hình dung tích kho"
   },
   "7 ngày": "7 ngày",
   "30 ngày": "30 ngày",
