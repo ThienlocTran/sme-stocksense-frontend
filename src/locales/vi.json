@@ -104,6 +104,56 @@
       "cancelExport": "Hủy phiếu xuất"
     }
   },
+  "inventory": {
+    "pageTitle": "Tồn kho",
+    "pageDescription": "Danh sách tồn kho theo sản phẩm và kho.",
+    "summary": {
+      "totalRecords": "Tổng bản ghi tồn kho",
+      "recordsPerPage": "Bản ghi trên trang",
+      "monitoredWarehouses": "Kho hàng đang theo dõi"
+    },
+    "filters": {
+      "searchPlaceholder": "Tìm theo mã sản phẩm, tên sản phẩm, mã vạch",
+      "loadingWarehouses": "Đang tải kho...",
+      "allWarehouses": "Tất cả kho",
+      "allStockStatuses": "Tất cả trạng thái tồn",
+      "allWarehouseStatuses": "Tất cả trạng thái kho",
+      "allProductStatuses": "Tất cả trạng thái SP",
+      "searchBtn": "Tìm kiếm",
+      "clearFiltersBtn": "Xóa lọc"
+    },
+    "loading": "Đang tải dữ liệu tồn kho...",
+    "emptyText": "Không có dữ liệu tồn kho phù hợp",
+    "emptyTitle": "Không có tồn kho",
+    "emptyDescription": "Thử điều chỉnh bộ lọc hoặc kiểm tra lại dữ liệu backend.",
+    "columns": {
+      "productCode": "Mã SP",
+      "productName": "Sản phẩm",
+      "warehouse": "Kho hàng",
+      "quantityThreshold": "Tồn thực tế / Tối thiểu",
+      "status": "Trạng thái tồn",
+      "warehouseStatus": "Trạng thái kho",
+      "productStatus": "Trạng thái SP",
+      "lastUpdated": "Cập nhật",
+      "minStock": "tối thiểu {count}",
+      "minStockThreshold": "Ngưỡng tối thiểu",
+      "currentStock": "Tồn hiện tại"
+    },
+    "status": {
+      "outOfStock": "Hết hàng",
+      "lowStock": "Sắp hết",
+      "inStock": "Đủ hàng",
+      "overStock": "Thừa hàng",
+      "active": "Đang hoạt động",
+      "inactive": "Ngừng hoạt động"
+    },
+    "pagination": {
+      "recordsCount": "{count} bản ghi",
+      "previous": "Trước",
+      "next": "Sau",
+      "pageIndicator": "Trang {current}/{total}"
+    }
+  },
   "sidebar": {
     "sections": {
       "operations": "Vận hành",

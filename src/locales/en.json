@@ -104,6 +104,56 @@
       "cancelExport": "Cancel Export"
     }
   },
+  "inventory": {
+    "pageTitle": "Inventory",
+    "pageDescription": "Inventory list by product and warehouse.",
+    "summary": {
+      "totalRecords": "Total Inventory Records",
+      "recordsPerPage": "Records Per Page",
+      "monitoredWarehouses": "Monitored Warehouses"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by product code, name, barcode",
+      "loadingWarehouses": "Loading warehouses...",
+      "allWarehouses": "All Warehouses",
+      "allStockStatuses": "All Stock Statuses",
+      "allWarehouseStatuses": "All Warehouse Statuses",
+      "allProductStatuses": "All Product Statuses",
+      "searchBtn": "Search",
+      "clearFiltersBtn": "Clear Filters"
+    },
+    "loading": "Loading inventory data...",
+    "emptyText": "No matching inventory data found",
+    "emptyTitle": "No Inventory Records",
+    "emptyDescription": "Try adjusting filters or checking backend data.",
+    "columns": {
+      "productCode": "SKU / Code",
+      "productName": "Product",
+      "warehouse": "Warehouse",
+      "quantityThreshold": "Actual / Min Stock",
+      "status": "Stock Status",
+      "warehouseStatus": "Warehouse Status",
+      "productStatus": "Product Status",
+      "lastUpdated": "Last Updated",
+      "minStock": "min {count}",
+      "minStockThreshold": "Min Threshold",
+      "currentStock": "Current Stock"
+    },
+    "status": {
+      "outOfStock": "Out of Stock",
+      "lowStock": "Low Stock",
+      "inStock": "In Stock",
+      "overStock": "Over Stock",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "pagination": {
+      "recordsCount": "{count} records",
+      "previous": "Prev",
+      "next": "Next",
+      "pageIndicator": "Page {current}/{total}"
+    }
+  },
   "sidebar": {
     "sections": {
       "operations": "Operations",

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
 import SearchFilterBar from "../components/SearchFilterBar.vue";
@@ -11,6 +12,7 @@ import { getWarehouses } from "../services/warehouseService";
 import { getWarehouseStatusLabel } from "../constants/warehouseOptions";
 
 const router = useRouter();
+const { t } = useI18n();
 const route = useRoute();
 const inventoryItems = ref([]);
 const warehouses = ref([]);
@@ -40,23 +42,23 @@ const filters = reactive({
   productStatus: "",
 });
 
-const inventoryStatusOptions = [
-  { value: "OUT_OF_STOCK", label: "Hết hàng" },
-  { value: "LOW_STOCK", label: "Sắp hết" },
-  { value: "NORMAL", label: "Đủ hàng" },
-  { value: "OVER_STOCK", label: "Thừa hàng" },
-];
+const inventoryStatusOptions = computed(() => [
+  { value: "OUT_OF_STOCK", label: t('inventory.status.outOfStock') },
+  { value: "LOW_STOCK", label: t('inventory.status.lowStock') },
+  { value: "NORMAL", label: t('inventory.status.inStock') },
+  { value: "OVER_STOCK", label: t('inventory.status.overStock') },
+]);
 
-const columns = [
-  { key: "productCode", label: "Mã SP", class: "cell-compact" },
-  { key: "productName", label: "Sản phẩm", class: "cell-long" },
-  { key: "warehouse", label: "Kho hàng", class: "cell-medium" },
-  { key: "currentQuantity", label: "Tồn thực tế / Tối thiểu", class: "cell-medium text-right" },
-  { key: "status", label: "Trạng thái tồn", class: "cell-nowrap" },
-  { key: "warehouseStatus", label: "Trạng thái kho", class: "cell-nowrap" },
-  { key: "productStatus", label: "Trạng thái SP", class: "cell-nowrap" },
-  { key: "lastUpdatedAt", label: "Cập nhật", class: "cell-nowrap" },
-];
+const columns = computed(() => [
+  { key: "productCode", label: t('inventory.columns.productCode'), class: "cell-compact" },
+  { key: "productName", label: t('inventory.columns.productName'), class: "cell-long" },
+  { key: "warehouse", label: t('inventory.columns.warehouse'), class: "cell-medium" },
+  { key: "currentQuantity", label: t('inventory.columns.quantityThreshold'), class: "cell-medium text-right" },
+  { key: "status", label: t('inventory.columns.status'), class: "cell-nowrap" },
+  { key: "warehouseStatus", label: t('inventory.columns.warehouseStatus'), class: "cell-nowrap" },
+  { key: "productStatus", label: t('inventory.columns.productStatus'), class: "cell-nowrap" },
+  { key: "lastUpdatedAt", label: t('inventory.columns.lastUpdated'), class: "cell-nowrap" },
+]);
 
 const hasPreviousPage = computed(() => page.value > 0);
 const hasNextPage = computed(() => page.value + 1 < totalPages.value);
@@ -136,7 +138,7 @@ function clearFilters() {
 }
 
 function getInventoryStatusLabel(status) {
-  return inventoryStatusOptions.find((option) => option.value === status)?.label || status || "-";
+  return inventoryStatusOptions.value.find((option) => option.value === status)?.label || status || "-";
 }
 
 function displayWarehouseName(row) {
@@ -168,63 +170,63 @@ function formatDate(value) {
 </script>
 
 <template>
-  <PageHeader title="Tồn kho" description="Danh sách tồn kho theo sản phẩm và kho." />
+  <PageHeader :title="t('inventory.pageTitle')" :description="t('inventory.pageDescription')" />
 
   <!-- Inventory Summary Metrics -->
   <div v-if="!isLoading && inventoryItems.length > 0" class="inventory-summary">
     <div class="summary-card card card-pad">
-      <span class="summary-label">Tổng bản ghi tồn kho</span>
+      <span class="summary-label">{{ t('inventory.summary.totalRecords') }}</span>
       <strong class="summary-val text-blue-600">{{ totalElements }}</strong>
     </div>
     <div class="summary-card card card-pad">
-      <span class="summary-label">Bản ghi trên trang</span>
+      <span class="summary-label">{{ t('inventory.summary.recordsPerPage') }}</span>
       <strong class="summary-val">{{ inventoryItems.length }}</strong>
     </div>
     <div class="summary-card card card-pad">
-      <span class="summary-label">Kho hàng đang theo dõi</span>
+      <span class="summary-label">{{ t('inventory.summary.monitoredWarehouses') }}</span>
       <strong class="summary-val text-emerald-600">{{ warehouses.length }}</strong>
     </div>
   </div>
 
   <SearchFilterBar
     v-model="searchDraft"
-    placeholder="Tìm theo mã sản phẩm, tên sản phẩm, mã vạch"
+    :placeholder="t('inventory.filters.searchPlaceholder')"
     @keyup.enter="applySearch"
   >
     <select v-model="filters.warehouseId" class="select" :disabled="isLoadingDropdowns || isLoading" @change="applyFilter">
-      <option value="">{{ isLoadingDropdowns ? "Đang tải kho..." : "Tất cả kho" }}</option>
+      <option value="">{{ isLoadingDropdowns ? t('inventory.filters.loadingWarehouses') : t('inventory.filters.allWarehouses') }}</option>
       <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
         {{ displayWarehouseOption(warehouse) }}
       </option>
     </select>
 
     <select v-model="filters.stockStatus" class="select" :disabled="isLoading" @change="applyFilter">
-      <option value="">Tất cả trạng thái tồn</option>
+      <option value="">{{ t('inventory.filters.allStockStatuses') }}</option>
       <option v-for="option in inventoryStatusOptions" :key="option.value" :value="option.value">
         {{ option.label }}
       </option>
     </select>
 
     <select v-model="filters.warehouseStatus" class="select" :disabled="isLoading" @change="applyFilter">
-      <option value="">Tất cả trạng thái kho</option>
-      <option value="HOAT_DONG">Đang hoạt động</option>
-      <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
+      <option value="">{{ t('inventory.filters.allWarehouseStatuses') }}</option>
+      <option value="HOAT_DONG">{{ t('inventory.status.active') }}</option>
+      <option value="NGUNG_HOAT_DONG">{{ t('inventory.status.inactive') }}</option>
     </select>
 
     <select v-model="filters.productStatus" class="select" :disabled="isLoading" @change="applyFilter">
-      <option value="">Tất cả trạng thái SP</option>
-      <option value="HOAT_DONG">Đang hoạt động</option>
-      <option value="NGUNG_HOAT_DONG">Ngừng hoạt động</option>
+      <option value="">{{ t('inventory.filters.allProductStatuses') }}</option>
+      <option value="HOAT_DONG">{{ t('inventory.status.active') }}</option>
+      <option value="NGUNG_HOAT_DONG">{{ t('inventory.status.inactive') }}</option>
     </select>
 
     <div class="filter-actions">
       <button class="btn btn-primary" type="button" :disabled="isLoading" @click="applySearch">
         <i class="mdi mdi-magnify"></i>
-        Tìm kiếm
+        {{ t('inventory.filters.searchBtn') }}
       </button>
       <button v-if="hasActiveFilters" class="btn btn-ghost" type="button" :disabled="isLoading" @click="clearFilters">
         <i class="mdi mdi-filter-remove-outline"></i>
-        Xóa lọc
+        {{ t('inventory.filters.clearFiltersBtn') }}
       </button>
     </div>
   </SearchFilterBar>
@@ -233,7 +235,7 @@ function formatDate(value) {
 
   <div v-if="isLoading" class="inventory-loading card card-pad">
     <i class="mdi mdi-loading mdi-spin"></i>
-    <span>Đang tải dữ liệu tồn kho...</span>
+    <span>{{ t('inventory.loading') }}</span>
   </div>
 
   <div class="inventory-desktop-table">
@@ -242,7 +244,7 @@ function formatDate(value) {
       :columns="columns"
       :rows="inventoryItems"
       min-width="1200px"
-      empty-text="Không có dữ liệu tồn kho phù hợp"
+      :empty-text="t('inventory.emptyText')"
     >
       <template #productCode="{ value }">
         <code class="sku-code">{{ value }}</code>
@@ -269,7 +271,7 @@ function formatDate(value) {
           <span class="tabular-num font-semibold text-slate-800" :class="{ 'text-red-600 font-bold': row.status === 'OUT_OF_STOCK', 'text-amber-600 font-bold': row.status === 'LOW_STOCK' }">
             {{ value ?? 0 }}
           </span>
-          <span class="threshold-hint" v-if="row.minStock !== null">/ tối thiểu {{ row.minStock }}</span>
+          <span class="threshold-hint" v-if="row.minStock !== null">/ {{ t('inventory.columns.minStock', { count: row.minStock }) }}</span>
         </div>
       </template>
       <template #status="{ value }">
@@ -279,7 +281,7 @@ function formatDate(value) {
         <StatusBadge :status="getWarehouseStatusLabel(value)" />
       </template>
       <template #productStatus="{ value }">
-        <StatusBadge :status="value === 'HOAT_DONG' ? 'Đang hoạt động' : 'Ngừng hoạt động'" />
+        <StatusBadge :status="value === 'HOAT_DONG' ? t('inventory.status.active') : t('inventory.status.inactive')" />
       </template>
       <template #lastUpdatedAt="{ value }">
         <span class="tabular-num text-xs">{{ formatDate(value) }}</span>
@@ -304,14 +306,14 @@ function formatDate(value) {
 
       <div class="inventory-mobile-card__details">
         <div class="detail-row" v-if="row.warehouse">
-          <span class="detail-label">Kho hàng</span>
+          <span class="detail-label">{{ t('inventory.columns.warehouse') }}</span>
           <span class="detail-val">
             {{ row.warehouse }}
             <code class="sku-code text-xs text-muted ml-1" v-if="row.warehouseCode">{{ row.warehouseCode }}</code>
           </span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Tồn hiện tại</span>
+          <span class="detail-label">{{ t('inventory.columns.currentStock') }}</span>
           <span class="detail-val">
             <span class="tabular-num font-semibold text-slate-800" :class="{ 'text-red-600 font-bold': row.status === 'OUT_OF_STOCK', 'text-amber-600 font-bold': row.status === 'LOW_STOCK' }">
               {{ row.currentQuantity ?? 0 }}
@@ -319,13 +321,13 @@ function formatDate(value) {
           </span>
         </div>
         <div class="detail-row" v-if="row.minStock !== null">
-          <span class="detail-label">Ngưỡng tối thiểu</span>
+          <span class="detail-label">{{ t('inventory.columns.minStockThreshold') }}</span>
           <span class="detail-val">
             <span class="tabular-num">{{ row.minStock }}</span>
           </span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Cập nhật</span>
+          <span class="detail-label">{{ t('inventory.columns.lastUpdated') }}</span>
           <span class="detail-val text-xs text-muted">{{ formatDate(row.lastUpdatedAt) }}</span>
         </div>
       </div>
@@ -334,20 +336,20 @@ function formatDate(value) {
 
   <EmptyState
     v-else-if="!isLoading && !errorMessage"
-    title="Không có tồn kho"
-    description="Thử điều chỉnh bộ lọc hoặc kiểm tra lại dữ liệu backend."
+    :title="t('inventory.emptyTitle')"
+    :description="t('inventory.emptyDescription')"
   />
 
   <div v-if="inventoryItems.length > 0" class="pagination-bar card card-pad">
-    <span class="muted">{{ totalElements }} bản ghi</span>
+    <span class="muted">{{ t('inventory.pagination.recordsCount', { count: totalElements }) }}</span>
     <div class="pagination-actions">
       <button class="btn btn-sm" type="button" :disabled="!hasPreviousPage || isLoading" @click="previousPage">
         <i class="mdi mdi-chevron-left"></i>
-        Trước
+        {{ t('inventory.pagination.previous') }}
       </button>
-      <span class="page-indicator">Trang {{ totalPages === 0 ? 0 : page + 1 }}/{{ totalPages }}</span>
+      <span class="page-indicator">{{ t('inventory.pagination.pageIndicator', { current: totalPages === 0 ? 0 : page + 1, total: totalPages }) }}</span>
       <button class="btn btn-sm" type="button" :disabled="!hasNextPage || isLoading" @click="nextPage">
-        Sau
+        {{ t('inventory.pagination.next') }}
         <i class="mdi mdi-chevron-right"></i>
       </button>
     </div>
