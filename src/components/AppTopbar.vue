@@ -520,7 +520,7 @@ function applyPasswordBackendErrors(errors = {}) {
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: 52px;
+  width: 62px;
   height: 28px;
   background: var(--color-border-strong);
   border-radius: 99px;
@@ -561,7 +561,7 @@ html.dark .theme-switch {
 }
 html.dark .theme-switch-thumb {
   background: #151d30;
-  transform: translateX(24px);
+  transform: translateX(34px);
 }
 .theme-switch-thumb i {
   font-size: 12px;
