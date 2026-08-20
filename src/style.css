@@ -2,6 +2,8 @@
 @import "tailwindcss";
 @import '@mdi/font/css/materialdesignicons.css';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --color-bg: #F6F8F7;
   --color-surface: #FFFFFF;
