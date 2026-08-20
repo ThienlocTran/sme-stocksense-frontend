@@ -78,9 +78,7 @@ const currentUser = computed(() => authStore.currentUser);
 const currentUserName = computed(() => currentUser.value?.hoTen || currentUser.value?.fullName || "");
 
 const canSeeImportApprovals = computed(() => canAccessRoute("/approvals"));
-const canSeeExportApprovals = computed(() =>
-  canAccessRoute("/pending-export-approvals"),
-);
+const canSeeExportApprovals = computed(() => canAccessRoute("/approvals"));
 const canSeeWarnings = computed(() => canAccessRoute("/inventory"));
 const canSeeAlerts = computed(() => canAccessRoute("/alerts"));
 const canSeeProducts = computed(() => canAccessRoute("/products"));
@@ -173,11 +171,11 @@ const visibleQuickActions = computed(() => {
     actions.push({ title: t('dashboard.actionCreateImport'), icon: "mdi-tray-arrow-down", route: "/stock-in/create" });
     actions.push({ title: t('dashboard.actionCreateExport'), icon: "mdi-tray-arrow-up", route: "/stock-out/create" });
     actions.push({ title: t('dashboard.actionApproveImport'), icon: "mdi-check-decagram-outline", route: "/approvals" });
-    actions.push({ title: t('dashboard.actionApproveExport'), icon: "mdi-file-clock-outline", route: "/pending-export-approvals" });
+    actions.push({ title: t('dashboard.actionApproveExport'), icon: "mdi-file-clock-outline", route: "/approvals?type=out" });
     actions.push({ title: t('dashboard.actionImportExcel'), icon: "mdi-file-excel-outline", route: "/import-excel" });
   } else if (role === "MANAGER") {
     actions.push({ title: t('dashboard.actionApproveImport'), icon: "mdi-check-decagram-outline", route: "/approvals" });
-    actions.push({ title: t('dashboard.actionApproveExport'), icon: "mdi-file-clock-outline", route: "/pending-export-approvals" });
+    actions.push({ title: t('dashboard.actionApproveExport'), icon: "mdi-file-clock-outline", route: "/approvals?type=out" });
     actions.push({ title: t('sidebar.menu.stockIn'), icon: "mdi-tray-arrow-down", route: "/stock-in" });
     actions.push({ title: t('sidebar.menu.stockOut'), icon: "mdi-tray-arrow-up", route: "/stock-out" });
     actions.push({ title: t('dashboard.actionImportExcel'), icon: "mdi-file-excel-outline", route: "/import-excel" });
@@ -484,7 +482,7 @@ async function loadPendingApprovals() {
             code: item.code || item.maPhieuXuat,
             label: item.warehouseName || "Phiếu xuất",
             subtitle: item.status || "Chờ duyệt",
-            route: "/pending-export-approvals",
+            route: "/approvals?type=out",
           }),
         ),
       );

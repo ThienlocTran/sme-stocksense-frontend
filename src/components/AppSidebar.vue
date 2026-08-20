@@ -136,16 +136,10 @@ const menuSections = [
     titleKey: "approvals",
     items: [
       {
-        label: "Phiếu nhập chờ duyệt",
-        labelKey: "pendingImports",
+        label: "Phiếu chờ duyệt",
+        labelKey: "pendingApprovals",
         to: "/approvals",
         icon: "mdi-check-decagram-outline",
-      },
-      {
-        label: "Phiếu xuất chờ duyệt",
-        labelKey: "pendingExports",
-        to: "/pending-export-approvals",
-        icon: "mdi-file-clock-outline",
       },
     ],
   },

@@ -78,6 +78,8 @@
     "status": {
       "draft": "Nháp",
       "pending": "Chờ duyệt",
+      "pending_level1": "Chờ duyệt cấp 1",
+      "pending_level2": "Chờ duyệt cấp 2",
       "approved": "Đã duyệt",
       "pending_delivery": "Chờ hàng về",
       "pending_inspection": "Chờ kiểm hàng",
@@ -175,6 +177,7 @@
       "transactions": "Lịch sử giao dịch",
       "pendingImports": "Phiếu nhập chờ duyệt",
       "pendingExports": "Phiếu xuất chờ duyệt",
+      "pendingApprovals": "Phiếu chờ duyệt",
       "partners": "Đối tác",
       "employees": "Nhân viên",
       "importExcel": "Import Excel",
@@ -1279,7 +1282,8 @@
       "quantityMin": "Số lượng phải lớn hơn 0.",
       "unitPriceMin": "Đơn giá phải lớn hơn hoặc bằng 0.",
       "productExists": "Sản phẩm đã được thêm vào danh sách.",
-      "invalidProduct": "Sản phẩm không hợp lệ."
+      "invalidProduct": "Sản phẩm không hợp lệ.",
+      "quantityExceedsStock": "Số lượng xuất vượt quá tồn kho khả dụng ({stock})."
     },
     "type": {
       "out": "xuất",

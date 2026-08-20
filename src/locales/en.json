@@ -78,6 +78,8 @@
     "status": {
       "draft": "Draft",
       "pending": "Pending Approval",
+      "pending_level1": "Level 1 Pending",
+      "pending_level2": "Level 2 Pending",
       "approved": "Approved",
       "pending_delivery": "Pending Delivery",
       "pending_inspection": "Pending Inspection",
@@ -175,6 +177,7 @@
       "transactions": "Transaction History",
       "pendingImports": "Pending Imports",
       "pendingExports": "Pending Exports",
+      "pendingApprovals": "Pending Approvals",
       "partners": "Partners",
       "employees": "Employees",
       "importExcel": "Import Excel",
@@ -1279,7 +1282,8 @@
       "quantityMin": "Quantity must be greater than 0.",
       "unitPriceMin": "Unit price must be at least 0.",
       "productExists": "Product is already in the list.",
-      "invalidProduct": "Invalid product."
+      "invalidProduct": "Invalid product.",
+      "quantityExceedsStock": "Export quantity exceeds available stock ({stock})."
     },
     "type": {
       "out": "export",

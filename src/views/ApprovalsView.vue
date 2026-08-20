@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import PageHeader from "../components/PageHeader.vue";
 import DataTable from "../components/DataTable.vue";
@@ -22,8 +22,9 @@ import {
 import { getWarehouses } from "../services/warehouseService";
 
 const router = useRouter();
+const route = useRoute();
 const { t } = useI18n();
-const documentType = ref("in");
+const documentType = ref(route.query.type === "out" ? "out" : "in");
 
 const receipts = ref([]);
 const isLoading = ref(false);
@@ -111,6 +112,22 @@ const warehouseOptions = ref([]);
 
 onMounted(async () => {
   await Promise.all([loadWarehouseOptions(), fetchPendingApprovals()]);
+});
+
+// Sync documentType changes to route query
+watch(documentType, (newType) => {
+  if (route.query.type !== newType) {
+    router.replace({ query: { ...route.query, type: newType } });
+  }
+});
+
+// Sync route query changes back to documentType
+watch(() => route.query.type, (newType) => {
+  const targetType = newType === "out" ? "out" : "in";
+  if (documentType.value !== targetType) {
+    documentType.value = targetType;
+    clearFilters();
+  }
 });
 
 async function loadWarehouseOptions() {
