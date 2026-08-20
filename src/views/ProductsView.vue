@@ -20,6 +20,8 @@ import {
   updateProduct,
   updateProductStatus,
 } from "../services/productService";
+import { getWarehouses } from "../services/warehouseService";
+import { getInventory, saveWarehouseStockConfig } from "../services/inventoryService";
 
 const router = useRouter();
 const { t } = useI18n();
@@ -36,6 +38,10 @@ const errorMessage = ref("");
 const successMessage = ref("");
 const saveErrorMessage = ref("");
 const searchDraft = ref("");
+const activeWarehouses = ref([]);
+const createdProduct = ref(null);
+const initialConfigsErrors = ref({});
+const failedConfigs = ref([]);
 
 const page = ref(0);
 const size = ref(10);
@@ -139,12 +145,14 @@ onMounted(async () => {
 
 async function loadDropdowns() {
   try {
-    const [categoryData, supplierData] = await Promise.all([
+    const [categoryData, supplierData, warehouseData] = await Promise.all([
       getProductCategories(),
       getProductSuppliers(),
+      getWarehouses({ status: "HOAT_DONG" }),
     ]);
     categories.value = categoryData || [];
     suppliers.value = supplierData || [];
+    activeWarehouses.value = warehouseData || [];
   } catch (error) {
     errorMessage.value = error.message;
     if (error.status === 401) router.replace("/login");
@@ -229,13 +237,25 @@ function emptyForm() {
     categoryId: "",
     partnerId: "",
     status: "HOAT_DONG",
+    initialConfigs: []
   };
 }
 
 function openCreateForm() {
   if (!canManage.value) return;
   formMode.value = "create";
-  Object.assign(form, emptyForm());
+  createdProduct.value = null;
+  initialConfigsErrors.value = {};
+  failedConfigs.value = [];
+  const empty = emptyForm();
+  empty.initialConfigs = activeWarehouses.value.map(w => ({
+    warehouseId: w.id,
+    warehouseCode: w.maKho || w.code,
+    warehouseName: w.tenKho || w.name,
+    enabled: false,
+    minStock: ""
+  }));
+  Object.assign(form, empty);
   successMessage.value = "";
   clearFormFeedback();
   isFormOpen.value = true;
@@ -244,6 +264,9 @@ function openCreateForm() {
 async function openEditForm(product) {
   if (!canManage.value) return;
   formMode.value = "edit";
+  createdProduct.value = null;
+  initialConfigsErrors.value = {};
+  failedConfigs.value = [];
   successMessage.value = "";
   clearFormFeedback();
   isFormOpen.value = true;
@@ -261,6 +284,28 @@ async function openEditForm(product) {
       categoryId: detail.categoryId || "",
       partnerId: detail.partnerId || "",
       status: detail.status || "HOAT_DONG",
+      initialConfigs: []
+    });
+
+    const invData = await getInventory({ productId: product.id, size: 100 });
+    const configMap = {};
+    if (invData && Array.isArray(invData.content)) {
+      invData.content.forEach(item => {
+        if (item.minStock !== null && item.minStock !== undefined) {
+          configMap[item.warehouseId] = item.minStock;
+        }
+      });
+    }
+
+    form.initialConfigs = activeWarehouses.value.map(w => {
+      const hasConfig = configMap[w.id] !== undefined;
+      return {
+        warehouseId: w.id,
+        warehouseCode: w.maKho || w.code,
+        warehouseName: w.tenKho || w.name,
+        enabled: hasConfig,
+        minStock: hasConfig ? String(configMap[w.id]) : ""
+      };
     });
   } catch (error) {
     isFormOpen.value = false;
@@ -287,6 +332,7 @@ function applyBackendErrors(errors = {}) {
 
 function validateForm() {
   clearFormFeedback();
+  initialConfigsErrors.value = {};
   let valid = true;
   if (!form.code.trim()) {
     formErrors.code = t('products.errCodeEmpty');
@@ -315,7 +361,31 @@ function validateForm() {
     formErrors.status = t('products.errStatusEmpty');
     valid = false;
   }
+
+  if (form.initialConfigs) {
+    form.initialConfigs.forEach(config => {
+      if (config.enabled) {
+        const err = validateMinStockValue(config.minStock);
+        if (err) {
+          initialConfigsErrors.value[config.warehouseId] = err;
+          valid = false;
+        }
+      }
+    });
+  }
+
   return valid;
+}
+
+function validateMinStockValue(val) {
+  if (val === "" || val === null || val === undefined) {
+    return t('products.errMinStockRequired');
+  }
+  const num = Number(val);
+  if (isNaN(num) || !Number.isFinite(num) || !Number.isInteger(num) || num < 0 || String(val).trim() !== String(num)) {
+    return t('products.errMinStockInvalid');
+  }
+  return null;
 }
 
 function toPayload() {
@@ -338,16 +408,82 @@ async function submitForm() {
   if (!canManage.value) return;
   if (!validateForm()) return;
   isSaving.value = true;
+  saveErrorMessage.value = "";
   try {
     if (isEditMode.value) {
       await updateProduct(form.id, toPayload());
+      
+      const configsToSave = form.initialConfigs.filter(config => config.enabled);
+      const errors = [];
+      for (const config of configsToSave) {
+        try {
+          await saveWarehouseStockConfig({
+            productId: form.id,
+            warehouseId: config.warehouseId,
+            minStock: Number(config.minStock)
+          });
+        } catch (err) {
+          errors.push(config);
+        }
+      }
+      
+      if (errors.length > 0) {
+        failedConfigs.value = errors;
+        saveErrorMessage.value = t('products.errorUpdateConfigPartial');
+        form.initialConfigs.forEach(c => {
+          if (errors.some(e => e.warehouseId === c.warehouseId)) {
+            c.saveFailed = true;
+          } else {
+            c.saveFailed = false;
+          }
+        });
+        return;
+      }
+      
       successMessage.value = t('products.successUpdate');
+      isFormOpen.value = false;
+      await fetchProducts();
     } else {
-      await createProduct(toPayload());
+      if (!createdProduct.value) {
+        const newProduct = await createProduct(toPayload());
+        createdProduct.value = newProduct;
+      }
+      
+      const configsToSave = failedConfigs.value.length > 0 
+        ? failedConfigs.value 
+        : form.initialConfigs.filter(config => config.enabled);
+        
+      const errors = [];
+      for (const config of configsToSave) {
+        try {
+          await saveWarehouseStockConfig({
+            productId: createdProduct.value.id,
+            warehouseId: config.warehouseId,
+            minStock: Number(config.minStock)
+          });
+        } catch (err) {
+          errors.push(config);
+        }
+      }
+      
+      if (errors.length > 0) {
+        failedConfigs.value = errors;
+        saveErrorMessage.value = t('products.errorSaveConfigPartial');
+        form.initialConfigs.forEach(c => {
+          if (errors.some(e => e.warehouseId === c.warehouseId)) {
+            c.saveFailed = true;
+          } else {
+            c.saveFailed = false;
+          }
+        });
+        return;
+      }
+      
       successMessage.value = t('products.successAdd');
+      createdProduct.value = null;
+      isFormOpen.value = false;
+      await fetchProducts();
     }
-    isFormOpen.value = false;
-    await fetchProducts();
   } catch (error) {
     saveErrorMessage.value = error.message;
     applyBackendErrors(error.errors);
@@ -696,7 +832,7 @@ function formatCurrency(value) {
                 v-model="form.code"
                 class="input"
                 :class="{ 'input--error': formErrors.code }"
-                :disabled="isSaving || isEditMode"
+                :disabled="isSaving || isEditMode || createdProduct"
               />
               <small class="field-error">{{ formErrors.code }}</small>
             </div>
@@ -707,7 +843,7 @@ function formatCurrency(value) {
                 v-model="form.name"
                 class="input"
                 :class="{ 'input--error': formErrors.name }"
-                :disabled="isSaving"
+                :disabled="isSaving || createdProduct"
               />
               <small class="field-error">{{ formErrors.name }}</small>
             </div>
@@ -718,7 +854,7 @@ function formatCurrency(value) {
                 v-model="form.sku"
                 class="input"
                 :class="{ 'input--error': formErrors.sku }"
-                :disabled="isSaving"
+                :disabled="isSaving || createdProduct"
               />
               <small class="field-error">{{ formErrors.sku }}</small>
             </div>
@@ -729,7 +865,7 @@ function formatCurrency(value) {
                 v-model="form.barcode"
                 class="input"
                 :class="{ 'input--error': formErrors.barcode }"
-                :disabled="isSaving"
+                :disabled="isSaving || createdProduct"
               />
               <small class="field-error">{{ formErrors.barcode }}</small>
             </div>
@@ -746,7 +882,7 @@ function formatCurrency(value) {
                 v-model="form.unit"
                 class="input"
                 :class="{ 'input--error': formErrors.unit }"
-                :disabled="isSaving"
+                :disabled="isSaving || createdProduct"
               />
               <small class="field-error">{{ formErrors.unit }}</small>
             </div>
@@ -757,7 +893,7 @@ function formatCurrency(value) {
                 v-model="form.price"
                 class="input"
                 :class="{ 'input--error': formErrors.price }"
-                :disabled="isSaving"
+                :disabled="isSaving || createdProduct"
               />
               <small class="field-error">{{ formErrors.price }}</small>
             </div>
@@ -771,7 +907,7 @@ function formatCurrency(value) {
                 step="0.000001"
                 min="0.000001"
                 :class="{ 'input--error': formErrors.unitVolumeM3 }"
-                :disabled="isSaving"
+                :disabled="isSaving || createdProduct"
                 placeholder="0.0001"
               />
               <small class="text-xs text-slate-400 mt-1 block">{{ t('products.volumeHelper') }}</small>
@@ -784,7 +920,7 @@ function formatCurrency(value) {
                 v-model="form.categoryId"
                 :options="formCategoryOptions"
                 :placeholder="t('products.noSelection')"
-                :disabled="isSaving"
+                :disabled="isSaving || createdProduct"
                 :error="formErrors.categoryId"
               />
               <small class="field-error">{{ formErrors.categoryId }}</small>
@@ -796,7 +932,7 @@ function formatCurrency(value) {
                 v-model="form.partnerId"
                 :options="formSupplierOptions"
                 :placeholder="t('products.noSelection')"
-                :disabled="isSaving"
+                :disabled="isSaving || createdProduct"
                 :error="formErrors.partnerId"
               />
               <small class="field-error">{{ formErrors.partnerId }}</small>
@@ -808,12 +944,64 @@ function formatCurrency(value) {
                 v-model="form.status"
                 class="select"
                 :class="{ 'input--error': formErrors.status }"
-                :disabled="isSaving"
+                :disabled="isSaving || createdProduct"
               >
                 <option value="HOAT_DONG">{{ t('products.statusActive') }}</option>
                 <option value="NGUNG_HOAT_DONG">{{ t('products.statusInactive') }}</option>
               </select>
               <small class="field-error">{{ formErrors.status }}</small>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Section 3: Cấu hình tồn kho ban đầu -->
+        <fieldset class="form-fieldset">
+          <legend class="form-legend">{{ t('products.sectionInitialStockConfig') }}</legend>
+          
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div 
+              v-for="config in form.initialConfigs" 
+              :key="config.warehouseId"
+              class="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 bg-zinc-50 dark:bg-zinc-900/50"
+              :class="{ 'border-rose-400 dark:border-rose-800': config.saveFailed }"
+              style="border: 1px solid var(--border-color, #e4e4e7); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;"
+            >
+              <div style="display: flex; align-items: center; justify-between: space-between; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <input
+                    v-model="config.enabled"
+                    type="checkbox"
+                    :id="'wh-' + config.warehouseId"
+                    style="height: 18px; width: 18px; cursor: pointer;"
+                    :disabled="isSaving"
+                  />
+                  <label :for="'wh-' + config.warehouseId" style="font-weight: 600; cursor: pointer; user-select: none;">
+                    {{ config.warehouseCode }} - {{ config.warehouseName }}
+                  </label>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 8px;" v-if="config.enabled">
+                  <label style="font-size: 14px; font-weight: 500;">
+                    Tồn tối thiểu:
+                  </label>
+                  <input
+                    v-model="config.minStock"
+                    type="text"
+                    class="input"
+                    style="padding: 4px 8px; width: 140px;"
+                    :class="{ 'input--error': initialConfigsErrors[config.warehouseId] || config.saveFailed }"
+                    placeholder="Nhập..."
+                    :disabled="isSaving"
+                  />
+                </div>
+              </div>
+              
+              <div v-if="initialConfigsErrors[config.warehouseId]" style="font-size: 12px; color: #ef4444; font-weight: 600;">
+                {{ initialConfigsErrors[config.warehouseId] }}
+              </div>
+              <div v-if="config.saveFailed" style="font-size: 12px; color: #ef4444; font-weight: 600;">
+                ⚠️ Không thể lưu cấu hình này. Vui lòng thử lại.
+              </div>
             </div>
           </div>
         </fieldset>
@@ -830,7 +1018,7 @@ function formatCurrency(value) {
         </button>
         <button class="btn btn-primary" type="submit" :disabled="isSaving">
           <i v-if="isSaving" class="mdi mdi-loading mdi-spin"></i>
-          {{ isSaving ? "Đang lưu" : "Lưu" }}
+          {{ createdProduct ? t('products.btnRetrySaveConfig') : (isSaving ? t('products.saving') : t('products.save')) }}
         </button>
       </div>
     </form>
