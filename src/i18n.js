@@ -2,7 +2,7 @@ import { createI18n } from 'vue-i18n'
 import vi from './locales/vi.json'
 import en from './locales/en.json'
 
-const savedLang = localStorage.getItem('stocksense_lang') || 'vi'
+const savedLang = localStorage.getItem('stocksense-locale') || localStorage.getItem('stocksense_lang') || 'vi'
 
 const i18n = createI18n({
   legacy: false, // Set to false to use Composition API
