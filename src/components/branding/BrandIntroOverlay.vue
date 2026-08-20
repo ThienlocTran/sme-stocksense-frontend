@@ -1,6 +1,7 @@
 <script>
+const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
 const introAudio = (typeof window !== 'undefined' && typeof Audio !== 'undefined')
-  ? new Audio('/audio/stocksense-intro.mp3')
+  ? new Audio(`${base}audio/stocksense-intro.mp3`)
   : null;
 
 if (introAudio) {
@@ -11,7 +12,7 @@ if (introAudio) {
 </script>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { gsap } from 'gsap';
 
 // Emits complete event when animation finishes
@@ -24,6 +25,10 @@ const props = defineProps({
     validator: (value) => ['once-per-load', 'once-per-session', 'every-load', 'once-ever'].includes(value)
   }
 });
+
+// UI Interaction State
+const isReadyToShowPrompt = ref(false);
+const hasInteracted = ref(false);
 
 // Anim references for cleanup
 let mainTimeline = null;
@@ -181,6 +186,41 @@ const setCompletedStates = (svg) => {
   primaryPaths.forEach(p => { if (p) p.style.opacity = 0; });
 };
 
+// Method to start animation and audio on user interaction
+const startIntro = () => {
+  hasInteracted.value = true;
+  
+  try {
+    localStorage.setItem('stocksense_intro_has_interacted_once', 'true');
+  } catch (e) {
+    console.warn("Could not set localStorage:", e.message);
+  }
+  
+  if (introAudio) {
+    introAudio.currentTime = 0;
+    
+    let timelineStarted = false;
+    const startTimeline = () => {
+      if (timelineStarted) return;
+      timelineStarted = true;
+      if (mainTimeline) mainTimeline.play();
+    };
+    
+    startTimelineRef = startTimeline;
+    introAudio.addEventListener('playing', startTimelineRef, { once: true });
+
+    introAudio.play().catch((error) => {
+      console.warn("Intro audio play failed:", error);
+      startTimeline();
+    });
+
+    // Safety fallback: if audio doesn't start in 500ms, start timeline anyway
+    setTimeout(startTimeline, 500);
+  } else {
+    if (mainTimeline) mainTimeline.play();
+  }
+};
+
 onMounted(() => {
   if (typeof document !== 'undefined') {
     document.body.classList.add('scroll-locked');
@@ -252,29 +292,21 @@ onMounted(() => {
 
     resetInitialStates(svg);
 
-    // Play pre-initialized intro audio in sync with GSAP timeline
-    if (introAudio) {
-      introAudio.currentTime = 0;
-      
-      let timelineStarted = false;
-      const startTimeline = () => {
-        if (timelineStarted) return;
-        timelineStarted = true;
-        mainTimeline.play();
-      };
-      
-      startTimelineRef = startTimeline;
-      introAudio.addEventListener('playing', startTimelineRef, { once: true });
+    // Check if user has interacted once ever (first time visit)
+    let hasInteractedOnce = false;
+    try {
+      hasInteractedOnce = localStorage.getItem('stocksense_intro_has_interacted_once') === 'true';
+    } catch (e) {
+      console.warn("Storage access failed:", e.message);
+    }
 
-      introAudio.play().catch((error) => {
-        console.warn("Intro audio autoplay was blocked by browser:", error);
-        startTimeline();
-      });
-
-      // Safety fallback: if audio doesn't start in 500ms, start timeline anyway
-      setTimeout(startTimeline, 500);
+    if (hasInteractedOnce) {
+      // 2nd time onwards: skip the prompt, start intro automatically
+      hasInteracted.value = true;
+      startIntro();
     } else {
-      mainTimeline.play();
+      // First time: show prompt overlay to get user interaction before playing audio
+      isReadyToShowPrompt.value = true;
     }
 
     // Select all dynamic elements
@@ -628,6 +660,22 @@ onUnmounted(() => {
     <!-- Exit Panels (Solid slide elements that open left/right) -->
     <div class="exit-panel panel-left" id="panel-l"></div>
     <div class="exit-panel panel-right" id="panel-r"></div>
+
+    <!-- Interaction Prompt Overlay (shown before user clicks) -->
+    <div v-if="isReadyToShowPrompt && !hasInteracted" class="interaction-prompt">
+      <div class="prompt-content">
+        <div class="brand-logo-glow">
+          <div class="pulse-ring"></div>
+          <div class="pulse-dot"></div>
+        </div>
+        <h2 class="prompt-title">StockSense</h2>
+        <p class="prompt-subtitle">Sẵn sàng khởi động hệ thống với âm thanh sống động</p>
+        <button @click="startIntro" class="start-btn">
+          <span class="btn-glow"></span>
+          <span class="btn-text">Bấm để bắt đầu</span>
+        </button>
+      </div>
+    </div>
 
     <!-- Background visual effects (Radial gradients that fade out before slide) -->
     <div class="bg-effects">
@@ -1006,5 +1054,150 @@ onUnmounted(() => {
 :global(.scroll-locked) {
   overflow: hidden !important;
   touch-action: none !important;
+}
+
+/* Interaction Prompt Overlay */
+.interaction-prompt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(2, 8, 23, 0.95); /* Deep dark background */
+  z-index: 100; /* On top of everything */
+  transition: opacity 0.5s ease;
+}
+
+.prompt-content {
+  text-align: center;
+  max-width: 400px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.brand-logo-glow {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pulse-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #97f813;
+  border-radius: 50%;
+  animation: pulseOuter 2s infinite ease-out;
+}
+
+.pulse-dot {
+  width: 24px;
+  height: 24px;
+  background-color: #97f813;
+  border-radius: 50%;
+  box-shadow: 0 0 20px #97f813;
+  animation: pulseInner 2s infinite ease-in-out;
+}
+
+.prompt-title {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 0.75rem 0;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 15px rgba(151, 248, 19, 0.2);
+}
+
+.prompt-subtitle {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.95rem;
+  color: #94a3b8; /* Slate 400 */
+  margin: 0 0 2rem 0;
+  line-height: 1.5;
+}
+
+.start-btn {
+  position: relative;
+  background-color: #0c944e; /* Brand dark green */
+  color: #ffffff;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.85rem 2.25rem;
+  border: 1px solid rgba(151, 248, 19, 0.4);
+  border-radius: 50px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(12, 148, 78, 0.3);
+}
+
+.start-btn:hover {
+  background-color: #97f813; /* Brand neon green */
+  color: #020817; /* Dark background text */
+  border-color: #97f813;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(151, 248, 19, 0.5);
+}
+
+.start-btn:active {
+  transform: translateY(0);
+}
+
+.btn-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(circle, rgba(151, 248, 19, 0.4) 0%, transparent 70%);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.5s ease-out;
+  pointer-events: none;
+}
+
+.start-btn:hover .btn-glow {
+  transform: translate(-50%, -50%) scale(1.5);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseOuter {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes pulseInner {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 15px #97f813;
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 25px #97f813, 0 0 40px #22d3ee;
+  }
 }
 </style>
