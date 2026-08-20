@@ -21,15 +21,24 @@ const props = defineProps({
   error: {
     type: [String, Boolean],
     default: false
+  },
+  remote: {
+    type: Boolean,
+    default: false
+  },
+  loading: {
+    type: Boolean,
+    default: false
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'change']);
+const emit = defineEmits(['update:modelValue', 'change', 'search']);
 
 const containerRef = ref(null);
 const searchInput = ref('');
 const isOpen = ref(false);
 const isFocused = ref(false);
+const searchDebounceTimer = ref(null);
 
 // Find label for active modelValue
 const selectedOption = computed(() => {
@@ -47,6 +56,9 @@ watch(() => props.modelValue, (newVal) => {
 
 // Filter options based on search query
 const filteredOptions = computed(() => {
+  if (props.remote) {
+    return props.options;
+  }
   const query = searchInput.value.toLowerCase().trim();
   if (!query || (selectedOption.value && selectedOption.value.label === searchInput.value)) {
     return props.options;
@@ -58,12 +70,27 @@ const filteredOptions = computed(() => {
   );
 });
 
+// Watch input changes for remote search
+watch(searchInput, (newVal) => {
+  if (!props.remote) return;
+  // If searchInput matches selectedOption label, don't trigger search again
+  if (selectedOption.value && selectedOption.value.label === newVal) return;
+  
+  if (searchDebounceTimer.value) clearTimeout(searchDebounceTimer.value);
+  searchDebounceTimer.value = setTimeout(() => {
+    emit('search', newVal);
+  }, 300); // 300ms debounce
+});
+
 function handleFocus() {
   if (props.disabled) return;
   isOpen.value = true;
   isFocused.value = true;
   // Clear input so user can see all options and type search query
   searchInput.value = '';
+  if (props.remote) {
+    emit('search', '');
+  }
 }
 
 function handleBlur() {
@@ -132,8 +159,11 @@ onUnmounted(() => {
     <!-- Dropdown list overlay -->
     <transition name="slide-fade">
       <ul v-if="isOpen && !disabled" class="searchable-select-dropdown">
+        <li v-if="loading" class="searchable-select-no-results">
+          <i class="mdi mdi-loading mdi-spin mr-1"></i> Đang tải...
+        </li>
         <li 
-          v-if="filteredOptions.length === 0" 
+          v-else-if="filteredOptions.length === 0" 
           class="searchable-select-no-results"
         >
           Không tìm thấy kết quả
