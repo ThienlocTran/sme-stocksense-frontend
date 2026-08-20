@@ -580,7 +580,7 @@ function confirmText() {
               v-model="form.warehouseId"
               class="import-receipt-form__select"
               :class="{ 'import-receipt-form__select--error': formErrors.warehouseId || errorState.warehouses }"
-              :disabled="isProcessing || !isEditableStatus || warehouses.length === 0"
+              :disabled="isProcessing || !isEditableStatus || warehouses.length === 0 || items.length > 0"
             >
               <option :value="null" disabled>{{ warehouses.length === 0 ? t('stockDocumentCreate.placeholder.noWarehouse') : t('stockDocumentCreate.placeholder.selectWarehouse') }}</option>
               <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
@@ -597,7 +597,7 @@ function confirmText() {
               v-model="form.supplierId"
               class="import-receipt-form__select"
               :class="{ 'import-receipt-form__select--error': formErrors.supplierId || errorState.suppliers }"
-              :disabled="isProcessing || !isEditableStatus || suppliers.length === 0"
+              :disabled="isProcessing || !isEditableStatus || suppliers.length === 0 || items.length > 0"
             >
               <option :value="null" disabled>{{ suppliers.length === 0 ? t('stockDocumentCreate.placeholder.noSupplier') : t('stockDocumentCreate.placeholder.selectSupplier') }}</option>
               <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
