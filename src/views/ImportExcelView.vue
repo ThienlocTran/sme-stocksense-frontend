@@ -209,19 +209,37 @@ function formatDate(dateStr) {
     </div>
 
     <!-- Main Workspace -->
-    <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="mt-6 max-w-4xl mx-auto space-y-6">
       
-      <!-- Left side: Configuration & Selection -->
-      <div class="lg:col-span-1 space-y-6">
-        <div class="card card-pad">
-          <h3 class="text-base font-bold mb-4 text-zinc-900 dark:text-zinc-50 border-b pb-2">
-            {{ t('importExcel.step1.title') }}
-          </h3>
+      <div class="card card-pad">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4 mb-4">
+          <div>
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+              {{ t('importExcel.title') }}
+            </h3>
+            <p class="text-xs text-zinc-500 mt-0.5">
+              {{ t('importExcel.description') }}
+            </p>
+          </div>
+          <!-- Download Template Button -->
+          <button 
+            class="btn btn-secondary flex items-center gap-1.5 self-start md:self-auto" 
+            type="button" 
+            :disabled="isDownloadingTemplate" 
+            @click="handleDownloadTemplate"
+          >
+            <i v-if="isDownloadingTemplate" class="mdi mdi-loading mdi-spin"></i>
+            <i v-else class="mdi mdi-download-outline"></i>
+            <span>{{ t("importExcel.step1.downloadTemplateBtn") }}</span>
+          </button>
+        </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Configuration -->
           <div class="space-y-4">
             <!-- Import Type -->
             <div class="field">
-              <label class="field-label">{{ t("importExcel.step1.importTypeLabel") }}</label>
+              <label class="field-label font-semibold">{{ t("importExcel.step1.importTypeLabel") }}</label>
               <select
                 v-model="importType"
                 class="select w-full"
@@ -238,8 +256,8 @@ function formatDate(dateStr) {
             </div>
 
             <!-- Warehouse Selection -->
-            <div v-if="importType === 'PRODUCT_WITH_OPENING_STOCK'" class="field pt-2">
-              <label class="field-label">{{ t("importExcel.step1.warehouseLabel") }}</label>
+            <div v-if="importType === 'PRODUCT_WITH_OPENING_STOCK'" class="field">
+              <label class="field-label font-semibold">{{ t("importExcel.step1.warehouseLabel") }}</label>
               <select
                 v-model="selectedWarehouseId"
                 class="select w-full"
@@ -256,67 +274,43 @@ function formatDate(dateStr) {
               <small v-if="isLoadingWarehouses" class="text-slate-400 block mt-1">{{ t("importExcel.step1.loadingWarehouses") }}</small>
               <small v-if="warehouseError" class="text-red-600 font-semibold mt-1 block">{{ warehouseError }}</small>
             </div>
-
-            <!-- Template download -->
-            <div class="border-t pt-4 flex flex-col gap-2">
-              <button 
-                class="btn btn-ghost w-full justify-start" 
-                type="button" 
-                :disabled="isDownloadingTemplate" 
-                @click="handleDownloadTemplate"
-              >
-                <i v-if="isDownloadingTemplate" class="mdi mdi-loading mdi-spin mr-1"></i>
-                <i v-else class="mdi mdi-download-outline mr-1"></i>
-                <span>{{ t("importExcel.step1.downloadTemplateBtn") }}</span>
-              </button>
-              <span class="text-xs text-zinc-500 pl-2">{{ t("importExcel.step1.downloadTemplateDesc") }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right side: File upload, Validate and Results -->
-      <div class="lg:col-span-2 space-y-6">
-        
-        <!-- File upload panel -->
-        <div class="card card-pad">
-          <h3 class="text-base font-bold mb-4 text-zinc-900 dark:text-zinc-50 border-b pb-2">
-            {{ t('importExcel.step2.title') || 'Chọn tệp dữ liệu' }}
-          </h3>
-
-          <div v-if="!canOperate" class="alert alert-error mb-4">
-            <i class="mdi mdi-alert-circle-outline"></i>
-            <span>{{ t("importExcel.step2.noPermission") }}</span>
           </div>
 
-          <div class="space-y-6">
-            <!-- Dropzone or selection row -->
-            <div class="flex items-center gap-4">
-              <button
-                class="btn btn-secondary"
-                type="button"
-                :disabled="!canOperate || phase === 'validating' || phase === 'importing' || phase === 'done'"
+          <!-- File selector & Upload trigger -->
+          <div class="space-y-4 flex flex-col justify-between">
+            <div class="space-y-3">
+              <label class="field-label font-semibold">{{ t('importExcel.step2.title') || 'Chọn tệp dữ liệu' }}</label>
+              
+              <div v-if="!canOperate" class="alert alert-error mb-4">
+                <i class="mdi mdi-alert-circle-outline"></i>
+                <span>{{ t("importExcel.step2.noPermission") }}</span>
+              </div>
+
+              <!-- Upload Drag & Drop Area styled cleanly -->
+              <div 
+                class="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-6 text-center cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-all flex flex-col items-center justify-center gap-2"
+                :class="{ 'opacity-50 pointer-events-none': !canOperate || phase === 'validating' || phase === 'importing' || phase === 'done' }"
                 @click="fileInput.click()"
               >
-                <i class="mdi mdi-file-excel-outline mr-1"></i>
-                {{ t("importExcel.step2.selectFileBtn") }}
-              </button>
-              <input ref="fileInput" type="file" accept=".xlsx" class="hidden" @change="onFileChange" />
-
-              <div v-if="selectedFile" class="file-badge">
-                <i class="mdi mdi-file-check-outline text-green-600"></i>
-                <span class="font-medium text-sm text-zinc-700 dark:text-zinc-300">
-                  {{ selectedFile.name }} <span class="text-xs text-zinc-400 font-normal">({{ formatFileSize(selectedFile.size) }})</span>
+                <input ref="fileInput" type="file" accept=".xlsx" class="hidden" @change="onFileChange" />
+                <i class="mdi mdi-cloud-upload-outline text-3xl text-zinc-400 dark:text-zinc-500"></i>
+                <span class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  {{ selectedFile ? selectedFile.name : (t('importExcel.step2.dragDropOrSelect') || 'Nhấp để chọn tệp Excel') }}
+                </span>
+                <span v-if="selectedFile" class="text-xs text-zinc-500">
+                  {{ formatFileSize(selectedFile.size) }}
+                </span>
+                <span v-else class="text-xs text-zinc-400">
+                  {{ t('importExcel.step2.limitFormat') || 'Hỗ trợ định dạng .xlsx' }}
                 </span>
               </div>
-              <span v-else class="text-sm text-zinc-400 italic">{{ t("importExcel.step2.noFileSelected") }}</span>
+              <small v-if="fileError" class="text-red-600 font-semibold block mt-1">{{ fileError }}</small>
             </div>
-            <small v-if="fileError" class="text-red-600 font-semibold block mt-1">{{ fileError }}</small>
 
-            <!-- Validate & Confirm import buttons -->
-            <div class="flex items-center gap-3 border-t pt-4">
+            <!-- Upload, Validate and Confirm Action Buttons -->
+            <div class="flex items-center gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
               <button
-                class="btn btn-primary"
+                class="btn btn-primary flex-1"
                 :disabled="!canOperate || !selectedFile || phase === 'validating' || phase === 'importing' || phase === 'done'"
                 @click="handleUploadAndValidate"
               >
@@ -327,7 +321,7 @@ function formatDate(dateStr) {
 
               <button
                 v-if="validationResult && validationResult.valid && phase !== 'done'"
-                class="btn btn-success text-white"
+                class="btn btn-success text-white flex-1"
                 :disabled="!canOperate || phase === 'importing'"
                 @click="showConfirmDialog = true"
               >
@@ -348,6 +342,7 @@ function formatDate(dateStr) {
             </div>
           </div>
         </div>
+      </div>
 
         <!-- Session Result (Success detail info) -->
         <div v-if="applyResult" class="card card-pad bg-green-50/50 dark:bg-green-950/10 border-green-200 dark:border-green-800/30">
@@ -416,8 +411,6 @@ function formatDate(dateStr) {
         </div>
 
       </div>
-
-    </div>
 
     <!-- Confirm dialog -->
     <ConfirmDialog
