@@ -16,9 +16,9 @@ let isSidebarTracing = false;
 function playSidebarTraceAnimation() {
   if (isSidebarTracing) return;
   
-  const traceLogo = document.querySelector('.sidebar-logo-full .trace-logo');
-  const greenPath = document.querySelector('.sidebar-logo-full .trace-logo .running-light-path');
-  const whitePath = document.querySelector('.sidebar-logo-full .trace-logo .running-light-path-white');
+  const traceLogo = document.querySelector('.sidebar-logo-wrap .trace-logo');
+  const greenPath = document.querySelector('.sidebar-logo-wrap .trace-logo .running-light-path');
+  const whitePath = document.querySelector('.sidebar-logo-wrap .trace-logo .running-light-path-white');
   
   if (traceLogo && greenPath && whitePath) {
     isSidebarTracing = true;
@@ -162,12 +162,9 @@ const visibleSections = computed(() =>
       @click="layoutStore.closeMobileSidebar"
       @mouseenter="playSidebarTraceAnimation"
     >
-      <div class="sidebar-logo-full">
-        <StockSenseFullLogo class="base-logo" />
-        <StockSenseFullLogo class="trace-logo" :isTrace="true" />
-      </div>
-      <div class="sidebar-logo-collapsed">
-        <StockSenseMark />
+      <div class="sidebar-logo-wrap">
+        <StockSenseMark class="base-logo" />
+        <StockSenseMark class="trace-logo" :isTrace="true" />
       </div>
     </RouterLink>
     <nav class="nav-list">
@@ -245,25 +242,12 @@ const visibleSections = computed(() =>
   font-weight: 700;
   font-size: 20px;
 }
-.sidebar-logo-collapsed {
-  display: none;
-}
-.sidebar-logo-full {
+.sidebar-logo-wrap {
   display: block;
   position: relative;
-  width: 100%;
-  max-width: 180px;
-  aspect-ratio: 1254 / 250;
-  height: auto;
+  width: 48px;
+  height: 48px;
   overflow: hidden;
-}
-.sidebar-logo-full :deep(.svg-content) {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: auto;
-  transform: translateY(-39.872%);
 }
 .base-logo {
   width: 100%;
@@ -396,13 +380,9 @@ const visibleSections = computed(() =>
     justify-content: center;
     padding: 8px 0 18px;
   }
-  .sidebar-logo-full {
-    display: none !important;
-  }
-  .sidebar-logo-collapsed {
-    display: block !important;
-    width: 38px;
-    height: 38px;
+  .sidebar-logo-wrap {
+    width: 38px !important;
+    height: 38px !important;
   }
   .brand span,
   .sidebar-heading,
