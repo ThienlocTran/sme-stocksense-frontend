@@ -23,6 +23,8 @@ import InventoryCountDetailView from '../views/inventory-counts/InventoryCountDe
 import AiForecastView from '../views/AiForecastView.vue'
 import AnimationPreviewView from '../views/AnimationPreviewView.vue'
 
+import ReplenishmentSuggestionsView from '../views/ReplenishmentSuggestionsView.vue'
+
 const routes = [
   { path: '/', redirect: '/dashboard' },
   { path: '/login', component: LoginView, meta: { title: 'Đăng nhập', layout: 'auth' } },
@@ -53,6 +55,7 @@ const routes = [
   { path: '/inventory-counts', component: InventoryCountListView, meta: { title: 'Kiểm kê kho' } },
   { path: '/inventory-counts/:id', component: InventoryCountDetailView, props: true, meta: { title: 'Chi tiết kiểm kê kho' } },
   { path: '/forecast', component: AiForecastView, meta: { title: 'Dự báo AI' } },
+  { path: '/replenishment-suggestions', component: ReplenishmentSuggestionsView, meta: { title: 'Gợi ý nhập hàng' } },
 ]
 
 const router = createRouter({
