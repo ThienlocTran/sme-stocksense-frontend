@@ -1,3 +1,15 @@
+<script>
+const introAudio = (typeof window !== 'undefined' && typeof Audio !== 'undefined')
+  ? new Audio('/audio/stocksense-intro.mp3')
+  : null;
+
+if (introAudio) {
+  introAudio.preload = 'auto';
+  introAudio.volume = 0.7;
+  introAudio.loop = false;
+}
+</script>
+
 <script setup>
 import { onMounted, onUnmounted } from 'vue';
 import { gsap } from 'gsap';
@@ -16,7 +28,6 @@ const props = defineProps({
 // Anim references for cleanup
 let mainTimeline = null;
 let humTween = null;
-let introAudio = null;
 
 // Storage Keys
 const PLAYBACK_LOAD_KEY = 'stocksense_intro_played_load';
@@ -238,15 +249,13 @@ onMounted(() => {
 
     resetInitialStates(svg);
 
-    // Initialize and play intro audio in sync with GSAP timeline
-    introAudio = new Audio('/audio/stocksense-intro.mp3');
-    introAudio.preload = 'auto';
-    introAudio.volume = 0.7;
-    introAudio.loop = false;
-    introAudio.currentTime = 0;
-    introAudio.play().catch((error) => {
-      console.warn("Intro audio autoplay was blocked by browser:", error);
-    });
+    // Play pre-initialized intro audio in sync with GSAP timeline
+    if (introAudio) {
+      introAudio.currentTime = 0;
+      introAudio.play().catch((error) => {
+        console.warn("Intro audio autoplay was blocked by browser:", error);
+      });
+    }
 
     // Select all dynamic elements
     const drawCubes = svg.querySelectorAll('.draw-c');
@@ -583,7 +592,6 @@ onUnmounted(() => {
   if (introAudio) {
     introAudio.pause();
     introAudio.currentTime = 0;
-    introAudio = null;
   }
   if (typeof document !== 'undefined') {
     document.body.classList.remove('scroll-locked');
