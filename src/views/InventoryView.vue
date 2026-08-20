@@ -113,8 +113,9 @@ function closeConfigModal() {
 
 async function submitConfigForm() {
   if (!canManage.value) return;
-  if (configForm.minStock === null || configForm.minStock === undefined || configForm.minStock < 0) {
-    configErrorMessage.value = "Định mức tồn tối thiểu phải lớn hơn hoặc bằng 0.";
+  const val = Number(configForm.minStock);
+  if (configForm.minStock === "" || configForm.minStock === null || isNaN(val) || !Number.isInteger(val) || val < 0) {
+    configErrorMessage.value = t('inventory.errors.invalidMinStock');
     return;
   }
   isSavingConfig.value = true;
@@ -123,8 +124,17 @@ async function submitConfigForm() {
     await saveWarehouseStockConfig({
       productId: configForm.productId,
       warehouseId: configForm.warehouseId,
-      minStock: configForm.minStock,
+      minStock: val,
     });
+    
+    // Update local row state first
+    const row = inventoryItems.value.find(
+      (item) => item.productId === configForm.productId && item.warehouseId === configForm.warehouseId
+    );
+    if (row) {
+      row.minStock = val;
+    }
+
     isConfigOpen.value = false;
     await fetchInventory();
   } catch (error) {

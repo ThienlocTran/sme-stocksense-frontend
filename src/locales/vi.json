@@ -155,6 +155,9 @@
       "previous": "Trước",
       "next": "Sau",
       "pageIndicator": "Trang {current}/{total}"
+    },
+    "errors": {
+      "invalidMinStock": "Định mức tồn tối thiểu phải là số nguyên không âm."
     }
   },
   "sidebar": {
@@ -615,7 +618,8 @@
     "noSelection": "Không chọn",
     "cancel": "Hủy",
     "saving": "Đang lưu",
-    "save": "Lưu"
+    "save": "Lưu",
+    "volumeHelper": "Nếu đơn vị tính là Thùng, giá trị này là m3/thùng."
   },
   "category": {
     "editCategory": "Sửa danh mục",
@@ -1541,6 +1545,15 @@
       "loadError": "Không thể tải thông tin cấu hình.",
       "invalidValue": "Vui lòng nhập giá trị lớn hơn 0.",
       "errorReasonRequired": "Vui lòng nhập lý do thay đổi cấu hình."
+    }
+  },
+  "capacity": {
+    "status": {
+      "BINH_THUONG": "Bình thường",
+      "CAN_LUU_Y": "Cần lưu ý",
+      "CAO": "Cao",
+      "NGUY_HIEM": "Nguy hiểm",
+      "QUA_TAI": "Quá tải"
     }
   }
 }

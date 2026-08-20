@@ -155,6 +155,9 @@
       "previous": "Prev",
       "next": "Next",
       "pageIndicator": "Page {current}/{total}"
+    },
+    "errors": {
+      "invalidMinStock": "Minimum stock must be a non-negative integer."
     }
   },
   "sidebar": {
@@ -615,7 +618,8 @@
     "noSelection": "No selection",
     "cancel": "Cancel",
     "saving": "Saving",
-    "save": "Save"
+    "save": "Save",
+    "volumeHelper": "If the unit of measure is Carton, this value represents m3/carton."
   },
   "category": {
     "editCategory": "Edit category",
@@ -1541,6 +1545,15 @@
       "loadError": "Failed to load system configuration.",
       "invalidValue": "Please enter a valid numeric value greater than 0.",
       "errorReasonRequired": "Please enter the reason for this change."
+    }
+  },
+  "capacity": {
+    "status": {
+      "BINH_THUONG": "Normal",
+      "CAN_LUU_Y": "Caution",
+      "CAO": "High",
+      "NGUY_HIEM": "Dangerous",
+      "QUA_TAI": "Overloaded"
     }
   }
 }

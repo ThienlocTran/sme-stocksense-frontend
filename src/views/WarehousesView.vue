@@ -106,8 +106,28 @@ async function loadCapacities() {
   const results = await Promise.allSettled(ids.map((id) => getWarehouseCapacity(id)));
   const map = {};
   ids.forEach((id, i) => {
-    if (results[i].status === "fulfilled") {
-      map[id] = results[i].value; // null nếu chưa cấu hình
+    if (results[i].status === "fulfilled" && results[i].value) {
+      const val = results[i].value;
+      const usagePercentage = Number(val.usagePercentage || 0);
+      
+      let status = "BINH_THUONG";
+      if (usagePercentage >= 80 && usagePercentage < 90) {
+        status = "CAN_LUU_Y";
+      } else if (usagePercentage >= 90 && usagePercentage < 95) {
+        status = "CAO";
+      } else if (usagePercentage >= 95 && usagePercentage <= 100) {
+        status = "NGUY_HIEM";
+      } else if (usagePercentage > 100) {
+        status = "QUA_TAI";
+      }
+
+      map[id] = {
+        ...val,
+        usagePercent: usagePercentage,
+        status: status
+      };
+    } else {
+      map[id] = null;
     }
   });
   capacityMap.value = map;
@@ -306,16 +326,14 @@ function capacityStatusClass(status) {
   if (!status) return "";
   if (status === "QUA_TAI") return "cap-danger";
   if (status === "NGUY_HIEM") return "cap-warning";
+  if (status === "CAO") return "cap-warning";
   if (status === "CAN_LUU_Y") return "cap-caution";
   return "cap-ok";
 }
 
 function capacityStatusLabel(status) {
   if (!status) return "";
-  if (status === "QUA_TAI") return "Quá tải";
-  if (status === "NGUY_HIEM") return "Nguy hiểm";
-  if (status === "CAN_LUU_Y") return "Cần lưu ý";
-  return "Bình thường";
+  return t(`capacity.status.${status}`);
 }
 </script>
 

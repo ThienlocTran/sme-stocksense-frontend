@@ -294,9 +294,12 @@ function validateForm() {
     formErrors.price = t('products.errPriceInvalid');
     valid = false;
   }
-  if (form.unitVolumeM3 !== "" && form.unitVolumeM3 !== null && Number(form.unitVolumeM3) <= 0) {
-    formErrors.unitVolumeM3 = t('products.errUnitVolumeInvalid');
-    valid = false;
+  if (form.unitVolumeM3 !== "" && form.unitVolumeM3 !== null) {
+    const val = Number(form.unitVolumeM3);
+    if (isNaN(val) || val <= 0) {
+      formErrors.unitVolumeM3 = t('products.errUnitVolumeInvalid');
+      valid = false;
+    }
   }
   if (isEditMode.value && !form.status) {
     formErrors.status = t('products.errStatusEmpty');
@@ -761,7 +764,8 @@ function formatCurrency(value) {
                 :disabled="isSaving"
                 placeholder="0.0001"
               />
-              <small class="field-error">{{ formErrors.unitVolumeM3 }}</small>
+              <small class="text-xs text-slate-400 mt-1 block">{{ t('products.volumeHelper') }}</small>
+              <small v-if="formErrors.unitVolumeM3" class="field-error block mt-1">{{ formErrors.unitVolumeM3 }}</small>
             </div>
 
             <div class="field">
