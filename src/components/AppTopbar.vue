@@ -194,16 +194,27 @@ function applyPasswordBackendErrors(errors = {}) {
         <span>{{ passwordSuccessMessage }}</span>
       </div>
 
-      <!-- Dark Mode Toggle -->
+      <!-- Dark Mode Toggle Slider -->
       <div class="theme-selector">
-        <button 
-          class="theme-btn" 
-          type="button" 
-          @click="toggleTheme"
+        <div 
+          class="theme-switch" 
+          @click="toggleTheme" 
+          role="button" 
+          tabindex="0"
           :title="isDark ? 'Switch to Light Mode' : 'Chuyển sang Chế độ tối'"
+          @keydown.enter="toggleTheme"
+          @keydown.space.prevent="toggleTheme"
         >
-          <i class="mdi" :class="isDark ? 'mdi-sun-wireless text-amber-500' : 'mdi-weather-night text-blue-600'"></i>
-        </button>
+          <span class="theme-switch-icon theme-switch-icon--left">
+            <i class="mdi mdi-sun-wireless text-amber-500"></i>
+          </span>
+          <span class="theme-switch-icon theme-switch-icon--right">
+            <i class="mdi mdi-weather-night text-zinc-400"></i>
+          </span>
+          <div class="theme-switch-thumb">
+            <i class="mdi" :class="isDark ? 'mdi-weather-night text-blue-400' : 'mdi-sun-wireless text-amber-500'"></i>
+          </div>
+        </div>
       </div>
 
       <!-- Language Selector Toggle -->
@@ -505,33 +516,59 @@ function applyPasswordBackendErrors(errors = {}) {
   display: flex;
   align-items: center;
 }
-.theme-btn {
+.theme-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 52px;
+  height: 28px;
+  background: var(--color-border-strong);
+  border-radius: 99px;
+  padding: 4px;
+  cursor: pointer;
+  transition: background-color 300ms ease;
+  user-select: none;
+}
+html.dark .theme-switch {
+  background: #1f2937;
+}
+.theme-switch-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--color-border);
+}
+.theme-switch-icon--left {
+  left: 6px;
+}
+.theme-switch-icon--right {
+  right: 6px;
+}
+.theme-switch-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  transition: all 150ms ease;
-  font-size: 18px;
-  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), background-color 300ms ease;
+  z-index: 2;
 }
-.theme-btn:hover {
-  background: var(--color-bg);
-  border-color: var(--color-border-strong);
+html.dark .theme-switch-thumb {
+  background: #151d30;
+  transform: translateX(24px);
 }
-.theme-btn i {
-  display: inline-block;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+.theme-switch-thumb i {
+  font-size: 12px;
+  transition: transform 300ms ease, color 300ms ease;
 }
-.theme-btn:hover i {
-  transform: rotate(45deg) scale(1.1);
-}
-.theme-btn:active i {
-  transform: rotate(90deg) scale(0.95);
+.theme-switch:hover .theme-switch-thumb i {
+  transform: rotate(45deg);
 }
 
 .lang-selector {
