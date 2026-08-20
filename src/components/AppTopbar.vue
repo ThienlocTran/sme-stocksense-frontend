@@ -5,6 +5,7 @@ import { changeOwnPassword, clearAuth, formatRole } from '../services/authServic
 import { useAuthStore } from '../stores/auth'
 import { useLayoutStore } from '../stores/layout'
 import { useI18n } from 'vue-i18n'
+import { useTheme } from 'vuetify'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,11 +24,27 @@ const passwordErrors = reactive({ currentPassword: '', newPassword: '', confirmP
 const { locale, t } = useI18n()
 const currentLang = computed(() => locale.value)
 
+const vuetifyTheme = useTheme()
+const isDark = ref(localStorage.getItem('stocksense_theme') === 'dark')
+
 function changeLang(lang) {
   locale.value = lang
   localStorage.setItem('stocksense_lang', lang)
   // Dispatch dynamic event to notify other components if necessary
   window.dispatchEvent(new CustomEvent('stocksense-lang-change', { detail: lang }))
+}
+
+function toggleTheme() {
+  const newTheme = isDark.value ? 'light' : 'dark'
+  isDark.value = !isDark.value
+  localStorage.setItem('stocksense_theme', newTheme)
+  vuetifyTheme.global.name.value = newTheme
+  
+  if (newTheme === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
 }
 
 const isUserMenuOpen = ref(false)
@@ -177,6 +194,18 @@ function applyPasswordBackendErrors(errors = {}) {
         <span>{{ passwordSuccessMessage }}</span>
       </div>
 
+      <!-- Dark Mode Toggle -->
+      <div class="theme-selector">
+        <button 
+          class="theme-btn" 
+          type="button" 
+          @click="toggleTheme"
+          :title="isDark ? 'Switch to Light Mode' : 'Chuyển sang Chế độ tối'"
+        >
+          <i class="mdi" :class="isDark ? 'mdi-sun-wireless text-amber-500' : 'mdi-weather-night text-blue-600'"></i>
+        </button>
+      </div>
+
       <!-- Language Selector Toggle -->
       <div class="lang-selector">
         <button 
@@ -286,7 +315,7 @@ function applyPasswordBackendErrors(errors = {}) {
   position: sticky; 
   top: 0; 
   z-index: 10; 
-  background: rgba(255, 255, 255, 0.92); 
+  background: var(--color-topbar-bg); 
   backdrop-filter: blur(10px); 
   border-bottom: 1px solid var(--color-border); 
   padding: 12px 24px; 
@@ -390,7 +419,7 @@ function applyPasswordBackendErrors(errors = {}) {
   top: calc(100% + 8px);
   right: 0;
   width: 220px;
-  background: #ffffff;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
@@ -469,6 +498,29 @@ function applyPasswordBackendErrors(errors = {}) {
 .dropdown-fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+.theme-selector {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+.theme-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+  font-size: 18px;
+}
+.theme-btn:hover {
+  background: var(--color-bg);
+  border-color: var(--color-border-strong);
 }
 
 .lang-selector {

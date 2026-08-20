@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useTheme } from "vuetify";
 import AppSidebar from "./components/AppSidebar.vue";
 import AppTopbar from "./components/AppTopbar.vue";
 import GuidedTourOverlay from "./components/GuidedTourOverlay.vue";
@@ -10,6 +11,8 @@ import { getCurrentUser } from "./services/authService";
 import { canAccessRoute } from "./services/permissionService";
 import { useAuthStore } from "./stores/auth";
 import { useLayoutStore } from "./stores/layout";
+
+const vuetifyTheme = useTheme();
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -181,6 +184,16 @@ const visibleGuidedTourSteps = computed(() =>
 
 onMounted(() => {
   triggerWelcomeOrTour();
+  
+  // Initialize dark mode
+  const savedTheme = localStorage.getItem('stocksense_theme') || 'light';
+  if (savedTheme === 'dark') {
+    document.documentElement.classList.add('dark');
+    vuetifyTheme.global.name.value = 'dark';
+  } else {
+    document.documentElement.classList.remove('dark');
+    vuetifyTheme.global.name.value = 'light';
+  }
 });
 
 watch(isAuthLayout, (newVal, oldVal) => {
