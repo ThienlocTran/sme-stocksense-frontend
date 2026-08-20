@@ -470,4 +470,33 @@ const visibleSections = computed(() =>
     left: 0;
   }
 }
+
+/* Dark Mode logo overrides */
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#01"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#021"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#022"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#032"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#033"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#052"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#0a2"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#112"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#122"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#173"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#193"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#223"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#294"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#2b4"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#324"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#344"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#3b5"]),
+html.dark .sidebar-logo-full :deep(svg path[style*="fill:#445"]) {
+  fill: #f1f5f9 !important;
+}
+
+html.dark .sidebar-logo-full {
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.45));
+}
+html.dark .sidebar-logo-collapsed {
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.45));
+}
 </style>
