@@ -205,7 +205,7 @@ function getPostLoginRoute(role) {
               :title="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
               @click="showPassword = !showPassword"
             >
-              <i class="mdi" :class="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"></i>
+              <i class="mdi" :class="showPassword ? 'mdi-eye-outline' : 'mdi-eye-off-outline'"></i>
             </button>
           </div>
           <small v-if="fieldErrors.password" class="field-error">{{ fieldErrors.password }}</small>
