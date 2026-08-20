@@ -6,7 +6,8 @@ const introAudio = (typeof window !== 'undefined' && typeof Audio !== 'undefined
 
 if (introAudio) {
   introAudio.preload = 'auto';
-  introAudio.volume = 0.7;
+  introAudio.volume = 0;   // Start muted — browser allows muted autoplay
+  introAudio.muted = true;
   introAudio.loop = false;
 }
 </script>
@@ -26,9 +27,9 @@ const props = defineProps({
   }
 });
 
-// UI Interaction State
+// UI Interaction State (kept for v-if template compat, always false now)
 const isReadyToShowPrompt = ref(false);
-const hasInteracted = ref(false);
+const hasInteracted = ref(true);
 
 // Anim references for cleanup
 let mainTimeline = null;
@@ -186,35 +187,36 @@ const setCompletedStates = (svg) => {
   primaryPaths.forEach(p => { if (p) p.style.opacity = 0; });
 };
 
-// Method to start animation and audio on user interaction
+// Start intro audio + GSAP timeline.
+// Uses muted autoplay trick: browser always allows muted playback,
+// then we unmute immediately and fade volume up to bypass the autoplay policy.
 const startIntro = () => {
-  hasInteracted.value = true;
-  
-  try {
-    localStorage.setItem('stocksense_intro_has_interacted_once', 'true');
-  } catch (e) {
-    console.warn("Could not set localStorage:", e.message);
-  }
-  
   if (introAudio) {
     introAudio.currentTime = 0;
-    
+    introAudio.muted = true;
+    introAudio.volume = 0;
+
     let timelineStarted = false;
     const startTimeline = () => {
       if (timelineStarted) return;
       timelineStarted = true;
       if (mainTimeline) mainTimeline.play();
     };
-    
+
     startTimelineRef = startTimeline;
     introAudio.addEventListener('playing', startTimelineRef, { once: true });
 
-    introAudio.play().catch((error) => {
+    // Muted play always succeeds → unmute + fade volume in immediately
+    introAudio.play().then(() => {
+      introAudio.muted = false;
+      // Smooth volume fade-in over 0.4s via GSAP proxy
+      gsap.to(introAudio, { volume: 0.7, duration: 0.4, ease: 'power1.in' });
+    }).catch((error) => {
       console.warn("Intro audio play failed:", error);
       startTimeline();
     });
 
-    // Safety fallback: if audio doesn't start in 500ms, start timeline anyway
+    // Safety fallback: if audio doesn't fire 'playing' within 500ms, start timeline anyway
     setTimeout(startTimeline, 500);
   } else {
     if (mainTimeline) mainTimeline.play();
@@ -292,22 +294,8 @@ onMounted(() => {
 
     resetInitialStates(svg);
 
-    // Check if user has interacted once ever (first time visit)
-    let hasInteractedOnce = false;
-    try {
-      hasInteractedOnce = localStorage.getItem('stocksense_intro_has_interacted_once') === 'true';
-    } catch (e) {
-      console.warn("Storage access failed:", e.message);
-    }
-
-    if (hasInteractedOnce) {
-      // 2nd time onwards: skip the prompt, start intro automatically
-      hasInteracted.value = true;
-      startIntro();
-    } else {
-      // First time: show prompt overlay to get user interaction before playing audio
-      isReadyToShowPrompt.value = true;
-    }
+    // Muted autoplay trick — no user interaction needed, browser always allows muted audio
+    startIntro();
 
     // Select all dynamic elements
     const drawCubes = svg.querySelectorAll('.draw-c');
