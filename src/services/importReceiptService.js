@@ -344,3 +344,27 @@ export async function cancelLateImportReceipt(receiptId, reason) {
   }
 }
 
+export async function approveDiscrepancyReport(receiptId, reportId) {
+  try {
+    const { data } = await importReceiptClient.post(`/api/import-receipts/${receiptId}/discrepancy-reports/${reportId}/approve`, null, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể duyệt biên bản chênh lệch.')
+  }
+}
+
+export async function rejectDiscrepancyReport(receiptId, reportId, reason) {
+  try {
+    const { data } = await importReceiptClient.post(
+      `/api/import-receipts/${receiptId}/discrepancy-reports/${reportId}/reject`,
+      { reason },
+      { headers: getAuthorizationHeader() }
+    )
+    return data
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể từ chối biên bản chênh lệch.')
+  }
+}
+

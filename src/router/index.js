@@ -1,15 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getCurrentRoleCode, isAuthenticated } from '../services/authService'
 import { canAccessRoute } from '../services/permissionService'
-import DashboardView from '../views/DashboardView.vue'
-import ProductsView from '../views/ProductsView.vue'
-import PartnerListView from '../views/PartnerListView.vue'
-import WarehousesView from '../views/WarehousesView.vue'
-import InventoryView from '../views/InventoryView.vue'
-import LoginView from '../views/LoginView.vue'
-import StockDocumentsView from '../views/StockDocumentsView.vue'
-import StockDocumentCreateView from '../views/StockDocumentCreateView.vue'
-import ProfileView from '../views/ProfileView.vue'
+
 
 const routes = [
   { path: '/', redirect: '/dashboard' },

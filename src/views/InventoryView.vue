@@ -10,6 +10,7 @@ import StatusBadge from "../components/StatusBadge.vue";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { getInventory, saveWarehouseStockConfig } from "../services/inventoryService";
 import { getWarehouses } from "../services/warehouseService";
+import { getProduct } from "../services/productService";
 import { getWarehouseStatusLabel } from "../constants/warehouseOptions";
 import { canManageProducts } from "../services/permissionService";
 
@@ -22,6 +23,7 @@ const isLoading = ref(false);
 const isLoadingDropdowns = ref(false);
 const errorMessage = ref("");
 const searchDraft = ref(route.query.keyword ? String(route.query.keyword) : "");
+const requestToken = ref(0);
 
 watch(
   () => route.query,
@@ -75,10 +77,10 @@ const columns = computed(() => [
   { key: "productName", label: t('inventory.columns.productName'), class: "cell-long" },
   { key: "unitVolumeM3", label: "Thể tích (m³)", class: "cell-compact text-right" },
   { key: "warehouse", label: t('inventory.columns.warehouse'), class: "cell-medium" },
-  { key: "currentQuantity", label: t('inventory.columns.quantityThreshold'), class: "cell-medium text-right" },
-  { key: "status", label: t('inventory.columns.status'), class: "cell-nowrap" },
-  { key: "warehouseStatus", label: t('inventory.columns.warehouseStatus'), class: "cell-nowrap" },
-  { key: "productStatus", label: t('inventory.columns.productStatus'), class: "cell-nowrap" },
+  { key: "currentQuantity", label: "Số lượng thực tế", class: "cell-compact text-right font-bold" },
+  { key: "minStock", label: "Tồn tối thiểu hiệu lực", class: "cell-compact text-right" },
+  { key: "thresholdSource", label: "Nguồn định mức", class: "cell-nowrap" },
+  { key: "status", label: "Trạng thái cảnh báo", class: "cell-nowrap" },
   { key: "lastUpdatedAt", label: t('inventory.columns.lastUpdated'), class: "cell-nowrap" },
 ]);
 
@@ -89,7 +91,9 @@ const configForm = reactive({
   productCode: "",
   productName: "",
   warehouseName: "",
-  minStock: 0,
+  defaultMinStock: 0,
+  useDefault: true,
+  overrideValue: "",
 });
 const isSavingConfig = ref(false);
 const configErrorMessage = ref("");
@@ -101,7 +105,9 @@ function openMinStockConfig(row) {
   configForm.productCode = row.productCode;
   configForm.productName = row.productName;
   configForm.warehouseName = row.warehouse;
-  configForm.minStock = (row.minStock !== null && row.minStock !== undefined) ? String(row.minStock) : "";
+  configForm.defaultMinStock = row.defaultMinStock ?? 0;
+  configForm.useDefault = !row.isOverride;
+  configForm.overrideValue = row.isOverride ? String(row.minStock) : "";
   configErrorMessage.value = "";
   isConfigOpen.value = true;
 }
@@ -113,32 +119,29 @@ function closeConfigModal() {
 
 async function submitConfigForm() {
   if (!canManage.value) return;
-  const rawVal = String(configForm.minStock).trim();
-  if (rawVal === "") {
-    configErrorMessage.value = t('products.errMinStockRequired');
-    return;
+  
+  let val = null;
+  if (!configForm.useDefault) {
+    const rawVal = String(configForm.overrideValue).trim();
+    if (rawVal === "") {
+      configErrorMessage.value = t('products.errMinStockRequired');
+      return;
+    }
+    val = Number(rawVal);
+    if (isNaN(val) || !Number.isFinite(val) || !Number.isInteger(val) || val < 0 || rawVal !== String(val)) {
+      configErrorMessage.value = t('products.errMinStockInvalid');
+      return;
+    }
   }
-  const val = Number(rawVal);
-  if (isNaN(val) || !Number.isFinite(val) || !Number.isInteger(val) || val < 0 || rawVal !== String(val)) {
-    configErrorMessage.value = t('products.errMinStockInvalid');
-    return;
-  }
+
   isSavingConfig.value = true;
   configErrorMessage.value = "";
   try {
     await saveWarehouseStockConfig({
       productId: configForm.productId,
       warehouseId: configForm.warehouseId,
-      minStock: val,
+      minStockOverride: val,
     });
-    
-    // Update local row state first
-    const row = inventoryItems.value.find(
-      (item) => item.productId === configForm.productId && item.warehouseId === configForm.warehouseId
-    );
-    if (row) {
-      row.minStock = val;
-    }
 
     isConfigOpen.value = false;
     await fetchInventory();
@@ -183,6 +186,7 @@ async function loadDropdowns() {
 async function fetchInventory() {
   isLoading.value = true;
   errorMessage.value = "";
+  const token = ++requestToken.value;
   try {
     const data = await getInventory({
       page: page.value,
@@ -194,15 +198,42 @@ async function fetchInventory() {
       productStatus: filters.productStatus,
     });
 
-    inventoryItems.value = data.content || [];
+    if (token !== requestToken.value) return;
+
+    const content = data.content || [];
     totalPages.value = data.totalPages || 0;
     totalElements.value = data.totalElements || 0;
+
+    // Load defaultMinStock for each unique product concurrently
+    const uniqueProductIds = [...new Set(content.map(item => item.productId))];
+    const productDetailsResults = await Promise.allSettled(uniqueProductIds.map(id => getProduct(id)));
+    const productMap = {};
+    uniqueProductIds.forEach((id, index) => {
+      if (productDetailsResults[index].status === 'fulfilled') {
+        productMap[id] = productDetailsResults[index].value;
+      }
+    });
+
+    inventoryItems.value = content.map(item => {
+      const product = productMap[item.productId];
+      const defaultMinStock = product ? product.defaultMinStock : 0;
+      // If minStock returned from DB is different from product's defaultMinStock, it's override
+      const isOverride = defaultMinStock !== null && item.minStock !== defaultMinStock;
+      return {
+        ...item,
+        defaultMinStock,
+        isOverride
+      };
+    });
   } catch (error) {
+    if (token !== requestToken.value) return;
     inventoryItems.value = [];
     errorMessage.value = error.message;
     if (error.status === 401) router.replace("/login");
   } finally {
-    isLoading.value = false;
+    if (token === requestToken.value) {
+      isLoading.value = false;
+    }
   }
 }
 
@@ -264,6 +295,31 @@ function nextPage() {
 function formatDate(value) {
   if (!value) return "-";
   return new Date(value).toLocaleString("vi-VN", { hour12: false });
+}
+
+function tooltipText(row) {
+  if (row.status === 'OUT_OF_STOCK') {
+    return 'Hết hàng hoàn toàn. Cần nhập hàng khẩn cấp!';
+  }
+  if (row.status === 'LOW_STOCK') {
+    return 'Tồn kho thực tế thấp hơn định mức tồn tối thiểu hiệu lực.';
+  }
+  return 'Tồn kho ở mức an toàn.';
+}
+
+function preventNonInteger(event) {
+  const charCode = event.which ? event.which : event.keyCode;
+  if (charCode < 48 || charCode > 57) {
+    event.preventDefault();
+  }
+}
+
+function handleIntegerPaste(event) {
+  const pasteData = (event.clipboardData || window.clipboardData).getData('text');
+  const num = Number(pasteData);
+  if (isNaN(num) || !Number.isInteger(num) || num < 0) {
+    event.preventDefault();
+  }
 }
 </script>
 
@@ -370,14 +426,15 @@ function formatDate(value) {
         </div>
       </template>
       <template #currentQuantity="{ value, row }">
+        <span class="tabular-num font-semibold text-slate-800" :class="{ 'text-red-600 font-bold': row.status === 'OUT_OF_STOCK', 'text-amber-600 font-bold': row.status === 'LOW_STOCK' }">
+          {{ value ?? 0 }}
+        </span>
+      </template>
+      <template #minStock="{ value, row }">
         <div class="quantity-cell flex items-center justify-between">
-          <div class="flex-grow">
-            <span class="tabular-num font-semibold text-slate-800" :class="{ 'text-red-600 font-bold': row.status === 'OUT_OF_STOCK', 'text-amber-600 font-bold': row.status === 'LOW_STOCK' }">
-              {{ value ?? 0 }}
-            </span>
-            <span class="threshold-hint" v-if="row.minStock !== null">/ Min: {{ row.minStock }}</span>
-            <span class="threshold-hint text-slate-400 italic" v-else>/ Min: Chưa cấu hình</span>
-          </div>
+          <span class="tabular-num text-slate-700 font-medium">
+            {{ value ?? 0 }}
+          </span>
           <button
             v-if="canManage"
             class="btn btn-icon btn-xs ml-2 text-blue-600 hover:text-blue-800 transition"
@@ -389,14 +446,23 @@ function formatDate(value) {
           </button>
         </div>
       </template>
-      <template #status="{ value }">
-        <StatusBadge :status="getInventoryStatusLabel(value)" />
+      <template #thresholdSource="{ row }">
+        <span 
+          class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full"
+          :class="row.isOverride ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'"
+        >
+          {{ row.isOverride ? 'Ghi đè' : 'Mặc định' }}
+        </span>
       </template>
-      <template #warehouseStatus="{ value }">
-        <StatusBadge :status="getWarehouseStatusLabel(value)" />
-      </template>
-      <template #productStatus="{ value }">
-        <StatusBadge :status="value === 'HOAT_DONG' ? t('inventory.status.active') : t('inventory.status.inactive')" />
+      <template #status="{ value, row }">
+        <div class="inline-flex items-center gap-1.5" :title="tooltipText(row)">
+          <StatusBadge :status="getInventoryStatusLabel(value)" />
+          <i 
+            v-if="row.status === 'OUT_OF_STOCK' || row.status === 'LOW_STOCK'"
+            class="mdi mdi-alert-circle text-amber-500 text-base"
+            style="cursor: help;"
+          ></i>
+        </div>
       </template>
       <template #lastUpdatedAt="{ value }">
         <span class="tabular-num text-xs">{{ formatDate(value) }}</span>
@@ -416,7 +482,13 @@ function formatDate(value) {
             <code class="sku-code text-xs">{{ row.productCode }}</code>
           </div>
         </div>
-        <StatusBadge :status="getInventoryStatusLabel(row.status)" />
+        <div class="inline-flex items-center gap-1.5" :title="tooltipText(row)">
+          <StatusBadge :status="getInventoryStatusLabel(row.status)" />
+          <i 
+            v-if="row.status === 'OUT_OF_STOCK' || row.status === 'LOW_STOCK'"
+            class="mdi mdi-alert-circle text-amber-500 text-sm"
+          ></i>
+        </div>
       </div>
 
       <div class="inventory-mobile-card__details">
@@ -428,7 +500,7 @@ function formatDate(value) {
           </span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">{{ t('inventory.columns.currentStock') }}</span>
+          <span class="detail-label">Số lượng thực tế</span>
           <span class="detail-val">
             <span class="tabular-num font-semibold text-slate-800" :class="{ 'text-red-600 font-bold': row.status === 'OUT_OF_STOCK', 'text-amber-600 font-bold': row.status === 'LOW_STOCK' }">
               {{ row.currentQuantity ?? 0 }}
@@ -443,9 +515,10 @@ function formatDate(value) {
           </span>
         </div>
         <div class="detail-row flex items-center justify-between">
-          <span class="detail-label">{{ t('inventory.columns.minStockThreshold') }}</span>
-          <span class="detail-val flex items-center">
-            <span class="tabular-num">{{ row.minStock !== null ? row.minStock : "Chưa cấu hình" }}</span>
+          <span class="detail-label">Tồn tối thiểu hiệu lực</span>
+          <span class="detail-val flex items-center gap-1">
+            <span class="tabular-num font-semibold">{{ row.minStock ?? 0 }}</span>
+            <span class="text-xs text-slate-400">({{ row.isOverride ? 'Ghi đè' : 'Mặc định' }})</span>
             <button
               v-if="canManage"
               class="btn btn-icon btn-xs ml-2 text-blue-600 hover:text-blue-800 transition"
@@ -487,11 +560,11 @@ function formatDate(value) {
   </div>
 
   <!-- Modal Cấu hình định mức tồn tối thiểu -->
-  <div v-if="isConfigOpen" class="modal-backdrop">
-    <div class="modal w-full max-w-md">
+  <div v-if="isConfigOpen" class="modal-backdrop" @click.self="closeConfigModal">
+    <div class="modal w-full max-w-md card card-pad">
       <form @submit.prevent="submitConfigForm" class="flex flex-col gap-4">
         <div class="modal-head flex items-center justify-between border-b pb-3 mb-2">
-          <h2 class="section-title">Cấu hình tồn tối thiểu</h2>
+          <h2 class="section-title" style="font-size: 18px; font-weight: 700;">Cấu hình tồn tối thiểu</h2>
           <button class="btn btn-icon text-slate-400 hover:text-slate-600" type="button" @click="closeConfigModal" :disabled="isSavingConfig">
             <i class="mdi mdi-close text-xl"></i>
           </button>
@@ -503,7 +576,7 @@ function formatDate(value) {
           </div>
 
           <div class="field">
-            <label class="field-label font-semibold text-slate-700 block mb-1">Sản phẩm</label>
+            <label class="field-label font-semibold text-slate-700 block mb-1" style="font-weight: 700;">Sản phẩm</label>
             <input
               type="text"
               class="input bg-slate-100 cursor-not-allowed"
@@ -513,7 +586,7 @@ function formatDate(value) {
           </div>
 
           <div class="field">
-            <label class="field-label font-semibold text-slate-700 block mb-1">Kho hàng</label>
+            <label class="field-label font-semibold text-slate-700 block mb-1" style="font-weight: 700;">Kho hàng</label>
             <input
               type="text"
               class="input bg-slate-100 cursor-not-allowed"
@@ -522,23 +595,65 @@ function formatDate(value) {
             />
           </div>
 
-          <div class="field">
-            <label class="field-label font-semibold text-slate-700 block mb-1">Định mức tồn tối thiểu</label>
+          <!-- Default stock information -->
+          <div class="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30 rounded text-sm text-blue-800 dark:text-blue-200 flex justify-between items-center" style="border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span>Tồn tối thiểu mặc định sản phẩm:</span>
+            <strong class="text-base" style="font-size: 16px;">{{ configForm.defaultMinStock }}</strong>
+          </div>
+
+          <!-- Configuration Choice -->
+          <div class="field flex flex-col gap-2" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+            <span class="field-label font-semibold text-slate-700 block" style="font-weight: 700;">Cấu hình định mức</span>
+            
+            <div class="flex items-center gap-2" style="display: flex; align-items: center; gap: 8px;">
+              <input
+                type="radio"
+                id="use-default"
+                :value="true"
+                v-model="configForm.useDefault"
+                :disabled="isSavingConfig"
+                style="width: 18px; height: 18px; cursor: pointer;"
+              />
+              <label for="use-default" class="text-sm cursor-pointer select-none font-medium text-slate-700" style="cursor: pointer; user-select: none;">
+                Sử dụng tồn tối thiểu mặc định ({{ configForm.defaultMinStock }})
+              </label>
+            </div>
+
+            <div class="flex items-center gap-2" style="display: flex; align-items: center; gap: 8px;">
+              <input
+                type="radio"
+                id="use-override"
+                :value="false"
+                v-model="configForm.useDefault"
+                :disabled="isSavingConfig"
+                style="width: 18px; height: 18px; cursor: pointer;"
+              />
+              <label for="use-override" class="text-sm cursor-pointer select-none font-medium text-slate-700" style="cursor: pointer; user-select: none;">
+                Ghi đè định mức tồn tối thiểu riêng cho kho này
+              </label>
+            </div>
+          </div>
+
+          <!-- Override input field -->
+          <div class="field mt-1" v-if="!configForm.useDefault" style="margin-top: 8px;">
+            <label class="field-label font-semibold text-slate-700 block mb-1" style="font-weight: 700;">Giá trị định mức ghi đè *</label>
             <input
-              v-model="configForm.minStock"
+              v-model="configForm.overrideValue"
               class="input"
               type="text"
               required
               :disabled="isSavingConfig"
-              placeholder="Nhập định mức tồn tối thiểu (Min)..."
+              placeholder="Nhập định mức tồn tối thiểu..."
+              @keypress="preventNonInteger"
+              @paste="handleIntegerPaste"
             />
-            <small class="field-note text-slate-400 block mt-1">Khi tồn kho thực tế giảm xuống dưới định mức này, hệ thống sẽ tự động đề xuất bổ sung hàng.</small>
+            <small class="field-note text-slate-400 block mt-1" style="color: var(--muted); font-size: 12px;">Định mức này chỉ áp dụng riêng tại kho {{ configForm.warehouseName }}.</small>
           </div>
         </div>
 
-        <div class="modal-foot flex justify-end gap-3 mt-4 pt-3 border-t">
+        <div class="modal-foot flex justify-end gap-3 mt-4 pt-3 border-t" style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color, #e4e4e7); padding-top: 12px; margin-top: 12px;">
           <button
-            class="btn btn-secondary"
+            class="btn"
             type="button"
             :disabled="isSavingConfig"
             @click="closeConfigModal"

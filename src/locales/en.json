@@ -1125,6 +1125,8 @@
     "documentType": {
       "in": "Import Receipt",
       "out": "Export Receipt",
+      "inbound_discrepancy": "Discrepancy Report",
+      "inventory_adjustment": "Inventory Adjustment",
       "inName": "import",
       "outName": "export",
       "default": "Receipt"

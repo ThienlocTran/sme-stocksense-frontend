@@ -1125,6 +1125,8 @@
     "documentType": {
       "in": "Phiếu nhập",
       "out": "Phiếu xuất",
+      "inbound_discrepancy": "Biên bản chênh lệch",
+      "inventory_adjustment": "Phiếu kiểm kê kho",
       "inName": "nhập",
       "outName": "xuất",
       "default": "Phiếu"

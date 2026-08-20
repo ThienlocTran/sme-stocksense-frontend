@@ -12,6 +12,10 @@ import {
   getApprovalDetail,
   getPendingApprovals,
   rejectImportReceipt,
+  getImportReceipts,
+  getDetail,
+  approveDiscrepancyReport,
+  rejectDiscrepancyReport,
 } from "../services/importReceiptService";
 import {
   approveExportReceipt,
@@ -19,12 +23,23 @@ import {
   getPendingExportReceipts,
   rejectExportReceipt,
 } from "../services/exportReceiptService";
+import {
+  getInventoryCounts,
+  getInventoryCountById,
+  finalizeInventoryCount,
+  cancelInventoryCount,
+} from "../services/inventoryCountService";
 import { getWarehouses } from "../services/warehouseService";
 
 const router = useRouter();
 const route = useRoute();
 const { t } = useI18n();
-const documentType = ref(route.query.type === "out" ? "out" : "in");
+const documentType = ref(
+  route.query.type === "out" ? "out" :
+  route.query.type === "inbound_discrepancy" ? "inbound_discrepancy" :
+  route.query.type === "inventory_adjustment" ? "inventory_adjustment" :
+  "in"
+);
 
 const receipts = ref([]);
 const isLoading = ref(false);
@@ -71,23 +86,41 @@ const historyState = reactive({
 
 const REJECT_REASON_MAX = 500;
 
-const columns = computed(() => [
-  { key: "code", label: t("approvals.columns.code") },
-  { key: "warehouseName", label: t("approvals.columns.warehouse") },
-  {
-    key: "supplierName",
-    label: documentType.value === "out" ? t("approvals.columns.customer") : t("approvals.columns.supplier"),
-  },
-  { key: "createdByName", label: t("approvals.columns.creator") },
-  { key: "submittedAt", label: t("approvals.columns.submitDate") },
-  { key: "status", label: t("approvals.columns.status") },
-  { key: "totalAmount", label: t("approvals.columns.totalAmount") },
-  { key: "actions", label: t("approvals.columns.actions") },
-]);
+const columns = computed(() => {
+  if (documentType.value === "inventory_adjustment") {
+    return [
+      { key: "code", label: "Mã kiểm kê" },
+      { key: "warehouseName", label: "Kho hàng" },
+      { key: "createdByName", label: "Người tạo" },
+      { key: "createdAt", label: "Ngày tạo" },
+      { key: "status", label: "Trạng thái" },
+      { key: "actions", label: "Thao tác" },
+    ];
+  }
+  const baseColumns = [
+    { key: "code", label: t("approvals.columns.code") },
+    { key: "warehouseName", label: t("approvals.columns.warehouse") },
+    {
+      key: "supplierName",
+      label: documentType.value === "out" ? t("approvals.columns.customer") : t("approvals.columns.supplier"),
+    },
+    { key: "createdByName", label: t("approvals.columns.creator") },
+    { key: "submittedAt", label: t("approvals.columns.submitDate") },
+    { key: "status", label: t("approvals.columns.status") },
+    { key: "totalAmount", label: t("approvals.columns.totalAmount") },
+    { key: "actions", label: t("approvals.columns.actions") },
+  ];
+  if (documentType.value === "inbound_discrepancy") {
+    return baseColumns.filter(c => c.key !== "totalAmount");
+  }
+  return baseColumns;
+});
 
 const documentTypeOptions = [
   { value: "in", label: t("approvals.documentType.in") },
   { value: "out", label: t("approvals.documentType.out") },
+  { value: "inbound_discrepancy", label: t("approvals.documentType.inbound_discrepancy") },
+  { value: "inventory_adjustment", label: t("approvals.documentType.inventory_adjustment") },
 ];
 
 const statusOptions = computed(() => {
@@ -95,11 +128,13 @@ const statusOptions = computed(() => {
     return [
       { value: "CHO_DUYET", label: t("approvals.status.pending") },
     ]
-  } else {
+  } else if (documentType.value === "in") {
     return [
       { value: "CHO_DUYET_CAP_1", label: t("approvals.status.pendingLevel1") },
       { value: "CHO_DUYET_CAP_2", label: t("approvals.status.pendingLevel2") },
     ]
+  } else {
+    return [];
   }
 })
 
@@ -129,7 +164,11 @@ watch(documentType, (newType) => {
 
 // Sync route query changes back to documentType
 watch(() => route.query.type, (newType) => {
-  const targetType = newType === "out" ? "out" : "in";
+  const targetType =
+    newType === "out" ? "out" :
+    newType === "inbound_discrepancy" ? "inbound_discrepancy" :
+    newType === "inventory_adjustment" ? "inventory_adjustment" :
+    "in";
   if (documentType.value !== targetType) {
     documentType.value = targetType;
     clearFilters();
@@ -156,20 +195,67 @@ async function fetchPendingApprovals() {
   actionMessage.value = "";
   actionErrorMessage.value = "";
   try {
-    const data = await (
-      documentType.value === "out"
-        ? getPendingExportReceipts
-        : getPendingApprovals
-    )({
-      page: page.value,
-      size: size.value,
-      status: filters.status,
-      warehouse: filters.warehouse || undefined,
-    });
+    let data;
+    if (documentType.value === "out") {
+      data = await getPendingExportReceipts({
+        page: page.value,
+        size: size.value,
+        status: filters.status || undefined,
+        warehouse: filters.warehouse || undefined,
+      });
+    } else if (documentType.value === "in") {
+      data = await getPendingApprovals({
+        page: page.value,
+        size: size.value,
+        status: filters.status || undefined,
+        warehouse: filters.warehouse || undefined,
+      });
+    } else if (documentType.value === "inbound_discrepancy") {
+      const response = await getImportReceipts({
+        page: page.value,
+        size: size.value,
+        status: "CHO_KIEM_HANG",
+      });
+      const receiptsList = response.content || [];
+      const detailsResults = await Promise.allSettled(receiptsList.map(r => getDetail(r.id)));
+      const filtered = [];
+      receiptsList.forEach((r, idx) => {
+        if (detailsResults[idx].status === "fulfilled") {
+          const detail = detailsResults[idx].value;
+          const hasDiff = (detail.details || []).some(d => d.rowStatus === "CHENH_LECH");
+          if (hasDiff) {
+            filtered.push({
+              ...r,
+              details: detail.details,
+              note: detail.note,
+              version: detail.version,
+            });
+          }
+        }
+      });
+      data = {
+        content: filtered,
+        totalPages: response.totalPages || 0,
+        totalElements: filtered.length,
+      };
+    } else if (documentType.value === "inventory_adjustment") {
+      const response = await getInventoryCounts({
+        page: page.value,
+        size: size.value,
+        status: "DANG_KIEM_KE",
+      });
+      data = {
+        content: response.content || [],
+        totalPages: response.totalPages || 0,
+        totalElements: response.totalElements || 0,
+      };
+    }
+
     if (token !== requestToken.value) return;
+
     receipts.value = (data.content || []).map((item) => ({
       ...item,
-      supplierName: item.supplierName || item.partnerName,
+      supplierName: item.supplierName || item.partnerName || item.customerName || "-",
       documentType: documentType.value,
     }));
     totalPages.value = data.totalPages || 0;
@@ -219,19 +305,27 @@ async function openDetail(receipt) {
   detailState.error = "";
   detailState.receipt = null;
   try {
-    const detail = await (
-      selectedType === "out" ? getExportReceipt : getApprovalDetail
-    )(receipt.id);
+    let detail;
+    if (selectedType === "out") {
+      detail = await getExportReceipt(receipt.id);
+      detail = {
+        ...detail,
+        supplierName: detail.partnerName,
+        details: detail.items,
+        documentType: selectedType,
+      };
+    } else if (selectedType === "in") {
+      detail = await getApprovalDetail(receipt.id);
+      detail = { ...detail, documentType: selectedType };
+    } else if (selectedType === "inbound_discrepancy") {
+      detail = await getDetail(receipt.id);
+      detail = { ...detail, documentType: selectedType };
+    } else if (selectedType === "inventory_adjustment") {
+      detail = await getInventoryCountById(receipt.id);
+      detail = { ...detail, documentType: selectedType };
+    }
     if (token !== detailState.requestToken) return;
-    detailState.receipt =
-      selectedType === "out"
-        ? {
-            ...detail,
-            supplierName: detail.partnerName,
-            details: detail.items,
-            documentType: selectedType,
-          }
-        : { ...detail, documentType: selectedType };
+    detailState.receipt = detail;
   } catch (error) {
     if (token !== detailState.requestToken) return;
     detailState.error = error.message || t("approvals.messages.loadDetailError");
@@ -264,15 +358,23 @@ function closeApproveConfirm() {
 
 async function confirmApprove() {
   const receipt = approveConfirmState.receipt;
-  if (!receipt || !isPendingApproval(receipt.status)) return;
+  if (!receipt) return;
 
-  const isOut = receipt.documentType === "out";
   actionState.receiptId = receipt.id;
   actionState.action = "approve";
   actionMessage.value = "";
   actionErrorMessage.value = "";
   try {
-    await (isOut ? approveExportReceipt : approveImportReceipt)(receipt.id);
+    if (receipt.documentType === "out") {
+      await approveExportReceipt(receipt.id);
+    } else if (receipt.documentType === "in") {
+      await approveImportReceipt(receipt.id);
+    } else if (receipt.documentType === "inbound_discrepancy") {
+      const reportId = getDiscrepancyReportId(receipt.id);
+      await approveDiscrepancyReport(receipt.id, reportId);
+    } else if (receipt.documentType === "inventory_adjustment") {
+      await finalizeInventoryCount(receipt.id, { version: receipt.version });
+    }
     approveConfirmState.open = false;
     approveConfirmState.receipt = null;
     closeDetail();
@@ -324,30 +426,47 @@ async function confirmReject() {
   actionMessage.value = "";
   actionErrorMessage.value = "";
   try {
-    await (
-      currentDocumentType === "out" ? rejectExportReceipt : rejectImportReceipt
-    )(rejectState.receiptId, reason);
+    if (currentDocumentType === "out") {
+      await rejectExportReceipt(rejectState.receiptId, reason);
+    } else if (currentDocumentType === "in") {
+      await rejectImportReceipt(rejectState.receiptId, reason);
+    } else if (currentDocumentType === "inbound_discrepancy") {
+      const reportId = getDiscrepancyReportId(rejectState.receiptId);
+      await rejectDiscrepancyReport(rejectState.receiptId, reportId, reason);
+    } else if (currentDocumentType === "inventory_adjustment") {
+      const row = receipts.value.find((r) => r.id === rejectState.receiptId);
+      const version = row ? row.version : 0;
+      await cancelInventoryCount(rejectState.receiptId, { reason, version });
+    }
     rejectState.open = false;
     rejectState.submitting = false;
     closeDetail();
     await fetchPendingApprovals();
-    actionMessage.value = t("approvals.messages.rejectSuccess", { type: currentDocumentType === "out" ? t("approvals.documentType.outName") : t("approvals.documentType.inName") });
+    actionMessage.value = "Đã từ chối/hủy tài liệu thành công.";
   } catch (error) {
     rejectState.submitting = false;
-    rejectState.error =
-      error.message ||
-      (currentDocumentType === "out"
-        ? "Không thể từ chối phiếu xuất."
-        : "Không thể từ chối phiếu nhập.");
+    rejectState.error = error.message || "Không thể từ chối tài liệu.";
     if (error.status === 401) router.replace("/login");
   }
 }
 
 function isPendingApproval(status) {
+  if (documentType.value === "inventory_adjustment") {
+    return status === "DANG_KIEM_KE";
+  }
+  if (documentType.value === "inbound_discrepancy") {
+    return status === "CHO_KIEM_HANG";
+  }
   return status === "CHO_DUYET" || status === "CHO_DUYET_CAP_1" || status === "CHO_DUYET_CAP_2";
 }
 
 function approveLabel(status) {
+  if (documentType.value === "inventory_adjustment") {
+    return "Chốt kiểm kê";
+  }
+  if (documentType.value === "inbound_discrepancy") {
+    return "Duyệt chênh lệch";
+  }
   return t("approvals.actions.approve");
 }
 
@@ -372,6 +491,8 @@ function closeHistory() {
 }
 
 function statusLabel(status) {
+  if (status === "DANG_KIEM_KE") return "Đang kiểm kê";
+  if (status === "CHO_KIEM_HANG") return "Chờ kiểm hàng (Lệch)";
   return statusLabels[status] || status || "-";
 }
 
@@ -394,6 +515,8 @@ function formatCurrency(value) {
 }
 
 function documentTypeLabel(type) {
+  if (type === "inbound_discrepancy") return "Biên bản chênh lệch";
+  if (type === "inventory_adjustment") return "Phiếu kiểm kê";
   return (
     documentTypeOptions.find((option) => option.value === type)?.label ||
     "Phiếu"
@@ -401,11 +524,18 @@ function documentTypeLabel(type) {
 }
 
 function documentTypeBadgeClass(type) {
+  if (type === "inbound_discrepancy") return "doc-badge-discrepancy";
+  if (type === "inventory_adjustment") return "doc-badge-adjustment";
   return type === "out" ? "doc-badge-out" : "doc-badge-in";
 }
 
 function getRejectionReason(receipt) {
   return String(receipt?.rejectionReason || receipt?.rejectReason || "").trim();
+}
+
+function getDiscrepancyReportId(receiptId) {
+  const mapping = JSON.parse(localStorage.getItem("discrepancy_report_ids") || "{}");
+  return mapping[receiptId] || receiptId;
 }
 </script>
 
@@ -491,6 +621,7 @@ function getRejectionReason(receipt) {
     {{ t("approvals.loading") }}
   </p>
 
+
   <div v-if="!isLoading">
     <!-- Desktop Table View -->
     <div class="hidden md:block">
@@ -529,6 +660,7 @@ function getRejectionReason(receipt) {
               Xem
             </button>
             <button
+              v-if="row.documentType !== 'inventory_adjustment' && row.documentType !== 'inbound_discrepancy'"
               class="btn btn-sm btn-secondary"
               type="button"
               :disabled="isAnyActionRunning(row)"
@@ -558,7 +690,7 @@ function getRejectionReason(receipt) {
               "
               @click="openRejectModal(row)"
             >
-              Từ chối
+              {{ row.documentType === 'inventory_adjustment' ? 'Hủy' : 'Từ chối' }}
             </button>
           </div>
         </template>
@@ -586,7 +718,7 @@ function getRejectionReason(receipt) {
             <span class="text-muted block text-xs uppercase font-semibold">Kho</span>
             <span class="font-medium text-text">{{ row.warehouseName || '-' }}</span>
           </div>
-          <div>
+          <div v-if="row.documentType !== 'inventory_adjustment'">
             <span class="text-muted block text-xs uppercase font-semibold">
               {{ row.documentType === 'out' ? 'Khách hàng' : 'Nhà cung cấp' }}
             </span>
@@ -597,14 +729,16 @@ function getRejectionReason(receipt) {
             <span class="font-medium text-text">{{ row.createdByName || '-' }}</span>
           </div>
           <div>
-            <span class="text-muted block text-xs uppercase font-semibold">Ngày gửi</span>
-            <span class="font-medium text-text">{{ formatDateTime(row.submittedAt) }}</span>
+            <span class="text-muted block text-xs uppercase font-semibold">
+              {{ row.documentType === 'inventory_adjustment' ? 'Ngày tạo' : 'Ngày gửi' }}
+            </span>
+            <span class="font-medium text-text">{{ formatDateTime(row.submittedAt || row.createdAt) }}</span>
           </div>
         </div>
 
         <div class="border-t border-gray-100 pt-3 flex justify-end gap-2 flex-wrap">
           <button class="btn btn-sm btn-secondary" type="button" @click="openDetail(row)">Xem</button>
-          <button class="btn btn-sm btn-secondary" type="button" @click="openHistory(row)">Lịch sử</button>
+          <button v-if="row.documentType !== 'inventory_adjustment' && row.documentType !== 'inbound_discrepancy'" class="btn btn-sm btn-secondary" type="button" @click="openHistory(row)">Lịch sử</button>
           <button 
             v-if="isPendingApproval(row.status)" 
             class="btn btn-sm btn-success" 
@@ -612,7 +746,7 @@ function getRejectionReason(receipt) {
             :disabled="isAnyActionRunning(row)" 
             @click="handleApprove(row)"
           >
-            Duyệt
+            {{ approveLabel(row.status) }}
           </button>
           <button 
             v-if="isPendingApproval(row.status)" 
@@ -621,7 +755,7 @@ function getRejectionReason(receipt) {
             :disabled="isAnyActionRunning(row)" 
             @click="openRejectModal(row)"
           >
-            Từ chối
+            {{ row.documentType === 'inventory_adjustment' ? 'Hủy' : 'Từ chối' }}
           </button>
         </div>
       </div>
@@ -660,9 +794,9 @@ function getRejectionReason(receipt) {
         <h2 class="section-title">
           Chi tiết phiếu
           {{
-            (detailState.receipt?.documentType || documentType) === "out"
-              ? "xuất"
-              : "nhập"
+            (detailState.receipt?.documentType || documentType) === "inventory_adjustment" ? "kiểm kê" :
+            (detailState.receipt?.documentType || documentType) === "inbound_discrepancy" ? "chênh lệch" :
+            (detailState.receipt?.documentType || documentType) === "out" ? "xuất" : "nhập"
           }}
           chờ duyệt
         </h2>
@@ -689,70 +823,86 @@ function getRejectionReason(receipt) {
             </p>
           </div>
 
-          <div class="detail-grid">
+          <!-- Grid for Inventory Count -->
+          <div class="detail-grid" v-if="detailState.receipt.documentType === 'inventory_adjustment'">
             <div>
-              <span class="detail-label">{{ t("approvals.detail.code") }}</span
-              ><span class="detail-value">{{ detailState.receipt.code }}</span>
+              <span class="detail-label">Mã kiểm kê</span>
+              <span class="detail-value">{{ detailState.receipt.code }}</span>
+            </div>
+            <div>
+              <span class="detail-label">Trạng thái</span>
+              <StatusBadge :status="statusLabel(detailState.receipt.status)" />
+            </div>
+            <div>
+              <span class="detail-label">Loại phiếu</span>
+              <span class="badge doc-badge doc-badge-adjustment">Phiếu kiểm kê</span>
+            </div>
+            <div>
+              <span class="detail-label">Kho hàng</span>
+              <span class="detail-value">{{ detailState.receipt.warehouseName || "-" }}</span>
+            </div>
+            <div>
+              <span class="detail-label">Người tạo</span>
+              <span class="detail-value">{{ detailState.receipt.createdByName || "-" }}</span>
+            </div>
+            <div>
+              <span class="detail-label">Ngày tạo</span>
+              <span class="detail-value">{{ formatDateTime(detailState.receipt.createdAt) }}</span>
+            </div>
+            <div class="detail-span-2">
+              <span class="detail-label">Ghi chú</span>
+              <span class="detail-value">{{ detailState.receipt.note || "-" }}</span>
+            </div>
+          </div>
+
+          <!-- Original Grid for Import/Export/Discrepancy -->
+          <div class="detail-grid" v-else>
+            <div>
+              <span class="detail-label">{{ t("approvals.detail.code") }}</span>
+              <span class="detail-value">{{ detailState.receipt.code }}</span>
             </div>
             <div>
               <span class="detail-label">{{ t("approvals.detail.status") }}</span>
               <StatusBadge :status="statusLabel(detailState.receipt.status)" />
             </div>
             <div>
-              <span class="detail-label">{{ t("approvals.detail.type") }}</span
-              ><span
+              <span class="detail-label">{{ t("approvals.detail.type") }}</span>
+              <span
                 class="badge doc-badge"
-                :class="
-                  documentTypeBadgeClass(detailState.receipt.documentType)
-                "
-                >{{ documentTypeLabel(detailState.receipt.documentType) }}</span
+                :class="documentTypeBadgeClass(detailState.receipt.documentType)"
               >
+                {{ documentTypeLabel(detailState.receipt.documentType) }}
+              </span>
             </div>
             <div>
-              <span class="detail-label">{{ t("approvals.detail.warehouse") }}</span
-              ><span class="detail-value">{{
-                detailState.receipt.warehouseName || "-"
-              }}</span>
+              <span class="detail-label">{{ t("approvals.detail.warehouse") }}</span>
+              <span class="detail-value">{{ detailState.receipt.warehouseName || "-" }}</span>
             </div>
             <div>
-              <span class="detail-label">{{
-                detailState.receipt.documentType === "out"
-                  ? "Khách hàng"
-                  : "Nhà cung cấp"
-              }}</span
-              ><span class="detail-value">{{
-                detailState.receipt.supplierName || "-"
-              }}</span>
+              <span class="detail-label">
+                {{ detailState.receipt.documentType === "out" ? "Khách hàng" : "Nhà cung cấp" }}
+              </span>
+              <span class="detail-value">{{ detailState.receipt.supplierName || "-" }}</span>
             </div>
             <div>
-              <span class="detail-label">{{ t("approvals.detail.creator") }}</span
-              ><span class="detail-value">{{
-                detailState.receipt.createdByName || "-"
-              }}</span>
+              <span class="detail-label">{{ t("approvals.detail.creator") }}</span>
+              <span class="detail-value">{{ detailState.receipt.createdByName || "-" }}</span>
             </div>
             <div>
-              <span class="detail-label">{{ t("approvals.detail.submitter") }}</span
-              ><span class="detail-value">{{
-                detailState.receipt.submittedByName || "-"
-              }}</span>
+              <span class="detail-label">{{ t("approvals.detail.submitter") }}</span>
+              <span class="detail-value">{{ detailState.receipt.submittedByName || "-" }}</span>
             </div>
             <div>
-              <span class="detail-label">{{ t("approvals.detail.submitDate") }}</span
-              ><span class="detail-value">{{
-                formatDateTime(detailState.receipt.submittedAt)
-              }}</span>
+              <span class="detail-label">{{ t("approvals.detail.submitDate") }}</span>
+              <span class="detail-value">{{ formatDateTime(detailState.receipt.submittedAt) }}</span>
             </div>
-            <div>
-              <span class="detail-label">{{ t("approvals.detail.totalAmount") }}</span
-              ><span class="detail-value text-primary">{{
-                formatCurrency(detailState.receipt.totalAmount)
-              }}</span>
+            <div v-if="detailState.receipt.documentType !== 'inbound_discrepancy'">
+              <span class="detail-label">{{ t("approvals.detail.totalAmount") }}</span>
+              <span class="detail-value text-primary">{{ formatCurrency(detailState.receipt.totalAmount) }}</span>
             </div>
             <div class="detail-span-2">
-              <span class="detail-label">{{ t("approvals.detail.note") }}</span
-              ><span class="detail-value">{{
-                detailState.receipt.note || "-"
-              }}</span>
+              <span class="detail-label">{{ t("approvals.detail.note") }}</span>
+              <span class="detail-value">{{ detailState.receipt.note || "-" }}</span>
             </div>
           </div>
 
@@ -760,7 +910,23 @@ function getRejectionReason(receipt) {
           <div class="table-wrap card">
             <table class="data-table">
               <thead>
-                <tr>
+                <tr v-if="detailState.receipt.documentType === 'inventory_adjustment'">
+                  <th>{{ t("approvals.table.productCode") }}</th>
+                  <th>{{ t("approvals.table.productName") }}</th>
+                  <th style="text-align: right">Tồn sổ sách</th>
+                  <th style="text-align: right">Tồn thực tế</th>
+                  <th style="text-align: right">Chênh lệch</th>
+                  <th>Ghi chú</th>
+                </tr>
+                <tr v-else-if="detailState.receipt.documentType === 'inbound_discrepancy'">
+                  <th>{{ t("approvals.table.productCode") }}</th>
+                  <th>{{ t("approvals.table.productName") }}</th>
+                  <th style="text-align: right">Dự kiến</th>
+                  <th style="text-align: right">Thực nhận</th>
+                  <th style="text-align: right">Chênh lệch</th>
+                  <th>Ghi chú</th>
+                </tr>
+                <tr v-else>
                   <th>{{ t("approvals.table.productCode") }}</th>
                   <th>{{ t("approvals.table.productName") }}</th>
                   <th style="text-align: right">Số lượng</th>
@@ -775,15 +941,44 @@ function getRejectionReason(receipt) {
                     detailState.receipt.details.length === 0
                   "
                 >
-                  <td colspan="5" class="empty-cell">{{ t("approvals.table.emptyProduct") }}</td>
+                  <td colspan="6" class="empty-cell">{{ t("approvals.table.emptyProduct") }}</td>
                 </tr>
-                <tr v-for="item in detailState.receipt.details" :key="item.id">
-                  <td>{{ item.productCode || "-" }}</td>
-                  <td>{{ item.productName || "-" }}</td>
-                  <td style="text-align: right; font-weight: 700;">{{ item.quantity }}</td>
-                  <td style="text-align: right">{{ formatCurrency(item.unitPrice) }}</td>
-                  <td style="text-align: right; font-weight: 700" class="text-primary">{{ formatCurrency(item.lineTotal) }}</td>
-                </tr>
+                <template v-else-if="detailState.receipt.documentType === 'inventory_adjustment'">
+                  <tr v-for="item in detailState.receipt.details" :key="item.id">
+                    <td>{{ item.productCode || "-" }}</td>
+                    <td>{{ item.productName || "-" }}</td>
+                    <td style="text-align: right; font-weight: 700;">{{ item.systemQuantity }}</td>
+                    <td style="text-align: right; font-weight: 700;">{{ item.actualQuantity }}</td>
+                    <td style="text-align: right; font-weight: 700;" :style="{ color: item.differenceQuantity < 0 ? '#b91c1c' : item.differenceQuantity > 0 ? '#166534' : 'inherit' }">
+                      {{ item.differenceQuantity > 0 ? '+' : '' }}{{ item.differenceQuantity }}
+                    </td>
+                    <td>{{ item.note || "-" }}</td>
+                  </tr>
+                </template>
+                <template v-else-if="detailState.receipt.documentType === 'inbound_discrepancy'">
+                  <tr v-for="item in detailState.receipt.details" :key="item.id">
+                    <td>{{ item.productCode || "-" }}</td>
+                    <td>{{ item.productName || "-" }}</td>
+                    <td style="text-align: right; font-weight: 700;">{{ item.quantity }}</td>
+                    <td style="text-align: right; font-weight: 700;">{{ item.actualReceivedQuantity ?? "-" }}</td>
+                    <td style="text-align: right; font-weight: 700;" :style="{ color: (item.actualReceivedQuantity - item.quantity) < 0 ? '#b91c1c' : (item.actualReceivedQuantity - item.quantity) > 0 ? '#166534' : 'inherit' }">
+                      <span v-if="item.actualReceivedQuantity !== null">
+                        {{ (item.actualReceivedQuantity - item.quantity) > 0 ? '+' : '' }}{{ item.actualReceivedQuantity - item.quantity }}
+                      </span>
+                      <span v-else>-</span>
+                    </td>
+                    <td>{{ item.note || "-" }}</td>
+                  </tr>
+                </template>
+                <template v-else>
+                  <tr v-for="item in detailState.receipt.details" :key="item.id">
+                    <td>{{ item.productCode || "-" }}</td>
+                    <td>{{ item.productName || "-" }}</td>
+                    <td style="text-align: right; font-weight: 700;">{{ item.quantity }}</td>
+                    <td style="text-align: right">{{ formatCurrency(item.unitPrice) }}</td>
+                    <td style="text-align: right; font-weight: 700" class="text-primary">{{ formatCurrency(item.lineTotal) }}</td>
+                  </tr>
+                </template>
               </tbody>
             </table>
           </div>
@@ -800,7 +995,7 @@ function getRejectionReason(receipt) {
           type="button"
           @click="openRejectModal(detailState.receipt)"
         >
-          Từ chối phiếu
+          {{ detailState.receipt.documentType === 'inventory_adjustment' ? 'Hủy kiểm kê' : 'Từ chối' }}
         </button>
         <button
           class="btn btn-success"
@@ -818,7 +1013,11 @@ function getRejectionReason(receipt) {
     <div class="modal small-modal">
       <div class="modal-head between">
         <h2 class="section-title">
-          {{ t("approvals.rejectModal.title", { type: documentType === "out" ? t("approvals.documentType.outName") : t("approvals.documentType.inName") }) }}
+          {{
+            rejectState.documentType === 'inventory_adjustment' ? 'Hủy đợt kiểm kê' :
+            rejectState.documentType === 'inbound_discrepancy' ? 'Từ chối biên bản chênh lệch' :
+            t("approvals.rejectModal.title", { type: rejectState.documentType === "out" ? t("approvals.documentType.outName") : t("approvals.documentType.inName") })
+          }}
         </h2>
         <button
           class="btn btn-icon"
@@ -831,7 +1030,7 @@ function getRejectionReason(receipt) {
       </div>
       <div class="modal-body">
         <label class="field-label" for="reject-reason"
-          >Lý do từ chối <span class="required">*</span></label
+          >Lý do từ chối/hủy <span class="required">*</span></label
         >
         <textarea
           id="reject-reason"
@@ -839,7 +1038,7 @@ function getRejectionReason(receipt) {
           class="textarea"
           rows="4"
           :maxlength="REJECT_REASON_MAX"
-          placeholder="Nhập lý do từ chối để nhân viên lập phiếu nắm được nguyên nhân..."
+          placeholder="Nhập lý do từ chối/hủy để nhân viên lập phiếu nắm được nguyên nhân..."
           @input="rejectState.error = ''"
         ></textarea>
         <div class="reason-meta">
@@ -866,7 +1065,7 @@ function getRejectionReason(receipt) {
           :disabled="rejectState.submitting"
           @click="confirmReject"
         >
-          {{ rejectState.submitting ? "Đang gửi..." : "Xác nhận từ chối" }}
+          {{ rejectState.submitting ? "Đang gửi..." : "Xác nhận" }}
         </button>
       </div>
     </div>
@@ -963,6 +1162,14 @@ function getRejectionReason(receipt) {
 .doc-badge-in {
   background: #dcfce7;
   color: #166534;
+}
+.doc-badge-discrepancy {
+  background: #fef3c7;
+  color: #d97706;
+}
+.doc-badge-adjustment {
+  background: #e0f2fe;
+  color: #0369a1;
 }
 .pagination-bar {
   margin-top: 14px;

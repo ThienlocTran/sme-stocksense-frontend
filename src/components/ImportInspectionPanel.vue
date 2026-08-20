@@ -453,7 +453,12 @@ async function handleSaveDiscrepancyReport() {
       return
     }
     await inspectReceipt(props.receiptId, buildInspectPayload())
-    await createDiscrepancyReport(props.receiptId, buildDiscrepancyPayload())
+    const reportRes = await createDiscrepancyReport(props.receiptId, buildDiscrepancyPayload())
+    if (reportRes && reportRes.id) {
+      const mapping = JSON.parse(localStorage.getItem('discrepancy_report_ids') || '{}')
+      mapping[props.receiptId] = reportRes.id
+      localStorage.setItem('discrepancy_report_ids', JSON.stringify(mapping))
+    }
     discrepancyReportSaved.value = true
     savedDiscrepancySignature.value = currentDiscrepancySignature.value
     successMessage.value = t('importInspection.messages.discrepancyReportSaved')

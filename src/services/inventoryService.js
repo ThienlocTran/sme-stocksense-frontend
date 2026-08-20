@@ -71,12 +71,12 @@ export async function getLowStockInventory({ page = 0, size = 20, keyword = '', 
   }
 }
 
-export async function saveWarehouseStockConfig({ productId, warehouseId, minStock }) {
+export async function saveWarehouseStockConfig({ productId, warehouseId, minStockOverride }) {
   try {
     const { data } = await inventoryClient.post('/api/warehouse-stock-configs', {
       productId,
       warehouseId,
-      minStock,
+      minStockOverride,
     }, {
       headers: getAuthorizationHeader(),
     })
