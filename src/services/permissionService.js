@@ -72,7 +72,7 @@ export function canAccessRoute(path, role) {
     return ['ADMIN', 'MANAGER'].includes(resolvedRole)
   }
 
-  if (path === '/products' || path === '/warehouses' || path === '/inventory' || path === '/alerts' || path === '/inventory-counts' || path === '/replenishment-suggestions' || /^\/inventory-counts\/[^/]+$/.test(path)) {
+  if (path === '/products' || path === '/warehouses' || path === '/inventory' || path === '/alerts' || path === '/inventory-counts' || path === '/replenishment-suggestions' || /^\/inventory-counts\/[^/]+$/.test(path) || /^\/inventory-adjustments\/[^/]+$/.test(path)) {
     return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
   }
 

@@ -1069,7 +1069,10 @@
     "cancelMessage": "Are you sure you want to cancel this count? All entered actual quantities will be discarded and system inventory will remain unchanged.",
     "cancelConfirm": "Confirm cancel",
     "cancelReasonInputLabel": "Cancel reason",
-    "cancelReasonPlaceholder": "Enter detailed reason..."
+    "cancelReasonPlaceholder": "Enter detailed reason...",
+    "reasonRequired": "A discrepancy reason (Note) is required when there is a difference.",
+    "createAdjustmentVoucher": "Create Adjustment",
+    "viewAdjustmentVoucher": "View Adjustment"
   },
   "approvals": {
     "titleIn": "Pending Import Receipts",
@@ -1554,6 +1557,37 @@
       "CAO": "High",
       "NGUY_HIEM": "Dangerous",
       "QUA_TAI": "Overloaded"
+    }
+  },
+  "adjustment": {
+    "title": "Inventory Adjustment",
+    "description": "Reconcile count discrepancies and update inventory levels.",
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending Approval",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "applied": "Applied"
+    },
+    "rejectReason": "Reject Reason",
+    "columns": {
+      "adjustmentQty": "Adjustment Qty",
+      "discrepancyReason": "Discrepancy Reason"
+    },
+    "actions": {
+      "submit": "Submit Voucher",
+      "reject": "Reject",
+      "approve": "Approve",
+      "apply": "Apply"
+    },
+    "confirmApplyTitle": "Confirm Adjustment Application",
+    "confirmApplyMessage": "This action will update physical inventory levels. Are you sure you want to proceed?",
+    "msg": {
+      "submitted": "Adjustment voucher submitted for approval.",
+      "approved": "Adjustment voucher approved.",
+      "rejected": "Adjustment voucher rejected.",
+      "appliedSuccess": "Adjustment applied and inventory updated successfully!",
+      "alreadyApplied": "The count is already finalized."
     }
   }
 }

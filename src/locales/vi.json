@@ -1069,7 +1069,10 @@
     "cancelMessage": "Bạn có chắc chắn muốn hủy đợt kiểm kê này không? Mọi số lượng thực tế đã nhập sẽ bị loại bỏ và tồn kho hệ thống sẽ được giữ nguyên.",
     "cancelConfirm": "Xác nhận hủy",
     "cancelReasonInputLabel": "Lý do hủy đợt kiểm kê",
-    "cancelReasonPlaceholder": "Nhập lý do hủy chi tiết..."
+    "cancelReasonPlaceholder": "Nhập lý do hủy chi tiết...",
+    "reasonRequired": "Lý do chênh lệch bắt buộc khi số lượng thực tế khác tồn hệ thống.",
+    "createAdjustmentVoucher": "Lập phiếu điều chỉnh",
+    "viewAdjustmentVoucher": "Xem phiếu điều chỉnh"
   },
   "approvals": {
     "titleIn": "Phiếu nhập chờ duyệt",
@@ -1554,6 +1557,37 @@
       "CAO": "Cao",
       "NGUY_HIEM": "Nguy hiểm",
       "QUA_TAI": "Quá tải"
+    }
+  },
+  "adjustment": {
+    "title": "Phiếu điều chỉnh tồn kho",
+    "description": "Xem chi tiết và xử lý chênh lệch kiểm kê tồn kho.",
+    "status": {
+      "draft": "Nháp",
+      "pending": "Chờ duyệt",
+      "approved": "Đã duyệt",
+      "rejected": "Từ chối",
+      "applied": "Đã áp dụng"
+    },
+    "rejectReason": "Lý do từ chối",
+    "columns": {
+      "adjustmentQty": "Lượng điều chỉnh",
+      "discrepancyReason": "Lý do chênh lệch"
+    },
+    "actions": {
+      "submit": "Nộp phiếu",
+      "reject": "Từ chối",
+      "approve": "Duyệt phiếu",
+      "apply": "Áp dụng"
+    },
+    "confirmApplyTitle": "Xác nhận áp dụng điều chỉnh",
+    "confirmApplyMessage": "Thao tác này sẽ cập nhật tồn kho thực tế. Bạn có chắc chắn muốn thực hiện?",
+    "msg": {
+      "submitted": "Đã nộp phiếu điều chỉnh chờ duyệt.",
+      "approved": "Đã duyệt phiếu điều chỉnh tồn kho.",
+      "rejected": "Đã từ chối phiếu điều chỉnh.",
+      "appliedSuccess": "Đã áp dụng điều chỉnh và cập nhật tồn kho thực tế!",
+      "alreadyApplied": "Đợt kiểm kê đã chốt."
     }
   }
 }
