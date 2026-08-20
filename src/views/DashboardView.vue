@@ -20,6 +20,7 @@ import {
   getWarehouseDistribution
 } from "../services/dashboardService";
 import { useAuthStore } from "../stores/auth";
+import { useI18n } from 'vue-i18n';
 import ApexCharts from "vue3-apexcharts";
 
 defineOptions({
@@ -28,6 +29,7 @@ defineOptions({
 
 const router = useRouter();
 const authStore = useAuthStore();
+const { t } = useI18n();
 
 const isLoading = ref(true);
 const isRetrying = ref(false);
@@ -168,23 +170,23 @@ const visibleQuickActions = computed(() => {
   const role = authStore.currentRole;
 
   if (role === "ADMIN") {
-    actions.push({ title: "Tạo phiếu nhập", icon: "mdi-tray-arrow-down", route: "/stock-in/create" });
-    actions.push({ title: "Tạo phiếu xuất", icon: "mdi-tray-arrow-up", route: "/stock-out/create" });
-    actions.push({ title: "Duyệt phiếu nhập", icon: "mdi-check-decagram-outline", route: "/approvals" });
-    actions.push({ title: "Duyệt phiếu xuất", icon: "mdi-file-clock-outline", route: "/pending-export-approvals" });
-    actions.push({ title: "Import Excel", icon: "mdi-file-excel-outline", route: "/import-excel" });
+    actions.push({ title: t('dashboard.actionCreateImport'), icon: "mdi-tray-arrow-down", route: "/stock-in/create" });
+    actions.push({ title: t('dashboard.actionCreateExport'), icon: "mdi-tray-arrow-up", route: "/stock-out/create" });
+    actions.push({ title: t('dashboard.actionApproveImport'), icon: "mdi-check-decagram-outline", route: "/approvals" });
+    actions.push({ title: t('dashboard.actionApproveExport'), icon: "mdi-file-clock-outline", route: "/pending-export-approvals" });
+    actions.push({ title: t('dashboard.actionImportExcel'), icon: "mdi-file-excel-outline", route: "/import-excel" });
   } else if (role === "MANAGER") {
-    actions.push({ title: "Duyệt phiếu nhập", icon: "mdi-check-decagram-outline", route: "/approvals" });
-    actions.push({ title: "Duyệt phiếu xuất", icon: "mdi-file-clock-outline", route: "/pending-export-approvals" });
-    actions.push({ title: "Phiếu nhập kho", icon: "mdi-tray-arrow-down", route: "/stock-in" });
-    actions.push({ title: "Phiếu xuất kho", icon: "mdi-tray-arrow-up", route: "/stock-out" });
-    actions.push({ title: "Import Excel", icon: "mdi-file-excel-outline", route: "/import-excel" });
+    actions.push({ title: t('dashboard.actionApproveImport'), icon: "mdi-check-decagram-outline", route: "/approvals" });
+    actions.push({ title: t('dashboard.actionApproveExport'), icon: "mdi-file-clock-outline", route: "/pending-export-approvals" });
+    actions.push({ title: t('sidebar.menu.stockIn'), icon: "mdi-tray-arrow-down", route: "/stock-in" });
+    actions.push({ title: t('sidebar.menu.stockOut'), icon: "mdi-tray-arrow-up", route: "/stock-out" });
+    actions.push({ title: t('dashboard.actionImportExcel'), icon: "mdi-file-excel-outline", route: "/import-excel" });
   } else if (role === "EMPLOYEE") {
-    actions.push({ title: "Tạo phiếu nhập", icon: "mdi-tray-arrow-down", route: "/stock-in/create" });
-    actions.push({ title: "Tạo phiếu xuất", icon: "mdi-tray-arrow-up", route: "/stock-out/create" });
-    actions.push({ title: "Phiếu nhập của tôi", icon: "mdi-tray-arrow-down", route: "/stock-in" });
-    actions.push({ title: "Phiếu xuất của tôi", icon: "mdi-tray-arrow-up", route: "/stock-out" });
-    actions.push({ title: "Import Excel", icon: "mdi-file-excel-outline", route: "/import-excel" });
+    actions.push({ title: t('dashboard.actionCreateImport'), icon: "mdi-tray-arrow-down", route: "/stock-in/create" });
+    actions.push({ title: t('dashboard.actionCreateExport'), icon: "mdi-tray-arrow-up", route: "/stock-out/create" });
+    actions.push({ title: t('dashboard.actionMyImports'), icon: "mdi-tray-arrow-down", route: "/stock-in" });
+    actions.push({ title: t('dashboard.actionMyExports'), icon: "mdi-tray-arrow-up", route: "/stock-out" });
+    actions.push({ title: t('dashboard.actionImportExcel'), icon: "mdi-file-excel-outline", route: "/import-excel" });
   }
 
   return actions.filter(act => canAccessRoute(act.route));
@@ -550,13 +552,13 @@ function openRoute(path) {
 
 function getTransactionTypeLabel(type) {
   const transactionTypeOptions = [
-    { value: "NHAP_KHO", label: "Nhập kho" },
-    { value: "XUAT_KHO", label: "Xuất kho" },
-    { value: "NHAP_DAU_KY", label: "Nhập đầu kỳ" },
-    { value: "DIEU_CHINH_TANG", label: "Điều chỉnh tăng" },
-    { value: "DIEU_CHINH_GIAM", label: "Điều chỉnh giảm" },
+    { value: "NHAP_KHO", label: "sidebar.menu.stockIn" },
+    { value: "XUAT_KHO", label: "sidebar.menu.stockOut" },
+    { value: "NHAP_DAU_KY", label: "dashboard.initialInbound" },
+    { value: "DIEU_CHINH_TANG", label: "dashboard.adjustmentIncrease" },
+    { value: "DIEU_CHINH_GIAM", label: "dashboard.adjustmentDecrease" },
   ];
-  return transactionTypeOptions.find((option) => option.value === type)?.label || "Không xác định";
+  return transactionTypeOptions.find((option) => option.value === type)?.label || "dashboard.unknown";
 }
 
 function getDelta(row) {
@@ -681,11 +683,11 @@ const isMovementEmpty = computed(() => {
 const movementChartSeries = computed(() => {
   return [
     {
-      name: "Nhập kho",
+      name: t('sidebar.menu.stockIn'),
       data: movementData.value.map(item => item.inboundQuantity || 0)
     },
     {
-      name: "Xuất kho",
+      name: t('sidebar.menu.stockOut'),
       data: movementData.value.map(item => item.outboundQuantity || 0)
     }
   ];
@@ -917,14 +919,14 @@ const warehouseDistOptions = computed(() => {
     <div class="dashboard-header animate-in fade-in duration-200">
       <div class="greeting-section">
         <h1 class="page-title text-zinc-900">
-          Chào buổi sáng, <span class="text-blue-600 font-bold">{{ currentUserName || 'Thiên Lộc' }}</span>
+          {{ $t('dashboard.greeting') }}, <span class="text-blue-600 font-bold">{{ currentUserName || 'Thiên Lộc' }}</span>
         </h1>
-        <p class="page-desc text-zinc-500">Đây là tình trạng kho hàng của bạn hôm nay.</p>
+        <p class="page-desc text-zinc-500">{{ $t('dashboard.subtitle') }}</p>
       </div>
       <div class="header-actions">
         <button class="btn btn-secondary btn-sm flex items-center gap-1" @click="retryDashboardLoad" :disabled="isLoading">
           <i class="mdi mdi-refresh text-blue-600" :class="{ 'mdi-spin': isLoading }"></i>
-          Làm mới
+          {{ $t('common.refresh') }}
         </button>
       </div>
     </div>
@@ -948,7 +950,7 @@ const warehouseDistOptions = computed(() => {
       <template v-else>
         <!-- Item 1: Products count -->
         <div v-if="canSeeProducts" class="kpi-metric-item" @click="openRoute('/products')" role="button" tabindex="0">
-          <span class="kpi-meta-label">Tổng sản phẩm</span>
+          <span class="kpi-meta-label">{{ $t('dashboard.totalProducts') }}</span>
           <div class="kpi-val-row">
             <span class="kpi-value font-semibold">{{ productCountFailed ? "—" : formatNumber(summary.products) }}</span>
             <i class="mdi mdi-package-variant-closed kpi-icon"></i>
@@ -958,7 +960,7 @@ const warehouseDistOptions = computed(() => {
         
         <!-- Item 2: Warehouses count -->
         <div v-if="canSeeWarehouses" class="kpi-metric-item" @click="openRoute('/warehouses')" role="button" tabindex="0">
-          <span class="kpi-meta-label">Tổng kho hàng</span>
+          <span class="kpi-meta-label">{{ $t('dashboard.totalWarehouses') }}</span>
           <div class="kpi-val-row">
             <span class="kpi-value font-semibold">{{ warehouseCountFailed ? "—" : formatNumber(summary.warehouses) }}</span>
             <i class="mdi mdi-warehouse kpi-icon"></i>
@@ -968,7 +970,7 @@ const warehouseDistOptions = computed(() => {
 
         <!-- Item 3: Total stock -->
         <div v-if="canSeeWarnings" class="kpi-metric-item" @click="openRoute('/inventory')" role="button" tabindex="0">
-          <span class="kpi-meta-label">Tổng tồn khả dụng</span>
+          <span class="kpi-meta-label">{{ $t('dashboard.totalAvailableStock') }}</span>
           <div class="kpi-val-row">
             <span class="kpi-value font-semibold">{{ stockTotalFailed ? "—" : formatNumber(summary.stock) }}</span>
             <i class="mdi mdi-cube-outline kpi-icon"></i>
@@ -978,7 +980,7 @@ const warehouseDistOptions = computed(() => {
 
         <!-- Item 4: Alerts warnings count -->
         <div v-if="canSeeWarnings" class="kpi-metric-item" @click="openRoute('/alerts')" role="button" tabindex="0">
-          <span class="kpi-meta-label">Cảnh báo tồn kho</span>
+          <span class="kpi-meta-label">{{ $t('dashboard.inventoryAlerts') }}</span>
           <div class="kpi-val-row">
             <span class="kpi-value font-semibold" :class="{ 'text-red-600 font-bold': summary.warnings > 0 }">
               {{ warningCountFailed ? "—" : formatNumber(summary.warnings) }}
@@ -999,8 +1001,8 @@ const warehouseDistOptions = computed(() => {
         <section class="card card-pad">
           <div class="section-head-wrap mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 class="section-title text-zinc-900">Biến động Nhập / Xuất kho</h2>
-              <p class="eyebrow text-zinc-500">Xu hướng dòng chảy hàng hóa qua các kho</p>
+              <h2 class="section-title text-zinc-900">{{ $t('dashboard.stockMovement') }}</h2>
+              <p class="eyebrow text-zinc-500">{{ $t('dashboard.stockMovementDesc') }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <select 
@@ -1009,7 +1011,7 @@ const warehouseDistOptions = computed(() => {
                 @change="fetchMovementData" 
                 :disabled="isMovementLoading"
               >
-                <option value="">Tất cả kho</option>
+                <option value="">{{ $t('dashboard.allWarehouses') }}</option>
                 <option v-for="w in warehouseList" :key="w.id" :value="w.id">
                   {{ w.maKho || w.code ? `${w.maKho || w.code} - ${w.tenKho || w.name || '-'}` : (w.tenKho || w.name || '-') }}
                 </option>
@@ -1023,7 +1025,7 @@ const warehouseDistOptions = computed(() => {
                   @click="changePeriod(p.days)"
                   :disabled="isMovementLoading"
                 >
-                  {{ p.label }}
+                  {{ $t(p.label) || p.label }}
                 </button>
               </div>
             </div>
@@ -1031,29 +1033,29 @@ const warehouseDistOptions = computed(() => {
 
           <div v-if="isMovementLoading" class="loading-state-mini">
             <i class="mdi mdi-loading mdi-spin text-xl text-blue-600"></i>
-            <span>Đang tải biểu đồ biến động...</span>
+            <span>{{ $t('dashboard.loadingChart') }}</span>
           </div>
 
           <div v-else-if="movementFailed" class="analytical-placeholder-error py-8 text-center">
             <i class="mdi mdi-alert-circle-outline text-3xl text-red-500 mb-2"></i>
-            <h3 class="font-semibold text-zinc-800 text-sm mb-1">Không thể tải dữ liệu biến động kho</h3>
-            <button class="btn btn-secondary btn-sm mt-2" @click="fetchMovementData">Thử lại</button>
+            <h3 class="font-semibold text-zinc-800 text-sm mb-1">{{ $t('dashboard.failedLoadMovement') }}</h3>
+            <button class="btn btn-secondary btn-sm mt-2" @click="fetchMovementData">{{ $t('common.refresh') }}</button>
           </div>
 
           <div v-else-if="movementData.length === 0" class="analytical-placeholder">
             <div class="placeholder-icon-wrap">
               <i class="mdi mdi-chart-areaspline text-3xl text-zinc-400"></i>
             </div>
-            <h3 class="font-semibold text-zinc-800 text-sm mb-1">Chưa có dữ liệu biến động</h3>
+            <h3 class="font-semibold text-zinc-800 text-sm mb-1">{{ $t('dashboard.noMovementData') }}</h3>
             <p class="text-xs text-zinc-500 max-w-md text-center">
-              Không tìm thấy hoạt động nhập xuất nào trong khoảng thời gian đã chọn.
+              {{ $t('dashboard.noMovementDataDesc') }}
             </p>
           </div>
 
           <div v-else-if="isMovementEmpty" class="relative">
             <div class="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center p-4">
               <i class="mdi mdi-alert-circle-outline text-2xl text-zinc-400 mb-1"></i>
-              <p class="text-xs text-zinc-600 font-medium">Không có biến động nhập/xuất trong khoảng thời gian này.</p>
+              <p class="text-xs text-zinc-600 font-medium">{{ $t('dashboard.noMovementInPeriod') }}</p>
             </div>
             <ApexCharts type="area" :options="movementChartOptions" :series="movementChartSeries" height="280" />
           </div>
@@ -1067,32 +1069,32 @@ const warehouseDistOptions = computed(() => {
         <section class="card card-pad">
           <div class="section-head between mb-4">
             <div>
-              <h2 class="section-title text-zinc-900">Nhật ký hoạt động kho gần đây</h2>
-              <p class="eyebrow text-zinc-500">5 giao dịch phát sinh mới nhất được ghi nhận</p>
+              <h2 class="section-title text-zinc-900">{{ $t('dashboard.recentActivityLog') }}</h2>
+              <p class="eyebrow text-zinc-500">{{ $t('dashboard.recentActivityLogDesc') }}</p>
             </div>
             <button class="btn btn-secondary btn-sm flex items-center gap-1" @click="openRoute('/inventory-transactions')">
-              Xem tất cả <i class="mdi mdi-arrow-right"></i>
+              {{ $t('common.viewAll') }} <i class="mdi mdi-arrow-right"></i>
             </button>
           </div>
 
           <div v-if="isLoading" class="loading-state-mini">
             <i class="mdi mdi-loading mdi-spin text-xl text-blue-600"></i>
-            <span>Đang tải nhật ký giao dịch...</span>
+            <span>{{ $t('dashboard.loadingTransactions') }}</span>
           </div>
           
           <div v-else-if="recentTransactionsFailed" class="state-card state-card--error">
             <div class="state-card__icon"><i class="mdi mdi-alert-circle-outline"></i></div>
             <div class="state-card__body">
-              <h3>Lỗi tải dữ liệu</h3>
-              <p>Không thể tải nhật ký hoạt động gần đây từ hệ thống.</p>
+              <h3>{{ $t('dashboard.errorLoadingData') }}</h3>
+              <p>{{ $t('dashboard.errorLoadingTransactionsDesc') }}</p>
             </div>
           </div>
 
           <div v-else-if="recentTransactions.length === 0" class="state-card state-card--empty">
             <div class="state-card__icon"><i class="mdi mdi-clipboard-text-outline"></i></div>
             <div class="state-card__body">
-              <h3>Chưa ghi nhận hoạt động</h3>
-              <p>Không tìm thấy hoạt động kho nào phát sinh trong ngày hôm nay.</p>
+              <h3>{{ $t('dashboard.noActivityRecorded') }}</h3>
+              <p>{{ $t('dashboard.noActivityRecordedDesc') }}</p>
             </div>
           </div>
 
@@ -1100,17 +1102,17 @@ const warehouseDistOptions = computed(() => {
             <table class="compact-activity-table">
               <thead>
                 <tr>
-                  <th style="width: 140px;">Thời gian</th>
-                  <th style="width: 130px;">Loại giao dịch</th>
-                  <th>Sản phẩm</th>
-                  <th class="text-right" style="width: 100px;">Biến động</th>
-                  <th>Chứng từ / Ghi chú</th>
+                  <th style="width: 140px;">{{ $t('dashboard.tableHeaderTime') }}</th>
+                  <th style="width: 130px;">{{ $t('dashboard.tableHeaderType') }}</th>
+                  <th>{{ $t('dashboard.tableHeaderProduct') }}</th>
+                  <th class="text-right" style="width: 100px;">{{ $t('dashboard.tableHeaderChange') }}</th>
+                  <th>{{ $t('dashboard.tableHeaderNote') }}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="t in recentTransactions" :key="t.id">
                   <td class="text-xs tabular-num text-zinc-500">{{ formatDate(t.createdAt) }}</td>
-                  <td><StatusBadge :status="getTransactionTypeLabel(t.transactionType)" /></td>
+                  <td><StatusBadge :status="$t(getTransactionTypeLabel(t.transactionType))" /></td>
                   <td>
                     <div class="prod-info-mini">
                       <span class="font-semibold text-zinc-900 block">{{ t.productName }}</span>
@@ -1122,10 +1124,10 @@ const warehouseDistOptions = computed(() => {
                   </td>
                   <td class="text-xs">
                     <span v-if="t.importReceiptId" class="doc-link" @click="viewDocumentDetail('in', t.importReceiptId)">
-                      <i class="mdi mdi-receipt-text-outline text-xs"></i> Phiếu nhập #{{ t.importReceiptId }}
+                      <i class="mdi mdi-receipt-text-outline text-xs"></i> {{ $t('dashboard.importReceiptShort') }} #{{ t.importReceiptId }}
                     </span>
                     <span v-else-if="t.exportReceiptId" class="doc-link" @click="viewDocumentDetail('out', t.exportReceiptId)">
-                      <i class="mdi mdi-receipt-text-send-outline text-xs"></i> Phiếu xuất #{{ t.exportReceiptId }}
+                      <i class="mdi mdi-receipt-text-send-outline text-xs"></i> {{ $t('dashboard.exportReceiptShort') }} #{{ t.exportReceiptId }}
                     </span>
                     <span v-else class="text-zinc-500">{{ t.note || '—' }}</span>
                   </td>
@@ -1141,24 +1143,24 @@ const warehouseDistOptions = computed(() => {
           <!-- Section: Stock Health -->
           <section class="card card-pad">
             <div class="section-head mb-4">
-              <h2 class="section-title text-zinc-900">Sức khỏe tồn kho</h2>
-              <p class="eyebrow text-zinc-500">Mật độ vị trí tồn khỏe so với cảnh báo</p>
+              <h2 class="section-title text-zinc-900">{{ $t('dashboard.stockHealth') }}</h2>
+              <p class="eyebrow text-zinc-500">{{ $t('dashboard.stockHealthDesc') }}</p>
             </div>
 
             <div v-if="isStockHealthLoading" class="loading-state-mini">
               <i class="mdi mdi-loading mdi-spin text-xl text-blue-600"></i>
-              <span>Đang tải sức khỏe tồn kho...</span>
+              <span>{{ $t('dashboard.loadingStockHealth') }}</span>
             </div>
 
             <div v-else-if="stockHealthFailed" class="analytical-placeholder-error py-6 text-center">
               <i class="mdi mdi-alert-circle-outline text-2xl text-red-500 mb-2"></i>
-              <p class="text-xs text-zinc-700 font-semibold mb-2">Không thể tải dữ liệu tình trạng tồn kho.</p>
-              <button class="btn btn-secondary btn-sm" @click="fetchStockHealth">Thử lại</button>
+              <p class="text-xs text-zinc-700 font-semibold mb-2">{{ $t('dashboard.failedLoadStockHealth') }}</p>
+              <button class="btn btn-secondary btn-sm" @click="fetchStockHealth">{{ $t('common.retry') }}</button>
             </div>
 
             <div v-else-if="!stockHealthData || stockHealthTotal === 0" class="analytical-placeholder-mini">
               <i class="mdi mdi-chart-donut text-2xl text-zinc-400 mb-2"></i>
-              <p class="text-xs text-zinc-500 text-center px-4">Chưa có dữ liệu tồn kho để phân tích.</p>
+              <p class="text-xs text-zinc-500 text-center px-4">{{ $t('dashboard.noStockHealthData') }}</p>
             </div>
 
             <div v-else>
@@ -1171,7 +1173,7 @@ const warehouseDistOptions = computed(() => {
                 <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 last:border-0">
                   <div class="flex items-center gap-1.5">
                     <span class="legend-dot" style="background-color: #16825D;"></span>
-                    <span class="text-xs text-zinc-700">Còn hàng</span>
+                    <span class="text-xs text-zinc-700">{{ $t('dashboard.statusInStock') }}</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-semibold tabular-num text-zinc-900">{{ formatNumber(stockHealthData.healthy) }}</span>
@@ -1181,7 +1183,7 @@ const warehouseDistOptions = computed(() => {
                 <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 last:border-0">
                   <div class="flex items-center gap-1.5">
                     <span class="legend-dot" style="background-color: #D97706;"></span>
-                    <span class="text-xs text-zinc-700">Sắp hết</span>
+                    <span class="text-xs text-zinc-700">{{ $t('dashboard.statusLowStock') }}</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-semibold tabular-num text-zinc-900">{{ formatNumber(stockHealthData.lowStock) }}</span>
@@ -1191,7 +1193,7 @@ const warehouseDistOptions = computed(() => {
                 <div class="legend-item flex items-center justify-between py-1 border-b border-zinc-100 last:border-0">
                   <div class="flex items-center gap-1.5">
                     <span class="legend-dot" style="background-color: #DC2626;"></span>
-                    <span class="text-xs text-zinc-700">Hết hàng</span>
+                    <span class="text-xs text-zinc-700">{{ $t('dashboard.statusOutOfStock') }}</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-semibold tabular-num text-zinc-900">{{ formatNumber(stockHealthData.outOfStock) }}</span>
@@ -1205,24 +1207,24 @@ const warehouseDistOptions = computed(() => {
           <!-- Section: Warehouse Distribution -->
           <section class="card card-pad">
             <div class="section-head mb-4">
-              <h2 class="section-title text-zinc-900">Phân bổ kho hàng</h2>
-              <p class="eyebrow text-zinc-500">Tỷ trọng số lượng tồn kho theo vị trí</p>
+              <h2 class="section-title text-zinc-900">{{ $t('dashboard.warehouseDistribution') }}</h2>
+              <p class="eyebrow text-zinc-500">{{ $t('dashboard.warehouseDistributionDesc') }}</p>
             </div>
 
             <div v-if="isWarehouseDistLoading" class="loading-state-mini">
               <i class="mdi mdi-loading mdi-spin text-xl text-blue-600"></i>
-              <span>Đang tải phân bổ kho...</span>
+              <span>{{ $t('dashboard.loadingWarehouseDistribution') }}</span>
             </div>
 
             <div v-else-if="warehouseDistFailed" class="analytical-placeholder-error py-6 text-center">
               <i class="mdi mdi-alert-circle-outline text-2xl text-red-500 mb-2"></i>
-              <p class="text-xs text-zinc-700 font-semibold mb-2">Không thể tải dữ liệu phân bổ kho hàng.</p>
-              <button class="btn btn-secondary btn-sm" @click="fetchWarehouseDistribution">Thử lại</button>
+              <p class="text-xs text-zinc-700 font-semibold mb-2">{{ $t('dashboard.failedLoadWarehouseDistribution') }}</p>
+              <button class="btn btn-secondary btn-sm" @click="fetchWarehouseDistribution">{{ $t('common.retry') }}</button>
             </div>
 
             <div v-else-if="warehouseDistData.length === 0" class="analytical-placeholder-mini">
               <i class="mdi mdi-chart-bar-horizontal text-2xl text-zinc-400 mb-2"></i>
-              <p class="text-xs text-zinc-500 text-center px-4">Chưa có dữ liệu tồn kho theo kho hàng.</p>
+              <p class="text-xs text-zinc-500 text-center px-4">{{ $t('dashboard.noWarehouseDistributionData') }}</p>
             </div>
 
             <div v-else>
@@ -1230,7 +1232,7 @@ const warehouseDistOptions = computed(() => {
                 <ApexCharts type="bar" :options="warehouseDistOptions" :series="warehouseDistSeries" height="180" />
               </div>
               <div v-if="warehouseDistData.length > 5" class="mt-2 text-right">
-                <span class="text-3xs text-zinc-400">Hiển thị tất cả {{ warehouseDistData.length }} kho hàng</span>
+                <span class="text-3xs text-zinc-400">{{ $t('dashboard.showingAllWarehousesCount', { count: warehouseDistData.length }) }}</span>
               </div>
             </div>
           </section>
@@ -1244,25 +1246,25 @@ const warehouseDistOptions = computed(() => {
         <section class="insight-panel card animate-in fade-in duration-200" v-if="canSeeWarnings && !isLoading">
           <div class="insight-header">
             <i class="mdi mdi-lightbulb-on-outline text-amber-500"></i>
-            <h3 class="text-zinc-900">StockSense Insight</h3>
+            <h3 class="text-zinc-900">{{ $t('dashboard.insightsTitle') }}</h3>
           </div>
           <div class="insight-body-new">
             <div class="insight-message" v-if="summary.warnings > 0">
               <span class="bullet-dot warning-dot animate-pulse"></span>
-              <p class="text-zinc-700 text-xs">Có <strong>{{ summary.warnings }} mặt hàng</strong> đang dưới mức tồn tối thiểu an toàn.</p>
+              <p class="text-zinc-700 text-xs" v-html="$t('dashboard.insightLowStockAlert', { count: summary.warnings })"></p>
             </div>
             <div class="insight-message" v-else>
               <span class="bullet-dot success-dot"></span>
-              <p class="text-zinc-700 text-xs">Tất cả các mặt hàng hiện đều ở mức tồn an toàn.</p>
+              <p class="text-zinc-700 text-xs">{{ $t('dashboard.insightAllStockSafe') }}</p>
             </div>
 
             <div class="insight-message mt-2.5" v-if="pendingApprovalsTotal > 0">
               <span class="bullet-dot info-dot"></span>
-              <p class="text-zinc-700 text-xs">Có <strong>{{ pendingApprovalsTotal }} chứng từ</strong> đang ở hàng đợi phê duyệt.</p>
+              <p class="text-zinc-700 text-xs" v-html="$t('dashboard.insightPendingApprovals', { count: pendingApprovalsTotal })"></p>
             </div>
 
             <button class="btn btn-sm btn-ghost mt-3 w-full justify-center text-blue-600" @click="openRoute('/alerts')">
-              Xem chi tiết cảnh báo <i class="mdi mdi-arrow-right"></i>
+              {{ $t('dashboard.viewAlertDetails') }} <i class="mdi mdi-arrow-right"></i>
             </button>
           </div>
         </section>
@@ -1274,15 +1276,15 @@ const warehouseDistOptions = computed(() => {
               <i class="mdi mdi-robot-outline text-blue-600 text-lg"></i>
               <h2 class="section-title text-zinc-900">AI Forecast Preview</h2>
             </div>
-            <p class="eyebrow text-zinc-500">Dự báo nhu cầu 30 ngày tới</p>
+            <p class="eyebrow text-zinc-500">{{ $t('dashboard.aiForecastDesc') }}</p>
           </div>
 
           <div class="forecast-preview-placeholder">
             <i class="mdi mdi-trending-up text-xl text-blue-600 mb-1"></i>
-            <p class="text-xs text-zinc-800 font-semibold mb-1">Báo cáo & Phân tích dự báo AI</p>
-            <p class="text-3xs text-zinc-500 text-center px-2">Truy cập Phân hệ Dự báo AI để xem chi tiết sai số sMAPE và lượng hàng khuyến nghị nhập dựa trên dữ liệu bán hàng lịch sử.</p>
+            <p class="text-xs text-zinc-800 font-semibold mb-1">{{ $t('dashboard.aiForecastReportTitle') }}</p>
+            <p class="text-3xs text-zinc-500 text-center px-2">{{ $t('dashboard.aiForecastReportDesc') }}</p>
             <button class="btn btn-secondary btn-sm w-full mt-3 justify-center gap-1" @click="openRoute('/forecast')">
-              <i class="mdi mdi-chart-timeline-variant"></i> Vào module Dự báo AI
+              <i class="mdi mdi-chart-timeline-variant"></i> {{ $t('dashboard.goToAiForecast') }}
             </button>
           </div>
         </section>
@@ -1290,13 +1292,13 @@ const warehouseDistOptions = computed(() => {
         <!-- Unified "Cần chú ý" Queue -->
         <section class="card card-pad attention-panel">
           <div class="section-head mb-3">
-            <h2 class="section-title text-zinc-900">Hàng đợi công việc</h2>
-            <p class="eyebrow text-zinc-500">Các tác vụ cần ưu tiên giải quyết</p>
+            <h2 class="section-title text-zinc-900">{{ $t('dashboard.workQueue') }}</h2>
+            <p class="eyebrow text-zinc-500">{{ $t('dashboard.workQueueDesc') }}</p>
           </div>
 
           <div v-if="isLoading" class="loading-state-mini">
             <i class="mdi mdi-loading mdi-spin text-lg text-blue-600"></i>
-            <span>Đang tải công việc...</span>
+            <span>{{ $t('dashboard.loadingWork') }}</span>
           </div>
           
           <div v-else-if="!pendingImportItems.length && !pendingExportItems.length && !lowStockItems.length" class="state-card state-card--empty">
@@ -1304,8 +1306,8 @@ const warehouseDistOptions = computed(() => {
               <i class="mdi mdi-check-circle-outline"></i>
             </div>
             <div class="state-card__body">
-              <h3>Không có nhiệm vụ tồn đọng</h3>
-              <p>Mọi phiếu duyệt và mức tồn kho hiện tại đều ổn định.</p>
+              <h3>{{ $t('dashboard.noPendingTasks') }}</h3>
+              <p>{{ $t('dashboard.noPendingTasksDesc') }}</p>
             </div>
           </div>
 
@@ -1324,10 +1326,10 @@ const warehouseDistOptions = computed(() => {
                   class="badge-tag"
                   :class="item.severity === 'CRITICAL' ? 'badge-tag--danger' : 'badge-tag--warning'"
                 >
-                  {{ item.severity === 'CRITICAL' ? 'Hết hàng' : 'Cảnh báo' }}
+                  {{ item.severity === 'CRITICAL' ? $t('dashboard.statusOutOfStock') : $t('dashboard.alertBadge') }}
                 </span>
                 <strong>{{ item.productName }}</strong>
-                <p>{{ item.warehouseName }} · Tồn: {{ item.available }} / tối thiểu {{ item.minStock }}</p>
+                <p>{{ item.warehouseName }} · {{ $t('dashboard.stockLabel') }}: {{ item.available }} / {{ $t('dashboard.minStockLabel') }} {{ item.minStock }}</p>
               </div>
               <i class="mdi mdi-chevron-right"></i>
             </div>
@@ -1342,7 +1344,7 @@ const warehouseDistOptions = computed(() => {
               tabindex="0"
             >
               <div class="attention-item__main">
-                <span class="badge-tag badge-tag--warning">Nhập chờ duyệt</span>
+                <span class="badge-tag badge-tag--warning">{{ $t('dashboard.pendingImportBadge') }}</span>
                 <strong>{{ item.code }}</strong>
                 <p>{{ item.label }} · {{ item.subtitle }}</p>
               </div>
@@ -1359,7 +1361,7 @@ const warehouseDistOptions = computed(() => {
               tabindex="0"
             >
               <div class="attention-item__main">
-                <span class="badge-tag badge-tag--warning">Xuất chờ duyệt</span>
+                <span class="badge-tag badge-tag--warning">{{ $t('dashboard.pendingExportBadge') }}</span>
                 <strong>{{ item.code }}</strong>
                 <p>{{ item.label }} · {{ item.subtitle }}</p>
               </div>
@@ -1371,8 +1373,8 @@ const warehouseDistOptions = computed(() => {
         <!-- Quick Access links by role -->
         <section class="card card-pad">
           <div class="section-head mb-3">
-            <h2 class="section-title text-zinc-900">Lối tắt tác vụ nhanh</h2>
-            <p class="eyebrow text-zinc-500">Tác vụ theo quyền hạn vai trò</p>
+            <h2 class="section-title text-zinc-900">{{ $t('dashboard.quickShortcuts') }}</h2>
+            <p class="eyebrow text-zinc-500">{{ $t('dashboard.quickShortcutsDesc') }}</p>
           </div>
           
           <div class="quick-actions-grid" v-if="visibleQuickActions.length > 0">
@@ -1387,15 +1389,15 @@ const warehouseDistOptions = computed(() => {
             </button>
           </div>
           <div v-else class="text-xs text-zinc-500 py-2">
-            Không có lối tắt phù hợp với quyền hạn của bạn.
+            {{ $t('dashboard.noQuickShortcuts') }}
           </div>
         </section>
 
         <!-- Need Inventory Reorder (Low stock details list) -->
         <section class="card card-pad" v-if="canSeeWarnings && !isLoading && lowStockItems.length > 0">
           <div class="section-head mb-3">
-            <h2 class="section-title text-zinc-900">Mặt hàng cần nhập</h2>
-            <p class="eyebrow text-zinc-500">Ưu tiên theo số lượng thiếu hụt lớn nhất</p>
+            <h2 class="section-title text-zinc-900">{{ $t('dashboard.itemsToReorder') }}</h2>
+            <p class="eyebrow text-zinc-500">{{ $t('dashboard.itemsToReorderDesc') }}</p>
           </div>
 
           <div class="reorder-list">
@@ -1407,7 +1409,7 @@ const warehouseDistOptions = computed(() => {
               </div>
               <div class="reorder-qty-stats text-right ml-auto">
                 <span class="text-xs font-semibold block text-zinc-800 tabular-num">{{ item.available }} / {{ item.minStock }}</span>
-                <span class="text-3xs text-red-600 font-semibold block tabular-num">Thiếu {{ item.minStock - item.available }}</span>
+                <span class="text-3xs text-red-600 font-semibold block tabular-num">{{ $t('dashboard.missingQty', { count: item.minStock - item.available }) }}</span>
               </div>
             </div>
           </div>
