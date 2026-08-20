@@ -248,7 +248,7 @@ function nextPage() {
               <strong class="text-sm">{{ row.currentStock }}</strong>
               <span class="text-slate-400 mx-1">/</span>
               <span class="text-xs text-slate-500">
-                {{ row.minStock }} - {{ row.maxStock ?? '∞' }}
+                {{ row.minStock }}
               </span>
             </div>
           </template>
@@ -327,7 +327,7 @@ function nextPage() {
             </div>
             <div>
               <strong>{{ t('replenishment.table.stockInfo') }}:</strong>
-              <p>{{ item.currentStock }} / {{ item.minStock }} - {{ item.maxStock ?? '∞' }}</p>
+              <p>{{ item.currentStock }} / {{ item.minStock }}</p>
             </div>
             <div class="flex flex-col items-end justify-center">
               <span class="text-red-600" v-if="item.shortageQuantity > 0">
