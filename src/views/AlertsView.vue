@@ -55,7 +55,7 @@ const hasActiveFilters = computed(() => {
 
 const warehouseOptions = computed(() => {
   return [
-    { value: "", label: isLoadingDropdowns.value ? t('alerts.filter.loadingWarehouses') : t('alerts.filter.allWarehouses') },
+    { value: "", label: isLoadingDropdowns.value ? t('alerts.filter.loadingWarehouse') : t('alerts.filter.allWarehouse') },
     ...warehouses.value.map(w => {
       const code = w.maKho || w.code;
       const name = w.tenKho || w.name;

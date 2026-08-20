@@ -23,7 +23,10 @@
     "yes": "Có",
     "no": "Không",
     "confirmActionSubtitle": "Hành động này sẽ ảnh hưởng trực tiếp đến dữ liệu hiện tại.",
-    "viewAll": "Xem tất cả"
+    "viewAll": "Xem tất cả",
+    "retry": "Thử lại",
+    "system": "Hệ thống",
+    "unknown": "Không xác định"
   },
   "stockDocument": {
     "title": {
@@ -57,7 +60,11 @@
       "createdAt": "Ngày tạo",
       "status": "Trạng thái",
       "totalAmount": "Tổng tiền",
-      "actions": "Thao tác"
+      "actions": "Thao tác",
+      "creator": "Người tạo"
+    },
+    "table": {
+      "currentStock": "Tồn hiện tại"
     },
     "actionView": "Xem",
     "actionEdit": "Sửa",
@@ -1150,7 +1157,9 @@
       "rejectReasonMaxLength": "Lý do từ chối không được vượt quá {max} ký tự.",
       "rejectSuccess": "Đã từ chối phiếu {type} thành công.",
       "rejectOutError": "Không thể từ chối phiếu xuất.",
-      "rejectInError": "Không thể từ chối phiếu nhập."
+      "rejectInError": "Không thể từ chối phiếu nhập.",
+      "completeSuccess": "Đã hoàn thành phiếu {code} thành công.",
+      "rejectSuccessCode": "Đã từ chối phiếu {code} thành công."
     },
     "filters": {
       "type": "Loại",
@@ -1169,8 +1178,14 @@
       "rejectReceipt": "Từ chối phiếu",
       "cancel": "Hủy",
       "processing": "Đang xử lý...",
-      "confirmReject": "Xác nhận từ chối"
+      "confirmReject": "Xác nhận từ chối",
+      "approveLevel": "Duyệt cấp {level}"
     },
+    "approveReceiptQuestion": "Bạn có chắc chắn muốn duyệt phiếu xuất {code} này không?",
+    "complete": "Hoàn thành",
+    "completeQuestion": "Bạn có chắc chắn muốn hoàn thành xuất kho cho phiếu {code} này không?",
+    "confirmApprove": "Xác nhận duyệt",
+    "confirmComplete": "Xác nhận hoàn thành",
     "loading": "Đang tải danh sách phiếu chờ duyệt...",
     "emptyList": "Không có phiếu nào đang chờ duyệt",
     "pagination": {
@@ -1253,7 +1268,9 @@
       "selectFileBtn": "Chọn file từ máy tính",
       "noFileSelected": "Chưa có file nào được chọn",
       "validatingBtn": "Đang kiểm tra...",
-      "uploadValidateBtn": "Tải lên & Kiểm tra dữ liệu"
+      "uploadValidateBtn": "Tải lên & Kiểm tra dữ liệu",
+      "dragDropOrSelect": "Kéo thả file vào đây hoặc click để chọn",
+      "limitFormat": "Chỉ chấp nhận file định dạng .xlsx với dung lượng < 10MB"
     },
     "step3": {
       "title": "Bước 3: Xem trước dữ liệu",
@@ -1450,7 +1467,8 @@
       "unit": "ĐVT",
       "quantity": "SL Xuất",
       "note": "Ghi chú",
-      "empty": "Không có sản phẩm nào."
+      "empty": "Không có sản phẩm nào.",
+      "actions": "Thao tác"
     },
     "confirm": {
       "submitTitle": "Xác nhận Gửi duyệt",
@@ -1483,7 +1501,8 @@
       "discrepancy": "Lệch",
       "unitPrice": "Đơn giá",
       "lineTotal": "Thành tiền trên phiếu",
-      "actualReceivedTotal": "Giá trị thực nhận"
+      "actualReceivedTotal": "Giá trị thực nhận",
+      "unit": "ĐVT"
     },
     "physicalStatus": {
       "good": "Tốt",

@@ -1150,7 +1150,9 @@
       "rejectReasonMaxLength": "Rejection reason cannot exceed {max} characters.",
       "rejectSuccess": "Successfully rejected {type} receipt.",
       "rejectOutError": "Cannot reject export receipt.",
-      "rejectInError": "Cannot reject import receipt."
+      "rejectInError": "Cannot reject import receipt.",
+      "completeSuccess": "Successfully completed receipt {code}.",
+      "rejectSuccessCode": "Successfully rejected receipt {code}."
     },
     "filters": {
       "type": "Type",
@@ -1169,8 +1171,14 @@
       "rejectReceipt": "Reject Receipt",
       "cancel": "Cancel",
       "processing": "Processing...",
-      "confirmReject": "Confirm Rejection"
+      "confirmReject": "Confirm Rejection",
+      "approveLevel": "Approve Level {level}"
     },
+    "approveReceiptQuestion": "Are you sure you want to approve this export receipt {code}?",
+    "complete": "Complete",
+    "completeQuestion": "Are you sure you want to complete the stock out for receipt {code}?",
+    "confirmApprove": "Confirm Approval",
+    "confirmComplete": "Confirm Completion",
     "loading": "Loading pending receipts...",
     "emptyList": "No pending receipts found",
     "pagination": {
