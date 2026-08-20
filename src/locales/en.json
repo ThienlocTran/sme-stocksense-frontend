@@ -182,7 +182,8 @@
       "employees": "Employees",
       "importExcel": "Import Excel",
       "warehouses": "Warehouses",
-      "replenishment": "Replenishment Suggestions"
+      "replenishment": "Replenishment Suggestions",
+      "settings": "System Settings"
     }
   },
   "topbar": {
@@ -1505,6 +1506,20 @@
       "unknownStatus": "Unknown status.",
       "noPermission": "You currently do not have permission to approve or reject.",
       "completePermissionOnly": "Only Admin or Warehouse Employees can complete export."
+    }
+  },
+  "settings": {
+    "title": "System Settings",
+    "description": "Manage and update active system configuration parameters.",
+    "thresholdLabel": "Second Approval Threshold (VND)",
+    "thresholdDescription": "Import receipts with total value exceeding this threshold will require two approval levels by two distinct managers.",
+    "saveButton": "Save Settings",
+    "saving": "Saving...",
+    "messages": {
+      "saveSuccess": "Configuration saved successfully!",
+      "saveError": "Failed to save configuration. Please try again.",
+      "loadError": "Failed to load system configuration.",
+      "invalidValue": "Please enter a valid numeric value greater than or equal to 0."
     }
   }
 }

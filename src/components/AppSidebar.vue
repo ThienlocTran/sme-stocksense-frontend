@@ -159,6 +159,12 @@ const menuSections = [
         to: "/import-excel",
         icon: "mdi-file-excel-outline",
       },
+      {
+        label: "Cấu hình",
+        labelKey: "settings",
+        to: "/settings",
+        icon: "mdi-cog-outline",
+      },
     ],
   },
 ];

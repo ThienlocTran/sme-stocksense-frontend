@@ -182,7 +182,8 @@
       "employees": "Nhân viên",
       "importExcel": "Import Excel",
       "warehouses": "Kho hàng",
-      "replenishment": "Gợi ý nhập hàng"
+      "replenishment": "Gợi ý nhập hàng",
+      "settings": "Cấu hình hệ thống"
     }
   },
   "topbar": {
@@ -1505,6 +1506,20 @@
       "unknownStatus": "Trạng thái không rõ.",
       "noPermission": "Bạn hiện không có quyền thực hiện duyệt hoặc từ chối.",
       "completePermissionOnly": "Chỉ Admin hoặc Nhân viên kho được hoàn tất xuất kho."
+    }
+  },
+  "settings": {
+    "title": "Cấu hình hệ thống",
+    "description": "Quản lý và thay đổi các cấu hình hoạt động của hệ thống kho.",
+    "thresholdLabel": "Ngưỡng phê duyệt cấp 2 (phiếu nhập kho)",
+    "thresholdDescription": "Phiếu nhập kho có tổng giá trị lớn hơn con số này sẽ bắt buộc phải qua 2 cấp phê duyệt từ 2 người khác nhau.",
+    "saveButton": "Lưu cấu hình",
+    "saving": "Đang lưu...",
+    "messages": {
+      "saveSuccess": "Lưu cấu hình thành công!",
+      "saveError": "Không thể lưu cấu hình. Vui lòng thử lại.",
+      "loadError": "Không thể tải thông tin cấu hình.",
+      "invalidValue": "Vui lòng nhập giá trị số hợp lệ lớn hơn hoặc bằng 0."
     }
   }
 }

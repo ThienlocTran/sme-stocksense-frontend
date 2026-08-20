@@ -23,6 +23,7 @@ import AiForecastView from '../views/AiForecastView.vue'
 import AnimationPreviewView from '../views/AnimationPreviewView.vue'
 
 import ReplenishmentSuggestionsView from '../views/ReplenishmentSuggestionsView.vue'
+import SettingsView from '../views/SettingsView.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -55,6 +56,7 @@ const routes = [
   { path: '/inventory-counts/:id', component: InventoryCountDetailView, props: true, meta: { title: 'Chi tiết kiểm kê kho' } },
   { path: '/forecast', component: AiForecastView, meta: { title: 'Dự báo AI' } },
   { path: '/replenishment-suggestions', component: ReplenishmentSuggestionsView, meta: { title: 'Gợi ý nhập hàng' } },
+  { path: '/settings', component: SettingsView, meta: { title: 'Cấu hình hệ thống' } },
 ]
 
 const router = createRouter({
