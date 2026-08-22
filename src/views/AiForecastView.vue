@@ -427,7 +427,7 @@ const summaryText = computed(() => {
         />
       </div>
 
-      <!-- Chart B: Projected Inventory -->
+      <!-- Chart B: Projected Inventory (Task 5 Horizon sync) -->
       <div class="card card-pad chart-card mt-6">
         <h3 class="section-title">Dự báo diễn biến tồn kho (Projected Inventory)</h3>
         <ProjectedInventoryChart
