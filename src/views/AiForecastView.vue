@@ -10,6 +10,7 @@ import ActualForecastChart from "../components/ActualForecastChart.vue";
 import ProjectedInventoryChart from "../components/ProjectedInventoryChart.vue";
 import { getProducts } from "../services/productService";
 import { getWarehouses } from "../services/warehouseService";
+import { getEmployees } from "../services/employeeService";
 import {
   checkDrift,
   getForecast,
@@ -33,6 +34,14 @@ const selectedProductId = ref("");
 const selectedWarehouseId = ref("");
 const selectedHorizon = ref(30);
 
+const employees = ref([]);
+const showAssignmentModal = ref(false);
+const selectedEmployeeId = ref("");
+const humanRequestedQuantity = ref(0);
+const assignmentContent = ref("");
+const assignmentSuccessMessage = ref("");
+const assignmentErrorMessage = ref("");
+
 const isLoadingDropdowns = ref(false);
 const isRunningForecast = ref(false);
 const isLoadingForecast = ref(false);
@@ -52,12 +61,19 @@ onMounted(loadDropdowns);
 async function loadDropdowns() {
   isLoadingDropdowns.value = true;
   try {
-    const [productPage, warehouseList] = await Promise.all([
+    const promises = [
       getProducts({ page: 0, size: 200 }),
       getWarehouses(),
-    ]);
+    ];
+    if (canRun.value) {
+      promises.push(getEmployees({ page: 0, size: 200, status: "HOAT_DONG" }));
+    }
+    const [productPage, warehouseList, employeePage] = await Promise.all(promises);
     products.value = productPage.content || [];
     warehouses.value = warehouseList || [];
+    if (canRun.value && employeePage) {
+      employees.value = employeePage.content || [];
+    }
   } catch (error) {
     errorMessage.value = error.message;
     if (error.status === 401) {
@@ -189,6 +205,39 @@ const simulatedForecast = computed(() => {
   }
   return points;
 });
+
+function openAssignmentModal() {
+  selectedEmployeeId.value = "";
+  humanRequestedQuantity.value = selectedHorizon.value === 7
+    ? (forecast.value?.reorderQty7d ?? 0)
+    : selectedHorizon.value === 14
+      ? (forecast.value?.reorderQty14d ?? 0)
+      : (forecast.value?.reorderQty30d ?? 0);
+  assignmentContent.value = `Thực hiện bổ sung hàng cho sản phẩm theo đề xuất từ AI dự báo ${selectedHorizon.value} ngày.`;
+  assignmentErrorMessage.value = "";
+  assignmentSuccessMessage.value = "";
+  showAssignmentModal.value = true;
+}
+
+function submitLocalAssignment() {
+  assignmentErrorMessage.value = "";
+  assignmentSuccessMessage.value = "";
+
+  if (!selectedEmployeeId.value) {
+    assignmentErrorMessage.value = "Vui lòng chọn nhân viên được bàn giao.";
+    return;
+  }
+  if (!humanRequestedQuantity.value || humanRequestedQuantity.value <= 0) {
+    assignmentErrorMessage.value = "Số lượng yêu cầu phải lớn hơn 0.";
+    return;
+  }
+
+  assignmentSuccessMessage.value = "Phân công đã được ghi nhận cục bộ (Task 7 Presentation).";
+  setTimeout(() => {
+    showAssignmentModal.value = false;
+    assignmentSuccessMessage.value = "";
+  }, 2000);
+}
 
 // Câu tóm tắt bằng lời cho người không rành số liệu vẫn hiểu ngay.
 const summaryText = computed(() => {
@@ -395,10 +444,91 @@ const summaryText = computed(() => {
     <div v-if="canRun" class="card card-pad mt-6">
       <h3 class="section-title">Giao nhiệm vụ bổ sung hàng</h3>
       <p class="text-sm text-zinc-500 mt-1">
-        Bổ nhiệm nhân viên xử lý đặt hàng hoặc điều chuyển nội bộ dựa trên dự báo này.
+        Bàn giao nhiệm vụ bổ sung hàng dựa trên đề xuất số lượng từ AI.
       </p>
-      <div class="py-6 text-center text-zinc-400 border border-dashed rounded mt-3">
-        Khu vực tạo nhiệm vụ phân công (Sẽ được xây dựng trong Task 7/8)
+      <div class="mt-4">
+        <button
+          class="btn btn-primary"
+          type="button"
+          @click="openAssignmentModal"
+        >
+          <i class="mdi mdi-account-plus-outline mr-1"></i>
+          Tạo phân công công việc
+        </button>
+      </div>
+    </div>
+
+    <!-- Assignment Modal -->
+    <div
+      v-if="showAssignmentModal"
+      class="modal-backdrop"
+      @click.self="showAssignmentModal = false"
+    >
+      <div class="modal">
+        <div class="modal-head between">
+          <div>
+            <h2 class="section-title">Giao nhiệm vụ bổ sung hàng</h2>
+            <p class="modal-subtitle">Bàn giao công việc xử lý bổ sung kho hàng</p>
+          </div>
+          <button
+            class="btn btn-icon"
+            @click="showAssignmentModal = false"
+          >
+            <i class="mdi mdi-close"></i>
+          </button>
+        </div>
+
+        <div class="modal-body space-y-4">
+          <!-- Read-only Context Info -->
+          <div class="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
+            <div>Sản phẩm: <strong>{{ products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }}</strong></div>
+            <div>Kho hàng: <strong>{{ warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }}</strong></div>
+            <div>Chu kỳ dự báo: <strong>{{ selectedHorizon }} ngày</strong></div>
+            <div>Số lượng đề xuất từ AI: <strong class="text-zinc-900 dark:text-zinc-100">{{ selectedHorizon === 7 ? forecast.reorderQty7d : selectedHorizon === 14 ? forecast.reorderQty14d : forecast.reorderQty30d }}</strong></div>
+          </div>
+
+          <!-- Editable Form Fields -->
+          <div class="field">
+            <label class="field-label font-semibold">Nhân viên được phân công *</label>
+            <select v-model="selectedEmployeeId" class="select w-full mt-1">
+              <option value="">-- Chọn nhân viên --</option>
+              <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
+              </option>
+            </select>
+          </div>
+
+          <div class="field mt-3">
+            <label class="field-label font-semibold">Số lượng yêu cầu thực tế *</label>
+            <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" />
+            <span class="text-xs text-zinc-500 mt-1 block">
+              AI đề xuất: {{ selectedHorizon === 7 ? forecast.reorderQty7d : selectedHorizon === 14 ? forecast.reorderQty14d : forecast.reorderQty30d }}. Bạn có thể điều chỉnh lại.
+            </span>
+          </div>
+
+          <div class="field mt-3">
+            <label class="field-label font-semibold">Lời nhắn / Chỉ thị bổ sung</label>
+            <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..."></textarea>
+          </div>
+
+          <p v-if="assignmentErrorMessage" class="text-red-500 text-xs font-semibold mt-2">{{ assignmentErrorMessage }}</p>
+          <p v-if="assignmentSuccessMessage" class="text-green-600 text-xs font-semibold mt-2">{{ assignmentSuccessMessage }}</p>
+        </div>
+
+        <div class="modal-foot">
+          <button
+            class="btn btn-ghost"
+            @click="showAssignmentModal = false"
+          >
+            Hủy
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="submitLocalAssignment"
+          >
+            Giao việc
+          </button>
+        </div>
       </div>
     </div>
 
