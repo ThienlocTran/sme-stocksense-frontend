@@ -932,7 +932,7 @@
     },
     "demoSourceActionTitle": "Initialize Demo Data",
     "demoSourceActionDesc": "Create synthetic history data for products/warehouses without demo data.",
-    "hasDemoDataStatus": "Demo data exists",
+    "hasDemoDataStatus": "Demo sales history exists",
     "seedConfirmationTitle": "Generate demo data?",
     "seedConfirmationBody": "The system will generate synthetic history for products and warehouses without demo data. Benchmark and actual data will not be affected.",
     "seedConfirmBtn": "Generate data",

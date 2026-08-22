@@ -939,7 +939,7 @@
     },
     "demoSourceActionTitle": "Khởi tạo dữ liệu demo",
     "demoSourceActionDesc": "Tạo dữ liệu lịch sử giả lập cho các sản phẩm/kho chưa có dữ liệu demo.",
-    "hasDemoDataStatus": "Đã có dữ liệu demo",
+    "hasDemoDataStatus": "Đã có lịch sử bán hàng demo",
     "seedConfirmationTitle": "Sinh dữ liệu demo?",
     "seedConfirmationBody": "Hệ thống sẽ tạo lịch sử giả lập cho các sản phẩm và kho chưa có dữ liệu demo. Dữ liệu benchmark và dữ liệu thực tế sẽ không bị thay đổi.",
     "seedConfirmBtn": "Sinh dữ liệu",
