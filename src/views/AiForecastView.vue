@@ -325,16 +325,56 @@ const summaryText = computed(() => {
 });
 
 const displaySource = computed(() => {
-  if (!forecast.value || !forecast.value.source) return "-";
-  if (forecast.value.source === "EXTERNAL_RETAIL") {
+  if (!forecast.value || !forecast.value.source) return "Nguồn dữ liệu không xác định";
+  const src = forecast.value.source;
+  if (src === "EXTERNAL_STORE_ITEM") {
+    return "Store-Item Demand Benchmark";
+  }
+  if (src === "EXTERNAL_RETAIL") {
     return "External Retail Benchmark";
   }
-  return forecast.value.source;
+  if (src === "THUC_TE") {
+    return "Dữ liệu thực tế StockSense";
+  }
+  if (src === "SEED_DEMO") {
+    return "Dữ liệu demo";
+  }
+  return "Nguồn dữ liệu không xác định";
 });
 
 const displayDatasetType = computed(() => {
   if (!forecast.value || !forecast.value.datasetType) return "-";
-  return forecast.value.datasetType;
+  const type = forecast.value.datasetType;
+  if (type === "EXTERNAL") return "Ngoại cảnh (External)";
+  if (type === "THUC_TE") return "Dữ liệu thực tế";
+  if (type === "COLD_START") return "Khởi động lạnh (Cold Start)";
+  if (type === "LEGACY_UNKNOWN") return "Không xác định";
+  return type;
+});
+
+const isStoreItemSupported = computed(() => {
+  if (!selectedProductId.value || !selectedWarehouseId.value) return true;
+  const prod = products.value.find(p => p.id === selectedProductId.value);
+  const wh = warehouses.value.find(w => w.id === selectedWarehouseId.value);
+  if (!prod || !wh) return true;
+
+  const prodCode = (prod.code || prod.maSanPham || "").trim().toUpperCase();
+  const whCode = (wh.code || wh.maKho || "").trim().toUpperCase();
+
+  const prodMatch = prodCode.match(/^SP0*([1-9]\d*)$/);
+  const whMatch = whCode.match(/^K0*([1-9]\d*)$/);
+
+  if (prodMatch && whMatch) {
+    const prodNum = parseInt(prodMatch[1], 10);
+    const whNum = parseInt(whMatch[1], 10);
+    return prodNum >= 1 && prodNum <= 50 && whNum >= 1 && whNum <= 3;
+  }
+  return false;
+});
+
+const showNoStoreItemHistoryState = computed(() => {
+  if (!selectedProductId.value || !selectedWarehouseId.value) return false;
+  return !isStoreItemSupported.value;
 });
 
 const isHistoryUnavailable = computed(() => {
@@ -405,6 +445,13 @@ const isHistoryUnavailable = computed(() => {
     <i class="mdi mdi-loading mdi-spin"></i>
     <span>{{ t("forecast.loading") }}</span>
   </div>
+
+  <EmptyState
+    v-else-if="showNoStoreItemHistoryState"
+    title="Chưa có dữ liệu dự báo Store-Item cho sản phẩm này."
+    description="Hệ thống dự báo AI hiện tại chưa hỗ trợ dữ liệu Store-Item Demand Benchmark cho sản phẩm và kho hàng đã chọn."
+    icon="mdi-database-alert-outline"
+  />
 
   <EmptyState
     v-else-if="!forecast && canSelect"
