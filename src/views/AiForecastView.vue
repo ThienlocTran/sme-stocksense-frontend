@@ -139,12 +139,17 @@ async function loadCachedForecast() {
       recommendation.value = null;
     }
   } catch (error) {
-    errorMessage.value = error.message;
-    if (error.status === 401) {
-      router.replace("/login");
+    if (error.message && (error.message.includes("lịch sử") || error.message.includes("history") || error.message.includes("dữ liệu") || error.message.includes("data"))) {
+      forecast.value = { dataDays: 0, historical: [], dailyForecast: [] };
+      recommendation.value = null;
+    } else {
+      errorMessage.value = error.message;
+      if (error.status === 401) {
+        router.replace("/login");
+      }
+      forecast.value = null;
+      recommendation.value = null;
     }
-    forecast.value = null;
-    recommendation.value = null;
   } finally {
     isLoadingForecast.value = false;
   }
@@ -162,11 +167,16 @@ async function handleRunForecast() {
       recommendation.value = null;
     }
   } catch (error) {
-    errorMessage.value = error.message;
-    if (error.status === 401) {
-      router.replace("/login");
+    if (error.message && (error.message.includes("lịch sử") || error.message.includes("history") || error.message.includes("dữ liệu") || error.message.includes("data"))) {
+      forecast.value = { dataDays: 0, historical: [], dailyForecast: [] };
+      recommendation.value = null;
+    } else {
+      errorMessage.value = error.message;
+      if (error.status === 401) {
+        router.replace("/login");
+      }
+      recommendation.value = null;
     }
-    recommendation.value = null;
   } finally {
     isRunningForecast.value = false;
   }
@@ -179,7 +189,11 @@ async function handleCheckDrift() {
   try {
     drift.value = await checkDrift(selectedProductId.value, selectedWarehouseId.value);
   } catch (error) {
-    errorMessage.value = error.message;
+    if (error.message && (error.message.includes("lịch sử") || error.message.includes("history") || error.message.includes("dữ liệu") || error.message.includes("data"))) {
+      drift.value = null;
+    } else {
+      errorMessage.value = error.message;
+    }
   } finally {
     isCheckingDrift.value = false;
   }
@@ -322,6 +336,10 @@ const displayDatasetType = computed(() => {
   if (!forecast.value || !forecast.value.datasetType) return "-";
   return forecast.value.datasetType;
 });
+
+const isHistoryUnavailable = computed(() => {
+  return forecast.value && (!forecast.value.dataDays || forecast.value.dataDays === 0 || !forecast.value.historical || forecast.value.historical.length === 0);
+});
 </script>
 
 <template>
@@ -400,6 +418,13 @@ const displayDatasetType = computed(() => {
     :title="t('forecast.empty.selectTitle')"
     :description="t('forecast.empty.selectDesc')"
     icon="mdi-cursor-default-click-outline"
+  />
+
+  <EmptyState
+    v-else-if="isHistoryUnavailable"
+    title="Chưa có đủ lịch sử dữ liệu"
+    description="Chưa có đủ lịch sử dữ liệu cho sản phẩm và kho đã chọn."
+    icon="mdi-database-alert-outline"
   />
 
   <template v-else>
