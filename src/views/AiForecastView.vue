@@ -29,6 +29,7 @@ const products = ref([]);
 const warehouses = ref([]);
 const selectedProductId = ref("");
 const selectedWarehouseId = ref("");
+const selectedHorizon = ref(30);
 
 const isLoadingDropdowns = ref(false);
 const isRunningForecast = ref(false);
@@ -254,6 +255,14 @@ const summaryText = computed(() => {
         </option>
       </select>
     </div>
+    <div class="selector-field">
+      <label class="field-label">Thời gian dự báo (Horizon)</label>
+      <select v-model="selectedHorizon" class="select" :disabled="isLoadingDropdowns">
+        <option :value="7">7 ngày</option>
+        <option :value="14">14 ngày</option>
+        <option :value="30">30 ngày</option>
+      </select>
+    </div>
     <div class="selector-actions">
       <button
         v-if="canRun"
@@ -298,95 +307,116 @@ const summaryText = computed(() => {
   />
 
   <template v-else>
-    <p class="card card-pad summary-banner">
-      <i class="mdi mdi-lightbulb-on-outline"></i>
-      <span>{{ summaryText }}</span>
-    </p>
+    <!-- Header / Context -->
+    <div class="card card-pad summary-context-card">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <span class="text-xs uppercase font-bold text-zinc-500 tracking-wider">Thông tin mô hình dự báo</span>
+          <h4 class="text-base font-bold text-zinc-900 dark:text-zinc-100 mt-1">
+            {{ getForecastModeLabel(forecast.mode) }}
+          </h4>
+          <p class="text-xs text-zinc-500 mt-1">
+            <span v-if="forecast.mode === 'COLD_START_AVG'">
+              {{ t("forecast.stats.coldStartNote") }}
+            </span>
+            <span v-else>
+              {{ t("forecast.stats.dataDaysNote", { days: formatNumber(forecast.dataDays) }) }}
+            </span>
+            | Độ lệch mô hình (sMAPE): <strong>{{ formatNumber(forecast.smape) }}%</strong>
+          </p>
+        </div>
+        <p class="summary-banner mb-0 self-stretch md:self-auto flex-1 md:flex-initial">
+          <i class="mdi mdi-lightbulb-on-outline"></i>
+          <span>{{ summaryText }}</span>
+        </p>
+      </div>
+    </div>
 
-    <div class="stat-grid">
+    <!-- Summary Statistics Grid -->
+    <div class="stat-grid mt-6">
       <div class="card card-pad stat-card">
-        <span class="stat-label">{{ t("forecast.stats.mode") }}</span>
-        <strong class="stat-value">{{ getForecastModeLabel(forecast.mode) }}</strong>
-        <span class="text-xs text-[var(--color-text-secondary)] mt-1" v-if="forecast.mode === 'COLD_START_AVG'">
-          {{ t("forecast.stats.coldStartNote") }}
-        </span>
-        <span class="text-xs text-[var(--color-text-secondary)] mt-1" v-else>
-          {{ t("forecast.stats.dataDaysNote", { days: formatNumber(forecast.dataDays) }) }}
-        </span>
+        <span class="stat-label">Dự báo nhu cầu ({{ selectedHorizon }} ngày)</span>
+        <strong class="stat-value">
+          {{ selectedHorizon === 7 ? formatNumber(forecast.forecast7d) : selectedHorizon === 14 ? formatNumber(forecast.forecast14d) : formatNumber(forecast.forecast30d) }}
+        </strong>
+        <span class="text-xs text-[var(--color-text-secondary)] mt-1">Tổng nhu cầu bán hàng dự kiến</span>
       </div>
       <div class="card card-pad stat-card">
-        <span class="stat-label">{{ t("forecast.stats.smape") }}</span>
-        <strong class="stat-value">{{ formatNumber(forecast.smape) }}%</strong>
-        <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t("forecast.stats.smapeNote") }}</span>
-      </div>
-      <div class="card card-pad stat-card">
-        <span class="stat-label">{{ t("forecast.stats.currentStock") }}</span>
+        <span class="stat-label">Tồn kho hiện tại</span>
         <strong class="stat-value">{{ formatNumber(forecast.currentStock) }}</strong>
         <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t("forecast.stats.minStockNote", { min: formatNumber(forecast.minStock) }) }}</span>
       </div>
+      <div class="card card-pad stat-card">
+        <span class="stat-label">Ngưỡng tồn kho tối thiểu</span>
+        <strong class="stat-value text-red-500">{{ formatNumber(forecast.minStock) }}</strong>
+        <span class="text-xs text-[var(--color-text-secondary)] mt-1">Điểm kích hoạt bổ sung hàng</span>
+      </div>
+      <div class="card card-pad stat-card">
+        <span class="stat-label">Đề xuất bổ sung</span>
+        <strong class="stat-value" :class="{ 'text-amber-500': (selectedHorizon === 7 ? forecast.reorderQty7d : selectedHorizon === 14 ? forecast.reorderQty14d : forecast.reorderQty30d) > 0 }">
+          {{ selectedHorizon === 7 ? formatNumber(forecast.reorderQty7d) : selectedHorizon === 14 ? formatNumber(forecast.reorderQty14d) : formatNumber(forecast.reorderQty30d) }}
+        </strong>
+        <span class="text-xs text-[var(--color-text-secondary)] mt-1">Số lượng hệ thống đề xuất nhập</span>
+      </div>
     </div>
 
-    <div class="card card-pad chart-card">
-      <h3 class="section-title">{{ t("forecast.reorder.title") }}</h3>
-      <div class="reorder-grid">
-        <div class="reorder-item">
-          <span class="reorder-label">{{ t("forecast.reorder.7d") }}</span>
-          <div class="flex flex-col items-center">
-            <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty7d > 0, 'line-through text-slate-400 text-sm font-normal': forecast.capacityLimited7d }">
-              {{ formatNumber(forecast.reorderQty7d) }}
-            </strong>
-            <span v-if="forecast.capacityLimited7d" class="text-xs text-amber-600 font-bold flex items-center gap-0.5 mt-1">
-              <i class="mdi mdi-alert-circle text-amber-500"></i>
-              {{ t('forecast.capacityAllowed') }}{{ formatNumber(forecast.capacityAllowedQuantity7d) }}
-            </span>
-          </div>
+    <!-- Chart A: Actual vs Forecast Placeholder -->
+    <div class="card card-pad chart-card mt-6">
+      <h3 class="section-title">Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)</h3>
+      <div class="chart-placeholder py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700">
+        <i class="mdi mdi-chart-timeline-variant text-3xl text-zinc-400 block mb-2"></i>
+        Biểu đồ Actual vs Forecast (Sẽ được xây dựng trong Task 2)
+      </div>
+    </div>
+
+    <!-- Chart B: Projected Inventory Placeholder -->
+    <div class="card card-pad chart-card mt-6">
+      <h3 class="section-title">Dự báo diễn biến tồn kho (Projected Inventory)</h3>
+      <div class="chart-placeholder py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700">
+        <i class="mdi mdi-chart-line text-3xl text-zinc-400 block mb-2"></i>
+        Biểu đồ Projected Inventory (Sẽ được xây dựng trong Task 3)
+      </div>
+    </div>
+
+    <!-- Recommendation Detail & Capacity Warnings -->
+    <div class="card card-pad chart-card mt-6">
+      <h3 class="section-title">Chi tiết đề xuất & Dung tích kho hàng</h3>
+      <div class="py-2 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
+        <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+          <span>Tổng lượng hàng cần nhập (Raw Need):</span>
+          <strong>{{ selectedHorizon === 7 ? formatNumber(forecast.reorderQty7d) : selectedHorizon === 14 ? formatNumber(forecast.reorderQty14d) : formatNumber(forecast.reorderQty30d) }}</strong>
         </div>
-        <div class="reorder-item">
-          <span class="reorder-label">{{ t("forecast.reorder.14d") }}</span>
-          <div class="flex flex-col items-center">
-            <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty14d > 0, 'line-through text-slate-400 text-sm font-normal': forecast.capacityLimited14d }">
-              {{ formatNumber(forecast.reorderQty14d) }}
-            </strong>
-            <span v-if="forecast.capacityLimited14d" class="text-xs text-amber-600 font-bold flex items-center gap-0.5 mt-1">
-              <i class="mdi mdi-alert-circle text-amber-500"></i>
-              {{ t('forecast.capacityAllowed') }}{{ formatNumber(forecast.capacityAllowedQuantity14d) }}
-            </span>
-          </div>
+        <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+          <span>Giới hạn dung tích kho cho phép:</span>
+          <strong>
+            {{ selectedHorizon === 7 ? (forecast.capacityLimited7d ? formatNumber(forecast.capacityAllowedQuantity7d) : 'Không giới hạn') : selectedHorizon === 14 ? (forecast.capacityLimited14d ? formatNumber(forecast.capacityAllowedQuantity14d) : 'Không giới hạn') : (forecast.capacityLimited30d ? formatNumber(forecast.capacityAllowedQuantity30d) : 'Không giới hạn') }}
+          </strong>
         </div>
-        <div class="reorder-item">
-          <span class="reorder-label">{{ t("forecast.reorder.30d") }}</span>
-          <div class="flex flex-col items-center">
-            <strong class="reorder-value" :class="{ 'reorder-value--warning': forecast.reorderQty30d > 0, 'line-through text-slate-400 text-sm font-normal': forecast.capacityLimited30d }">
-              {{ formatNumber(forecast.reorderQty30d) }}
-            </strong>
-            <span v-if="forecast.capacityLimited30d" class="text-xs text-amber-600 font-bold flex items-center gap-0.5 mt-1">
-              <i class="mdi mdi-alert-circle text-amber-500"></i>
-              {{ t('forecast.capacityAllowed') }}{{ formatNumber(forecast.capacityAllowedQuantity30d) }}
-            </span>
-          </div>
+        <div v-if="selectedHorizon === 7 ? forecast.capacityLimited7d : selectedHorizon === 14 ? forecast.capacityLimited14d : forecast.capacityLimited30d" class="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-900/30 text-xs">
+          <i class="mdi mdi-alert mr-1"></i>
+          Cảnh báo: Lượng hàng đề xuất bổ sung vượt quá dung tích còn trống của kho hàng.
         </div>
       </div>
-      <span class="text-xs text-[var(--color-text-secondary)] mt-1">
-        {{ t("forecast.reorder.note") }}
-      </span>
     </div>
 
-    <div class="card card-pad chart-card">
-      <h3 class="section-title">{{ t("forecast.chart.title") }}</h3>
-      <ApexCharts type="line" :options="depletionOptions" :series="depletionSeries" height="300" />
-      <span class="text-xs text-[var(--color-text-secondary)]">{{ t("forecast.chart.versionNote", { version: forecast.version, time: formatDateTime(forecast.trainedAt) }) }}</span>
+    <!-- Replenishment Assignment (Later Action Area) -->
+    <div v-if="canRun" class="card card-pad mt-6">
+      <h3 class="section-title">Giao nhiệm vụ bổ sung hàng</h3>
+      <p class="text-sm text-zinc-500 mt-1">
+        Bổ nhiệm nhân viên xử lý đặt hàng hoặc điều chuyển nội bộ dựa trên dự báo này.
+      </p>
+      <div class="py-6 text-center text-zinc-400 border border-dashed rounded mt-3">
+        Khu vực tạo nhiệm vụ phân công (Sẽ được xây dựng trong Task 7/8)
+      </div>
     </div>
 
-    <div v-if="drift" class="card card-pad drift-card">
+    <!-- Drift Card (Drift/Model Drift check results) -->
+    <div v-if="drift" class="card card-pad drift-card mt-6">
       <h3 class="section-title">{{ t("forecast.drift.title") }}</h3>
-
-      <!-- Trạng thái chính -->
       <div class="drift-row">
         <StatusBadge :status="driftBadgeVariant(drift.status)" />
         <span class="font-semibold">{{ getDriftStatusLabel(drift.status) }}</span>
       </div>
-
-      <!-- Số liệu chi tiết khi có đủ dữ liệu tính toán -->
       <div v-if="drift.rollingSmape !== null && drift.rollingSmape !== undefined" class="drift-metrics">
         <div class="drift-metric-item">
           <span class="drift-metric-label">sMAPE thực tế</span>
@@ -403,8 +433,6 @@ const summaryText = computed(() => {
           <strong class="drift-metric-value">{{ drift.overlapDays }} ngày</strong>
         </div>
       </div>
-
-      <!-- Giải thích khi không đủ dữ liệu -->
       <div v-if="drift.status === 'NO_ACTUAL_DATA'" class="drift-explain">
         <i class="mdi mdi-information-outline"></i>
         <span>Chưa có giao dịch xuất kho thực tế trong 30 ngày qua để so sánh với dự báo đã lưu.</span>
@@ -417,14 +445,10 @@ const summaryText = computed(() => {
         <i class="mdi mdi-information-outline"></i>
         <span>Chỉ có <strong>{{ drift.overlapDays }}</strong> ngày trùng nhau giữa dự báo và thực tế (cần tối thiểu 7 ngày). Cần thêm dữ liệu.</span>
       </div>
-
-      <!-- Phương pháp tính: luôn hiển thị để user hiểu ngưỡng -->
       <div class="drift-rule">
         <i class="mdi mdi-help-circle-outline"></i>
         <span>Mô hình bị đánh dấu <strong>Lệch</strong> khi sMAPE &gt; {{ formatNumber(drift.threshold) }}% trên ít nhất 7 ngày có dữ liệu cả hai phía.</span>
       </div>
-
-      <!-- Gợi ý hành động khi phát hiện drift -->
       <div v-if="drift.retrainNeeded" class="drift-action">
         <i class="mdi mdi-refresh-circle text-[var(--color-warning)]"></i>
         <span>Mô hình đang lệch – nên bấm <strong>Dự báo ngay</strong> để train lại với dữ liệu mới nhất.</span>
