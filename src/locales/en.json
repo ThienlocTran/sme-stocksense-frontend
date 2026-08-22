@@ -783,7 +783,7 @@
   },
   "replenishment": {
     "title": "Replenishment Suggestions",
-    "description": "Recommended order quantities based on configured Min-Max thresholds.",
+    "description": "Recommended order quantities based on configured minimum thresholds.",
     "searchPlaceholder": "Search by product name or code...",
     "filters": {
       "allWarehouses": "All warehouses",
@@ -795,7 +795,7 @@
     "table": {
       "product": "Product",
       "warehouse": "Warehouse",
-      "stockInfo": "Current Stock / Min - Max",
+      "stockInfo": "Current Stock / Min",
       "shortage": "Shortage Qty",
       "suggested": "Suggested Qty",
       "priority": "Priority",

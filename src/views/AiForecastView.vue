@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import ApexCharts from "vue3-apexcharts";
@@ -56,6 +56,7 @@ const isLoadingRecommendation = ref(false);
 
 const forecast = ref(null);
 const drift = ref(null);
+const driftCardRef = ref(null);
 const errorMessage = ref("");
 
 const canRun = computed(() => canRunForecast(authStore.currentRole));
@@ -73,7 +74,7 @@ async function loadDropdowns() {
       getWarehouses(),
     ];
     if (canRun.value) {
-      promises.push(getEmployees({ page: 0, size: 100, status: "HOAT_DONG" }));
+      promises.push(getEmployees({ page: 0, size: 100, status: "HOAT_DONG", roleCode: "EMPLOYEE" }));
     }
     const [productPage, warehouseList, employeePage] = await Promise.all(promises);
     products.value = productPage.content || [];
@@ -103,6 +104,7 @@ watch([selectedProductId, selectedWarehouseId], async ([productId, warehouseId])
 });
 
 watch(selectedHorizon, async () => {
+  recommendation.value = null;
   if (hasSufficientForecast(selectedHorizon.value)) {
     await loadRecommendation();
   } else {
@@ -127,8 +129,8 @@ function hasSufficientForecast(horizon) {
 }
 
 async function loadRecommendation() {
+  recommendation.value = null;
   if (!selectedProductId.value || !selectedWarehouseId.value || !selectedHorizon.value) {
-    recommendation.value = null;
     return;
   }
   // Guard: only call the API when the cached forecast has enough daily points.
@@ -185,6 +187,9 @@ async function handleRunForecast() {
   if (!canSelect.value) return;
   isRunningForecast.value = true;
   errorMessage.value = "";
+  forecast.value = null;
+  drift.value = null;
+  recommendation.value = null;
   try {
     forecast.value = await runForecast(selectedProductId.value, selectedWarehouseId.value);
     if (forecast.value) {
@@ -214,6 +219,10 @@ async function handleCheckDrift() {
   errorMessage.value = "";
   try {
     drift.value = await checkDrift(selectedProductId.value, selectedWarehouseId.value);
+    await nextTick();
+    if (driftCardRef.value) {
+      driftCardRef.value.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   } catch (error) {
     if (error.message && (error.message.includes("lịch sử") || error.message.includes("history") || error.message.includes("dữ liệu") || error.message.includes("data"))) {
       drift.value = null;
@@ -231,6 +240,11 @@ function formatNumber(value) {
   return new Intl.NumberFormat("vi-VN").format(value);
 }
 
+function formatQty(value) {
+  if (value === null || value === undefined) return "-";
+  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(Math.round(value));
+}
+
 function formatDateTime(value) {
   if (!value) return "-";
   return new Date(value).toLocaleString("vi-VN", { hour12: false });
@@ -243,6 +257,9 @@ function driftBadgeVariant(status) {
 }
 
 const boundaryDateStr = computed(() => {
+  if (forecast.value && forecast.value.historyEndDate) {
+    return forecast.value.historyEndDate;
+  }
   const today = new Date();
   return today.toISOString().split("T")[0];
 });
@@ -321,15 +338,16 @@ const summaryText = computed(() => {
   if (recommendation.value) {
     const rec = recommendation.value;
     if (rec.rawSuggestedQty === 0) {
-      return `Tồn kho hiện tại (${formatNumber(rec.currentStock)}) đủ đáp ứng nhu cầu bán hàng dự báo (${formatNumber(rec.forecastDemand)}) trong ${selectedHorizon.value} ngày tới.`;
+      const stockLabel = forecast.value.source === 'EXTERNAL_STORE_ITEM' ? 'Tồn kho tại mốc dự báo' : 'Tồn kho hiện tại';
+      return `${stockLabel} (${formatQty(rec.currentStock)}) đủ đáp ứng nhu cầu bán hàng dự báo (${formatQty(rec.forecastDemand)}) trong ${selectedHorizon.value} ngày tới.`;
     }
     if (rec.rawSuggestedQty > 0 && rec.suggestedQty === 0) {
-      return `Cần bổ sung thêm ${formatNumber(rec.rawSuggestedQty)} sản phẩm, nhưng do dung tích kho đã đầy (Dung tích còn trống: ${formatNumber(rec.warehouseAvailableM3)} m³), hệ thống không đề xuất nhập thêm.`;
+      return `Cần bổ sung thêm ${formatQty(rec.rawSuggestedQty)} sản phẩm, nhưng do dung tích kho đã đầy (Dung tích còn trống: ${formatNumber(rec.warehouseAvailableM3)} m³), hệ thống không đề xuất nhập thêm.`;
     }
     if (rec.capacityLimited) {
-      return `Hạn chế dung tích kho: Nhu cầu thực tế cần ${formatNumber(rec.rawSuggestedQty)} sản phẩm, nhưng hệ thống đề xuất nhập tối đa ${formatNumber(rec.suggestedQty)} sản phẩm. Thiếu hụt: ${formatNumber(rec.capacityShortfallQty)} sản phẩm.`;
+      return `Hạn chế dung tích kho: Nhu cầu thực tế cần ${formatQty(rec.rawSuggestedQty)} sản phẩm, nhưng hệ thống đề xuất nhập tối đa ${formatQty(rec.suggestedQty)} sản phẩm. Thiếu hụt: ${formatQty(rec.capacityShortfallQty)} sản phẩm.`;
     }
-    return `Đề xuất bổ sung ${formatNumber(rec.suggestedQty)} sản phẩm để đáp ứng nhu cầu dự báo và duy trì tồn kho an toàn.`;
+    return `Đề xuất bổ sung ${formatQty(rec.suggestedQty)} sản phẩm để đáp ứng nhu cầu dự báo và duy trì tồn kho an toàn.`;
   }
 
   const rate = Number(forecast.value.forecast30d ?? 0);
@@ -342,10 +360,10 @@ const summaryText = computed(() => {
   }
   let text = "";
   if (stock <= minStock) {
-    text = t("forecast.summary.urgent", { rate: rateText, stock: formatNumber(stock), min: formatNumber(minStock) });
+    text = t("forecast.summary.urgent", { rate: rateText, stock: formatQty(stock), min: formatQty(minStock) });
   } else {
     const daysUntilMin = Math.max(0, Math.floor((stock - minStock) / rate));
-    text = t("forecast.summary.normal", { rate: rateText, stock: formatNumber(stock), days: daysUntilMin, min: formatNumber(minStock) });
+    text = t("forecast.summary.normal", { rate: rateText, stock: formatQty(stock), days: daysUntilMin, min: formatQty(minStock) });
   }
   return text;
 });
@@ -503,32 +521,76 @@ const isHistoryUnavailable = computed(() => {
   <template v-else>
     <!-- Header / Context -->
     <div class="card card-pad summary-context-card">
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <span class="text-xs uppercase font-bold text-zinc-500 tracking-wider">Thông tin mô hình dự báo</span>
-          <h4 class="text-base font-bold text-zinc-900 dark:text-zinc-100 mt-1">
-            {{ getForecastModeLabel(forecast.mode) }}
-          </h4>
-          <p class="text-xs text-zinc-500 mt-1">
-            <span v-if="forecast.mode === 'COLD_START_AVG'">
-              {{ t("forecast.stats.coldStartNote") }}
-            </span>
-            <span v-else>
-              {{ t("forecast.stats.dataDaysNote", { days: formatNumber(forecast.dataDays) }) }}
-            </span>
-            | sMAPE: <strong>{{ formatNumber(forecast.smape) }}%</strong>
-            <span v-if="forecast.mae !== null && forecast.mae !== undefined"> | MAE: <strong>{{ formatNumber(forecast.mae) }}</strong></span>
-            <span v-if="forecast.rmse !== null && forecast.rmse !== undefined"> | RMSE: <strong>{{ formatNumber(forecast.rmse) }}</strong></span>
-          </p>
-          <p class="text-xs text-zinc-500 mt-1">
-            Nguồn dữ liệu: <strong>{{ displaySource }}</strong>
-            <span v-if="forecast.datasetType"> | Loại dữ liệu: <strong>{{ displayDatasetType }}</strong></span>
-          </p>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <!-- Left: Model Info & Performance Metrics -->
+        <div class="lg:col-span-7 flex flex-col justify-between gap-4">
+          <div>
+            <span class="text-xs uppercase font-bold text-zinc-500 dark:text-zinc-400 tracking-wider">Thông tin mô hình dự báo</span>
+            <div class="text-xs text-zinc-500 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>Nguồn dữ liệu: <strong>{{ displaySource }}</strong></span>
+              <span v-if="forecast.datasetType">| Loại dữ liệu: <strong>{{ displayDatasetType }}</strong></span>
+            </div>
+          </div>
+
+          <!-- Model performance metrics - Grid of large cards matching source_full_kem_doc style -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="card card-pad stat-card">
+              <span class="stat-label">Chế độ</span>
+              <strong class="stat-value text-indigo-600 dark:text-indigo-400">
+                {{ getForecastModeLabel(forecast.mode) }}
+              </strong>
+              <span class="muted text-xs">
+                <span v-if="forecast.mode === 'COLD_START_AVG'">
+                  {{ t("forecast.stats.coldStartNote") }}
+                </span>
+                <span v-else>
+                  Dựa trên {{ formatNumber(forecast.dataDays) }} ngày dữ liệu
+                </span>
+              </span>
+            </div>
+            
+            <div class="card card-pad stat-card">
+              <span class="stat-label">Độ chính xác (sMAPE)</span>
+              <strong class="stat-value text-green-600 dark:text-green-400">
+                {{ formatNumber(forecast.smape) }}%
+              </strong>
+              <span class="muted text-xs">Càng thấp càng chính xác</span>
+            </div>
+            
+            <div class="card card-pad stat-card" v-if="(forecast.mae !== null && forecast.mae !== undefined) || (forecast.rmse !== null && forecast.rmse !== undefined)">
+              <span class="stat-label">Chỉ số MAE / RMSE</span>
+              <strong class="stat-value text-zinc-900 dark:text-zinc-100">
+                {{ forecast.mae !== null ? formatNumber(forecast.mae) : '-' }} / {{ forecast.rmse !== null ? formatNumber(forecast.rmse) : '-' }}
+              </strong>
+              <span class="muted text-xs">Sai số tuyệt đối / bình phương</span>
+            </div>
+          </div>
         </div>
-        <p class="summary-banner mb-0 self-stretch md:self-auto flex-1 md:flex-initial">
-          <i class="mdi mdi-lightbulb-on-outline"></i>
-          <span>{{ summaryText }}</span>
-        </p>
+
+        <!-- Right: Summary Recommendation Banner -->
+        <div class="lg:col-span-5 flex flex-col">
+          <div class="summary-banner mb-0 h-full">
+            <div class="summary-banner__header">
+              <i class="mdi mdi-lightbulb-on-outline summary-banner__icon animate-pulse"></i>
+              <span class="summary-banner__title">Khuyến nghị bổ sung hàng từ AI</span>
+            </div>
+            
+            <div class="summary-banner__body">
+              <p class="summary-banner__text">{{ summaryText }}</p>
+            </div>
+            
+            <div class="summary-banner__footer">
+              <span class="muted text-xs">Chu kỳ dự phòng: <strong>{{ selectedHorizon }} ngày</strong></span>
+              <span v-if="recommendation" class="summary-banner__badge" :class="{
+                'summary-banner__badge--need': recommendation.suggestedQty > 0,
+                'summary-banner__badge--safe': recommendation.rawSuggestedQty === 0,
+                'summary-banner__badge--warning': recommendation.rawSuggestedQty > 0 && recommendation.suggestedQty === 0
+              }">
+                {{ recommendation.suggestedQty > 0 ? 'Cần nhập hàng' : (recommendation.rawSuggestedQty === 0 ? 'Tồn kho an toàn' : 'Không thể nhập thêm') }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -548,18 +610,18 @@ const isHistoryUnavailable = computed(() => {
       <div class="stat-grid mt-6">
         <div class="card card-pad stat-card">
           <span class="stat-label">Dự báo nhu cầu ({{ selectedHorizon }} ngày)</span>
-          <strong class="stat-value">{{ formatNumber(recommendation.forecastDemand) }}</strong>
+          <strong class="stat-value">{{ formatQty(recommendation.forecastDemand) }}</strong>
           <span class="text-xs text-[var(--color-text-secondary)] mt-1">Tổng nhu cầu bán hàng dự kiến</span>
         </div>
         <div class="card card-pad stat-card">
-          <span class="stat-label">Tồn kho hiện tại</span>
-          <strong class="stat-value">{{ formatNumber(recommendation.currentStock) }}</strong>
-          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Ngưỡng tối thiểu: {{ formatNumber(recommendation.effectiveMinStock) }}</span>
+          <span class="stat-label">{{ forecast?.source === 'EXTERNAL_STORE_ITEM' ? 'Tồn kho tại mốc dự báo' : 'Tồn kho hiện tại' }}</span>
+          <strong class="stat-value">{{ formatQty(recommendation.currentStock) }}</strong>
+          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Ngưỡng tối thiểu: {{ formatQty(recommendation.effectiveMinStock) }}</span>
         </div>
         <div class="card card-pad stat-card">
           <span class="stat-label">Nhu cầu bổ sung (Raw Need)</span>
           <strong class="stat-value" :class="{ 'text-amber-500': recommendation.rawSuggestedQty > 0 }">
-            {{ formatNumber(recommendation.rawSuggestedQty) }}
+            {{ formatQty(recommendation.rawSuggestedQty) }}
           </strong>
           <span class="text-xs text-[var(--color-text-secondary)] mt-1">Lượng cần nhập theo định mức an toàn</span>
         </div>
@@ -569,7 +631,7 @@ const isHistoryUnavailable = computed(() => {
             'text-green-500': recommendation.suggestedQty > 0,
             'text-red-500': recommendation.suggestedQty === 0 && recommendation.rawSuggestedQty > 0
           }">
-            {{ formatNumber(recommendation.suggestedQty) }}
+            {{ formatQty(recommendation.suggestedQty) }}
           </strong>
           <span class="text-xs text-[var(--color-text-secondary)] mt-1">Lượng duyệt sau khi kiểm tra dung tích</span>
         </div>
@@ -604,15 +666,15 @@ const isHistoryUnavailable = computed(() => {
         <div class="py-2 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
           <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
             <span>Nhu cầu bổ sung theo định mức (Raw Need):</span>
-            <strong>{{ formatNumber(recommendation.rawSuggestedQty) }} sản phẩm</strong>
+            <strong>{{ formatQty(recommendation.rawSuggestedQty) }} sản phẩm</strong>
           </div>
           <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
             <span>Số lượng AI đề xuất nhập:</span>
-            <strong>{{ formatNumber(recommendation.suggestedQty) }} sản phẩm</strong>
+            <strong>{{ formatQty(recommendation.suggestedQty) }} sản phẩm</strong>
           </div>
           <div v-if="recommendation.capacityLimited" class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800 text-red-500 font-semibold">
             <span>Thiếu hụt do dung tích kho đầy (Shortfall):</span>
-            <strong>{{ formatNumber(recommendation.capacityShortfallQty) }} sản phẩm</strong>
+            <strong>{{ formatQty(recommendation.capacityShortfallQty) }} sản phẩm</strong>
           </div>
 
           <div class="pt-2 border-t border-zinc-200 dark:border-zinc-800">
@@ -621,7 +683,7 @@ const isHistoryUnavailable = computed(() => {
               <div>Tổng dung tích kho: <strong>{{ formatNumber(recommendation.warehouseCapacityM3) }} m³</strong></div>
               <div>Dung tích đã sử dụng: <strong>{{ formatNumber(recommendation.warehouseOccupiedM3) }} m³</strong></div>
               <div>Dung tích còn trống: <strong>{{ formatNumber(recommendation.warehouseAvailableM3) }} m³</strong></div>
-              <div>Khả năng nhận tối đa sản phẩm này: <strong>{{ formatNumber(recommendation.maxAdditionalUnitsByCapacity) }} sản phẩm</strong></div>
+              <div>Khả năng nhận tối đa sản phẩm này: <strong>{{ formatQty(recommendation.maxAdditionalUnitsByCapacity) }} sản phẩm</strong></div>
             </div>
           </div>
 
@@ -761,11 +823,11 @@ const isHistoryUnavailable = computed(() => {
                 </div>
                 <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
                   <span class="text-zinc-500">{{ t('forecast.assignment.aiQty') }}:</span>
-                  <strong>{{ formatNumber(assignmentResult.aiSuggestedQuantity ?? assignmentResult.aiSuggestedQty) }}</strong>
+                  <strong>{{ formatQty(assignmentResult.aiSuggestedQuantity ?? assignmentResult.aiSuggestedQty) }}</strong>
                 </div>
                 <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
                   <span class="text-zinc-500">{{ t('forecast.assignment.reqQty') }}:</span>
-                  <strong class="text-zinc-900 dark:text-zinc-100">{{ formatNumber(assignmentResult.requestedQuantity) }}</strong>
+                  <strong class="text-zinc-900 dark:text-zinc-100">{{ formatQty(assignmentResult.requestedQuantity) }}</strong>
                 </div>
                 <div class="flex justify-between py-1">
                   <span class="text-zinc-500">{{ t('forecast.assignment.emailStatus') }}:</span>
@@ -823,7 +885,7 @@ const isHistoryUnavailable = computed(() => {
     </template>
 
     <!-- Drift Card (Drift/Model Drift check results) -->
-    <div v-if="drift" class="card card-pad drift-card mt-6">
+    <div v-if="drift" ref="driftCardRef" class="card card-pad drift-card mt-6">
       <h3 class="section-title">{{ t("forecast.drift.title") }}</h3>
       <div class="drift-row">
         <StatusBadge :status="driftBadgeVariant(drift.status)" />
@@ -930,21 +992,85 @@ const isHistoryUnavailable = computed(() => {
 
 .summary-banner {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin: 0 0 20px;
-  background: var(--color-action-primary-soft);
-  border: 1px solid var(--color-action-primary-border);
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0;
+  padding: 20px;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(37, 99, 235, 0.01));
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 12px;
   color: var(--color-text-primary);
-  font-weight: 600;
-  line-height: 1.5;
-  border-radius: 8px;
 }
-.summary-banner i {
-  font-size: 20px;
+
+.summary-banner__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.1);
+}
+
+.summary-banner__title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
   color: var(--color-action-primary);
-  flex-shrink: 0;
-  margin-top: 2px;
+  letter-spacing: 0.05em;
+}
+
+.summary-banner__icon {
+  font-size: 18px;
+  color: var(--color-action-primary);
+}
+
+.summary-banner__body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 16px 0;
+}
+
+.summary-banner__text {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.summary-banner__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid rgba(37, 99, 235, 0.1);
+  font-size: 12px;
+}
+
+.summary-banner__badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.summary-banner__badge--safe {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  border: 1px solid rgba(22, 130, 93, 0.15);
+}
+
+.summary-banner__badge--need {
+  background: var(--color-action-primary-soft);
+  color: var(--color-action-primary);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+.summary-banner__badge--warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border: 1px solid rgba(217, 119, 6, 0.15);
 }
 
 .stat-grid {

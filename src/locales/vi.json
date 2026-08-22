@@ -790,7 +790,7 @@
   },
   "replenishment": {
     "title": "Gợi ý nhập hàng",
-    "description": "Đề xuất số lượng cần nhập dựa trên mức tồn tối thiểu - tối đa thiết lập.",
+    "description": "Đề xuất số lượng cần nhập dựa trên mức tồn tối thiểu thiết lập.",
     "searchPlaceholder": "Tìm theo mã hoặc tên sản phẩm...",
     "filters": {
       "allWarehouses": "Tất cả kho hàng",
@@ -802,7 +802,7 @@
     "table": {
       "product": "Sản phẩm",
       "warehouse": "Kho hàng",
-      "stockInfo": "Tồn kho thực tế / Min - Max",
+      "stockInfo": "Tồn kho thực tế / Tối thiểu",
       "shortage": "Số lượng thiếu",
       "suggested": "Số lượng gợi ý",
       "priority": "Mức độ ưu tiên",

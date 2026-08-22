@@ -26,7 +26,8 @@ const props = defineProps({
 });
 
 const series = computed(() => {
-  const actualData = props.historical.map((p) => ({
+  const slicedHistorical = props.historical.slice(-365);
+  const actualData = slicedHistorical.map((p) => ({
     x: new Date(p.date).getTime(),
     y: p.quantity,
   }));
@@ -61,7 +62,7 @@ const chartOptions = computed(() => {
           color: "#fff",
           background: "#f59e0b",
         },
-        text: "Hôm nay / Mốc dự báo",
+        text: "Mốc dự báo",
       },
     });
   }

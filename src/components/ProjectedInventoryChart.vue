@@ -63,10 +63,12 @@ const breachInfo = computed(() => {
     const f = slicedForecast.value[i];
     stock = stock - f.quantity;
     if (stock < props.effectiveMinStock) {
+      const parts = f.date.split("-");
+      const formattedDate = parts.length === 3 ? `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}` : f.date;
       return {
         breached: true,
         date: f.date,
-        formattedDate: new Date(f.date).toLocaleDateString("vi-VN"),
+        formattedDate,
       };
     }
   }
