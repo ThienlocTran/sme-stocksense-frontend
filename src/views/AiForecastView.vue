@@ -473,7 +473,7 @@ const summaryText = computed(() => {
         </div>
       </div>
 
-      <!-- Replenishment Assignment (Later Action Area) -->
+      <!-- Replenishment Assignment (Later Action Area - Task 6 Assignment context) -->
       <div v-if="canRun" class="card card-pad mt-6">
         <h3 class="section-title">Giao nhiệm vụ bổ sung hàng</h3>
         <p class="text-sm text-zinc-500 mt-1">
