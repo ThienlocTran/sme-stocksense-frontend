@@ -618,6 +618,8 @@ const showNoStoreItemHistoryState = computed(() => {
 const isHistoryUnavailable = computed(() => {
   return forecast.value && (!forecast.value.dataDays || forecast.value.dataDays === 0 || !forecast.value.historical || forecast.value.historical.length === 0);
 });
+
+// Verify responsive check, light/dark mode support, and dropdown overflow safety.
 </script>
 
 <template>
