@@ -20,6 +20,7 @@ import {
   seedDemoHistory,
 } from "../services/forecastService";
 import { useAuthStore } from "../stores/auth";
+import { useForecastStore } from "../stores/forecast";
 import { canRunForecast } from "../services/permissionService";
 import { getForecastModeLabel, getDriftStatusLabel } from "../constants/forecastOptions";
 
@@ -30,31 +31,57 @@ defineOptions({
 const router = useRouter();
 const { t } = useI18n();
 const authStore = useAuthStore();
+const forecastStore = useForecastStore();
 
-const selectedSource = ref("EXTERNAL_STORE_ITEM");
+const selectedSource = ref(forecastStore.jobStatus !== 'IDLE' ? "SEED_DEMO" : "EXTERNAL_STORE_ITEM");
 const availableCombinations = ref([]);
 const isSeedingHistory = ref(false);
 const showSeedConfirmation = ref(false);
 
 async function handleSeedHistory() {
   showSeedConfirmation.value = false;
-  isSeedingHistory.value = true;
-  errorMessage.value = "";
-  successMessage.value = "";
   try {
-    const res = await seedDemoHistory();
-    const availRes = await getForecastAvailability("SEED_DEMO");
-    availableCombinations.value = availRes.combinations || [];
-    successMessage.value = t('forecast.seedSuccessMsg', { 
-      seeded: res.seriesSeeded, 
-      rows: res.rowsInserted 
-    });
+    await forecastStore.triggerSeed();
   } catch (error) {
-    errorMessage.value = error.message;
-  } finally {
-    isSeedingHistory.value = false;
+    // Handled in watcher
   }
 }
+
+watch(() => forecastStore.jobStatus, async (newStatus) => {
+  if (newStatus === 'COMPLETED') {
+    isSeedingHistory.value = false;
+    successMessage.value = t('forecast.seedSuccessMsg', {
+      seeded: forecastStore.seededCount,
+      rows: forecastStore.rowsCount
+    });
+    isLoadingDropdowns.value = true;
+    try {
+      const availRes = await getForecastAvailability("SEED_DEMO");
+      availableCombinations.value = availRes.combinations || [];
+    } catch (err) {
+      errorMessage.value = err.message;
+    } finally {
+      isLoadingDropdowns.value = false;
+    }
+    setTimeout(() => {
+      if (forecastStore.jobStatus === 'COMPLETED') {
+        forecastStore.clearState();
+      }
+    }, 5000);
+  } else if (newStatus === 'FAILED') {
+    isSeedingHistory.value = false;
+    errorMessage.value = forecastStore.jobErrorMessage;
+    setTimeout(() => {
+      if (forecastStore.jobStatus === 'FAILED') {
+        forecastStore.clearState();
+      }
+    }, 5000);
+  } else if (newStatus === 'RUNNING') {
+    isSeedingHistory.value = true;
+    errorMessage.value = "";
+    successMessage.value = "";
+  }
+});
 
 function sortByCode(a, b) {
   const codeA = (a.code || '').trim();
@@ -182,6 +209,19 @@ onMounted(async () => {
     availableCombinations.value = availabilityRes.combinations || [];
     if (canRun.value && employeePage) {
       employees.value = employeePage.content || [];
+    }
+
+    if (forecastStore.jobStatus === 'COMPLETED') {
+      successMessage.value = t('forecast.seedSuccessMsg', {
+        seeded: forecastStore.seededCount,
+        rows: forecastStore.rowsCount
+      });
+      forecastStore.clearState();
+    } else if (forecastStore.jobStatus === 'FAILED') {
+      errorMessage.value = forecastStore.jobErrorMessage;
+      forecastStore.clearState();
+    } else if (forecastStore.jobStatus === 'RUNNING') {
+      isSeedingHistory.value = true;
     }
   } catch (error) {
     errorMessage.value = error.message;
@@ -733,7 +773,7 @@ const isHistoryUnavailable = computed(() => {
         @click="showSeedConfirmation = true"
       >
         <i class="mdi mr-1" :class="isSeedingHistory ? 'mdi-loading mdi-spin' : 'mdi-database-import'"></i>
-        {{ t('forecast.button.seed') }}
+        {{ isSeedingHistory ? t('forecast.button.seeding') : t('forecast.button.seed') }}
       </button>
     </div>
   </div>

@@ -922,6 +922,7 @@
       "seed": "Seed Demo Data",
       "run": "Run Forecast",
       "running": "Running...",
+      "seeding": "Seeding...",
       "checkDrift": "Check Model Drift"
     },
     "filter": {

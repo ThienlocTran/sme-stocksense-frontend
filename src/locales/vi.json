@@ -929,6 +929,7 @@
       "seed": "Sinh dữ liệu demo",
       "run": "Dự báo ngay",
       "running": "Đang dự báo...",
+      "seeding": "Đang sinh dữ liệu...",
       "checkDrift": "Kiểm tra lệch mô hình"
     },
     "filter": {
