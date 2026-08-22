@@ -82,12 +82,21 @@ export function isAuthenticated() {
   return true
 }
 
+export function cleanRoleSuffix(name) {
+  if (!name) return ''
+  return name.replace(/\s*\((Employee|Admin|Manager)\)$/i, '')
+}
+
 export function getCurrentUser() {
   const storedUser = localStorage.getItem(AUTH_STORAGE_KEYS.currentUser)
   if (!storedUser) return null
 
   try {
-    return JSON.parse(storedUser)
+    const user = JSON.parse(storedUser)
+    if (user && user.fullName) {
+      user.fullName = cleanRoleSuffix(user.fullName)
+    }
+    return user
   } catch {
     clearAuth()
     return null
@@ -173,7 +182,7 @@ export function normalizeUserRole(user) {
 function storeAuth(response) {
   const currentUser = {
     employeeId: response.employeeId,
-    fullName: response.fullName,
+    fullName: cleanRoleSuffix(response.fullName),
     email: response.email,
     role: response.role,
     roleCode: response.roleCode,
