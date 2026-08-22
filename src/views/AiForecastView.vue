@@ -156,54 +156,9 @@ function driftBadgeVariant(status) {
   return t("forecast.drift.pending");
 }
 
-// Đường tồn kho dự kiến: 4 điểm neo đúng theo tốc độ tiêu thụ dự báo của từng mốc
-// (ngày 0 = hôm nay, dùng forecast7d/14d/30d để suy ra tồn kho còn lại tại mỗi mốc)
 const boundaryDateStr = computed(() => {
   const today = new Date();
   return today.toISOString().split("T")[0];
-});
-
-const simulatedHistorical = computed(() => {
-  if (!forecast.value) return [];
-  const points = [];
-  const today = new Date();
-  const baseDemand = Number(forecast.value.forecast30d ?? 90) / 30;
-
-  for (let i = 30; i > 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const factor = 0.7 + (i % 7) * 0.1;
-    points.push({
-      date: d.toISOString().split("T")[0],
-      quantity: Math.max(0, Math.round(baseDemand * factor)),
-    });
-  }
-  return points;
-});
-
-const simulatedForecast = computed(() => {
-  if (!forecast.value) return [];
-  const points = [];
-  const today = new Date();
-  const horizon = selectedHorizon.value;
-
-  let totalForecast = 0;
-  if (horizon === 7) totalForecast = Number(forecast.value.forecast7d ?? 20);
-  else if (horizon === 14) totalForecast = Number(forecast.value.forecast14d ?? 45);
-  else totalForecast = Number(forecast.value.forecast30d ?? 90);
-
-  const dailyAverage = totalForecast / horizon;
-
-  for (let i = 1; i <= horizon; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    const factor = 0.8 + (i % 5) * 0.1;
-    points.push({
-      date: d.toISOString().split("T")[0],
-      predictedQuantity: Math.round(dailyAverage * factor),
-    });
-  }
-  return points;
 });
 
 function openAssignmentModal() {
@@ -400,8 +355,8 @@ const summaryText = computed(() => {
     <div class="card card-pad chart-card mt-6">
       <h3 class="section-title">Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)</h3>
       <ActualForecastChart
-        :historical="simulatedHistorical"
-        :forecast="simulatedForecast"
+        :historical="[]"
+        :forecast="[]"
         :boundary-date="boundaryDateStr"
         :horizon-days="selectedHorizon"
       />
@@ -412,7 +367,7 @@ const summaryText = computed(() => {
       <h3 class="section-title">Dự báo diễn biến tồn kho (Projected Inventory)</h3>
       <ProjectedInventoryChart
         :current-stock="forecast.currentStock ?? 0"
-        :daily-forecast="simulatedForecast"
+        :daily-forecast="[]"
         :effective-min-stock="forecast.minStock ?? 0"
         :boundary-date="boundaryDateStr"
         :horizon-days="selectedHorizon"

@@ -110,7 +110,7 @@ const chartOptions = computed(() => {
 <template>
   <div class="actual-forecast-chart">
     <div v-if="!historical.length && !forecast.length" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700">
-      Không có dữ liệu thực tế và dự báo.
+      Chưa có dữ liệu dự báo theo ngày.
     </div>
     <ApexCharts v-else type="line" :options="chartOptions" :series="series" height="300" />
   </div>

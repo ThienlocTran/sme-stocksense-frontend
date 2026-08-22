@@ -138,20 +138,23 @@ const chartOptions = computed(() => {
 
 <template>
   <div class="projected-inventory-chart">
-    <!-- Safety/Breach Banner -->
-    <div v-if="breachInfo.breached" class="p-3 mb-4 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs font-semibold flex items-center gap-1.5">
-      <i class="mdi mdi-alert-circle text-red-500 text-base"></i>
-      <span>Cảnh báo: Tồn kho dự kiến sẽ giảm dưới mức tối thiểu an toàn vào ngày {{ breachInfo.formattedDate }}.</span>
-    </div>
-    <div v-else class="p-3 mb-4 bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-900/30 text-xs font-semibold flex items-center gap-1.5">
-      <i class="mdi mdi-check-circle text-green-500 text-base"></i>
-      <span>Tồn kho được dự báo ở mức an toàn trong suốt chu kỳ {{ horizonDays }} ngày tới.</span>
-    </div>
+    <template v-if="dailyForecast.length">
+      <!-- Safety/Breach Banner -->
+      <div v-if="breachInfo.breached" class="p-3 mb-4 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs font-semibold flex items-center gap-1.5">
+        <i class="mdi mdi-alert-circle text-red-500 text-base"></i>
+        <span>Cảnh báo: Tồn kho dự kiến sẽ giảm dưới mức tối thiểu an toàn vào ngày {{ breachInfo.formattedDate }}.</span>
+      </div>
+      <div v-else class="p-3 mb-4 bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-900/30 text-xs font-semibold flex items-center gap-1.5">
+        <i class="mdi mdi-check-circle text-green-500 text-base"></i>
+        <span>Tồn kho được dự báo ở mức an toàn trong suốt chu kỳ {{ horizonDays }} ngày tới.</span>
+      </div>
 
-    <!-- Chart -->
-    <div v-if="!dailyForecast.length" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700">
-      Không có dữ liệu dự báo để tính tồn kho dự kiến.
+      <!-- Chart -->
+      <ApexCharts type="line" :options="chartOptions" :series="series" height="300" />
+    </template>
+
+    <div v-else class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700">
+      Chưa có dữ liệu dự báo theo ngày.
     </div>
-    <ApexCharts v-else type="line" :options="chartOptions" :series="series" height="300" />
   </div>
 </template>
