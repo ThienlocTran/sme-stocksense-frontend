@@ -937,6 +937,25 @@
     "msg": {
       "seedSuccess": "Successfully seeded demo data for {products} product/warehouse pairs ({rows} rows)."
     },
+    "assignment": {
+      "selectEmployee": "-- Select Employee --",
+      "createSuccess": "Assignment has been created successfully.",
+      "emailSent": "Notification email has been successfully sent to the employee.",
+      "emailFailed": "Assignment has been created successfully, but sending the notification email failed.",
+      "emailPending": "Assignment has been created successfully, pending notification email sending.",
+      "error": "Failed to create purchase assignment.",
+      "retryEmail": "Resend email",
+      "retryingEmail": "Resending...",
+      "retrySuccess": "Resend email successfully!",
+      "retryFailed": "Failed to resend email.",
+      "code": "Assignment Code",
+      "receiver": "Receiver",
+      "resultTitle": "Task Assignment Result",
+      "status": "Status",
+      "emailStatus": "Email Status",
+      "aiQty": "AI Suggested Qty",
+      "reqQty": "Actual Requested Qty"
+    },
     "capacityAllowed": "Allowed (Capacity): ",
     "capacityLimitedDesc": "Warehouse capacity limited! Some reorder suggestions have been reduced to fit the remaining space."
   },

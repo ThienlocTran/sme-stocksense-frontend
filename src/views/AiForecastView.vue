@@ -544,8 +544,8 @@ const summaryText = computed(() => {
             <!-- Editable Form Fields -->
             <div class="field">
               <label class="field-label font-semibold">Nhân viên được phân công *</label>
-              <select v-model="selectedEmployeeId" class="select w-full mt-1" :disabled="isSubmittingAssignment">
-                <option value="">-- Chọn nhân viên --</option>
+              <select v-model="selectedEmployeeId" class="select w-full mt-1" :disabled="isSubmittingAssignment || assignmentResult !== null">
+                <option value="">{{ t('forecast.assignment.selectEmployee') }}</option>
                 <option v-for="emp in employees" :key="emp.id" :value="emp.id">
                   {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
                 </option>
@@ -554,7 +554,7 @@ const summaryText = computed(() => {
 
             <div class="field mt-3">
               <label class="field-label font-semibold">Số lượng yêu cầu thực tế *</label>
-              <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" :disabled="isSubmittingAssignment" />
+              <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" :disabled="isSubmittingAssignment || assignmentResult !== null" />
               <span class="text-xs text-zinc-500 mt-1 block">
                 AI đề xuất: {{ recommendation.suggestedQty }}. Bạn có thể điều chỉnh lại.
               </span>
@@ -566,11 +566,28 @@ const summaryText = computed(() => {
 
             <div class="field mt-3">
               <label class="field-label font-semibold">Lời nhắn / Chỉ thị bổ sung</label>
-              <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..." :disabled="isSubmittingAssignment"></textarea>
+              <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..." :disabled="isSubmittingAssignment || assignmentResult !== null"></textarea>
             </div>
 
-            <p v-if="assignmentErrorMessage" class="text-red-500 text-xs font-semibold mt-2">{{ assignmentErrorMessage }}</p>
-            <p v-if="assignmentSuccessMessage" class="text-green-600 text-xs font-semibold mt-2">{{ assignmentSuccessMessage }}</p>
+            <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs mt-2">
+              <i class="mdi mdi-alert-circle-outline mr-1"></i>
+              {{ assignmentErrorMessage }}
+            </div>
+
+            <div v-if="assignmentResult" class="mt-2 space-y-2">
+              <div v-if="assignmentResult.emailStatus === 'DA_GUI'" class="p-3 bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-900/30 text-xs">
+                <i class="mdi mdi-check-circle-outline mr-1"></i>
+                {{ t('forecast.assignment.createSuccess') }} {{ t('forecast.assignment.emailSent') }}
+              </div>
+              <div v-else-if="assignmentResult.emailStatus === 'THAT_BAI'" class="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-900/30 text-xs">
+                <i class="mdi mdi-alert-outline mr-1"></i>
+                {{ t('forecast.assignment.emailFailed') }}
+              </div>
+              <div v-else class="p-3 bg-zinc-50 dark:bg-zinc-800/20 text-zinc-800 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-800 text-xs">
+                <i class="mdi mdi-clock-outline mr-1"></i>
+                {{ t('forecast.assignment.emailPending') }}
+              </div>
+            </div>
           </div>
 
           <div class="modal-foot">
@@ -583,11 +600,11 @@ const summaryText = computed(() => {
             </button>
             <button
               class="btn btn-primary"
-              :disabled="isSubmittingAssignment"
+              :disabled="isSubmittingAssignment || assignmentResult !== null"
               @click="submitAssignment"
             >
               <i v-if="isSubmittingAssignment" class="mdi mdi-loading mdi-spin mr-1"></i>
-              Giao việc
+              {{ assignmentResult !== null ? 'Đã phân công' : 'Giao việc' }}
             </button>
           </div>
         </div>

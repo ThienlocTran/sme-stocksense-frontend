@@ -944,6 +944,25 @@
     "msg": {
       "seedSuccess": "Đã sinh dữ liệu demo cho {products} cặp sản phẩm/kho ({rows} dòng)."
     },
+    "assignment": {
+      "selectEmployee": "-- Chọn nhân viên --",
+      "createSuccess": "Phân công đã được tạo thành công.",
+      "emailSent": "Đã gửi email thông báo thành công cho nhân viên.",
+      "emailFailed": "Phân công đã được tạo thành công, nhưng gửi email thông báo thất bại.",
+      "emailPending": "Phân công đã được tạo thành công, đang chờ gửi email thông báo.",
+      "error": "Không thể tạo phân công mua hàng.",
+      "retryEmail": "Gửi lại email",
+      "retryingEmail": "Đang gửi lại...",
+      "retrySuccess": "Gửi lại email thành công!",
+      "retryFailed": "Gửi lại email thất bại.",
+      "code": "Mã phân công",
+      "receiver": "Nhân viên nhận",
+      "resultTitle": "Kết quả phân công công việc",
+      "status": "Trạng thái",
+      "emailStatus": "Trạng thái Email",
+      "aiQty": "Số lượng AI đề xuất",
+      "reqQty": "Số lượng yêu cầu thực tế"
+    },
     "capacityAllowed": "Duyệt (Sức chứa): ",
     "capacityLimitedDesc": "Sức chứa kho bị giới hạn! Một số đề xuất đã được giảm để phù hợp với không gian trống của kho."
   },
