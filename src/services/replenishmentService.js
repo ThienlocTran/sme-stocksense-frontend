@@ -30,6 +30,22 @@ export async function getReplenishmentSuggestions({ page = 0, size = 20, keyword
   }
 }
 
+export async function getReplenishmentRecommendation(productId, warehouseId, horizonDays) {
+  try {
+    const { data } = await replenishmentClient.get('/api/replenishment-suggestions/recommendation', {
+      headers: getAuthorizationHeader(),
+      params: {
+        productId,
+        warehouseId,
+        horizonDays,
+      },
+    })
+    return data
+  } catch (error) {
+    throw normalizeReplenishmentError(error, 'Không thể tải đề xuất bổ sung hàng.')
+  }
+}
+
 function normalizeReplenishmentError(error, fallbackMessage) {
   const status = error.response?.status
 
