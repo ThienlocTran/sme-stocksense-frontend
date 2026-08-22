@@ -641,56 +641,68 @@ const isHistoryUnavailable = computed(() => {
         {{ t('forecast.helpText.' + (selectedSource === 'EXTERNAL_STORE_ITEM' ? 'externalStoreItem' : (selectedSource === 'SEED_DEMO' ? 'demo' : 'actual'))) }}
       </span>
     </div>
-    <div class="selector-field">
-      <label class="field-label">{{ t("forecast.filter.product") }}</label>
-      <select v-model="selectedProductId" class="select" :disabled="isLoadingDropdowns">
-        <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingProduct") : t("forecast.filter.selectProduct") }}</option>
-        <option v-for="product in products" :key="product.id" :value="product.id">
-          {{ product.code || product.maSanPham }} - {{ product.name || product.tenSanPham }}
-        </option>
-      </select>
-    </div>
-    <div class="selector-field">
-      <label class="field-label">{{ t("forecast.filter.warehouse") }}</label>
-      <select v-model="selectedWarehouseId" class="select" :disabled="isLoadingDropdowns">
-        <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingWarehouse") : t("forecast.filter.selectWarehouse") }}</option>
-        <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-          {{ warehouse.code || warehouse.maKho }} - {{ warehouse.name || warehouse.tenKho }}
-        </option>
-      </select>
-    </div>
-    <div class="selector-field">
-      <label class="field-label">{{ t('forecast.horizonLabel') }}</label>
-      <select v-model="selectedHorizon" class="select" :disabled="isLoadingDropdowns">
-        <option :value="7">{{ t('forecast.daysCount', { days: 7 }) }}</option>
-        <option :value="14">{{ t('forecast.daysCount', { days: 14 }) }}</option>
-        <option :value="30">{{ t('forecast.daysCount', { days: 30 }) }}</option>
-      </select>
-    </div>
-    <div class="selector-actions">
-      <button
-        v-if="canRun"
-        class="btn btn-primary"
-        type="button"
-        :disabled="!canSelect || isRunningForecast"
-        @click="handleRunForecast"
-      >
-        <i class="mdi" :class="isRunningForecast ? 'mdi-loading mdi-spin' : 'mdi-chart-timeline-variant'"></i>
-        {{ isRunningForecast ? t("forecast.button.running") : t("forecast.button.run") }}
-      </button>
-      <button
-        v-if="canRun"
-        class="btn btn-secondary"
-        type="button"
-        :disabled="!canSelect || isCheckingDrift"
-        @click="handleCheckDrift"
-      >
-        <i class="mdi" :class="isCheckingDrift ? 'mdi-loading mdi-spin' : 'mdi-radar'"></i>
-        {{ t("forecast.button.checkDrift") }}
-      </button>
-    </div>
+    <template v-if="selectedSource !== 'THUC_TE' || availableCombinations.length > 0">
+      <div class="selector-field">
+        <label class="field-label">{{ t("forecast.filter.product") }}</label>
+        <select v-model="selectedProductId" class="select" :disabled="isLoadingDropdowns">
+          <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingProduct") : t("forecast.filter.selectProduct") }}</option>
+          <option v-for="product in products" :key="product.id" :value="product.id">
+            {{ product.code || product.maSanPham }} - {{ product.name || product.tenSanPham }}
+          </option>
+        </select>
+      </div>
+      <div class="selector-field">
+        <label class="field-label">{{ t("forecast.filter.warehouse") }}</label>
+        <select v-model="selectedWarehouseId" class="select" :disabled="isLoadingDropdowns">
+          <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingWarehouse") : t("forecast.filter.selectWarehouse") }}</option>
+          <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
+            {{ warehouse.code || warehouse.maKho }} - {{ warehouse.name || warehouse.tenKho }}
+          </option>
+        </select>
+      </div>
+      <div class="selector-field">
+        <label class="field-label">{{ t('forecast.horizonLabel') }}</label>
+        <select v-model="selectedHorizon" class="select" :disabled="isLoadingDropdowns">
+          <option :value="7">{{ t('forecast.daysCount', { days: 7 }) }}</option>
+          <option :value="14">{{ t('forecast.daysCount', { days: 14 }) }}</option>
+          <option :value="30">{{ t('forecast.daysCount', { days: 30 }) }}</option>
+        </select>
+      </div>
+      <div class="selector-actions">
+        <button
+          v-if="canRun"
+          class="btn btn-primary"
+          type="button"
+          :disabled="!canSelect || isRunningForecast"
+          @click="handleRunForecast"
+        >
+          <i class="mdi" :class="isRunningForecast ? 'mdi-loading mdi-spin' : 'mdi-chart-timeline-variant'"></i>
+          {{ isRunningForecast ? t("forecast.button.running") : t("forecast.button.run") }}
+        </button>
+        <button
+          v-if="canRun"
+          class="btn btn-secondary"
+          type="button"
+          :disabled="!canSelect || isCheckingDrift"
+          @click="handleCheckDrift"
+        >
+          <i class="mdi" :class="isCheckingDrift ? 'mdi-loading mdi-spin' : 'mdi-radar'"></i>
+          {{ t("forecast.button.checkDrift") }}
+        </button>
+      </div>
+    </template>
   </div>
 
+  <template v-if="selectedSource === 'THUC_TE' && availableCombinations.length === 0">
+    <div class="card card-pad mt-6">
+      <EmptyState
+        icon="mdi-database-off-outline"
+        :title="t('forecast.empty.actualNoDataTitle')"
+        :description="t('forecast.empty.actualNoDataDesc')"
+      />
+    </div>
+  </template>
+  <template v-else>
   <!-- Standalone card for Demo Seeding action (Task 3) -->
   <div v-if="selectedSource === 'SEED_DEMO'" class="card card-pad mb-6 flex items-center justify-between gap-4 flex-wrap bg-zinc-50/50 dark:bg-zinc-800/10 border-dashed border-indigo-200 dark:border-indigo-900/30">
     <div class="flex-1 min-w-[280px]">
@@ -1182,6 +1194,7 @@ const isHistoryUnavailable = computed(() => {
         <span>{{ t('forecast.drift.rules.driftAction') }}</span>
       </div>
     </div>
+  </template>
   <ConfirmDialog
     :open="showSeedConfirmation"
     :title="t('forecast.seedConfirmationTitle')"
