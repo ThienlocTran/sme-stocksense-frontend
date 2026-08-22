@@ -11,6 +11,7 @@ import ProjectedInventoryChart from "../components/ProjectedInventoryChart.vue";
 import { getProducts } from "../services/productService";
 import { getWarehouses } from "../services/warehouseService";
 import { getEmployees } from "../services/employeeService";
+import { getReplenishmentRecommendation } from "../services/replenishmentService";
 import {
   checkDrift,
   getForecast,
@@ -46,6 +47,8 @@ const isLoadingDropdowns = ref(false);
 const isRunningForecast = ref(false);
 const isLoadingForecast = ref(false);
 const isCheckingDrift = ref(false);
+const recommendation = ref(null);
+const isLoadingRecommendation = ref(false);
 
 const forecast = ref(null);
 const drift = ref(null);
@@ -87,6 +90,7 @@ async function loadDropdowns() {
 watch([selectedProductId, selectedWarehouseId], async ([productId, warehouseId]) => {
   forecast.value = null;
   drift.value = null;
+  recommendation.value = null;
   errorMessage.value = "";
   if (!productId || !warehouseId) {
     return;
@@ -94,17 +98,49 @@ watch([selectedProductId, selectedWarehouseId], async ([productId, warehouseId])
   await loadCachedForecast();
 });
 
+watch(selectedHorizon, async () => {
+  if (forecast.value) {
+    await loadRecommendation();
+  }
+});
+
+async function loadRecommendation() {
+  if (!selectedProductId.value || !selectedWarehouseId.value || !selectedHorizon.value) {
+    recommendation.value = null;
+    return;
+  }
+  isLoadingRecommendation.value = true;
+  try {
+    recommendation.value = await getReplenishmentRecommendation(
+      selectedProductId.value,
+      selectedWarehouseId.value,
+      selectedHorizon.value
+    );
+  } catch (error) {
+    console.error("Failed to load recommendation:", error);
+    recommendation.value = null;
+  } finally {
+    isLoadingRecommendation.value = false;
+  }
+}
+
 async function loadCachedForecast() {
   isLoadingForecast.value = true;
   errorMessage.value = "";
   try {
     forecast.value = await getForecast(selectedProductId.value, selectedWarehouseId.value);
+    if (forecast.value) {
+      await loadRecommendation();
+    } else {
+      recommendation.value = null;
+    }
   } catch (error) {
     errorMessage.value = error.message;
     if (error.status === 401) {
       router.replace("/login");
     }
     forecast.value = null;
+    recommendation.value = null;
   } finally {
     isLoadingForecast.value = false;
   }
@@ -116,11 +152,17 @@ async function handleRunForecast() {
   errorMessage.value = "";
   try {
     forecast.value = await runForecast(selectedProductId.value, selectedWarehouseId.value);
+    if (forecast.value) {
+      await loadRecommendation();
+    } else {
+      recommendation.value = null;
+    }
   } catch (error) {
     errorMessage.value = error.message;
     if (error.status === 401) {
       router.replace("/login");
     }
+    recommendation.value = null;
   } finally {
     isRunningForecast.value = false;
   }
@@ -163,11 +205,7 @@ const boundaryDateStr = computed(() => {
 
 function openAssignmentModal() {
   selectedEmployeeId.value = "";
-  humanRequestedQuantity.value = selectedHorizon.value === 7
-    ? (forecast.value?.reorderQty7d ?? 0)
-    : selectedHorizon.value === 14
-      ? (forecast.value?.reorderQty14d ?? 0)
-      : (forecast.value?.reorderQty30d ?? 0);
+  humanRequestedQuantity.value = recommendation.value ? recommendation.value.suggestedQty : 0;
   assignmentContent.value = `Thực hiện bổ sung hàng cho sản phẩm theo đề xuất từ AI dự báo ${selectedHorizon.value} ngày.`;
   assignmentErrorMessage.value = "";
   assignmentSuccessMessage.value = "";
@@ -197,6 +235,21 @@ function submitLocalAssignment() {
 // Câu tóm tắt bằng lời cho người không rành số liệu vẫn hiểu ngay.
 const summaryText = computed(() => {
   if (!forecast.value) return "";
+
+  if (recommendation.value) {
+    const rec = recommendation.value;
+    if (rec.rawSuggestedQty === 0) {
+      return `Tồn kho hiện tại (${formatNumber(rec.currentStock)}) đủ đáp ứng nhu cầu bán hàng dự báo (${formatNumber(rec.forecastDemand)}) trong ${selectedHorizon.value} ngày tới.`;
+    }
+    if (rec.rawSuggestedQty > 0 && rec.suggestedQty === 0) {
+      return `Cần bổ sung thêm ${formatNumber(rec.rawSuggestedQty)} sản phẩm, nhưng do dung tích kho đã đầy (Dung tích còn trống: ${formatNumber(rec.warehouseAvailableM3)} m³), hệ thống không đề xuất nhập thêm.`;
+    }
+    if (rec.capacityLimited) {
+      return `Hạn chế dung tích kho: Nhu cầu thực tế cần ${formatNumber(rec.rawSuggestedQty)} sản phẩm, nhưng hệ thống đề xuất nhập tối đa ${formatNumber(rec.suggestedQty)} sản phẩm. Thiếu hụt: ${formatNumber(rec.capacityShortfallQty)} sản phẩm.`;
+    }
+    return `Đề xuất bổ sung ${formatNumber(rec.suggestedQty)} sản phẩm để đáp ứng nhu cầu dự báo và duy trì tồn kho an toàn.`;
+  }
+
   const rate = Number(forecast.value.forecast30d ?? 0);
   const stock = forecast.value.currentStock ?? 0;
   const minStock = forecast.value.minStock ?? 0;
@@ -211,9 +264,6 @@ const summaryText = computed(() => {
   } else {
     const daysUntilMin = Math.max(0, Math.floor((stock - minStock) / rate));
     text = t("forecast.summary.normal", { rate: rateText, stock: formatNumber(stock), days: daysUntilMin, min: formatNumber(minStock) });
-  }
-  if (forecast.value.capacityLimited7d || forecast.value.capacityLimited14d || forecast.value.capacityLimited30d) {
-    text += " ⚠️ " + t('forecast.capacityLimitedDesc');
   }
   return text;
 });
@@ -323,169 +373,204 @@ const summaryText = computed(() => {
       </div>
     </div>
 
-    <!-- Summary Statistics Grid -->
-    <div class="stat-grid mt-6">
-      <div class="card card-pad stat-card">
-        <span class="stat-label">Dự báo nhu cầu ({{ selectedHorizon }} ngày)</span>
-        <strong class="stat-value">
-          {{ selectedHorizon === 7 ? formatNumber(forecast.forecast7d) : selectedHorizon === 14 ? formatNumber(forecast.forecast14d) : formatNumber(forecast.forecast30d) }}
-        </strong>
-        <span class="text-xs text-[var(--color-text-secondary)] mt-1">Tổng nhu cầu bán hàng dự kiến</span>
-      </div>
-      <div class="card card-pad stat-card">
-        <span class="stat-label">Tồn kho hiện tại</span>
-        <strong class="stat-value">{{ formatNumber(forecast.currentStock) }}</strong>
-        <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t("forecast.stats.minStockNote", { min: formatNumber(forecast.minStock) }) }}</span>
-      </div>
-      <div class="card card-pad stat-card">
-        <span class="stat-label">Ngưỡng tồn kho tối thiểu</span>
-        <strong class="stat-value text-red-500">{{ formatNumber(forecast.minStock) }}</strong>
-        <span class="text-xs text-[var(--color-text-secondary)] mt-1">Điểm kích hoạt bổ sung hàng</span>
-      </div>
-      <div class="card card-pad stat-card">
-        <span class="stat-label">Đề xuất bổ sung</span>
-        <strong class="stat-value" :class="{ 'text-amber-500': (selectedHorizon === 7 ? forecast.reorderQty7d : selectedHorizon === 14 ? forecast.reorderQty14d : forecast.reorderQty30d) > 0 }">
-          {{ selectedHorizon === 7 ? formatNumber(forecast.reorderQty7d) : selectedHorizon === 14 ? formatNumber(forecast.reorderQty14d) : formatNumber(forecast.reorderQty30d) }}
-        </strong>
-        <span class="text-xs text-[var(--color-text-secondary)] mt-1">Số lượng hệ thống đề xuất nhập</span>
-      </div>
+    <!-- Recommendation Loading / Empty / Loaded States -->
+    <div v-if="isLoadingRecommendation" class="inventory-loading card card-pad mt-6">
+      <i class="mdi mdi-loading mdi-spin mr-1"></i>
+      <span>Đang tải đề xuất bổ sung hàng từ AI...</span>
     </div>
 
-    <!-- Chart A: Actual vs Forecast -->
-    <div class="card card-pad chart-card mt-6">
-      <h3 class="section-title">Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)</h3>
-      <ActualForecastChart
-        :historical="[]"
-        :forecast="[]"
-        :boundary-date="boundaryDateStr"
-        :horizon-days="selectedHorizon"
-      />
+    <div v-else-if="!recommendation" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700 mt-6">
+      <i class="mdi mdi-alert-circle-outline text-3xl text-zinc-400 block mb-2"></i>
+      Chưa có đề xuất bổ sung cho sản phẩm/kho này.
     </div>
 
-    <!-- Chart B: Projected Inventory -->
-    <div class="card card-pad chart-card mt-6">
-      <h3 class="section-title">Dự báo diễn biến tồn kho (Projected Inventory)</h3>
-      <ProjectedInventoryChart
-        :current-stock="forecast.currentStock ?? 0"
-        :daily-forecast="[]"
-        :effective-min-stock="forecast.minStock ?? 0"
-        :boundary-date="boundaryDateStr"
-        :horizon-days="selectedHorizon"
-      />
-    </div>
-
-    <!-- Recommendation Detail & Capacity Warnings -->
-    <div class="card card-pad chart-card mt-6">
-      <h3 class="section-title">Chi tiết đề xuất & Dung tích kho hàng</h3>
-      <div class="py-2 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
-        <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-          <span>Tổng lượng hàng cần nhập (Raw Need):</span>
-          <strong>{{ selectedHorizon === 7 ? formatNumber(forecast.reorderQty7d) : selectedHorizon === 14 ? formatNumber(forecast.reorderQty14d) : formatNumber(forecast.reorderQty30d) }}</strong>
+    <template v-else>
+      <!-- Summary Statistics Grid -->
+      <div class="stat-grid mt-6">
+        <div class="card card-pad stat-card">
+          <span class="stat-label">Dự báo nhu cầu ({{ selectedHorizon }} ngày)</span>
+          <strong class="stat-value">{{ formatNumber(recommendation.forecastDemand) }}</strong>
+          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Tổng nhu cầu bán hàng dự kiến</span>
         </div>
-        <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-          <span>Giới hạn dung tích kho cho phép:</span>
-          <strong>
-            {{ selectedHorizon === 7 ? (forecast.capacityLimited7d ? formatNumber(forecast.capacityAllowedQuantity7d) : 'Không giới hạn') : selectedHorizon === 14 ? (forecast.capacityLimited14d ? formatNumber(forecast.capacityAllowedQuantity14d) : 'Không giới hạn') : (forecast.capacityLimited30d ? formatNumber(forecast.capacityAllowedQuantity30d) : 'Không giới hạn') }}
+        <div class="card card-pad stat-card">
+          <span class="stat-label">Tồn kho hiện tại</span>
+          <strong class="stat-value">{{ formatNumber(recommendation.currentStock) }}</strong>
+          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Ngưỡng tối thiểu: {{ formatNumber(recommendation.effectiveMinStock) }}</span>
+        </div>
+        <div class="card card-pad stat-card">
+          <span class="stat-label">Nhu cầu bổ sung (Raw Need)</span>
+          <strong class="stat-value" :class="{ 'text-amber-500': recommendation.rawSuggestedQty > 0 }">
+            {{ formatNumber(recommendation.rawSuggestedQty) }}
           </strong>
+          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Lượng cần nhập theo định mức an toàn</span>
         </div>
-        <div v-if="selectedHorizon === 7 ? forecast.capacityLimited7d : selectedHorizon === 14 ? forecast.capacityLimited14d : forecast.capacityLimited30d" class="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-900/30 text-xs">
-          <i class="mdi mdi-alert mr-1"></i>
-          Cảnh báo: Lượng hàng đề xuất bổ sung vượt quá dung tích còn trống của kho hàng.
+        <div class="card card-pad stat-card">
+          <span class="stat-label">Đề xuất thực tế (AI)</span>
+          <strong class="stat-value" :class="{
+            'text-green-500': recommendation.suggestedQty > 0,
+            'text-red-500': recommendation.suggestedQty === 0 && recommendation.rawSuggestedQty > 0
+          }">
+            {{ formatNumber(recommendation.suggestedQty) }}
+          </strong>
+          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Lượng duyệt sau khi kiểm tra dung tích</span>
         </div>
       </div>
-    </div>
 
-    <!-- Replenishment Assignment (Later Action Area) -->
-    <div v-if="canRun" class="card card-pad mt-6">
-      <h3 class="section-title">Giao nhiệm vụ bổ sung hàng</h3>
-      <p class="text-sm text-zinc-500 mt-1">
-        Bàn giao nhiệm vụ bổ sung hàng dựa trên đề xuất số lượng từ AI.
-      </p>
-      <div class="mt-4">
-        <button
-          class="btn btn-primary"
-          type="button"
-          @click="openAssignmentModal"
-        >
-          <i class="mdi mdi-account-plus-outline mr-1"></i>
-          Tạo phân công công việc
-        </button>
+      <!-- Chart A: Actual vs Forecast -->
+      <div class="card card-pad chart-card mt-6">
+        <h3 class="section-title">Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)</h3>
+        <ActualForecastChart
+          :historical="[]"
+          :forecast="[]"
+          :boundary-date="boundaryDateStr"
+          :horizon-days="selectedHorizon"
+        />
       </div>
-    </div>
 
-    <!-- Assignment Modal -->
-    <div
-      v-if="showAssignmentModal"
-      class="modal-backdrop"
-      @click.self="showAssignmentModal = false"
-    >
-      <div class="modal">
-        <div class="modal-head between">
-          <div>
-            <h2 class="section-title">Giao nhiệm vụ bổ sung hàng</h2>
-            <p class="modal-subtitle">Bàn giao công việc xử lý bổ sung kho hàng</p>
+      <!-- Chart B: Projected Inventory -->
+      <div class="card card-pad chart-card mt-6">
+        <h3 class="section-title">Dự báo diễn biến tồn kho (Projected Inventory)</h3>
+        <ProjectedInventoryChart
+          :current-stock="recommendation.currentStock"
+          :daily-forecast="[]"
+          :effective-min-stock="recommendation.effectiveMinStock"
+          :boundary-date="boundaryDateStr"
+          :horizon-days="selectedHorizon"
+        />
+      </div>
+
+      <!-- Recommendation Detail & Capacity Warnings -->
+      <div class="card card-pad chart-card mt-6">
+        <h3 class="section-title">Chi tiết đề xuất & Dung tích kho hàng</h3>
+        <div class="py-2 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
+          <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+            <span>Nhu cầu bổ sung theo định mức (Raw Need):</span>
+            <strong>{{ formatNumber(recommendation.rawSuggestedQty) }} sản phẩm</strong>
           </div>
-          <button
-            class="btn btn-icon"
-            @click="showAssignmentModal = false"
-          >
-            <i class="mdi mdi-close"></i>
-          </button>
+          <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+            <span>Số lượng AI đề xuất nhập:</span>
+            <strong>{{ formatNumber(recommendation.suggestedQty) }} sản phẩm</strong>
+          </div>
+          <div v-if="recommendation.capacityLimited" class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800 text-red-500 font-semibold">
+            <span>Thiếu hụt do dung tích kho đầy (Shortfall):</span>
+            <strong>{{ formatNumber(recommendation.capacityShortfallQty) }} sản phẩm</strong>
+          </div>
+
+          <div class="pt-2 border-t border-zinc-200 dark:border-zinc-800">
+            <h4 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Trạng thái dung tích kho</h4>
+            <div class="grid grid-cols-2 gap-4 text-xs">
+              <div>Tổng dung tích kho: <strong>{{ formatNumber(recommendation.warehouseCapacityM3) }} m³</strong></div>
+              <div>Dung tích đã sử dụng: <strong>{{ formatNumber(recommendation.warehouseOccupiedM3) }} m³</strong></div>
+              <div>Dung tích còn trống: <strong>{{ formatNumber(recommendation.warehouseAvailableM3) }} m³</strong></div>
+              <div>Khả năng nhận tối đa sản phẩm này: <strong>{{ formatNumber(recommendation.maxAdditionalUnitsByCapacity) }} sản phẩm</strong></div>
+            </div>
+          </div>
+
+          <div v-if="recommendation.capacityWarning" class="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-900/30 text-xs">
+            <i class="mdi mdi-alert mr-1"></i>
+            {{ recommendation.capacityWarning }}
+          </div>
         </div>
+      </div>
 
-        <div class="modal-body space-y-4">
-          <!-- Read-only Context Info -->
-          <div class="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
-            <div>Sản phẩm: <strong>{{ products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }}</strong></div>
-            <div>Kho hàng: <strong>{{ warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }}</strong></div>
-            <div>Chu kỳ dự báo: <strong>{{ selectedHorizon }} ngày</strong></div>
-            <div>Số lượng đề xuất từ AI: <strong class="text-zinc-900 dark:text-zinc-100">{{ selectedHorizon === 7 ? forecast.reorderQty7d : selectedHorizon === 14 ? forecast.reorderQty14d : forecast.reorderQty30d }}</strong></div>
-          </div>
-
-          <!-- Editable Form Fields -->
-          <div class="field">
-            <label class="field-label font-semibold">Nhân viên được phân công *</label>
-            <select v-model="selectedEmployeeId" class="select w-full mt-1">
-              <option value="">-- Chọn nhân viên --</option>
-              <option v-for="emp in employees" :key="emp.id" :value="emp.id">
-                {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
-              </option>
-            </select>
-          </div>
-
-          <div class="field mt-3">
-            <label class="field-label font-semibold">Số lượng yêu cầu thực tế *</label>
-            <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" />
-            <span class="text-xs text-zinc-500 mt-1 block">
-              AI đề xuất: {{ selectedHorizon === 7 ? forecast.reorderQty7d : selectedHorizon === 14 ? forecast.reorderQty14d : forecast.reorderQty30d }}. Bạn có thể điều chỉnh lại.
-            </span>
-          </div>
-
-          <div class="field mt-3">
-            <label class="field-label font-semibold">Lời nhắn / Chỉ thị bổ sung</label>
-            <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..."></textarea>
-          </div>
-
-          <p v-if="assignmentErrorMessage" class="text-red-500 text-xs font-semibold mt-2">{{ assignmentErrorMessage }}</p>
-          <p v-if="assignmentSuccessMessage" class="text-green-600 text-xs font-semibold mt-2">{{ assignmentSuccessMessage }}</p>
-        </div>
-
-        <div class="modal-foot">
-          <button
-            class="btn btn-ghost"
-            @click="showAssignmentModal = false"
-          >
-            Hủy
-          </button>
+      <!-- Replenishment Assignment (Later Action Area) -->
+      <div v-if="canRun" class="card card-pad mt-6">
+        <h3 class="section-title">Giao nhiệm vụ bổ sung hàng</h3>
+        <p class="text-sm text-zinc-500 mt-1">
+          Bàn giao nhiệm vụ bổ sung hàng dựa trên đề xuất số lượng từ AI.
+        </p>
+        <div class="mt-4">
           <button
             class="btn btn-primary"
-            @click="submitLocalAssignment"
+            type="button"
+            @click="openAssignmentModal"
           >
-            Giao việc
+            <i class="mdi mdi-account-plus-outline mr-1"></i>
+            Tạo phân công công việc
           </button>
         </div>
       </div>
-    </div>
+
+      <!-- Assignment Modal -->
+      <div
+        v-if="showAssignmentModal"
+        class="modal-backdrop"
+        @click.self="showAssignmentModal = false"
+      >
+        <div class="modal">
+          <div class="modal-head between">
+            <div>
+              <h2 class="section-title">Giao nhiệm vụ bổ sung hàng</h2>
+              <p class="modal-subtitle">Bàn giao công việc xử lý bổ sung kho hàng</p>
+            </div>
+            <button
+              class="btn btn-icon"
+              @click="showAssignmentModal = false"
+            >
+              <i class="mdi mdi-close"></i>
+            </button>
+          </div>
+
+          <div class="modal-body space-y-4">
+            <!-- Read-only Context Info -->
+            <div class="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
+              <div>Sản phẩm: <strong>{{ products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }}</strong></div>
+              <div>Kho hàng: <strong>{{ warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }}</strong></div>
+              <div>Chu kỳ dự báo: <strong>{{ selectedHorizon }} ngày</strong></div>
+              <div>Số lượng đề xuất từ AI: <strong class="text-zinc-900 dark:text-zinc-100">{{ recommendation.suggestedQty }}</strong></div>
+              <div v-if="recommendation.rawSuggestedQty !== recommendation.suggestedQty" class="text-zinc-500">Nhu cầu bổ sung thực tế (Raw Need): <strong>{{ recommendation.rawSuggestedQty }}</strong></div>
+              <div v-if="recommendation.capacityWarning" class="text-amber-600 dark:text-amber-400 font-semibold mt-1">⚠️ Cảnh báo dung tích: {{ recommendation.capacityWarning }}</div>
+            </div>
+
+            <!-- Editable Form Fields -->
+            <div class="field">
+              <label class="field-label font-semibold">Nhân viên được phân công *</label>
+              <select v-model="selectedEmployeeId" class="select w-full mt-1">
+                <option value="">-- Chọn nhân viên --</option>
+                <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                  {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
+                </option>
+              </select>
+            </div>
+
+            <div class="field mt-3">
+              <label class="field-label font-semibold">Số lượng yêu cầu thực tế *</label>
+              <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" />
+              <span class="text-xs text-zinc-500 mt-1 block">
+                AI đề xuất: {{ recommendation.suggestedQty }}. Bạn có thể điều chỉnh lại.
+              </span>
+              <div v-if="humanRequestedQuantity > recommendation.suggestedQty" class="p-2 mt-1 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded text-xs border border-amber-200 dark:border-amber-900/30">
+                <i class="mdi mdi-information-outline mr-0.5"></i>
+                Lưu ý: Số lượng yêu cầu vượt quá đề xuất của AI (Số lượng AI đề xuất: {{ recommendation.suggestedQty }}). Vui lòng đảm bảo kho hàng có thể tiếp nhận.
+              </div>
+            </div>
+
+            <div class="field mt-3">
+              <label class="field-label font-semibold">Lời nhắn / Chỉ thị bổ sung</label>
+              <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..."></textarea>
+            </div>
+
+            <p v-if="assignmentErrorMessage" class="text-red-500 text-xs font-semibold mt-2">{{ assignmentErrorMessage }}</p>
+            <p v-if="assignmentSuccessMessage" class="text-green-600 text-xs font-semibold mt-2">{{ assignmentSuccessMessage }}</p>
+          </div>
+
+          <div class="modal-foot">
+            <button
+              class="btn btn-ghost"
+              @click="showAssignmentModal = false"
+            >
+              Hủy
+            </button>
+            <button
+              class="btn btn-primary"
+              @click="submitLocalAssignment"
+            >
+              Giao việc
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <!-- Drift Card (Drift/Model Drift check results) -->
     <div v-if="drift" class="card card-pad drift-card mt-6">
