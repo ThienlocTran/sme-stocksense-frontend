@@ -309,6 +309,19 @@ const summaryText = computed(() => {
   }
   return text;
 });
+
+const displaySource = computed(() => {
+  if (!forecast.value || !forecast.value.source) return "-";
+  if (forecast.value.source === "EXTERNAL_RETAIL") {
+    return "External Retail Benchmark";
+  }
+  return forecast.value.source;
+});
+
+const displayDatasetType = computed(() => {
+  if (!forecast.value || !forecast.value.datasetType) return "-";
+  return forecast.value.datasetType;
+});
 </script>
 
 <template>
@@ -405,7 +418,13 @@ const summaryText = computed(() => {
             <span v-else>
               {{ t("forecast.stats.dataDaysNote", { days: formatNumber(forecast.dataDays) }) }}
             </span>
-            | Độ lệch mô hình (sMAPE): <strong>{{ formatNumber(forecast.smape) }}%</strong>
+            | sMAPE: <strong>{{ formatNumber(forecast.smape) }}%</strong>
+            <span v-if="forecast.mae !== null && forecast.mae !== undefined"> | MAE: <strong>{{ formatNumber(forecast.mae) }}</strong></span>
+            <span v-if="forecast.rmse !== null && forecast.rmse !== undefined"> | RMSE: <strong>{{ formatNumber(forecast.rmse) }}</strong></span>
+          </p>
+          <p class="text-xs text-zinc-500 mt-1">
+            Nguồn dữ liệu: <strong>{{ displaySource }}</strong>
+            <span v-if="forecast.datasetType"> | Loại dữ liệu: <strong>{{ displayDatasetType }}</strong></span>
           </p>
         </div>
         <p class="summary-banner mb-0 self-stretch md:self-auto flex-1 md:flex-initial">
@@ -462,8 +481,8 @@ const summaryText = computed(() => {
       <div class="card card-pad chart-card mt-6">
         <h3 class="section-title">Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)</h3>
         <ActualForecastChart
-          :historical="[]"
-          :forecast="[]"
+          :historical="forecast.historical || []"
+          :forecast="forecast.dailyForecast || []"
           :boundary-date="boundaryDateStr"
           :horizon-days="selectedHorizon"
         />
@@ -474,7 +493,7 @@ const summaryText = computed(() => {
         <h3 class="section-title">Dự báo diễn biến tồn kho (Projected Inventory)</h3>
         <ProjectedInventoryChart
           :current-stock="recommendation.currentStock"
-          :daily-forecast="[]"
+          :daily-forecast="forecast.dailyForecast || []"
           :effective-min-stock="recommendation.effectiveMinStock"
           :boundary-date="boundaryDateStr"
           :horizon-days="selectedHorizon"

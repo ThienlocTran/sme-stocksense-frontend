@@ -29,6 +29,10 @@ const props = defineProps({
   },
 });
 
+const slicedForecast = computed(() => {
+  return props.dailyForecast.slice(0, props.horizonDays);
+});
+
 const projectedPoints = computed(() => {
   const points = [];
   let stock = props.currentStock;
@@ -41,9 +45,9 @@ const projectedPoints = computed(() => {
   });
 
   // Calculate points daily
-  for (let i = 0; i < props.dailyForecast.length; i++) {
-    const f = props.dailyForecast[i];
-    stock = stock - f.predictedQuantity;
+  for (let i = 0; i < slicedForecast.value.length; i++) {
+    const f = slicedForecast.value[i];
+    stock = stock - f.quantity;
     points.push({
       x: new Date(f.date).getTime(),
       y: stock,
@@ -55,9 +59,9 @@ const projectedPoints = computed(() => {
 
 const breachInfo = computed(() => {
   let stock = props.currentStock;
-  for (let i = 0; i < props.dailyForecast.length; i++) {
-    const f = props.dailyForecast[i];
-    stock = stock - f.predictedQuantity;
+  for (let i = 0; i < slicedForecast.value.length; i++) {
+    const f = slicedForecast.value[i];
+    stock = stock - f.quantity;
     if (stock < props.effectiveMinStock) {
       return {
         breached: true,
@@ -138,7 +142,7 @@ const chartOptions = computed(() => {
 
 <template>
   <div class="projected-inventory-chart">
-    <template v-if="dailyForecast.length">
+    <template v-if="slicedForecast.length">
       <!-- Safety/Breach Banner -->
       <div v-if="breachInfo.breached" class="p-3 mb-4 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs font-semibold flex items-center gap-1.5">
         <i class="mdi mdi-alert-circle text-red-500 text-base"></i>

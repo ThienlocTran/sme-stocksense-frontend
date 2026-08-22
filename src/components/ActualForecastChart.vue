@@ -30,9 +30,9 @@ const series = computed(() => {
     x: new Date(p.date).getTime(),
     y: p.quantity,
   }));
-  const forecastData = props.forecast.map((p) => ({
+  const forecastData = props.forecast.slice(0, props.horizonDays).map((p) => ({
     x: new Date(p.date).getTime(),
-    y: p.predictedQuantity,
+    y: p.quantity,
   }));
 
   return [
