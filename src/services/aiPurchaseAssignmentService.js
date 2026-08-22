@@ -34,6 +34,17 @@ export async function retryEmail(id) {
   }
 }
 
+export async function getAssignment(id) {
+  try {
+    const { data } = await aiPurchaseAssignmentClient.get(`/api/ai-purchase-assignments/${id}`, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeAiPurchaseAssignmentError(error, 'Không thể tải thông tin phân công mua hàng.')
+  }
+}
+
 function normalizeAiPurchaseAssignmentError(error, fallbackMessage) {
   const status = error.response?.status
 
