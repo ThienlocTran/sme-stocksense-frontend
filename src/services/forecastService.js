@@ -25,13 +25,14 @@ export async function runForecast(productId, warehouseId) {
   }
 }
 
-/** Lấy kết quả dự báo mới nhất đã lưu, không train lại. */
+/** Lấy kết quả dự báo mới nhất đã lưu, không train lại.
+ *  Trả null khi SP/Kho chưa từng chạy dự báo (204 No Content). */
 export async function getForecast(productId, warehouseId) {
   try {
-    const { data } = await forecastClient.get(`/api/forecast/${productId}/${warehouseId}`, {
+    const response = await forecastClient.get(`/api/forecast/${productId}/${warehouseId}`, {
       headers: getAuthorizationHeader(),
     })
-    return data
+    return response.status === 204 ? null : response.data
   } catch (error) {
     throw normalizeForecastError(error, 'Không thể tải dự báo AI.')
   }
@@ -49,17 +50,6 @@ export async function checkDrift(productId, warehouseId) {
   }
 }
 
-/** Công cụ demo (ADMIN): sinh dữ liệu lịch sử bán hàng giả lập cho các sản phẩm/kho chưa đủ dữ liệu. */
-export async function seedForecastHistory() {
-  try {
-    const { data } = await forecastClient.post('/api/forecast/seed-history', null, {
-      headers: getAuthorizationHeader(),
-    })
-    return data
-  } catch (error) {
-    throw normalizeForecastError(error, 'Không thể sinh dữ liệu lịch sử demo.')
-  }
-}
 
 function normalizeForecastError(error, fallbackMessage) {
   const status = error.response?.status

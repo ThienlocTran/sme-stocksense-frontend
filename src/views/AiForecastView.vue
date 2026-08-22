@@ -12,10 +12,9 @@ import {
   checkDrift,
   getForecast,
   runForecast,
-  seedForecastHistory,
 } from "../services/forecastService";
 import { useAuthStore } from "../stores/auth";
-import { canRunForecast, canSeedForecastHistory } from "../services/permissionService";
+import { canRunForecast } from "../services/permissionService";
 import { getForecastModeLabel, getDriftStatusLabel } from "../constants/forecastOptions";
 
 defineOptions({
@@ -35,15 +34,12 @@ const isLoadingDropdowns = ref(false);
 const isRunningForecast = ref(false);
 const isLoadingForecast = ref(false);
 const isCheckingDrift = ref(false);
-const isSeeding = ref(false);
 
 const forecast = ref(null);
 const drift = ref(null);
 const errorMessage = ref("");
-const seedMessage = ref("");
 
 const canRun = computed(() => canRunForecast(authStore.currentRole));
-const canSeed = computed(() => canSeedForecastHistory(authStore.currentRole));
 const canSelect = computed(
   () => selectedProductId.value !== "" && selectedWarehouseId.value !== "",
 );
@@ -85,9 +81,9 @@ async function loadCachedForecast() {
   try {
     forecast.value = await getForecast(selectedProductId.value, selectedWarehouseId.value);
   } catch (error) {
-    // Chưa có dự báo nào là trạng thái bình thường (chưa từng chạy) -> không hiện lỗi.
-    if (error.status !== 404) {
-      errorMessage.value = error.message;
+    errorMessage.value = error.message;
+    if (error.status === 401) {
+      router.replace("/login");
     }
     forecast.value = null;
   } finally {
@@ -124,19 +120,6 @@ async function handleCheckDrift() {
   }
 }
 
-async function handleSeedHistory() {
-  isSeeding.value = true;
-  seedMessage.value = "";
-  errorMessage.value = "";
-  try {
-    const result = await seedForecastHistory();
-    seedMessage.value = t("forecast.msg.seedSuccess", { products: result.productsSeeded, rows: result.rowsInserted });
-  } catch (error) {
-    errorMessage.value = error.message;
-  } finally {
-    isSeeding.value = false;
-  }
-}
 
 function formatNumber(value) {
   if (value === null || value === undefined) return "-";
@@ -248,20 +231,8 @@ const summaryText = computed(() => {
   <PageHeader
     :title="t('forecast.title')"
     :description="t('forecast.description')"
-  >
-    <button
-      v-if="canSeed"
-      class="btn btn-ghost"
-      type="button"
-      :disabled="isSeeding"
-      @click="handleSeedHistory"
-    >
-      <i class="mdi" :class="isSeeding ? 'mdi-loading mdi-spin' : 'mdi-database-plus-outline'"></i>
-      Sinh dữ liệu demo
-    </button>
-  </PageHeader>
+  />
 
-  <p v-if="seedMessage" class="form-alert form-alert-success">{{ seedMessage }}</p>
   <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
 
   <div class="card card-pad selector-bar">
@@ -408,12 +379,55 @@ const summaryText = computed(() => {
 
     <div v-if="drift" class="card card-pad drift-card">
       <h3 class="section-title">{{ t("forecast.drift.title") }}</h3>
+
+      <!-- Trạng thái chính -->
       <div class="drift-row">
         <StatusBadge :status="driftBadgeVariant(drift.status)" />
         <span class="font-semibold">{{ getDriftStatusLabel(drift.status) }}</span>
       </div>
-      <div v-if="drift.rollingSmape !== null && drift.rollingSmape !== undefined" class="drift-row text-xs text-[var(--color-text-secondary)]">
-        <span>{{ t("forecast.drift.note", { smape: formatNumber(drift.rollingSmape), threshold: formatNumber(drift.threshold), days: drift.overlapDays }) }}</span>
+
+      <!-- Số liệu chi tiết khi có đủ dữ liệu tính toán -->
+      <div v-if="drift.rollingSmape !== null && drift.rollingSmape !== undefined" class="drift-metrics">
+        <div class="drift-metric-item">
+          <span class="drift-metric-label">sMAPE thực tế</span>
+          <strong class="drift-metric-value" :class="drift.retrainNeeded ? 'text-[var(--color-danger)]' : 'text-[var(--color-success)]'">
+            {{ formatNumber(drift.rollingSmape) }}%
+          </strong>
+        </div>
+        <div class="drift-metric-item">
+          <span class="drift-metric-label">Ngưỡng lệch</span>
+          <strong class="drift-metric-value">{{ formatNumber(drift.threshold) }}%</strong>
+        </div>
+        <div class="drift-metric-item">
+          <span class="drift-metric-label">Ngày so sánh</span>
+          <strong class="drift-metric-value">{{ drift.overlapDays }} ngày</strong>
+        </div>
+      </div>
+
+      <!-- Giải thích khi không đủ dữ liệu -->
+      <div v-if="drift.status === 'NO_ACTUAL_DATA'" class="drift-explain">
+        <i class="mdi mdi-information-outline"></i>
+        <span>Chưa có giao dịch xuất kho thực tế trong 30 ngày qua để so sánh với dự báo đã lưu.</span>
+      </div>
+      <div v-else-if="drift.status === 'NO_FORECAST_DATA'" class="drift-explain">
+        <i class="mdi mdi-information-outline"></i>
+        <span>Chưa có bản ghi dự báo nào được lưu. Hãy bấm <strong>Dự báo ngay</strong> trước.</span>
+      </div>
+      <div v-else-if="drift.status === 'INSUFFICIENT_OVERLAP'" class="drift-explain">
+        <i class="mdi mdi-information-outline"></i>
+        <span>Chỉ có <strong>{{ drift.overlapDays }}</strong> ngày trùng nhau giữa dự báo và thực tế (cần tối thiểu 7 ngày). Cần thêm dữ liệu.</span>
+      </div>
+
+      <!-- Phương pháp tính: luôn hiển thị để user hiểu ngưỡng -->
+      <div class="drift-rule">
+        <i class="mdi mdi-help-circle-outline"></i>
+        <span>Mô hình bị đánh dấu <strong>Lệch</strong> khi sMAPE &gt; {{ formatNumber(drift.threshold) }}% trên ít nhất 7 ngày có dữ liệu cả hai phía.</span>
+      </div>
+
+      <!-- Gợi ý hành động khi phát hiện drift -->
+      <div v-if="drift.retrainNeeded" class="drift-action">
+        <i class="mdi mdi-refresh-circle text-[var(--color-warning)]"></i>
+        <span>Mô hình đang lệch – nên bấm <strong>Dự báo ngay</strong> để train lại với dữ liệu mới nhất.</span>
       </div>
     </div>
   </template>
@@ -572,6 +586,69 @@ const summaryText = computed(() => {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.drift-metrics {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+.drift-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 90px;
+}
+.drift-metric-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.drift-metric-value {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.drift-explain,
+.drift-rule,
+.drift-action {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.drift-explain {
+  background: var(--color-action-primary-soft);
+  color: var(--color-text-secondary);
+}
+.drift-rule {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+.drift-action {
+  background: rgba(234, 179, 8, 0.08);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  font-weight: 500;
+}
+.drift-explain i,
+.drift-rule i,
+.drift-action i {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 @media (max-width: 767px) {

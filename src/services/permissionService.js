@@ -53,9 +53,6 @@ export function canRunForecast(role) {
   return FORECAST_RUN_ROLES.includes(resolveRole(role))
 }
 
-export function canSeedForecastHistory(role) {
-  return resolveRole(role) === 'ADMIN'
-}
 
 export function canAccessRoute(path, role) {
   const resolvedRole = resolveRole(role)
