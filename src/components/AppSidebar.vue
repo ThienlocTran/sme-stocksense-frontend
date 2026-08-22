@@ -158,7 +158,7 @@ const menuSections = [
       { label: "Dự báo AI", labelKey: "forecast", to: "/forecast", icon: "mdi-chart-line" },
       { label: "Cảnh báo tồn kho", labelKey: "alerts", to: "/alerts", icon: "mdi-alert-outline" },
       {
-        label: "Gợi ý nhập hàng",
+        label: "Bổ sung tồn kho",
         labelKey: "replenishment",
         to: "/replenishment-suggestions",
         icon: "mdi-clipboard-text-play-outline",

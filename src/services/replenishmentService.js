@@ -26,7 +26,7 @@ export async function getReplenishmentSuggestions({ page = 0, size = 20, keyword
 
     return data
   } catch (error) {
-    throw normalizeReplenishmentError(error, 'Không thể tải danh sách gợi ý nhập hàng.')
+    throw normalizeReplenishmentError(error, 'Không thể tải danh sách đề xuất bổ sung tồn kho.')
   }
 }
 

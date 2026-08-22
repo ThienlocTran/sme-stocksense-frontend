@@ -193,7 +193,7 @@
       "employees": "Employees",
       "importExcel": "Import Excel",
       "warehouses": "Warehouses",
-      "replenishment": "Replenishment Suggestions",
+      "replenishment": "Stock Replenishment",
       "settings": "System Settings"
     }
   },
@@ -782,8 +782,8 @@
     "minimumStockConflictExceeded": "Exceeded: {amount} m³"
   },
   "replenishment": {
-    "title": "Replenishment Suggestions",
-    "description": "Recommended order quantities based on configured minimum thresholds.",
+    "title": "Stock Replenishment",
+    "description": "Replenishment suggestions based on current inventory levels falling below minimum stock thresholds.",
     "searchPlaceholder": "Search by product name or code...",
     "filters": {
       "allWarehouses": "All warehouses",
@@ -791,7 +791,7 @@
       "searchBtn": "Search",
       "clearFiltersBtn": "Clear filters"
     },
-    "loading": "Loading replenishment suggestions...",
+    "loading": "Loading stock replenishment suggestions...",
     "table": {
       "product": "Product",
       "warehouse": "Warehouse",
@@ -812,7 +812,7 @@
       "MEDIUM": "Medium"
     },
     "empty": {
-      "title": "No replenishment suggestions",
+      "title": "No stock replenishment suggestions",
       "desc": "All products currently have safe stock levels above minimum thresholds."
     },
     "suggested": "Suggested: ",

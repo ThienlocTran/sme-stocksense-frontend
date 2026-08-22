@@ -200,7 +200,7 @@
       "employees": "Nhân viên",
       "importExcel": "Import Excel",
       "warehouses": "Kho hàng",
-      "replenishment": "Gợi ý nhập hàng",
+      "replenishment": "Bổ sung tồn kho",
       "settings": "Cấu hình hệ thống"
     }
   },
@@ -789,8 +789,8 @@
     "minimumStockConflictExceeded": "Vượt: {amount} m³"
   },
   "replenishment": {
-    "title": "Gợi ý nhập hàng",
-    "description": "Đề xuất số lượng cần nhập dựa trên mức tồn tối thiểu thiết lập.",
+    "title": "Bổ sung tồn kho",
+    "description": "Đề xuất bổ sung các sản phẩm đang dưới ngưỡng tồn kho tối thiểu.",
     "searchPlaceholder": "Tìm theo mã hoặc tên sản phẩm...",
     "filters": {
       "allWarehouses": "Tất cả kho hàng",
@@ -798,7 +798,7 @@
       "searchBtn": "Tìm kiếm",
       "clearFiltersBtn": "Xóa lọc"
     },
-    "loading": "Đang tải đề xuất nhập hàng...",
+    "loading": "Đang tải đề xuất bổ sung tồn kho...",
     "table": {
       "product": "Sản phẩm",
       "warehouse": "Kho hàng",
@@ -819,7 +819,7 @@
       "MEDIUM": "Trung bình"
     },
     "empty": {
-      "title": "Không có đề xuất nhập hàng",
+      "title": "Không có đề xuất bổ sung tồn kho",
       "desc": "Tất cả các sản phẩm hiện có mức tồn kho an toàn và nằm ngoài ngưỡng cần bổ sung."
     },
     "suggested": "Đề xuất: ",
