@@ -167,6 +167,12 @@ const menuSections = [
         icon: "mdi-clipboard-text-play-outline",
       },
       {
+        label: "Yêu cầu nhập hàng AI",
+        labelKey: "aiPurchaseAssignments",
+        to: "/ai-purchase-assignments",
+        icon: "mdi-robot-outline",
+      },
+      {
         label: "Lịch sử giao dịch",
         labelKey: "transactions",
         to: "/inventory-transactions",

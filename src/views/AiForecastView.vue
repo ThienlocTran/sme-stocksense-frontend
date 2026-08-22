@@ -519,9 +519,9 @@ async function submitAssignment() {
     };
     const response = await createAiPurchaseAssignment(payload);
     assignmentResult.value = response;
-    assignmentSuccessMessage.value = "Phân công đã được tạo thành công.";
+    assignmentSuccessMessage.value = "Yêu cầu nhập hàng đã được tạo thành công.";
   } catch (error) {
-    assignmentErrorMessage.value = error.message || "Không thể tạo phân công mua hàng.";
+    assignmentErrorMessage.value = error.message || "Không thể tạo yêu cầu nhập hàng.";
   } finally {
     isSubmittingAssignment.value = false;
   }

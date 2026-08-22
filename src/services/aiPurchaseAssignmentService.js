@@ -19,7 +19,19 @@ export async function createAiPurchaseAssignment(payload) {
     })
     return data
   } catch (error) {
-    throw normalizeAiPurchaseAssignmentError(error, 'Không thể tạo phân công mua hàng.')
+    throw normalizeAiPurchaseAssignmentError(error, 'Không thể tạo yêu cầu nhập hàng AI.')
+  }
+}
+
+export async function listAiPurchaseAssignments({ page = 0, size = 10 } = {}) {
+  try {
+    const { data } = await aiPurchaseAssignmentClient.get('/api/ai-purchase-assignments', {
+      headers: getAuthorizationHeader(),
+      params: { page, size },
+    })
+    return data
+  } catch (error) {
+    throw normalizeAiPurchaseAssignmentError(error, 'Không thể tải danh sách yêu cầu nhập hàng AI.')
   }
 }
 
@@ -41,7 +53,7 @@ export async function getAssignment(id) {
     })
     return data
   } catch (error) {
-    throw normalizeAiPurchaseAssignmentError(error, 'Không thể tải thông tin phân công mua hàng.')
+    throw normalizeAiPurchaseAssignmentError(error, 'Không thể tải thông tin yêu cầu nhập hàng.')
   }
 }
 
