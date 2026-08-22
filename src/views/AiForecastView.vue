@@ -290,6 +290,14 @@ function hasSufficientForecast(horizon) {
   );
 }
 
+const isRecommendationValid = computed(() => {
+  return (
+    !!recommendation.value &&
+    !!forecast.value &&
+    recommendation.value.modelMetadataId === forecast.value.modelMetadataId
+  );
+});
+
 async function loadRecommendation() {
   recommendation.value = null;
   if (!selectedProductId.value || !selectedWarehouseId.value || !selectedHorizon.value) {
@@ -322,7 +330,7 @@ async function loadCachedForecast() {
   isLoadingForecast.value = true;
   errorMessage.value = "";
   try {
-    forecast.value = await getForecast(selectedProductId.value, selectedWarehouseId.value);
+    forecast.value = await getForecast(selectedProductId.value, selectedWarehouseId.value, selectedSource.value);
     if (forecast.value) {
       await loadRecommendation();
     } else {
@@ -353,7 +361,7 @@ async function handleRunForecast() {
   drift.value = null;
   recommendation.value = null;
   try {
-    forecast.value = await runForecast(selectedProductId.value, selectedWarehouseId.value);
+    forecast.value = await runForecast(selectedProductId.value, selectedWarehouseId.value, selectedSource.value);
     if (forecast.value) {
       await loadRecommendation();
     } else {
@@ -428,7 +436,7 @@ const boundaryDateStr = computed(() => {
 
 function openAssignmentModal() {
   selectedEmployeeId.value = "";
-  humanRequestedQuantity.value = recommendation.value ? recommendation.value.suggestedQty : 0;
+  humanRequestedQuantity.value = isRecommendationValid.value ? recommendation.value.suggestedQty : 0;
   assignmentContent.value = `Thực hiện bổ sung hàng cho sản phẩm theo đề xuất từ AI dự báo ${selectedHorizon.value} ngày.`;
   assignmentErrorMessage.value = "";
   assignmentSuccessMessage.value = "";
@@ -455,8 +463,8 @@ async function submitAssignment() {
       productId: Number(selectedProductId.value),
       warehouseId: Number(selectedWarehouseId.value),
       horizonDays: Number(selectedHorizon.value),
-      modelMetadataId: recommendation.value?.modelMetadataId || null,
-      aiSuggestedQuantity: recommendation.value?.suggestedQty ?? null,
+      modelMetadataId: isRecommendationValid.value ? recommendation.value.modelMetadataId : null,
+      aiSuggestedQuantity: isRecommendationValid.value ? recommendation.value.suggestedQty : null,
       requestedQuantity: Number(humanRequestedQuantity.value),
       receiverId: Number(selectedEmployeeId.value),
       content: assignmentContent.value || null
@@ -497,7 +505,7 @@ async function handleRetryEmail() {
 const summaryText = computed(() => {
   if (!forecast.value) return "";
 
-  if (recommendation.value) {
+  if (isRecommendationValid.value) {
     const rec = recommendation.value;
     if (rec.rawSuggestedQty === 0) {
       const stockLabel = forecast.value.source === 'EXTERNAL_STORE_ITEM' 
@@ -799,7 +807,7 @@ const isHistoryUnavailable = computed(() => {
             
             <div class="summary-banner__footer">
               <span class="muted text-xs"><strong>{{ t('forecast.leadTimeCycle', { horizon: selectedHorizon }) }}</strong></span>
-              <span v-if="recommendation" class="summary-banner__badge" :class="{
+              <span v-if="isRecommendationValid" class="summary-banner__badge" :class="{
                 'summary-banner__badge--need': recommendation.suggestedQty > 0,
                 'summary-banner__badge--safe': recommendation.rawSuggestedQty === 0,
                 'summary-banner__badge--warning': recommendation.rawSuggestedQty > 0 && recommendation.suggestedQty === 0
@@ -818,7 +826,7 @@ const isHistoryUnavailable = computed(() => {
       <span>{{ t('forecast.loadingRecommendation') }}</span>
     </div>
 
-    <div v-else-if="!recommendation" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700 mt-6">
+    <div v-else-if="!isRecommendationValid" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700 mt-6">
       <i class="mdi mdi-alert-circle-outline text-3xl text-zinc-400 block mb-2"></i>
       {{ t('forecast.noRecommendation') }}
     </div>
