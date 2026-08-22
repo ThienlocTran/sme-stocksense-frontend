@@ -42,8 +42,8 @@ const columns = [
 
 const statusOptions = [
   { value: 'NHAP', label: 'Nháp' },
-  { value: 'CHO_DUYET_CAP_1', label: 'Chờ quản lý duyệt' },
-  { value: 'CHO_DUYET_CAP_2', label: 'Chờ quản lý duyệt' },
+  { value: 'CHO_DUYET', label: 'Chờ duyệt' },
+  { value: 'DA_DUYET', label: 'Đã duyệt' },
   { value: 'HOAN_THANH', label: 'Hoàn thành' },
   { value: 'TU_CHOI', label: 'Từ chối' },
   { value: 'HUY', label: 'Hủy' },
@@ -359,7 +359,8 @@ function confirmText() {
 }
 .badge:hover { filter: brightness(0.95); }
 .status-nhap, .status-huy { background: #f1f5f9; color: #475569; }
-.status-cho-duyet-cap-1, .status-cho-duyet-cap-2 { background: #fef3c7; color: #b45309; }
+.status-cho-duyet { background: #fef3c7; color: #b45309; }
+.status-da-duyet { background: #e0f2fe; color: #0369a1; }
 .status-tu-choi { background: #fee2e2; color: #b91c1c; }
 .status-hoan-thanh { background: #dcfce7; color: #15803d; }
 .pagination-bar { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
