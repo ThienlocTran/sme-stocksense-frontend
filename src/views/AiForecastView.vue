@@ -1205,6 +1205,7 @@ const isHistoryUnavailable = computed(() => {
   <ConfirmDialog
     :open="showSeedConfirmation"
     :title="t('forecast.seedConfirmationTitle')"
+    :subtitle="t('forecast.seedConfirmationSubtitle')"
     :message="t('forecast.seedConfirmationBody')"
     :confirm-text="t('forecast.seedConfirmBtn')"
     :loading="isSeedingHistory"

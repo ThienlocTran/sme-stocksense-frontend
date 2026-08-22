@@ -950,6 +950,7 @@
     "demoSourceActionDesc": "Tạo dữ liệu lịch sử giả lập cho các sản phẩm/kho chưa có dữ liệu demo.",
     "hasDemoDataStatus": "Đã có lịch sử bán hàng demo",
     "seedConfirmationTitle": "Sinh dữ liệu demo?",
+    "seedConfirmationSubtitle": "Hành động này sẽ tạo lịch sử bán hàng giả lập phục vụ chạy dự báo.",
     "seedConfirmationBody": "Hệ thống sẽ tạo lịch sử giả lập cho các sản phẩm và kho chưa có dữ liệu demo. Dữ liệu benchmark và dữ liệu thực tế sẽ không bị thay đổi.",
     "seedConfirmBtn": "Sinh dữ liệu",
     "seedSuccessMsg": "Đã sinh dữ liệu demo thành công cho {seeded} cặp sản phẩm/kho ({rows} dòng).",
