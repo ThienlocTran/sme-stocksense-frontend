@@ -433,6 +433,7 @@ function driftBadgeVariant(status) {
   return t("forecast.drift.pending");
 }
 
+// Boundary date for the timeline chart, mapping dynamically to historyEndDate to adapt to any source.
 const boundaryDateStr = computed(() => {
   if (forecast.value && forecast.value.historyEndDate) {
     return forecast.value.historyEndDate;
