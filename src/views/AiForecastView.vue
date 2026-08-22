@@ -566,7 +566,7 @@ const displaySource = computed(() => {
   if (!forecast.value || !forecast.value.source) return t('forecast.dataSource.unknown');
   const src = forecast.value.source;
   if (src === "EXTERNAL_STORE_ITEM") {
-    return t('forecast.dataSource.externalStoreItem');
+    return t('forecast.dataSource.actual');
   }
   if (src === "EXTERNAL_RETAIL") {
     return t('forecast.dataSource.externalRetail');
@@ -637,17 +637,16 @@ const isHistoryUnavailable = computed(() => {
       <div class="max-w-md">
         <label class="field-label">{{ t("forecast.filter.source") }}</label>
         <select v-model="selectedSource" class="select mt-1.5" :disabled="isLoadingDropdowns">
-          <option value="EXTERNAL_STORE_ITEM">{{ t("forecast.dataSource.externalStoreItem") }}</option>
+          <option value="EXTERNAL_STORE_ITEM">{{ t("forecast.dataSource.actual") }}</option>
           <option value="SEED_DEMO">{{ t("forecast.dataSource.demo") }}</option>
-          <option value="THUC_TE">{{ t("forecast.dataSource.actual") }}</option>
         </select>
         <span class="text-xs text-zinc-500 mt-1 block leading-relaxed">
-          {{ t('forecast.helpText.' + (selectedSource === 'EXTERNAL_STORE_ITEM' ? 'externalStoreItem' : (selectedSource === 'SEED_DEMO' ? 'demo' : 'actual'))) }}
+          {{ t('forecast.helpText.' + (selectedSource === 'EXTERNAL_STORE_ITEM' ? 'actual' : 'demo')) }}
         </span>
       </div>
     </div>
 
-    <template v-if="selectedSource !== 'THUC_TE' || availableCombinations.length > 0">
+    <template v-if="selectedSource !== 'EXTERNAL_STORE_ITEM' || availableCombinations.length > 0">
       <div class="flex flex-wrap gap-4 items-end w-full">
         <div class="selector-field">
           <label class="field-label">{{ t("forecast.filter.product") }}</label>
@@ -701,7 +700,7 @@ const isHistoryUnavailable = computed(() => {
     </template>
   </div>
 
-  <template v-if="selectedSource === 'THUC_TE' && availableCombinations.length === 0">
+  <template v-if="selectedSource === 'EXTERNAL_STORE_ITEM' && availableCombinations.length === 0">
     <div class="card card-pad mt-6">
       <EmptyState
         icon="mdi-database-off-outline"
