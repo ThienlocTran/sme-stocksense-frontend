@@ -8,6 +8,7 @@ import EmptyState from "../components/EmptyState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import ActualForecastChart from "../components/ActualForecastChart.vue";
 import ProjectedInventoryChart from "../components/ProjectedInventoryChart.vue";
+import ConfirmDialog from "../components/ConfirmDialog.vue";
 import { getEmployees } from "../services/employeeService";
 import { getReplenishmentRecommendation } from "../services/replenishmentService";
 import { createAiPurchaseAssignment, retryEmail } from "../services/aiPurchaseAssignmentService";
@@ -32,6 +33,28 @@ const authStore = useAuthStore();
 
 const selectedSource = ref("EXTERNAL_STORE_ITEM");
 const availableCombinations = ref([]);
+const isSeedingHistory = ref(false);
+const showSeedConfirmation = ref(false);
+
+async function handleSeedHistory() {
+  showSeedConfirmation.value = false;
+  isSeedingHistory.value = true;
+  errorMessage.value = "";
+  successMessage.value = "";
+  try {
+    const res = await seedDemoHistory();
+    const availRes = await getForecastAvailability("SEED_DEMO");
+    availableCombinations.value = availRes.combinations || [];
+    successMessage.value = t('forecast.seedSuccessMsg', { 
+      seeded: res.seriesSeeded, 
+      rows: res.rowsInserted 
+    });
+  } catch (error) {
+    errorMessage.value = error.message;
+  } finally {
+    isSeedingHistory.value = false;
+  }
+}
 
 function sortByCode(a, b) {
   const codeA = (a.code || '').trim();
@@ -652,6 +675,34 @@ const isHistoryUnavailable = computed(() => {
     </div>
   </div>
 
+  <!-- Standalone card for Demo Seeding action (Task 3) -->
+  <div v-if="selectedSource === 'SEED_DEMO'" class="card card-pad mb-6 flex items-center justify-between gap-4 flex-wrap bg-zinc-50/50 dark:bg-zinc-800/10 border-dashed border-indigo-200 dark:border-indigo-900/30">
+    <div class="flex-1 min-w-[280px]">
+      <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+        <i class="mdi mdi-database-cog text-indigo-500 text-base"></i>
+        {{ t('forecast.demoSourceActionTitle') }}
+      </h3>
+      <p class="text-xs text-zinc-500 mt-1">
+        {{ t('forecast.demoSourceActionDesc') }}
+      </p>
+    </div>
+    <div class="flex items-center gap-4 flex-wrap shrink-0">
+      <span v-if="availableCombinations.length > 0" class="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
+        <i class="mdi mdi-check-circle-outline"></i>
+        {{ t('forecast.hasDemoDataStatus') }}
+      </span>
+      <button
+        class="btn btn-secondary btn-sm"
+        type="button"
+        :disabled="isSeedingHistory"
+        @click="showSeedConfirmation = true"
+      >
+        <i class="mdi mr-1" :class="isSeedingHistory ? 'mdi-loading mdi-spin' : 'mdi-database-import'"></i>
+        {{ t('forecast.button.seed') }}
+      </button>
+    </div>
+  </div>
+
   <div v-if="isLoadingForecast" class="inventory-loading card card-pad">
     <i class="mdi mdi-loading mdi-spin"></i>
     <span>{{ t("forecast.loading") }}</span>
@@ -1115,6 +1166,15 @@ const isHistoryUnavailable = computed(() => {
         <span>{{ t('forecast.drift.rules.driftAction') }}</span>
       </div>
     </div>
+  <ConfirmDialog
+    :open="showSeedConfirmation"
+    :title="t('forecast.seedConfirmationTitle')"
+    :message="t('forecast.seedConfirmationBody')"
+    :confirm-text="t('forecast.seedConfirmBtn')"
+    :loading="isSeedingHistory"
+    @cancel="showSeedConfirmation = false"
+    @confirm="handleSeedHistory"
+  />
   </template>
 </template>
 
