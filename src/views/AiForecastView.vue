@@ -59,6 +59,38 @@ const drift = ref(null);
 const driftCardRef = ref(null);
 const errorMessage = ref("");
 
+const chartStartDate = ref("");
+const chartEndDate = ref("");
+
+function subtractDaysFromDateStr(dateStr, days) {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const date = new Date(year, month, day);
+  date.setDate(date.getDate() - days);
+  
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+const filteredHistorical = computed(() => {
+  if (!forecast.value || !forecast.value.historical) return [];
+  if (!chartStartDate.value || !chartEndDate.value) {
+    return forecast.value.historical;
+  }
+  // Use timezone-independent comparisons by matching parts
+  const startStr = chartStartDate.value;
+  const endStr = chartEndDate.value;
+  return forecast.value.historical.filter((p) => {
+    return p.date >= startStr && p.date <= endStr;
+  });
+});
+
 const canRun = computed(() => canRunForecast(authStore.currentRole));
 const canSelect = computed(
   () => selectedProductId.value !== "" && selectedWarehouseId.value !== "",
@@ -109,6 +141,16 @@ watch(selectedHorizon, async () => {
     await loadRecommendation();
   } else {
     recommendation.value = null;
+  }
+});
+
+watch([forecast, selectedHorizon], () => {
+  if (forecast.value && forecast.value.historyEndDate) {
+    chartEndDate.value = forecast.value.historyEndDate;
+    chartStartDate.value = subtractDaysFromDateStr(forecast.value.historyEndDate, selectedHorizon.value - 1);
+  } else {
+    chartStartDate.value = "";
+    chartEndDate.value = "";
   }
 });
 
@@ -639,9 +681,29 @@ const isHistoryUnavailable = computed(() => {
 
       <!-- Chart A: Actual vs Forecast -->
       <div class="card card-pad chart-card mt-6">
-        <h3 class="section-title">Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)</h3>
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <h3 class="section-title !mb-0">Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)</h3>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="text-zinc-500 font-medium">Lịch sử:</span>
+            <input
+              type="date"
+              v-model="chartStartDate"
+              :min="forecast.historyStartDate"
+              :max="forecast.historyEndDate"
+              class="border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <span class="text-zinc-500 font-medium">đến</span>
+            <input
+              type="date"
+              v-model="chartEndDate"
+              :min="forecast.historyStartDate"
+              :max="forecast.historyEndDate"
+              class="border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+        </div>
         <ActualForecastChart
-          :historical="forecast.historical || []"
+          :historical="filteredHistorical"
           :forecast="forecast.dailyForecast || []"
           :boundary-date="boundaryDateStr"
           :horizon-days="selectedHorizon"
