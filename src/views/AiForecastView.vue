@@ -554,50 +554,53 @@ const summaryText = computed(() => {
           </div>
 
           <div class="modal-body space-y-4">
-            <!-- Read-only Context Info -->
-            <div class="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
-              <div>Sản phẩm: <strong>{{ products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }}</strong></div>
-              <div>Kho hàng: <strong>{{ warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }}</strong></div>
-              <div>Chu kỳ dự báo: <strong>{{ selectedHorizon }} ngày</strong></div>
-              <div>Số lượng đề xuất từ AI: <strong class="text-zinc-900 dark:text-zinc-100">{{ recommendation.suggestedQty }}</strong></div>
-              <div v-if="recommendation.rawSuggestedQty !== recommendation.suggestedQty" class="text-zinc-500">Nhu cầu bổ sung thực tế (Raw Need): <strong>{{ recommendation.rawSuggestedQty }}</strong></div>
-              <div v-if="recommendation.capacityWarning" class="text-amber-600 dark:text-amber-400 font-semibold mt-1">⚠️ Cảnh báo dung tích: {{ recommendation.capacityWarning }}</div>
-            </div>
-
-            <!-- Editable Form Fields -->
-            <div class="field">
-              <label class="field-label font-semibold">Nhân viên được phân công *</label>
-              <select v-model="selectedEmployeeId" class="select w-full mt-1" :disabled="isSubmittingAssignment || assignmentResult !== null">
-                <option value="">{{ t('forecast.assignment.selectEmployee') }}</option>
-                <option v-for="emp in employees" :key="emp.id" :value="emp.id">
-                  {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
-                </option>
-              </select>
-            </div>
-
-            <div class="field mt-3">
-              <label class="field-label font-semibold">Số lượng yêu cầu thực tế *</label>
-              <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" :disabled="isSubmittingAssignment || assignmentResult !== null" />
-              <span class="text-xs text-zinc-500 mt-1 block">
-                AI đề xuất: {{ recommendation.suggestedQty }}. Bạn có thể điều chỉnh lại.
-              </span>
-              <div v-if="humanRequestedQuantity > recommendation.suggestedQty" class="p-2 mt-1 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded text-xs border border-amber-200 dark:border-amber-900/30">
-                <i class="mdi mdi-information-outline mr-0.5"></i>
-                Lưu ý: Số lượng yêu cầu vượt quá đề xuất của AI (Số lượng AI đề xuất: {{ recommendation.suggestedQty }}). Vui lòng đảm bảo kho hàng có thể tiếp nhận.
+            <template v-if="!assignmentResult">
+              <!-- Read-only Context Info -->
+              <div class="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
+                <div>Sản phẩm: <strong>{{ products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }}</strong></div>
+                <div>Kho hàng: <strong>{{ warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }}</strong></div>
+                <div>Chu kỳ dự báo: <strong>{{ selectedHorizon }} ngày</strong></div>
+                <div>Số lượng đề xuất từ AI: <strong class="text-zinc-900 dark:text-zinc-100">{{ recommendation.suggestedQty }}</strong></div>
+                <div v-if="recommendation.rawSuggestedQty !== recommendation.suggestedQty" class="text-zinc-500">Nhu cầu bổ sung thực tế (Raw Need): <strong>{{ recommendation.rawSuggestedQty }}</strong></div>
+                <div v-if="recommendation.capacityWarning" class="text-amber-600 dark:text-amber-400 font-semibold mt-1">⚠️ Cảnh báo dung tích: {{ recommendation.capacityWarning }}</div>
               </div>
-            </div>
 
-            <div class="field mt-3">
-              <label class="field-label font-semibold">Lời nhắn / Chỉ thị bổ sung</label>
-              <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..." :disabled="isSubmittingAssignment || assignmentResult !== null"></textarea>
-            </div>
+              <!-- Editable Form Fields -->
+              <div class="field">
+                <label class="field-label font-semibold">Nhân viên được phân công *</label>
+                <select v-model="selectedEmployeeId" class="select w-full mt-1" :disabled="isSubmittingAssignment">
+                  <option value="">{{ t('forecast.assignment.selectEmployee') }}</option>
+                  <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                    {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
+                  </option>
+                </select>
+              </div>
 
-            <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs mt-2">
-              <i class="mdi mdi-alert-circle-outline mr-1"></i>
-              {{ assignmentErrorMessage }}
-            </div>
+              <div class="field mt-3">
+                <label class="field-label font-semibold">Số lượng yêu cầu thực tế *</label>
+                <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" :disabled="isSubmittingAssignment" />
+                <span class="text-xs text-zinc-500 mt-1 block">
+                  AI đề xuất: {{ recommendation.suggestedQty }}. Bạn có thể điều chỉnh lại.
+                </span>
+                <div v-if="humanRequestedQuantity > recommendation.suggestedQty" class="p-2 mt-1 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded text-xs border border-amber-200 dark:border-amber-900/30">
+                  <i class="mdi mdi-information-outline mr-0.5"></i>
+                  Lưu ý: Số lượng yêu cầu vượt quá đề xuất của AI (Số lượng AI đề xuất: {{ recommendation.suggestedQty }}). Vui lòng đảm bảo kho hàng có thể tiếp nhận.
+                </div>
+              </div>
 
-            <div v-if="assignmentResult" class="mt-2 space-y-2">
+              <div class="field mt-3">
+                <label class="field-label font-semibold">Lời nhắn / Chỉ thị bổ sung</label>
+                <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..." :disabled="isSubmittingAssignment"></textarea>
+              </div>
+
+              <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs mt-2">
+                <i class="mdi mdi-alert-circle-outline mr-1"></i>
+                {{ assignmentErrorMessage }}
+              </div>
+            </template>
+
+            <template v-else>
+              <!-- Success/Warning Alerts -->
               <div v-if="assignmentResult.emailStatus === 'DA_GUI'" class="p-3 bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-900/30 text-xs">
                 <i class="mdi mdi-check-circle-outline mr-1"></i>
                 {{ t('forecast.assignment.createSuccess') }} {{ t('forecast.assignment.emailSent') }}
@@ -624,25 +627,79 @@ const summaryText = computed(() => {
                 <i class="mdi mdi-clock-outline mr-1"></i>
                 {{ t('forecast.assignment.emailPending') }}
               </div>
-            </div>
+
+              <!-- Compact Details Table -->
+              <div class="p-4 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs space-y-3">
+                <h4 class="font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[10px]">{{ t('forecast.assignment.resultTitle') }}</h4>
+
+                <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+                  <span class="text-zinc-500">{{ t('forecast.assignment.code') }}:</span>
+                  <strong class="text-zinc-900 dark:text-zinc-100">{{ assignmentResult.code || assignmentResult.id }}</strong>
+                </div>
+                <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+                  <span class="text-zinc-500">{{ t('forecast.assignment.receiver') }}:</span>
+                  <strong>
+                    {{ assignmentResult.receiver?.name || assignmentResult.receiver?.tenNhanVien || employees.find(e => e.id === assignmentResult.receiverId)?.name || employees.find(e => e.id === assignmentResult.receiverId)?.tenNhanVien || assignmentResult.receiverId }}
+                  </strong>
+                </div>
+                <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+                  <span class="text-zinc-500">{{ t('forecast.assignment.aiQty') }}:</span>
+                  <strong>{{ formatNumber(assignmentResult.aiSuggestedQuantity ?? assignmentResult.aiSuggestedQty) }}</strong>
+                </div>
+                <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+                  <span class="text-zinc-500">{{ t('forecast.assignment.reqQty') }}:</span>
+                  <strong class="text-zinc-900 dark:text-zinc-100">{{ formatNumber(assignmentResult.requestedQuantity) }}</strong>
+                </div>
+                <div class="flex justify-between py-1">
+                  <span class="text-zinc-500">{{ t('forecast.assignment.emailStatus') }}:</span>
+                  <span class="font-semibold" :class="{
+                    'text-green-600': assignmentResult.emailStatus === 'DA_GUI',
+                    'text-amber-600': assignmentResult.emailStatus === 'THAT_BAI',
+                    'text-zinc-500': assignmentResult.emailStatus === 'CHO_GUI'
+                  }">
+                    {{ assignmentResult.emailStatus === 'DA_GUI' ? 'Đã gửi' : (assignmentResult.emailStatus === 'THAT_BAI' ? 'Thất bại' : 'Chờ gửi') }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- General message for retry result/errors -->
+              <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs">
+                <i class="mdi mdi-alert-circle-outline mr-1"></i>
+                {{ assignmentErrorMessage }}
+              </div>
+              <div v-if="assignmentSuccessMessage" class="p-3 bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-900/30 text-xs">
+                <i class="mdi mdi-check-circle-outline mr-1"></i>
+                {{ assignmentSuccessMessage }}
+              </div>
+            </template>
           </div>
 
           <div class="modal-foot">
-            <button
-              class="btn btn-ghost"
-              :disabled="isSubmittingAssignment"
-              @click="showAssignmentModal = false"
-            >
-              Hủy
-            </button>
-            <button
-              class="btn btn-primary"
-              :disabled="isSubmittingAssignment || assignmentResult !== null"
-              @click="submitAssignment"
-            >
-              <i v-if="isSubmittingAssignment" class="mdi mdi-loading mdi-spin mr-1"></i>
-              {{ assignmentResult !== null ? 'Đã phân công' : 'Giao việc' }}
-            </button>
+            <template v-if="!assignmentResult">
+              <button
+                class="btn btn-ghost"
+                :disabled="isSubmittingAssignment"
+                @click="showAssignmentModal = false"
+              >
+                Hủy
+              </button>
+              <button
+                class="btn btn-primary"
+                :disabled="isSubmittingAssignment"
+                @click="submitAssignment"
+              >
+                <i v-if="isSubmittingAssignment" class="mdi mdi-loading mdi-spin mr-1"></i>
+                Giao việc
+              </button>
+            </template>
+            <template v-else>
+              <button
+                class="btn btn-primary"
+                @click="showAssignmentModal = false"
+              >
+                Đóng
+              </button>
+            </template>
           </div>
         </div>
       </div>
