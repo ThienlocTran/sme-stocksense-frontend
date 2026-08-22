@@ -45,6 +45,7 @@ const assignmentSuccessMessage = ref("");
 const assignmentErrorMessage = ref("");
 const isSubmittingAssignment = ref(false);
 const assignmentResult = ref(null);
+const isRetryingEmail = ref(false);
 
 const isLoadingDropdowns = ref(false);
 const isRunningForecast = ref(false);
@@ -248,6 +249,28 @@ async function submitAssignment() {
     assignmentErrorMessage.value = error.message || "Không thể tạo phân công mua hàng.";
   } finally {
     isSubmittingAssignment.value = false;
+  }
+}
+
+async function handleRetryEmail() {
+  if (!assignmentResult.value || !assignmentResult.value.id) return;
+
+  isRetryingEmail.value = true;
+  assignmentErrorMessage.value = "";
+  assignmentSuccessMessage.value = "";
+
+  try {
+    const updatedAssignment = await retryEmail(assignmentResult.value.id);
+    if (updatedAssignment && updatedAssignment.emailStatus) {
+      assignmentResult.value.emailStatus = updatedAssignment.emailStatus;
+    } else {
+      assignmentResult.value.emailStatus = "DA_GUI";
+    }
+    assignmentSuccessMessage.value = t("forecast.assignment.retrySuccess");
+  } catch (error) {
+    assignmentErrorMessage.value = error.message || t("forecast.assignment.retryFailed");
+  } finally {
+    isRetryingEmail.value = false;
   }
 }
 
@@ -580,8 +603,22 @@ const summaryText = computed(() => {
                 {{ t('forecast.assignment.createSuccess') }} {{ t('forecast.assignment.emailSent') }}
               </div>
               <div v-else-if="assignmentResult.emailStatus === 'THAT_BAI'" class="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-900/30 text-xs">
-                <i class="mdi mdi-alert-outline mr-1"></i>
-                {{ t('forecast.assignment.emailFailed') }}
+                <div class="flex justify-between items-center gap-2">
+                  <div class="flex items-center">
+                    <i class="mdi mdi-alert-outline mr-1"></i>
+                    <span>{{ t('forecast.assignment.emailFailed') }}</span>
+                  </div>
+                  <button
+                    v-if="canRun"
+                    class="btn btn-secondary btn-xs shrink-0"
+                    type="button"
+                    :disabled="isRetryingEmail"
+                    @click="handleRetryEmail"
+                  >
+                    <i class="mdi mr-0.5" :class="isRetryingEmail ? 'mdi-loading mdi-spin' : 'mdi-email-sync-outline'"></i>
+                    {{ isRetryingEmail ? t('forecast.assignment.retryingEmail') : t('forecast.assignment.retryEmail') }}
+                  </button>
+                </div>
               </div>
               <div v-else class="p-3 bg-zinc-50 dark:bg-zinc-800/20 text-zinc-800 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-800 text-xs">
                 <i class="mdi mdi-clock-outline mr-1"></i>
