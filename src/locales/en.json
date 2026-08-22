@@ -280,7 +280,8 @@
     "Dự báo AI": "AI Forecast",
     "Phiếu điều chỉnh tồn kho": "Inventory Adjustment",
     "Bổ sung tồn kho": "Stock Replenishment",
-    "Cấu hình hệ thống": "System Settings"
+    "Cấu hình hệ thống": "System Settings",
+    "Yêu cầu nhập hàng AI": "AI Replenishment Requests"
   },
   "dashboard": {
     "greeting": "Good morning",
