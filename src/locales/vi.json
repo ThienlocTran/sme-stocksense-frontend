@@ -1235,6 +1235,8 @@
       "invalidFileType": "Chỉ chấp nhận file định dạng .xlsx",
       "downloadTemplateError": "Không thể tải file mẫu.",
       "selectFileFirst": "Vui lòng chọn file Excel trước.",
+      "selectWarehouseFirst": "Vui lòng chọn kho hàng nhận tồn đầu kỳ.",
+      "fileTooLarge": "Dung lượng file không được vượt quá 10MB.",
       "allRowsValid": "Tất cả {count} dòng dữ liệu hợp lệ. Nhấn \"Xác nhận Import\" để hoàn tất.",
       "hasErrors": "File có {count} dòng lỗi. Vui lòng sửa file và tải lại.",
       "validateError": "Không thể kiểm tra file Excel.",
@@ -1304,7 +1306,8 @@
       "note": "Ghi chú",
       "importingBtn": "Đang import...",
       "confirmBtn": "Xác nhận Import vào hệ thống",
-      "importAnotherBtn": "Import file khác"
+      "importAnotherBtn": "Import file khác",
+      "backToProductsBtn": "Quay lại danh sách sản phẩm"
     },
     "confirmDialog": {
       "title": "Xác nhận import dữ liệu",

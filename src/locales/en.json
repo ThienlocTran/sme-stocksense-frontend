@@ -1228,6 +1228,8 @@
       "invalidFileType": "Only .xlsx files are accepted",
       "downloadTemplateError": "Cannot download template.",
       "selectFileFirst": "Please select an Excel file first.",
+      "selectWarehouseFirst": "Please select a warehouse for opening stock.",
+      "fileTooLarge": "File size cannot exceed 10MB.",
       "allRowsValid": "All {count} rows are valid. Click \"Confirm Import\" to complete.",
       "hasErrors": "The file contains {count} invalid rows. Please fix and re-upload.",
       "validateError": "Cannot validate Excel file.",
@@ -1295,7 +1297,8 @@
       "note": "Note",
       "importingBtn": "Importing...",
       "confirmBtn": "Confirm Import",
-      "importAnotherBtn": "Import Another File"
+      "importAnotherBtn": "Import Another File",
+      "backToProductsBtn": "Back to Product List"
     },
     "confirmDialog": {
       "title": "Confirm Data Import",

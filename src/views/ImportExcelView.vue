@@ -75,6 +75,12 @@ function onFileChange(event) {
     event.target.value = ''
     return
   }
+  if (file.size > 10 * 1024 * 1024) {
+    fileError.value = t('importExcel.messages.fileTooLarge') || 'Dung lượng file không được vượt quá 10MB.'
+    selectedFile.value = null
+    event.target.value = ''
+    return
+  }
   selectedFile.value = file
 }
 
@@ -111,6 +117,14 @@ async function handleDownloadTemplate() {
 }
 
 async function handleUploadAndValidate() {
+  fileError.value = ''
+  warehouseError.value = ''
+
+  if (importType.value === 'PRODUCT_WITH_OPENING_STOCK' && !selectedWarehouseId.value) {
+    warehouseError.value = t('importExcel.messages.selectWarehouseFirst') || 'Vui lòng chọn kho hàng nhận tồn đầu kỳ.'
+    return
+  }
+
   if (!selectedFile.value) { fileError.value = t('importExcel.messages.selectFileFirst'); return }
 
   phase.value = 'validating'
@@ -143,7 +157,12 @@ async function handleUploadAndValidate() {
 
 async function handleConfirmImport() {
   showConfirmDialog.value = false
-  if (!selectedFile.value || !validationResult.value?.valid) return
+  if (!selectedFile.value || !validationResult.value?.canConfirm) return
+
+  if (importType.value === 'PRODUCT_WITH_OPENING_STOCK' && !selectedWarehouseId.value) {
+    warehouseError.value = t('importExcel.messages.selectWarehouseFirst') || 'Vui lòng chọn kho hàng nhận tồn đầu kỳ.'
+    return
+  }
 
   phase.value = 'importing'
   globalError.value = ''
@@ -320,7 +339,7 @@ function formatDate(dateStr) {
               </button>
 
               <button
-                v-if="validationResult && validationResult.valid && phase !== 'done'"
+                v-if="validationResult && validationResult.canConfirm && phase !== 'done'"
                 class="btn btn-success text-white flex-1"
                 :disabled="!canOperate || phase === 'importing'"
                 @click="showConfirmDialog = true"
@@ -328,6 +347,16 @@ function formatDate(dateStr) {
                 <i v-if="phase === 'importing'" class="mdi mdi-loading mdi-spin mr-1"></i>
                 <i v-else class="mdi mdi-database-import-outline mr-1"></i>
                 <span>{{ phase === 'importing' ? t('importExcel.step4.importingBtn') : (t('importExcel.step4.confirmBtn') || 'Nhập dữ liệu') }}</span>
+              </button>
+
+              <button 
+                v-if="phase === 'done'" 
+                class="btn btn-secondary flex-1" 
+                type="button" 
+                @click="router.push('/products')"
+              >
+                <i class="mdi mdi-arrow-left mr-1"></i>
+                <span>{{ t("importExcel.step4.backToProductsBtn") }}</span>
               </button>
 
               <button 
