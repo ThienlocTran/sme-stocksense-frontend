@@ -4,7 +4,7 @@ const MASTER_DATA_MANAGE_ROLES = ['ADMIN', 'MANAGER']
 const MASTER_DATA_VIEW_ROLES = ['ADMIN', 'MANAGER', 'EMPLOYEE']
 const IMPORT_RECEIPT_PROCESS_ROLES = ['ADMIN', 'EMPLOYEE']
 const EMPLOYEE_MANAGE_ROLES = ['ADMIN']
-const EXCEL_IMPORT_ROLES = ['ADMIN', 'EMPLOYEE']
+const EXCEL_IMPORT_ROLES = ['ADMIN', 'MANAGER']
 const FORECAST_VIEW_ROLES = ['ADMIN', 'MANAGER', 'EMPLOYEE']
 const FORECAST_RUN_ROLES = ['ADMIN', 'MANAGER']
 
@@ -62,7 +62,7 @@ export function canAccessRoute(path, role) {
   }
 
   if (path === '/import-excel') {
-    return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
+    return ['ADMIN', 'MANAGER'].includes(resolvedRole)
   }
 
   if (path === '/partners' || path === '/approvals') {
@@ -120,7 +120,7 @@ export function canApproveExportReceipt(role) {
 }
 
 export function canOperateImportExcel(role) {
-  return ['ADMIN', 'EMPLOYEE'].includes(resolveRole(role))
+  return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
 }
 
 export function canViewAllStockDocuments(role) {
