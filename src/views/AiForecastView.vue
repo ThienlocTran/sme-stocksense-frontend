@@ -439,7 +439,7 @@ const summaryText = computed(() => {
         />
       </div>
 
-      <!-- Recommendation Detail & Capacity Warnings -->
+      <!-- Recommendation Detail & Capacity Warnings (Task 4 Capacity limitation UX) -->
       <div class="card card-pad chart-card mt-6">
         <h3 class="section-title">Chi tiết đề xuất & Dung tích kho hàng</h3>
         <div class="py-2 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
