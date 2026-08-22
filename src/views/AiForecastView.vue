@@ -298,6 +298,13 @@ const isRecommendationValid = computed(() => {
   );
 });
 
+const totalHorizonDemand = computed(() => {
+  if (!forecast.value || !Array.isArray(forecast.value.dailyForecast)) return 0;
+  const horizon = selectedHorizon.value;
+  const dailyPoints = forecast.value.dailyForecast.slice(0, horizon);
+  return dailyPoints.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+});
+
 async function loadRecommendation() {
   recommendation.value = null;
   if (!selectedProductId.value || !selectedWarehouseId.value || !selectedHorizon.value) {
@@ -514,7 +521,7 @@ const summaryText = computed(() => {
       return t('forecast.summaryMessages.sufficientStock', {
         stockLabel,
         stock: formatQty(rec.currentStock),
-        demand: formatQty(rec.forecastDemand),
+        demand: formatQty(totalHorizonDemand.value),
         days: selectedHorizon.value
       });
     }
@@ -836,7 +843,7 @@ const isHistoryUnavailable = computed(() => {
       <div class="stat-grid mt-6">
         <div class="card card-pad stat-card">
           <span class="stat-label">{{ t('forecast.demandForecastLabel', { horizon: selectedHorizon }) }}</span>
-          <strong class="stat-value">{{ formatQty(recommendation.forecastDemand) }}</strong>
+          <strong class="stat-value">{{ formatQty(totalHorizonDemand) }}</strong>
           <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t('forecast.demandForecastSub') }}</span>
         </div>
         <div class="card card-pad stat-card">
