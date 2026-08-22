@@ -68,9 +68,18 @@ export async function seedDemoHistory() {
   try {
     const { data } = await forecastClient.post('/api/forecast/seed-history', null, {
       headers: getAuthorizationHeader(),
+      timeout: 300000,
     })
     return data
   } catch (error) {
+    if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout') || error.isTimeout) {
+      throw {
+        status: 408,
+        message: 'Quá trình sinh dữ liệu đang mất nhiều thời gian hơn dự kiến. Vui lòng chờ và kiểm tra lại.',
+        errors: {},
+        isTimeout: true,
+      }
+    }
     throw normalizeForecastError(error, 'Không thể sinh dữ liệu demo.')
   }
 }
@@ -96,6 +105,15 @@ function normalizeForecastError(error, fallbackMessage) {
       status,
       message: fallbackMessage,
       errors: {},
+    }
+  }
+
+  if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout') || error.isTimeout) {
+    return {
+      status: 408,
+      message: 'Yêu cầu xử lý quá thời gian quy định. Vui lòng thử lại.',
+      errors: {},
+      isTimeout: true,
     }
   }
 
