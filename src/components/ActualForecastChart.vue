@@ -26,7 +26,7 @@ const props = defineProps({
 });
 
 const series = computed(() => {
-  const slicedHistorical = props.historical.slice(-365);
+  const slicedHistorical = props.historical.slice(-props.horizonDays);
   const actualData = slicedHistorical.map((p) => ({
     x: new Date(p.date).getTime(),
     y: p.quantity,
