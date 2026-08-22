@@ -69,11 +69,11 @@ async function loadDropdowns() {
   isLoadingDropdowns.value = true;
   try {
     const promises = [
-      getProducts({ page: 0, size: 200 }),
+      getProducts({ page: 0, size: 100 }),
       getWarehouses(),
     ];
     if (canRun.value) {
-      promises.push(getEmployees({ page: 0, size: 200, status: "HOAT_DONG" }));
+      promises.push(getEmployees({ page: 0, size: 100, status: "HOAT_DONG" }));
     }
     const [productPage, warehouseList, employeePage] = await Promise.all(promises);
     products.value = productPage.content || [];
