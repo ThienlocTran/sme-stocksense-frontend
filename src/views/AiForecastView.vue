@@ -631,66 +631,72 @@ const isHistoryUnavailable = computed(() => {
   <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
   <p v-if="successMessage" class="form-alert form-alert-success">{{ successMessage }}</p>
 
-  <div class="card card-pad selector-bar">
-    <div class="selector-field">
-      <label class="field-label">{{ t("forecast.filter.source") }}</label>
-      <select v-model="selectedSource" class="select" :disabled="isLoadingDropdowns">
-        <option value="EXTERNAL_STORE_ITEM">{{ t("forecast.dataSource.externalStoreItem") }}</option>
-        <option value="SEED_DEMO">{{ t("forecast.dataSource.demo") }}</option>
-        <option value="THUC_TE">{{ t("forecast.dataSource.actual") }}</option>
-      </select>
-      <span class="text-xs text-zinc-500 mt-1 block leading-relaxed">
-        {{ t('forecast.helpText.' + (selectedSource === 'EXTERNAL_STORE_ITEM' ? 'externalStoreItem' : (selectedSource === 'SEED_DEMO' ? 'demo' : 'actual'))) }}
-      </span>
+  <div class="card card-pad selector-bar flex-col !items-stretch">
+    <!-- Nguồn dữ liệu row (Task 8 style polish) -->
+    <div class="pb-4 mb-2 border-b border-zinc-200 dark:border-zinc-800 flex flex-col gap-1">
+      <div class="max-w-md">
+        <label class="field-label">{{ t("forecast.filter.source") }}</label>
+        <select v-model="selectedSource" class="select mt-1.5" :disabled="isLoadingDropdowns">
+          <option value="EXTERNAL_STORE_ITEM">{{ t("forecast.dataSource.externalStoreItem") }}</option>
+          <option value="SEED_DEMO">{{ t("forecast.dataSource.demo") }}</option>
+          <option value="THUC_TE">{{ t("forecast.dataSource.actual") }}</option>
+        </select>
+        <span class="text-xs text-zinc-500 mt-1 block leading-relaxed">
+          {{ t('forecast.helpText.' + (selectedSource === 'EXTERNAL_STORE_ITEM' ? 'externalStoreItem' : (selectedSource === 'SEED_DEMO' ? 'demo' : 'actual'))) }}
+        </span>
+      </div>
     </div>
+
     <template v-if="selectedSource !== 'THUC_TE' || availableCombinations.length > 0">
-      <div class="selector-field">
-        <label class="field-label">{{ t("forecast.filter.product") }}</label>
-        <select v-model="selectedProductId" class="select" :disabled="isLoadingDropdowns">
-          <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingProduct") : t("forecast.filter.selectProduct") }}</option>
-          <option v-for="product in products" :key="product.id" :value="product.id">
-            {{ product.code || product.maSanPham }} - {{ product.name || product.tenSanPham }}
-          </option>
-        </select>
-      </div>
-      <div class="selector-field">
-        <label class="field-label">{{ t("forecast.filter.warehouse") }}</label>
-        <select v-model="selectedWarehouseId" class="select" :disabled="isLoadingDropdowns">
-          <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingWarehouse") : t("forecast.filter.selectWarehouse") }}</option>
-          <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
-            {{ warehouse.code || warehouse.maKho }} - {{ warehouse.name || warehouse.tenKho }}
-          </option>
-        </select>
-      </div>
-      <div class="selector-field">
-        <label class="field-label">{{ t('forecast.horizonLabel') }}</label>
-        <select v-model="selectedHorizon" class="select" :disabled="isLoadingDropdowns">
-          <option :value="7">{{ t('forecast.daysCount', { days: 7 }) }}</option>
-          <option :value="14">{{ t('forecast.daysCount', { days: 14 }) }}</option>
-          <option :value="30">{{ t('forecast.daysCount', { days: 30 }) }}</option>
-        </select>
-      </div>
-      <div class="selector-actions">
-        <button
-          v-if="canRun"
-          class="btn btn-primary"
-          type="button"
-          :disabled="!canSelect || isRunningForecast"
-          @click="handleRunForecast"
-        >
-          <i class="mdi" :class="isRunningForecast ? 'mdi-loading mdi-spin' : 'mdi-chart-timeline-variant'"></i>
-          {{ isRunningForecast ? t("forecast.button.running") : t("forecast.button.run") }}
-        </button>
-        <button
-          v-if="canRun"
-          class="btn btn-secondary"
-          type="button"
-          :disabled="!canSelect || isCheckingDrift"
-          @click="handleCheckDrift"
-        >
-          <i class="mdi" :class="isCheckingDrift ? 'mdi-loading mdi-spin' : 'mdi-radar'"></i>
-          {{ t("forecast.button.checkDrift") }}
-        </button>
+      <div class="flex flex-wrap gap-4 items-end w-full">
+        <div class="selector-field">
+          <label class="field-label">{{ t("forecast.filter.product") }}</label>
+          <select v-model="selectedProductId" class="select" :disabled="isLoadingDropdowns">
+            <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingProduct") : t("forecast.filter.selectProduct") }}</option>
+            <option v-for="product in products" :key="product.id" :value="product.id">
+              {{ product.code || product.maSanPham }} - {{ product.name || product.tenSanPham }}
+            </option>
+          </select>
+        </div>
+        <div class="selector-field">
+          <label class="field-label">{{ t("forecast.filter.warehouse") }}</label>
+          <select v-model="selectedWarehouseId" class="select" :disabled="isLoadingDropdowns">
+            <option value="">{{ isLoadingDropdowns ? t("forecast.filter.loadingWarehouse") : t("forecast.filter.selectWarehouse") }}</option>
+            <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">
+              {{ warehouse.code || warehouse.maKho }} - {{ warehouse.name || warehouse.tenKho }}
+            </option>
+          </select>
+        </div>
+        <div class="selector-field">
+          <label class="field-label">{{ t('forecast.horizonLabel') }}</label>
+          <select v-model="selectedHorizon" class="select" :disabled="isLoadingDropdowns">
+            <option :value="7">{{ t('forecast.daysCount', { days: 7 }) }}</option>
+            <option :value="14">{{ t('forecast.daysCount', { days: 14 }) }}</option>
+            <option :value="30">{{ t('forecast.daysCount', { days: 30 }) }}</option>
+          </select>
+        </div>
+        <div class="selector-actions">
+          <button
+            v-if="canRun"
+            class="btn btn-primary"
+            type="button"
+            :disabled="!canSelect || isRunningForecast"
+            @click="handleRunForecast"
+          >
+            <i class="mdi" :class="isRunningForecast ? 'mdi-loading mdi-spin' : 'mdi-chart-timeline-variant'"></i>
+            {{ isRunningForecast ? t("forecast.button.running") : t("forecast.button.run") }}
+          </button>
+          <button
+            v-if="canRun"
+            class="btn btn-secondary"
+            type="button"
+            :disabled="!canSelect || isCheckingDrift"
+            @click="handleCheckDrift"
+          >
+            <i class="mdi" :class="isCheckingDrift ? 'mdi-loading mdi-spin' : 'mdi-radar'"></i>
+            {{ t("forecast.button.checkDrift") }}
+          </button>
+        </div>
       </div>
     </template>
   </div>
