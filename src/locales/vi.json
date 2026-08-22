@@ -233,6 +233,7 @@
       "importExcel": "Import Excel",
       "warehouses": "Kho hàng",
       "replenishment": "Bổ sung tồn kho",
+      "aiPurchaseAssignments": "Yêu cầu nhập hàng AI",
       "settings": "Cấu hình hệ thống"
     }
   },
@@ -283,7 +284,10 @@
     "Nhân viên": "Nhân viên",
     "Kiểm kê kho": "Kiểm kê kho",
     "Chi tiết kiểm kê kho": "Chi tiết kiểm kê kho",
-    "Dự báo AI": "Dự báo AI"
+    "Dự báo AI": "Dự báo AI",
+    "Phiếu điều chỉnh tồn kho": "Phiếu điều chỉnh tồn kho",
+    "Bổ sung tồn kho": "Bổ sung tồn kho",
+    "Cấu hình hệ thống": "Cấu hình hệ thống"
   },
   "dashboard": {
     "greeting": "Chào buổi sáng",
@@ -877,7 +881,10 @@
       "clear": "Xóa lọc",
       "allAlertTypes": "Tất cả loại cảnh báo",
       "lowStock": "Cảnh báo tồn kho thấp",
-      "capacity": "Cảnh báo sức chứa"
+      "capacity": "Cảnh báo sức chứa",
+      "allAlertStatuses": "Tất cả trạng thái cảnh báo",
+      "alertActive": "Chưa tiếp nhận",
+      "alertAcknowledged": "Đã tiếp nhận"
     },
     "table": {
       "productCode": "Mã SP",
@@ -887,17 +894,22 @@
       "currentQuantityLabel": "Tồn hiện tại",
       "minStock": "tối thiểu",
       "severity": "Mức độ ưu tiên",
-      "status": "Trạng thái",
+      "status": "Trạng thái tồn kho",
+      "alertStatus": "Xử lý cảnh báo",
       "lastUpdatedAt": "Cập nhật",
       "actions": "Thao tác",
       "viewInventory": "Xem tồn kho",
-      "viewInventoryTitle": "Xem chi tiết thẻ kho"
+      "viewInventoryTitle": "Xem chi tiết thẻ kho",
+      "acknowledge": "Tiếp nhận",
+      "acknowledgeTitle": "Xác nhận đã tiếp nhận cảnh báo này"
     },
     "status": {
       "lowStock": "Sắp hết",
       "outOfStock": "Thiếu hàng",
       "normal": "Đủ hàng",
-      "overStock": "Thừa hàng"
+      "overStock": "Thừa hàng",
+      "active": "Chưa tiếp nhận",
+      "acknowledged": "Đã tiếp nhận"
     },
     "pagination": {
       "records": "bản ghi",
@@ -1023,23 +1035,30 @@
     },
     "assignment": {
       "selectEmployee": "-- Chọn nhân viên --",
-      "createSuccess": "Phân công đã được tạo thành công.",
+      "createSuccess": "Yêu cầu nhập hàng đã được tạo thành công.",
       "emailSent": "Đã gửi email thông báo thành công cho nhân viên.",
-      "emailFailed": "Phân công đã được tạo thành công, nhưng gửi email thông báo thất bại.",
-      "emailPending": "Phân công đã được tạo thành công, đang chờ gửi email thông báo.",
-      "error": "Không thể tạo phân công mua hàng.",
+      "emailFailed": "Yêu cầu nhập hàng đã được tạo thành công, nhưng gửi email thông báo thất bại.",
+      "emailPending": "Yêu cầu nhập hàng đã được tạo thành công, đang chờ gửi email thông báo.",
+      "error": "Không thể tạo yêu cầu nhập hàng.",
       "retryEmail": "Gửi lại email",
       "retryingEmail": "Đang gửi lại...",
       "retrySuccess": "Gửi lại email thành công!",
       "retryFailed": "Gửi lại email thất bại.",
-      "code": "Mã phân công",
+      "code": "Mã yêu cầu",
       "receiver": "Nhân viên nhận",
-      "resultTitle": "Kết quả phân công công việc",
+      "resultTitle": "Kết quả tạo yêu cầu nhập hàng",
       "status": "Trạng thái",
       "emailStatus": "Trạng thái Email",
       "emailStatusSent": "Đã gửi",
       "emailStatusFailed": "Thất bại",
       "emailStatusPending": "Chờ gửi",
+      "emailStatus_CHO_GUI": "Chờ gửi",
+      "emailStatus_DA_GUI": "Đã gửi",
+      "emailStatus_THAT_BAI": "Gửi thất bại",
+      "pageTitle": "Yêu cầu nhập hàng AI",
+      "pageDesc": "Danh sách yêu cầu nhập hàng được tạo từ khuyến nghị dự báo AI và giao cho nhân viên xử lý.",
+      "emptyTitle": "Chưa có yêu cầu nhập hàng",
+      "emptyDesc": "Hệ thống AI chưa tạo yêu cầu nhập hàng nào. Hãy chạy gợi ý bổ sung tồn kho từ màn hình Dự báo AI.",
       "aiQty": "Số lượng AI đề xuất",
       "reqQty": "Số lượng yêu cầu thực tế"
     },

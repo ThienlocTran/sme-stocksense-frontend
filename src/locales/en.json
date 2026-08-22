@@ -226,6 +226,7 @@
       "importExcel": "Import Excel",
       "warehouses": "Warehouses",
       "replenishment": "Stock Replenishment",
+      "aiPurchaseAssignments": "AI Replenishment Requests",
       "settings": "System Settings"
     }
   },
@@ -276,7 +277,10 @@
     "Nhân viên": "Employees",
     "Kiểm kê kho": "Stock Takes",
     "Chi tiết kiểm kê kho": "Stock Take Details",
-    "Dự báo AI": "AI Forecast"
+    "Dự báo AI": "AI Forecast",
+    "Phiếu điều chỉnh tồn kho": "Inventory Adjustment",
+    "Bổ sung tồn kho": "Stock Replenishment",
+    "Cấu hình hệ thống": "System Settings"
   },
   "dashboard": {
     "greeting": "Good morning",
@@ -870,7 +874,10 @@
       "clear": "Clear filters",
       "allAlertTypes": "All Alert Types",
       "lowStock": "Low Stock Alerts",
-      "capacity": "Capacity Alerts"
+      "capacity": "Capacity Alerts",
+      "allAlertStatuses": "All alert statuses",
+      "alertActive": "Unacknowledged",
+      "alertAcknowledged": "Acknowledged"
     },
     "table": {
       "productCode": "Product Code",
@@ -880,17 +887,22 @@
       "currentQuantityLabel": "Current Stock",
       "minStock": "min",
       "severity": "Severity",
-      "status": "Status",
+      "status": "Stock Status",
+      "alertStatus": "Alert Status",
       "lastUpdatedAt": "Last Updated",
       "actions": "Actions",
       "viewInventory": "View Inventory",
-      "viewInventoryTitle": "View inventory details"
+      "viewInventoryTitle": "View inventory details",
+      "acknowledge": "Acknowledge",
+      "acknowledgeTitle": "Mark this alert as acknowledged"
     },
     "status": {
       "lowStock": "Low Stock",
       "outOfStock": "Out of Stock",
       "normal": "Normal",
-      "overStock": "Over Stock"
+      "overStock": "Over Stock",
+      "active": "Unacknowledged",
+      "acknowledged": "Acknowledged"
     },
     "pagination": {
       "records": "records",
@@ -1016,23 +1028,30 @@
     },
     "assignment": {
       "selectEmployee": "-- Select Employee --",
-      "createSuccess": "Assignment has been created successfully.",
+      "createSuccess": "Replenishment request has been created successfully.",
       "emailSent": "Notification email has been successfully sent to the employee.",
-      "emailFailed": "Assignment has been created successfully, but sending the notification email failed.",
-      "emailPending": "Assignment has been created successfully, pending notification email sending.",
-      "error": "Failed to create purchase assignment.",
+      "emailFailed": "Replenishment request has been created successfully, but sending the notification email failed.",
+      "emailPending": "Replenishment request has been created successfully, pending notification email sending.",
+      "error": "Failed to create replenishment request.",
       "retryEmail": "Resend email",
       "retryingEmail": "Resending...",
       "retrySuccess": "Resend email successfully!",
       "retryFailed": "Failed to resend email.",
-      "code": "Assignment Code",
+      "code": "Request Code",
       "receiver": "Receiver",
-      "resultTitle": "Task Assignment Result",
+      "resultTitle": "Replenishment Request Result",
       "status": "Status",
       "emailStatus": "Email Status",
       "emailStatusSent": "Sent",
       "emailStatusFailed": "Failed",
       "emailStatusPending": "Pending",
+      "emailStatus_CHO_GUI": "Pending",
+      "emailStatus_DA_GUI": "Sent",
+      "emailStatus_THAT_BAI": "Failed",
+      "pageTitle": "AI Replenishment Requests",
+      "pageDesc": "List of replenishment requests created from AI forecast recommendations and assigned to staff for processing.",
+      "emptyTitle": "No Replenishment Requests Yet",
+      "emptyDesc": "The AI system has not created any replenishment requests yet. Run replenishment suggestions from the AI Forecast screen.",
       "aiQty": "AI Suggested Qty",
       "reqQty": "Actual Requested Qty"
     },
