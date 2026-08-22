@@ -149,7 +149,12 @@
       "lastUpdated": "Cập nhật",
       "minStock": "tối thiểu {count}",
       "minStockThreshold": "Ngưỡng tối thiểu",
-      "currentStock": "Tồn hiện tại"
+      "currentStock": "Tồn hiện tại",
+      "unitVolumeM3": "Thể tích (m³)",
+      "currentQuantity": "Số lượng thực tế",
+      "effectiveMinStock": "Tồn tối thiểu hiệu lực",
+      "thresholdSource": "Nguồn định mức",
+      "alertStatus": "Trạng thái cảnh báo"
     },
     "status": {
       "outOfStock": "Hết hàng",
@@ -167,6 +172,33 @@
     },
     "errors": {
       "invalidMinStock": "Định mức tồn tối thiểu phải là số nguyên không âm."
+    },
+    "tooltip": {
+      "outOfStock": "Hết hàng hoàn toàn. Cần nhập hàng khẩn cấp!",
+      "lowStock": "Tồn kho thực tế thấp hơn định mức tồn tối thiểu hiệu lực.",
+      "safeStock": "Tồn kho ở mức an toàn."
+    },
+    "labels": {
+      "unconfigured": "Chưa cấu hình",
+      "override": "Ghi đè",
+      "default": "Mặc định",
+      "unitVolumeMobile": "Thể tích đơn vị",
+      "effectiveMinStockMobile": "Tồn tối thiểu hiệu lực",
+      "actualStockMobile": "Số lượng thực tế"
+    },
+    "configModal": {
+      "title": "Cấu hình tồn tối thiểu",
+      "productLabel": "Sản phẩm",
+      "warehouseLabel": "Kho hàng",
+      "defaultMinStockLabel": "Tồn tối thiểu mặc định sản phẩm:",
+      "thresholdConfigLabel": "Cấu hình định mức",
+      "useDefaultRadio": "Sử dụng tồn tối thiểu mặc định ({default})",
+      "useOverrideRadio": "Ghi đè định mức tồn tối thiểu riêng cho kho này",
+      "overrideValueLabel": "Giá trị định mức ghi đè *",
+      "overrideValuePlaceholder": "Nhập định mức tồn tối thiểu...",
+      "overrideValueHelp": "Định mức này chỉ áp dụng riêng tại kho {warehouse}.",
+      "cancelBtn": "Hủy",
+      "saveBtn": "Lưu cấu hình"
     }
   },
   "sidebar": {
@@ -896,13 +928,29 @@
       "loadingProduct": "Đang tải sản phẩm...",
       "warehouse": "Kho hàng *",
       "selectWarehouse": "Chọn kho",
-      "loadingWarehouse": "Đang tải kho..."
+      "loadingWarehouse": "Đang tải kho...",
+      "source": "Nguồn dữ liệu *",
+      "selectSource": "Chọn nguồn dữ liệu"
     },
+    "helpText": {
+      "externalStoreItem": "5 năm dữ liệu benchmark bên ngoài dùng để đánh giá và trình diễn mô hình.",
+      "demo": "Dữ liệu giả lập do StockSense sinh để trình diễn chức năng dự báo.",
+      "actual": "Dữ liệu được hình thành từ lịch sử xuất kho thực tế."
+    },
+    "demoSourceActionTitle": "Khởi tạo dữ liệu demo",
+    "demoSourceActionDesc": "Tạo dữ liệu lịch sử giả lập cho các sản phẩm/kho chưa có dữ liệu demo.",
+    "hasDemoDataStatus": "Đã có dữ liệu demo",
+    "seedConfirmationTitle": "Sinh dữ liệu demo?",
+    "seedConfirmationBody": "Hệ thống sẽ tạo lịch sử giả lập cho các sản phẩm và kho chưa có dữ liệu demo. Dữ liệu benchmark và dữ liệu thực tế sẽ không bị thay đổi.",
+    "seedConfirmBtn": "Sinh dữ liệu",
+    "seedSuccessMsg": "Đã sinh dữ liệu demo thành công cho {seeded} cặp sản phẩm/kho ({rows} dòng).",
     "empty": {
       "noResultTitle": "Chưa có kết quả dự báo",
       "noResultDesc": "Vui lòng bấm nút 'Dự báo ngay' để bắt đầu tính toán dự báo lần đầu cho sản phẩm và kho này.",
       "selectTitle": "Lựa chọn sản phẩm & kho hàng",
-      "selectDesc": "Chọn một cặp sản phẩm và kho hàng hoạt động ở bộ lọc trên để xem biểu đồ và đề xuất tồn kho."
+      "selectDesc": "Chọn một cặp sản phẩm và kho hàng hoạt động ở bộ lọc trên để xem biểu đồ và đề xuất tồn kho.",
+      "actualNoDataTitle": "Chưa có dữ liệu xuất kho thực tế để chạy dự báo.",
+      "actualNoDataDesc": "Khi hệ thống tích lũy đủ lịch sử xuất kho, nguồn dữ liệu thực tế sẽ khả dụng."
     },
     "stats": {
       "mode": "Chế độ dự báo",
@@ -934,7 +982,25 @@
       "note": "sMAPE thực tế 30 ngày gần đây: {smape}% (ngưỡng giới hạn cho phép: {threshold}%, dựa trên {days} ngày đối chiếu).",
       "approved": "Đã duyệt",
       "rejected": "Từ chối",
-      "pending": "Chờ duyệt"
+      "pending": "Chờ duyệt",
+      "status": {
+        "OK": "Ổn định",
+        "DRIFT": "Lệch - cần train lại",
+        "NO_FORECAST_DATA": "Chưa có dự báo để so sánh",
+        "NO_ACTUAL_DATA": "Chưa có dữ liệu xuất kho thực tế",
+        "INSUFFICIENT_OVERLAP": "Chưa đủ dữ liệu trùng ngày để so sánh"
+      },
+      "rollingSmape": "sMAPE thực tế",
+      "driftThreshold": "Ngưỡng lệch",
+      "comparisonDays": "Ngày so sánh",
+      "daysValue": "{days} ngày",
+      "rules": {
+        "noActualData": "Chưa có giao dịch xuất kho thực tế trong 30 ngày qua để so sánh với dự báo đã lưu.",
+        "noForecastData": "Chưa có bản ghi dự báo nào được lưu. Hãy bấm Dự báo ngay trước.",
+        "insufficientOverlap": "Chỉ có {days} ngày trùng nhau giữa dự báo và thực tế (cần tối thiểu 7 ngày). Cần thêm dữ liệu.",
+        "driftCondition": "Mô hình bị đánh dấu Lệch khi sMAPE > {threshold}% trên ít nhất 7 ngày có dữ liệu cả hai phía.",
+        "driftAction": "Mô hình đang lệch – nên bấm Dự báo ngay để train lại với dữ liệu mới nhất."
+      }
     },
     "summary": {
       "noData": "Chưa đủ dữ liệu để ước lượng tốc độ tiêu thụ trung bình mỗi ngày.",
@@ -960,11 +1026,109 @@
       "resultTitle": "Kết quả phân công công việc",
       "status": "Trạng thái",
       "emailStatus": "Trạng thái Email",
+      "emailStatusSent": "Đã gửi",
+      "emailStatusFailed": "Thất bại",
+      "emailStatusPending": "Chờ gửi",
       "aiQty": "Số lượng AI đề xuất",
       "reqQty": "Số lượng yêu cầu thực tế"
     },
     "capacityAllowed": "Duyệt (Sức chứa): ",
-    "capacityLimitedDesc": "Sức chứa kho bị giới hạn! Một số đề xuất đã được giảm để phù hợp với không gian trống của kho."
+    "capacityLimitedDesc": "Sức chứa kho bị giới hạn! Một số đề xuất đã được giảm để phù hợp với không gian trống của kho.",
+    "horizonLabel": "Thời gian dự báo",
+    "daysCount": "{days} ngày",
+    "runForecastBtn": "Dự báo ngay",
+    "runningBtn": "Đang dự báo...",
+    "checkDriftBtn": "Kiểm tra lệch mô hình",
+    "infoTitle": "Thông tin mô hình dự báo",
+    "dataSourceLabel": "Nguồn dữ liệu: {source}",
+    "dataTypeLabel": "Loại dữ liệu: {type}",
+    "modeLabel": "Chế độ",
+    "accuracyLabel": "Độ chính xác (sMAPE)",
+    "maeRmseLabel": "Chỉ số MAE / RMSE",
+    "maeRmseSub": "Sai số tuyệt đối / bình phương",
+    "recommendationTitle": "Khuyến nghị bổ sung hàng từ AI",
+    "leadTimeCycle": "Chu kỳ dự phòng: {horizon} ngày",
+    "badge": {
+      "needRestock": "Cần nhập hàng",
+      "safe": "Tồn kho an toàn",
+      "cannotRestock": "Không thể nhập thêm"
+    },
+    "loadingRecommendation": "Đang tải đề xuất bổ sung hàng từ AI...",
+    "noRecommendation": "Chưa có đề xuất bổ sung cho sản phẩm/kho này.",
+    "demandForecastLabel": "Dự báo nhu cầu ({horizon} ngày)",
+    "demandForecastSub": "Tổng nhu cầu bán hàng dự kiến",
+    "currentStockLabel": "Tồn kho hiện tại / Tối thiểu",
+    "currentStockSub": "Ngưỡng tối thiểu: {min}",
+    "currentStockAtForecastLabel": "Tồn kho tại mốc dự báo",
+    "rawNeedLabel": "Nhu cầu bổ sung (Raw Need)",
+    "rawNeedSub": "Lượng cần nhập theo định mức an toàn",
+    "actualProposalLabel": "Đề xuất thực tế (AI)",
+    "actualProposalSub": "Lượng duyệt sau khi kiểm tra dung tích",
+    "actualVsForecastTitle": "Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)",
+    "historyLabel": "Lịch sử:",
+    "toLabel": "đến",
+    "projectedInventoryTitle": "Dự báo diễn biến tồn kho (Projected Inventory)",
+    "detailCapacityTitle": "Chi tiết đề xuất & Dung tích kho hàng",
+    "capacityDetail": {
+      "rawNeed": "Nhu cầu bổ sung theo định mức (Raw Need):",
+      "rawNeedValue": "{qty} sản phẩm",
+      "suggestedQty": "Số lượng AI đề xuất nhập:",
+      "suggestedQtyValue": "{qty} sản phẩm",
+      "shortfall": "Thiếu hụt do dung tích kho đầy (Shortfall):",
+      "shortfallValue": "{qty} sản phẩm",
+      "warehouseCapacityTitle": "Trạng thái dung tích kho",
+      "totalCapacity": "Tổng dung tích kho: {capacity} m³",
+      "usedCapacity": "Dung tích đã sử dụng: {occupied} m³",
+      "availableCapacity": "Dung tích còn trống: {available} m³",
+      "maxQtyAllowed": "Khả năng nhận tối đa sản phẩm này: {max} sản phẩm"
+    },
+    "assignTaskTitle": "Giao nhiệm vụ bổ sung hàng",
+    "assignTaskDesc": "Bàn giao nhiệm vụ bổ sung hàng dựa trên đề xuất số lượng từ AI.",
+    "assignTaskBtn": "Tạo phân công công việc",
+    "assignmentModal": {
+      "title": "Giao nhiệm vụ bổ sung hàng",
+      "subtitle": "Bàn giao công việc xử lý bổ sung kho hàng",
+      "productLabel": "Sản phẩm: {product}",
+      "warehouseLabel": "Kho hàng: {warehouse}",
+      "horizonLabel": "Chu kỳ dự báo: {horizon} ngày",
+      "aiQtyLabel": "Số lượng đề xuất từ AI: {qty}",
+      "rawNeedLabel": "Nhu cầu bổ sung thực tế (Raw Need): {qty}",
+      "capacityWarning": "⚠️ Cảnh báo dung tích: {warning}",
+      "employeeLabel": "Nhân viên được phân công *",
+      "requestedQtyLabel": "Số lượng yêu cầu thực tế *",
+      "qtyHelp": "AI đề xuất: {qty}. Bạn có thể điều chỉnh lại.",
+      "qtyExceedWarning": "Lưu ý: Số lượng yêu cầu vượt quá đề xuất của AI (Số lượng AI đề xuất: {qty}). Vui lòng đảm bảo kho hàng có thể tiếp nhận.",
+      "messageLabel": "Lời nhắn / Chỉ thị bổ sung",
+      "messagePlaceholder": "Nhập chỉ dẫn công việc...",
+      "cancelBtn": "Hủy",
+      "assignBtn": "Giao việc",
+      "closeBtn": "Đóng"
+    },
+    "datasetType": {
+      "external": "Ngoại cảnh (External)",
+      "actual": "Dữ liệu thực tế",
+      "coldStart": "Khởi động lạnh (Cold Start)",
+      "unknown": "Không xác định"
+    },
+    "dataSource": {
+      "externalStoreItem": "Store-Item Benchmark",
+      "externalRetail": "External Retail Benchmark",
+      "actual": "Dữ liệu thực tế",
+      "demo": "Dữ liệu demo",
+      "unknown": "Nguồn dữ liệu không xác định"
+    },
+    "summaryMessages": {
+      "sufficientStock": "{stockLabel} ({stock}) đủ đáp ứng nhu cầu bán hàng dự báo ({demand}) trong {days} ngày tới.",
+      "capacityFull": "Cần bổ sung thêm {raw} sản phẩm, nhưng do dung tích kho đã đầy (Dung tích còn trống: {avail} m³), hệ thống không đề xuất nhập thêm.",
+      "capacityLimited": "Hạn chế dung tích kho: Nhu cầu thực tế cần {raw} sản phẩm, nhưng hệ thống đề xuất nhập tối đa {suggested} sản phẩm. Thiếu hụt: {shortfall} sản phẩm.",
+      "suggestedRestock": "Đề xuất bổ sung {suggested} sản phẩm để đáp ứng nhu cầu dự báo và duy trì tồn kho an toàn."
+    },
+    "noHistoryState": {
+      "title": "Chưa có dữ liệu dự báo Store-Item cho sản phẩm này.",
+      "desc": "Hệ thống dự báo AI hiện tại chưa hỗ trợ dữ liệu Store-Item Demand Benchmark cho sản phẩm và kho hàng đã chọn.",
+      "insufficientTitle": "Chưa có đủ lịch sử dữ liệu",
+      "insufficientDesc": "Chưa có đủ lịch sử dữ liệu cho sản phẩm và kho đã chọn."
+    }
   },
   "transactions": {
     "title": "Lịch sử giao dịch kho",

@@ -30,11 +30,13 @@ const router = useRouter();
 const { t } = useI18n();
 const authStore = useAuthStore();
 
+const selectedSource = ref("EXTERNAL_STORE_ITEM");
 const products = ref([]);
 const warehouses = ref([]);
 const selectedProductId = ref("");
 const selectedWarehouseId = ref("");
 const selectedHorizon = ref(30);
+const successMessage = ref("");
 
 const employees = ref([]);
 const showAssignmentModal = ref(false);
@@ -380,16 +382,32 @@ const summaryText = computed(() => {
   if (recommendation.value) {
     const rec = recommendation.value;
     if (rec.rawSuggestedQty === 0) {
-      const stockLabel = forecast.value.source === 'EXTERNAL_STORE_ITEM' ? 'Tồn kho tại mốc dự báo' : 'Tồn kho hiện tại';
-      return `${stockLabel} (${formatQty(rec.currentStock)}) đủ đáp ứng nhu cầu bán hàng dự báo (${formatQty(rec.forecastDemand)}) trong ${selectedHorizon.value} ngày tới.`;
+      const stockLabel = forecast.value.source === 'EXTERNAL_STORE_ITEM' 
+        ? t('forecast.currentStockAtForecastLabel') 
+        : t('forecast.stats.currentStock');
+      return t('forecast.summaryMessages.sufficientStock', {
+        stockLabel,
+        stock: formatQty(rec.currentStock),
+        demand: formatQty(rec.forecastDemand),
+        days: selectedHorizon.value
+      });
     }
     if (rec.rawSuggestedQty > 0 && rec.suggestedQty === 0) {
-      return `Cần bổ sung thêm ${formatQty(rec.rawSuggestedQty)} sản phẩm, nhưng do dung tích kho đã đầy (Dung tích còn trống: ${formatNumber(rec.warehouseAvailableM3)} m³), hệ thống không đề xuất nhập thêm.`;
+      return t('forecast.summaryMessages.capacityFull', {
+        raw: formatQty(rec.rawSuggestedQty),
+        avail: formatNumber(rec.warehouseAvailableM3)
+      });
     }
     if (rec.capacityLimited) {
-      return `Hạn chế dung tích kho: Nhu cầu thực tế cần ${formatQty(rec.rawSuggestedQty)} sản phẩm, nhưng hệ thống đề xuất nhập tối đa ${formatQty(rec.suggestedQty)} sản phẩm. Thiếu hụt: ${formatQty(rec.capacityShortfallQty)} sản phẩm.`;
+      return t('forecast.summaryMessages.capacityLimited', {
+        raw: formatQty(rec.rawSuggestedQty),
+        suggested: formatQty(rec.suggestedQty),
+        shortfall: formatQty(rec.capacityShortfallQty)
+      });
     }
-    return `Đề xuất bổ sung ${formatQty(rec.suggestedQty)} sản phẩm để đáp ứng nhu cầu dự báo và duy trì tồn kho an toàn.`;
+    return t('forecast.summaryMessages.suggestedRestock', {
+      suggested: formatQty(rec.suggestedQty)
+    });
   }
 
   const rate = Number(forecast.value.forecast30d ?? 0);
@@ -411,30 +429,30 @@ const summaryText = computed(() => {
 });
 
 const displaySource = computed(() => {
-  if (!forecast.value || !forecast.value.source) return "Nguồn dữ liệu không xác định";
+  if (!forecast.value || !forecast.value.source) return t('forecast.dataSource.unknown');
   const src = forecast.value.source;
   if (src === "EXTERNAL_STORE_ITEM") {
-    return "Store-Item Demand Benchmark";
+    return t('forecast.dataSource.externalStoreItem');
   }
   if (src === "EXTERNAL_RETAIL") {
-    return "External Retail Benchmark";
+    return t('forecast.dataSource.externalRetail');
   }
   if (src === "THUC_TE") {
-    return "Dữ liệu thực tế StockSense";
+    return t('forecast.dataSource.actual');
   }
   if (src === "SEED_DEMO") {
-    return "Dữ liệu demo";
+    return t('forecast.dataSource.demo');
   }
-  return "Nguồn dữ liệu không xác định";
+  return t('forecast.dataSource.unknown');
 });
 
 const displayDatasetType = computed(() => {
   if (!forecast.value || !forecast.value.datasetType) return "-";
   const type = forecast.value.datasetType;
-  if (type === "EXTERNAL") return "Ngoại cảnh (External)";
-  if (type === "THUC_TE") return "Dữ liệu thực tế";
-  if (type === "COLD_START") return "Khởi động lạnh (Cold Start)";
-  if (type === "LEGACY_UNKNOWN") return "Không xác định";
+  if (type === "EXTERNAL") return t('forecast.datasetType.external');
+  if (type === "THUC_TE") return t('forecast.datasetType.actual');
+  if (type === "COLD_START") return t('forecast.datasetType.coldStart');
+  if (type === "LEGACY_UNKNOWN") return t('forecast.datasetType.unknown');
   return type;
 });
 
@@ -475,8 +493,20 @@ const isHistoryUnavailable = computed(() => {
   />
 
   <p v-if="errorMessage" class="form-alert form-alert-error">{{ errorMessage }}</p>
+  <p v-if="successMessage" class="form-alert form-alert-success">{{ successMessage }}</p>
 
   <div class="card card-pad selector-bar">
+    <div class="selector-field">
+      <label class="field-label">{{ t("forecast.filter.source") }}</label>
+      <select v-model="selectedSource" class="select" :disabled="isLoadingDropdowns">
+        <option value="EXTERNAL_STORE_ITEM">{{ t("forecast.dataSource.externalStoreItem") }}</option>
+        <option value="SEED_DEMO">{{ t("forecast.dataSource.demo") }}</option>
+        <option value="THUC_TE">{{ t("forecast.dataSource.actual") }}</option>
+      </select>
+      <span class="text-xs text-zinc-500 mt-1 block leading-relaxed">
+        {{ t('forecast.helpText.' + (selectedSource === 'EXTERNAL_STORE_ITEM' ? 'externalStoreItem' : (selectedSource === 'SEED_DEMO' ? 'demo' : 'actual'))) }}
+      </span>
+    </div>
     <div class="selector-field">
       <label class="field-label">{{ t("forecast.filter.product") }}</label>
       <select v-model="selectedProductId" class="select" :disabled="isLoadingDropdowns">
@@ -496,11 +526,11 @@ const isHistoryUnavailable = computed(() => {
       </select>
     </div>
     <div class="selector-field">
-      <label class="field-label">Thời gian dự báo (Horizon)</label>
+      <label class="field-label">{{ t('forecast.horizonLabel') }}</label>
       <select v-model="selectedHorizon" class="select" :disabled="isLoadingDropdowns">
-        <option :value="7">7 ngày</option>
-        <option :value="14">14 ngày</option>
-        <option :value="30">30 ngày</option>
+        <option :value="7">{{ t('forecast.daysCount', { days: 7 }) }}</option>
+        <option :value="14">{{ t('forecast.daysCount', { days: 14 }) }}</option>
+        <option :value="30">{{ t('forecast.daysCount', { days: 30 }) }}</option>
       </select>
     </div>
     <div class="selector-actions">
@@ -522,7 +552,7 @@ const isHistoryUnavailable = computed(() => {
         @click="handleCheckDrift"
       >
         <i class="mdi" :class="isCheckingDrift ? 'mdi-loading mdi-spin' : 'mdi-radar'"></i>
-        Kiểm tra lệch mô hình
+        {{ t("forecast.button.checkDrift") }}
       </button>
     </div>
   </div>
@@ -534,8 +564,8 @@ const isHistoryUnavailable = computed(() => {
 
   <EmptyState
     v-else-if="showNoStoreItemHistoryState"
-    title="Chưa có dữ liệu dự báo Store-Item cho sản phẩm này."
-    description="Hệ thống dự báo AI hiện tại chưa hỗ trợ dữ liệu Store-Item Demand Benchmark cho sản phẩm và kho hàng đã chọn."
+    :title="t('forecast.noHistoryState.title')"
+    :description="t('forecast.noHistoryState.desc')"
     icon="mdi-database-alert-outline"
   />
 
@@ -555,8 +585,8 @@ const isHistoryUnavailable = computed(() => {
 
   <EmptyState
     v-else-if="isHistoryUnavailable"
-    title="Chưa có đủ lịch sử dữ liệu"
-    description="Chưa có đủ lịch sử dữ liệu cho sản phẩm và kho đã chọn."
+    :title="t('forecast.noHistoryState.insufficientTitle')"
+    :description="t('forecast.noHistoryState.insufficientDesc')"
     icon="mdi-database-alert-outline"
   />
 
@@ -567,44 +597,44 @@ const isHistoryUnavailable = computed(() => {
         <!-- Left: Model Info & Performance Metrics -->
         <div class="lg:col-span-7 flex flex-col justify-between gap-4">
           <div>
-            <span class="text-xs uppercase font-bold text-zinc-500 dark:text-zinc-400 tracking-wider">Thông tin mô hình dự báo</span>
+            <span class="text-xs uppercase font-bold text-zinc-500 dark:text-zinc-400 tracking-wider">{{ t('forecast.infoTitle') }}</span>
             <div class="text-xs text-zinc-500 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span>Nguồn dữ liệu: <strong>{{ displaySource }}</strong></span>
-              <span v-if="forecast.datasetType">| Loại dữ liệu: <strong>{{ displayDatasetType }}</strong></span>
+              <span>{{ t('forecast.dataSourceLabel', { source: displaySource }) }}</span>
+              <span v-if="forecast.datasetType">| {{ t('forecast.dataTypeLabel', { type: displayDatasetType }) }}</span>
             </div>
           </div>
 
           <!-- Model performance metrics - Grid of large cards matching source_full_kem_doc style -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="card card-pad stat-card">
-              <span class="stat-label">Chế độ</span>
+              <span class="stat-label">{{ t('forecast.modeLabel') }}</span>
               <strong class="stat-value text-indigo-600 dark:text-indigo-400">
-                {{ getForecastModeLabel(forecast.mode) }}
+                {{ t('forecast.mode.' + forecast.mode) }}
               </strong>
               <span class="muted text-xs">
                 <span v-if="forecast.mode === 'COLD_START_AVG'">
                   {{ t("forecast.stats.coldStartNote") }}
                 </span>
                 <span v-else>
-                  Dựa trên {{ formatNumber(forecast.dataDays) }} ngày dữ liệu
+                  {{ t("forecast.stats.dataDaysNote", { days: formatNumber(forecast.dataDays) }) }}
                 </span>
               </span>
             </div>
             
             <div class="card card-pad stat-card">
-              <span class="stat-label">Độ chính xác (sMAPE)</span>
+              <span class="stat-label">{{ t('forecast.accuracyLabel') }}</span>
               <strong class="stat-value text-green-600 dark:text-green-400">
                 {{ formatNumber(forecast.smape) }}%
               </strong>
-              <span class="muted text-xs">Càng thấp càng chính xác</span>
+              <span class="muted text-xs">{{ t('forecast.stats.smapeNote') }}</span>
             </div>
             
             <div class="card card-pad stat-card" v-if="(forecast.mae !== null && forecast.mae !== undefined) || (forecast.rmse !== null && forecast.rmse !== undefined)">
-              <span class="stat-label">Chỉ số MAE / RMSE</span>
+              <span class="stat-label">{{ t('forecast.maeRmseLabel') }}</span>
               <strong class="stat-value text-zinc-900 dark:text-zinc-100">
                 {{ forecast.mae !== null ? formatNumber(forecast.mae) : '-' }} / {{ forecast.rmse !== null ? formatNumber(forecast.rmse) : '-' }}
               </strong>
-              <span class="muted text-xs">Sai số tuyệt đối / bình phương</span>
+              <span class="muted text-xs">{{ t('forecast.maeRmseSub') }}</span>
             </div>
           </div>
         </div>
@@ -614,7 +644,7 @@ const isHistoryUnavailable = computed(() => {
           <div class="summary-banner mb-0 h-full">
             <div class="summary-banner__header">
               <i class="mdi mdi-lightbulb-on-outline summary-banner__icon animate-pulse"></i>
-              <span class="summary-banner__title">Khuyến nghị bổ sung hàng từ AI</span>
+              <span class="summary-banner__title">{{ t('forecast.recommendationTitle') }}</span>
             </div>
             
             <div class="summary-banner__body">
@@ -622,13 +652,13 @@ const isHistoryUnavailable = computed(() => {
             </div>
             
             <div class="summary-banner__footer">
-              <span class="muted text-xs">Chu kỳ dự phòng: <strong>{{ selectedHorizon }} ngày</strong></span>
+              <span class="muted text-xs"><strong>{{ t('forecast.leadTimeCycle', { horizon: selectedHorizon }) }}</strong></span>
               <span v-if="recommendation" class="summary-banner__badge" :class="{
                 'summary-banner__badge--need': recommendation.suggestedQty > 0,
                 'summary-banner__badge--safe': recommendation.rawSuggestedQty === 0,
                 'summary-banner__badge--warning': recommendation.rawSuggestedQty > 0 && recommendation.suggestedQty === 0
               }">
-                {{ recommendation.suggestedQty > 0 ? 'Cần nhập hàng' : (recommendation.rawSuggestedQty === 0 ? 'Tồn kho an toàn' : 'Không thể nhập thêm') }}
+                {{ recommendation.suggestedQty > 0 ? t('forecast.badge.needRestock') : (recommendation.rawSuggestedQty === 0 ? t('forecast.badge.safe') : t('forecast.badge.cannotRestock')) }}
               </span>
             </div>
           </div>
@@ -639,52 +669,52 @@ const isHistoryUnavailable = computed(() => {
     <!-- Recommendation Loading / Empty / Loaded States -->
     <div v-if="isLoadingRecommendation" class="inventory-loading card card-pad mt-6">
       <i class="mdi mdi-loading mdi-spin mr-1"></i>
-      <span>Đang tải đề xuất bổ sung hàng từ AI...</span>
+      <span>{{ t('forecast.loadingRecommendation') }}</span>
     </div>
 
     <div v-else-if="!recommendation" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700 mt-6">
       <i class="mdi mdi-alert-circle-outline text-3xl text-zinc-400 block mb-2"></i>
-      Chưa có đề xuất bổ sung cho sản phẩm/kho này.
+      {{ t('forecast.noRecommendation') }}
     </div>
 
     <template v-else>
       <!-- Summary Statistics Grid -->
       <div class="stat-grid mt-6">
         <div class="card card-pad stat-card">
-          <span class="stat-label">Dự báo nhu cầu ({{ selectedHorizon }} ngày)</span>
+          <span class="stat-label">{{ t('forecast.demandForecastLabel', { horizon: selectedHorizon }) }}</span>
           <strong class="stat-value">{{ formatQty(recommendation.forecastDemand) }}</strong>
-          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Tổng nhu cầu bán hàng dự kiến</span>
+          <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t('forecast.demandForecastSub') }}</span>
         </div>
         <div class="card card-pad stat-card">
-          <span class="stat-label">{{ forecast?.source === 'EXTERNAL_STORE_ITEM' ? 'Tồn kho tại mốc dự báo' : 'Tồn kho hiện tại' }}</span>
+          <span class="stat-label">{{ forecast?.source === 'EXTERNAL_STORE_ITEM' ? t('forecast.currentStockAtForecastLabel') : t('forecast.stats.currentStock') }}</span>
           <strong class="stat-value">{{ formatQty(recommendation.currentStock) }}</strong>
-          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Ngưỡng tối thiểu: {{ formatQty(recommendation.effectiveMinStock) }}</span>
+          <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t('forecast.currentStockSub', { min: formatQty(recommendation.effectiveMinStock) }) }}</span>
         </div>
         <div class="card card-pad stat-card">
-          <span class="stat-label">Nhu cầu bổ sung (Raw Need)</span>
+          <span class="stat-label">{{ t('forecast.rawNeedLabel') }}</span>
           <strong class="stat-value" :class="{ 'text-amber-500': recommendation.rawSuggestedQty > 0 }">
             {{ formatQty(recommendation.rawSuggestedQty) }}
           </strong>
-          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Lượng cần nhập theo định mức an toàn</span>
+          <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t('forecast.rawNeedSub') }}</span>
         </div>
         <div class="card card-pad stat-card">
-          <span class="stat-label">Đề xuất thực tế (AI)</span>
+          <span class="stat-label">{{ t('forecast.actualProposalLabel') }}</span>
           <strong class="stat-value" :class="{
             'text-green-500': recommendation.suggestedQty > 0,
             'text-red-500': recommendation.suggestedQty === 0 && recommendation.rawSuggestedQty > 0
           }">
             {{ formatQty(recommendation.suggestedQty) }}
           </strong>
-          <span class="text-xs text-[var(--color-text-secondary)] mt-1">Lượng duyệt sau khi kiểm tra dung tích</span>
+          <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t('forecast.actualProposalSub') }}</span>
         </div>
       </div>
 
       <!-- Chart A: Actual vs Forecast -->
       <div class="card card-pad chart-card mt-6">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <h3 class="section-title !mb-0">Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)</h3>
+          <h3 class="section-title !mb-0">{{ t('forecast.actualVsForecastTitle') }}</h3>
           <div class="flex items-center gap-2 text-xs">
-            <span class="text-zinc-500 font-medium">Lịch sử:</span>
+            <span class="text-zinc-500 font-medium">{{ t('forecast.historyLabel') }}</span>
             <input
               type="date"
               v-model="chartStartDate"
@@ -692,7 +722,7 @@ const isHistoryUnavailable = computed(() => {
               :max="forecast.historyEndDate"
               class="border border-zinc-300 dark:border-zinc-700 rounded px-2 py-1 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
-            <span class="text-zinc-500 font-medium">đến</span>
+            <span class="text-zinc-500 font-medium">{{ t('forecast.toLabel') }}</span>
             <input
               type="date"
               v-model="chartEndDate"
@@ -712,7 +742,7 @@ const isHistoryUnavailable = computed(() => {
 
       <!-- Chart B: Projected Inventory (Task 5 Horizon sync) -->
       <div class="card card-pad chart-card mt-6">
-        <h3 class="section-title">Dự báo diễn biến tồn kho (Projected Inventory)</h3>
+        <h3 class="section-title">{{ t('forecast.projectedInventoryTitle') }}</h3>
         <ProjectedInventoryChart
           :current-stock="recommendation.currentStock"
           :daily-forecast="forecast.dailyForecast || []"
@@ -724,28 +754,28 @@ const isHistoryUnavailable = computed(() => {
 
       <!-- Recommendation Detail & Capacity Warnings (Task 4 Capacity limitation UX) -->
       <div class="card card-pad chart-card mt-6">
-        <h3 class="section-title">Chi tiết đề xuất & Dung tích kho hàng</h3>
+        <h3 class="section-title">{{ t('forecast.detailCapacityTitle') }}</h3>
         <div class="py-2 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
           <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-            <span>Nhu cầu bổ sung theo định mức (Raw Need):</span>
-            <strong>{{ formatQty(recommendation.rawSuggestedQty) }} sản phẩm</strong>
+            <span>{{ t('forecast.capacityDetail.rawNeed') }}</span>
+            <strong>{{ t('forecast.capacityDetail.rawNeedValue', { qty: formatQty(recommendation.rawSuggestedQty) }) }}</strong>
           </div>
           <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-            <span>Số lượng AI đề xuất nhập:</span>
-            <strong>{{ formatQty(recommendation.suggestedQty) }} sản phẩm</strong>
+            <span>{{ t('forecast.capacityDetail.suggestedQty') }}</span>
+            <strong>{{ t('forecast.capacityDetail.suggestedQtyValue', { qty: formatQty(recommendation.suggestedQty) }) }}</strong>
           </div>
           <div v-if="recommendation.capacityLimited" class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800 text-red-500 font-semibold">
-            <span>Thiếu hụt do dung tích kho đầy (Shortfall):</span>
-            <strong>{{ formatQty(recommendation.capacityShortfallQty) }} sản phẩm</strong>
+            <span>{{ t('forecast.capacityDetail.shortfall') }}</span>
+            <strong>{{ t('forecast.capacityDetail.shortfallValue', { qty: formatQty(recommendation.capacityShortfallQty) }) }}</strong>
           </div>
 
           <div class="pt-2 border-t border-zinc-200 dark:border-zinc-800">
-            <h4 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Trạng thái dung tích kho</h4>
+            <h4 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">{{ t('forecast.capacityDetail.warehouseCapacityTitle') }}</h4>
             <div class="grid grid-cols-2 gap-4 text-xs">
-              <div>Tổng dung tích kho: <strong>{{ formatNumber(recommendation.warehouseCapacityM3) }} m³</strong></div>
-              <div>Dung tích đã sử dụng: <strong>{{ formatNumber(recommendation.warehouseOccupiedM3) }} m³</strong></div>
-              <div>Dung tích còn trống: <strong>{{ formatNumber(recommendation.warehouseAvailableM3) }} m³</strong></div>
-              <div>Khả năng nhận tối đa sản phẩm này: <strong>{{ formatQty(recommendation.maxAdditionalUnitsByCapacity) }} sản phẩm</strong></div>
+              <div>{{ t('forecast.capacityDetail.totalCapacity', { capacity: formatNumber(recommendation.warehouseCapacityM3) }) }}</div>
+              <div>{{ t('forecast.capacityDetail.usedCapacity', { occupied: formatNumber(recommendation.warehouseOccupiedM3) }) }}</div>
+              <div>{{ t('forecast.capacityDetail.availableCapacity', { available: formatNumber(recommendation.warehouseAvailableM3) }) }}</div>
+              <div>{{ t('forecast.capacityDetail.maxQtyAllowed', { max: formatQty(recommendation.maxAdditionalUnitsByCapacity) }) }}</div>
             </div>
           </div>
 
@@ -758,9 +788,9 @@ const isHistoryUnavailable = computed(() => {
 
       <!-- Replenishment Assignment (Later Action Area - Task 6 Assignment context) -->
       <div v-if="canRun" class="card card-pad mt-6">
-        <h3 class="section-title">Giao nhiệm vụ bổ sung hàng</h3>
+        <h3 class="section-title">{{ t('forecast.assignTaskTitle') }}</h3>
         <p class="text-sm text-zinc-500 mt-1">
-          Bàn giao nhiệm vụ bổ sung hàng dựa trên đề xuất số lượng từ AI.
+          {{ t('forecast.assignTaskDesc') }}
         </p>
         <div class="mt-4">
           <button
@@ -769,7 +799,7 @@ const isHistoryUnavailable = computed(() => {
             @click="openAssignmentModal"
           >
             <i class="mdi mdi-account-plus-outline mr-1"></i>
-            Tạo phân công công việc
+            {{ t('forecast.assignTaskBtn') }}
           </button>
         </div>
       </div>
@@ -783,8 +813,8 @@ const isHistoryUnavailable = computed(() => {
         <div class="modal">
           <div class="modal-head between">
             <div>
-              <h2 class="section-title">Giao nhiệm vụ bổ sung hàng</h2>
-              <p class="modal-subtitle">Bàn giao công việc xử lý bổ sung kho hàng</p>
+              <h2 class="section-title">{{ t('forecast.assignmentModal.title') }}</h2>
+              <p class="modal-subtitle">{{ t('forecast.assignmentModal.subtitle') }}</p>
             </div>
             <button
               class="btn btn-icon"
@@ -798,17 +828,17 @@ const isHistoryUnavailable = computed(() => {
             <template v-if="!assignmentResult">
               <!-- Read-only Context Info -->
               <div class="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
-                <div>Sản phẩm: <strong>{{ products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }}</strong></div>
-                <div>Kho hàng: <strong>{{ warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }}</strong></div>
-                <div>Chu kỳ dự báo: <strong>{{ selectedHorizon }} ngày</strong></div>
-                <div>Số lượng đề xuất từ AI: <strong class="text-zinc-900 dark:text-zinc-100">{{ recommendation.suggestedQty }}</strong></div>
-                <div v-if="recommendation.rawSuggestedQty !== recommendation.suggestedQty" class="text-zinc-500">Nhu cầu bổ sung thực tế (Raw Need): <strong>{{ recommendation.rawSuggestedQty }}</strong></div>
-                <div v-if="recommendation.capacityWarning" class="text-amber-600 dark:text-amber-400 font-semibold mt-1">⚠️ Cảnh báo dung tích: {{ recommendation.capacityWarning }}</div>
+                <div>{{ t('forecast.assignmentModal.productLabel', { product: products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }) }}</div>
+                <div>{{ t('forecast.assignmentModal.warehouseLabel', { warehouse: warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }) }}</div>
+                <div>{{ t('forecast.assignmentModal.horizonLabel', { horizon: selectedHorizon }) }}</div>
+                <div>{{ t('forecast.assignmentModal.aiQtyLabel', { qty: recommendation.suggestedQty }) }}</div>
+                <div v-if="recommendation.rawSuggestedQty !== recommendation.suggestedQty" class="text-zinc-500">{{ t('forecast.assignmentModal.rawNeedLabel', { qty: recommendation.rawSuggestedQty }) }}</div>
+                <div v-if="recommendation.capacityWarning" class="text-amber-600 dark:text-amber-400 font-semibold mt-1">{{ t('forecast.assignmentModal.capacityWarning', { warning: recommendation.capacityWarning }) }}</div>
               </div>
 
               <!-- Editable Form Fields -->
               <div class="field">
-                <label class="field-label font-semibold">Nhân viên được phân công *</label>
+                <label class="field-label font-semibold">{{ t('forecast.assignmentModal.employeeLabel') }}</label>
                 <select v-model="selectedEmployeeId" class="select w-full mt-1" :disabled="isSubmittingAssignment">
                   <option value="">{{ t('forecast.assignment.selectEmployee') }}</option>
                   <option v-for="emp in employees" :key="emp.id" :value="emp.id">
@@ -818,20 +848,20 @@ const isHistoryUnavailable = computed(() => {
               </div>
 
               <div class="field mt-3">
-                <label class="field-label font-semibold">Số lượng yêu cầu thực tế *</label>
+                <label class="field-label font-semibold">{{ t('forecast.assignmentModal.requestedQtyLabel') }}</label>
                 <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" :disabled="isSubmittingAssignment" />
                 <span class="text-xs text-zinc-500 mt-1 block">
-                  AI đề xuất: {{ recommendation.suggestedQty }}. Bạn có thể điều chỉnh lại.
+                  {{ t('forecast.assignmentModal.qtyHelp', { qty: recommendation.suggestedQty }) }}
                 </span>
                 <div v-if="humanRequestedQuantity > recommendation.suggestedQty" class="p-2 mt-1 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded text-xs border border-amber-200 dark:border-amber-900/30">
                   <i class="mdi mdi-information-outline mr-0.5"></i>
-                  Lưu ý: Số lượng yêu cầu vượt quá đề xuất của AI (Số lượng AI đề xuất: {{ recommendation.suggestedQty }}). Vui lòng đảm bảo kho hàng có thể tiếp nhận.
+                  {{ t('forecast.assignmentModal.qtyExceedWarning', { qty: recommendation.suggestedQty }) }}
                 </div>
               </div>
 
               <div class="field mt-3">
-                <label class="field-label font-semibold">Lời nhắn / Chỉ thị bổ sung</label>
-                <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..." :disabled="isSubmittingAssignment"></textarea>
+                <label class="field-label font-semibold">{{ t('forecast.assignmentModal.messageLabel') }}</label>
+                <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" :placeholder="t('forecast.assignmentModal.messagePlaceholder')" :disabled="isSubmittingAssignment"></textarea>
               </div>
 
               <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs mt-2">
@@ -898,7 +928,7 @@ const isHistoryUnavailable = computed(() => {
                     'text-amber-600': assignmentResult.emailStatus === 'THAT_BAI',
                     'text-zinc-500': assignmentResult.emailStatus === 'CHO_GUI'
                   }">
-                    {{ assignmentResult.emailStatus === 'DA_GUI' ? 'Đã gửi' : (assignmentResult.emailStatus === 'THAT_BAI' ? 'Thất bại' : 'Chờ gửi') }}
+                    {{ assignmentResult.emailStatus === 'DA_GUI' ? t('forecast.assignment.emailStatusSent') : (assignmentResult.emailStatus === 'THAT_BAI' ? t('forecast.assignment.emailStatusFailed') : t('forecast.assignment.emailStatusPending')) }}
                   </span>
                 </div>
               </div>
@@ -922,7 +952,7 @@ const isHistoryUnavailable = computed(() => {
                 :disabled="isSubmittingAssignment"
                 @click="showAssignmentModal = false"
               >
-                Hủy
+                {{ t('forecast.assignmentModal.cancelBtn') }}
               </button>
               <button
                 class="btn btn-primary"
@@ -930,7 +960,7 @@ const isHistoryUnavailable = computed(() => {
                 @click="submitAssignment"
               >
                 <i v-if="isSubmittingAssignment" class="mdi mdi-loading mdi-spin mr-1"></i>
-                Giao việc
+                {{ t('forecast.assignmentModal.assignBtn') }}
               </button>
             </template>
             <template v-else>
@@ -938,7 +968,7 @@ const isHistoryUnavailable = computed(() => {
                 class="btn btn-primary"
                 @click="showAssignmentModal = false"
               >
-                Đóng
+                {{ t('forecast.assignmentModal.closeBtn') }}
               </button>
             </template>
           </div>
@@ -951,43 +981,43 @@ const isHistoryUnavailable = computed(() => {
       <h3 class="section-title">{{ t("forecast.drift.title") }}</h3>
       <div class="drift-row">
         <StatusBadge :status="driftBadgeVariant(drift.status)" />
-        <span class="font-semibold">{{ getDriftStatusLabel(drift.status) }}</span>
+        <span class="font-semibold">{{ t('forecast.drift.status.' + drift.status) }}</span>
       </div>
       <div v-if="drift.rollingSmape !== null && drift.rollingSmape !== undefined" class="drift-metrics">
         <div class="drift-metric-item">
-          <span class="drift-metric-label">sMAPE thực tế</span>
+          <span class="drift-metric-label">{{ t('forecast.drift.rollingSmape') }}</span>
           <strong class="drift-metric-value" :class="drift.retrainNeeded ? 'text-[var(--color-danger)]' : 'text-[var(--color-success)]'">
             {{ formatNumber(drift.rollingSmape) }}%
           </strong>
         </div>
         <div class="drift-metric-item">
-          <span class="drift-metric-label">Ngưỡng lệch</span>
+          <span class="drift-metric-label">{{ t('forecast.drift.driftThreshold') }}</span>
           <strong class="drift-metric-value">{{ formatNumber(drift.threshold) }}%</strong>
         </div>
         <div class="drift-metric-item">
-          <span class="drift-metric-label">Ngày so sánh</span>
-          <strong class="drift-metric-value">{{ drift.overlapDays }} ngày</strong>
+          <span class="drift-metric-label">{{ t('forecast.drift.comparisonDays') }}</span>
+          <strong class="drift-metric-value">{{ t('forecast.drift.daysValue', { days: drift.overlapDays }) }}</strong>
         </div>
       </div>
       <div v-if="drift.status === 'NO_ACTUAL_DATA'" class="drift-explain">
         <i class="mdi mdi-information-outline"></i>
-        <span>Chưa có giao dịch xuất kho thực tế trong 30 ngày qua để so sánh với dự báo đã lưu.</span>
+        <span>{{ t('forecast.drift.rules.noActualData') }}</span>
       </div>
       <div v-else-if="drift.status === 'NO_FORECAST_DATA'" class="drift-explain">
         <i class="mdi mdi-information-outline"></i>
-        <span>Chưa có bản ghi dự báo nào được lưu. Hãy bấm <strong>Dự báo ngay</strong> trước.</span>
+        <span>{{ t('forecast.drift.rules.noForecastData') }}</span>
       </div>
       <div v-else-if="drift.status === 'INSUFFICIENT_OVERLAP'" class="drift-explain">
         <i class="mdi mdi-information-outline"></i>
-        <span>Chỉ có <strong>{{ drift.overlapDays }}</strong> ngày trùng nhau giữa dự báo và thực tế (cần tối thiểu 7 ngày). Cần thêm dữ liệu.</span>
+        <span>{{ t('forecast.drift.rules.insufficientOverlap', { days: drift.overlapDays }) }}</span>
       </div>
       <div class="drift-rule">
         <i class="mdi mdi-help-circle-outline"></i>
-        <span>Mô hình bị đánh dấu <strong>Lệch</strong> khi sMAPE &gt; {{ formatNumber(drift.threshold) }}% trên ít nhất 7 ngày có dữ liệu cả hai phía.</span>
+        <span>{{ t('forecast.drift.rules.driftCondition', { threshold: formatNumber(drift.threshold) }) }}</span>
       </div>
       <div v-if="drift.retrainNeeded" class="drift-action">
         <i class="mdi mdi-refresh-circle text-[var(--color-warning)]"></i>
-        <span>Mô hình đang lệch – nên bấm <strong>Dự báo ngay</strong> để train lại với dữ liệu mới nhất.</span>
+        <span>{{ t('forecast.drift.rules.driftAction') }}</span>
       </div>
     </div>
   </template>
