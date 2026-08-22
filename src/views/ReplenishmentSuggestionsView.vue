@@ -265,15 +265,15 @@ function nextPage() {
           <template #suggested="{ row }">
             <div class="text-right flex flex-col items-end gap-1">
               <div v-if="row.capacityLimited" class="flex flex-col items-end">
-                <span class="text-xs text-slate-400 line-through tabular-nums">+{{ row.suggestedQuantity }}</span>
+                <span class="text-xs text-slate-400 line-through tabular-nums">{{ row.suggestedQuantity }}</span>
                 <strong class="text-sm text-amber-600 font-bold tabular-nums flex items-center gap-1">
                   <i class="mdi mdi-alert-circle text-amber-500"></i>
-                  +{{ row.capacityAllowedQuantity }}
+                  {{ row.capacityAllowedQuantity }}
                 </strong>
               </div>
               <div v-else>
                 <strong v-if="row.suggestedQuantity > 0" class="text-sm text-emerald-700 font-bold tabular-nums">
-                  +{{ row.suggestedQuantity }}
+                  {{ row.suggestedQuantity }}
                 </strong>
                 <span v-else class="text-sm text-slate-400">0</span>
               </div>
@@ -332,11 +332,11 @@ function nextPage() {
             <div class="flex flex-col items-end justify-center">
 
               <div v-if="item.capacityLimited" class="flex flex-col items-end">
-                <span class="text-slate-400 text-[10px] line-through">{{ t('replenishment.suggested') }}+{{ item.suggestedQuantity }}</span>
-                <span class="text-amber-600 font-bold">{{ t('replenishment.capacityAllowed') }}+{{ item.capacityAllowedQuantity }}</span>
+                <span class="text-slate-400 text-[10px] line-through">{{ t('replenishment.suggested') }}{{ item.suggestedQuantity }}</span>
+                <span class="text-amber-600 font-bold">{{ t('replenishment.capacityAllowed') }}{{ item.capacityAllowedQuantity }}</span>
               </div>
               <span class="text-emerald-700 font-semibold" v-else-if="item.suggestedQuantity > 0">
-                {{ t('replenishment.suggested') }}<strong>+{{ item.suggestedQuantity }}</strong>
+                {{ t('replenishment.suggested') }}<strong>{{ item.suggestedQuantity }}</strong>
               </span>
             </div>
           </div>
