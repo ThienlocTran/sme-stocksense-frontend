@@ -50,6 +50,31 @@ export async function checkDrift(productId, warehouseId) {
   }
 }
 
+/** Lấy danh sách sản phẩm/kho khả dụng cho nguồn dữ liệu dự báo. */
+export async function getForecastAvailability(source) {
+  try {
+    const { data } = await forecastClient.get('/api/forecasts/availability', {
+      headers: getAuthorizationHeader(),
+      params: { source },
+    })
+    return data
+  } catch (error) {
+    throw normalizeForecastError(error, 'Không thể tải danh sách sản phẩm/kho khả dụng.')
+  }
+}
+
+/** Sinh dữ liệu demo lịch sử bán hàng. */
+export async function seedDemoHistory() {
+  try {
+    const { data } = await forecastClient.post('/api/forecast/seed-history', null, {
+      headers: getAuthorizationHeader(),
+    })
+    return data
+  } catch (error) {
+    throw normalizeForecastError(error, 'Không thể sinh dữ liệu demo.')
+  }
+}
+
 
 function normalizeForecastError(error, fallbackMessage) {
   const status = error.response?.status

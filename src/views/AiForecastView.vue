@@ -8,8 +8,6 @@ import EmptyState from "../components/EmptyState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import ActualForecastChart from "../components/ActualForecastChart.vue";
 import ProjectedInventoryChart from "../components/ProjectedInventoryChart.vue";
-import { getProducts } from "../services/productService";
-import { getWarehouses } from "../services/warehouseService";
 import { getEmployees } from "../services/employeeService";
 import { getReplenishmentRecommendation } from "../services/replenishmentService";
 import { createAiPurchaseAssignment, retryEmail } from "../services/aiPurchaseAssignmentService";
@@ -17,6 +15,8 @@ import {
   checkDrift,
   getForecast,
   runForecast,
+  getForecastAvailability,
+  seedDemoHistory,
 } from "../services/forecastService";
 import { useAuthStore } from "../stores/auth";
 import { canRunForecast } from "../services/permissionService";
@@ -31,8 +31,56 @@ const { t } = useI18n();
 const authStore = useAuthStore();
 
 const selectedSource = ref("EXTERNAL_STORE_ITEM");
-const products = ref([]);
-const warehouses = ref([]);
+const availableCombinations = ref([]);
+
+function sortByCode(a, b) {
+  const codeA = (a.code || '').trim();
+  const codeB = (b.code || '').trim();
+  return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+const products = computed(() => {
+  const seenIds = new Set();
+  const list = [];
+  for (const c of availableCombinations.value) {
+    if (!seenIds.has(c.productId)) {
+      seenIds.add(c.productId);
+      list.push({
+        id: c.productId,
+        code: c.productCode,
+        name: c.productName
+      });
+    }
+  }
+  if (selectedWarehouseId.value) {
+    return list.filter(p => 
+      availableCombinations.value.some(c => c.productId === p.id && c.warehouseId === selectedWarehouseId.value)
+    ).sort(sortByCode);
+  }
+  return list.sort(sortByCode);
+});
+
+const warehouses = computed(() => {
+  const seenIds = new Set();
+  const list = [];
+  for (const c of availableCombinations.value) {
+    if (!seenIds.has(c.warehouseId)) {
+      seenIds.add(c.warehouseId);
+      list.push({
+        id: c.warehouseId,
+        code: c.warehouseCode,
+        name: c.warehouseName
+      });
+    }
+  }
+  if (selectedProductId.value) {
+    return list.filter(w => 
+      availableCombinations.value.some(c => c.productId === selectedProductId.value && c.warehouseId === w.id)
+    ).sort(sortByCode);
+  }
+  return list.sort(sortByCode);
+});
+
 const selectedProductId = ref("");
 const selectedWarehouseId = ref("");
 const selectedHorizon = ref(30);
@@ -98,21 +146,17 @@ const canSelect = computed(
   () => selectedProductId.value !== "" && selectedWarehouseId.value !== "",
 );
 
-onMounted(loadDropdowns);
-
-async function loadDropdowns() {
+onMounted(async () => {
   isLoadingDropdowns.value = true;
   try {
     const promises = [
-      getProducts({ page: 0, size: 100 }),
-      getWarehouses(),
+      getForecastAvailability(selectedSource.value),
     ];
     if (canRun.value) {
       promises.push(getEmployees({ page: 0, size: 100, status: "HOAT_DONG", roleCode: "EMPLOYEE" }));
     }
-    const [productPage, warehouseList, employeePage] = await Promise.all(promises);
-    products.value = productPage.content || [];
-    warehouses.value = warehouseList || [];
+    const [availabilityRes, employeePage] = await Promise.all(promises);
+    availableCombinations.value = availabilityRes.combinations || [];
     if (canRun.value && employeePage) {
       employees.value = employeePage.content || [];
     }
@@ -124,13 +168,64 @@ async function loadDropdowns() {
   } finally {
     isLoadingDropdowns.value = false;
   }
-}
+});
 
-watch([selectedProductId, selectedWarehouseId], async ([productId, warehouseId]) => {
+watch(selectedSource, async (newSource) => {
   forecast.value = null;
   drift.value = null;
   recommendation.value = null;
   errorMessage.value = "";
+  successMessage.value = "";
+  chartStartDate.value = "";
+  chartEndDate.value = "";
+
+  isLoadingDropdowns.value = true;
+  try {
+    const res = await getForecastAvailability(newSource);
+    availableCombinations.value = res.combinations || [];
+
+    if (selectedProductId.value && selectedWarehouseId.value) {
+      const isValid = availableCombinations.value.some(c => 
+        c.productId === selectedProductId.value && c.warehouseId === selectedWarehouseId.value
+      );
+      if (!isValid) {
+        selectedProductId.value = "";
+        selectedWarehouseId.value = "";
+      } else {
+        await loadCachedForecast();
+      }
+    } else {
+      selectedProductId.value = "";
+      selectedWarehouseId.value = "";
+    }
+  } catch (error) {
+    errorMessage.value = error.message;
+  } finally {
+    isLoadingDropdowns.value = false;
+  }
+});
+
+watch([selectedProductId, selectedWarehouseId], async ([productId, warehouseId]) => {
+  if (productId && warehouseId) {
+    const isValid = availableCombinations.value.some(c => 
+      c.productId === productId && c.warehouseId === warehouseId
+    );
+    if (!isValid) {
+      selectedProductId.value = "";
+      selectedWarehouseId.value = "";
+      forecast.value = null;
+      drift.value = null;
+      recommendation.value = null;
+      errorMessage.value = "";
+      return;
+    }
+  }
+
+  forecast.value = null;
+  drift.value = null;
+  recommendation.value = null;
+  errorMessage.value = "";
+  successMessage.value = "";
   if (!productId || !warehouseId) {
     return;
   }
