@@ -914,6 +914,15 @@
   },
   "forecast": {
     "title": "Dự báo AI",
+    "mode": {
+      "XGBOOST": "XGBoost",
+      "XGBoost": "XGBoost",
+      "xgboost": "XGBoost",
+      "COLD_START_AVG": "Khởi động lạnh (Trung bình động)",
+      "ColdStart": "Khởi động lạnh (Trung bình động)",
+      "cold_start_avg": "Khởi động lạnh (Trung bình động)",
+      "COLD_START": "Khởi động lạnh (Trung bình động)"
+    },
     "description": "Dự báo nhu cầu tiêu thụ 7/14/30 ngày bằng XGBoost và đề xuất số lượng cần đặt hàng.",
     "loading": "Đang tính toán dự báo...",
     "button": {

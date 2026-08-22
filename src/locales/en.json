@@ -907,6 +907,15 @@
   },
   "forecast": {
     "title": "AI Forecast",
+    "mode": {
+      "XGBOOST": "XGBoost",
+      "XGBoost": "XGBoost",
+      "xgboost": "XGBoost",
+      "COLD_START_AVG": "Cold Start (Moving Average)",
+      "ColdStart": "Cold Start (Moving Average)",
+      "cold_start_avg": "Cold Start (Moving Average)",
+      "COLD_START": "Cold Start (Moving Average)"
+    },
     "description": "Forecast 7/14/30 days consumption demand using XGBoost and recommend order quantity.",
     "loading": "Calculating forecast...",
     "button": {
