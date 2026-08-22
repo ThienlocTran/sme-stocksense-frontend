@@ -103,13 +103,37 @@ watch([selectedProductId, selectedWarehouseId], async ([productId, warehouseId])
 });
 
 watch(selectedHorizon, async () => {
-  if (forecast.value) {
+  if (hasSufficientForecast(selectedHorizon.value)) {
     await loadRecommendation();
+  } else {
+    recommendation.value = null;
   }
 });
 
+/**
+ * Returns true only when forecast.value contains at least `horizon` daily
+ * forecast points — meaning the backend has a trained model with enough data
+ * to answer the recommendation API for the requested horizon.
+ *
+ * An empty-sentinel forecast ({ dataDays: 0, dailyForecast: [] }) evaluates
+ * to false, which prevents the spurious 400 from /recommendation.
+ */
+function hasSufficientForecast(horizon) {
+  return (
+    !!forecast.value &&
+    Array.isArray(forecast.value.dailyForecast) &&
+    forecast.value.dailyForecast.length >= horizon
+  );
+}
+
 async function loadRecommendation() {
   if (!selectedProductId.value || !selectedWarehouseId.value || !selectedHorizon.value) {
+    recommendation.value = null;
+    return;
+  }
+  // Guard: only call the API when the cached forecast has enough daily points.
+  // Avoids a guaranteed 400 when forecast history is absent or too short.
+  if (!hasSufficientForecast(selectedHorizon.value)) {
     recommendation.value = null;
     return;
   }
@@ -121,6 +145,8 @@ async function loadRecommendation() {
       selectedHorizon.value
     );
   } catch (error) {
+    // Only log truly unexpected errors; expected "no data" cases are
+    // filtered out by hasSufficientForecast above.
     console.error("Failed to load recommendation:", error);
     recommendation.value = null;
   } finally {
