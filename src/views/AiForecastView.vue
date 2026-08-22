@@ -12,6 +12,7 @@ import { getProducts } from "../services/productService";
 import { getWarehouses } from "../services/warehouseService";
 import { getEmployees } from "../services/employeeService";
 import { getReplenishmentRecommendation } from "../services/replenishmentService";
+import { createAiPurchaseAssignment, retryEmail } from "../services/aiPurchaseAssignmentService";
 import {
   checkDrift,
   getForecast,
@@ -42,6 +43,8 @@ const humanRequestedQuantity = ref(0);
 const assignmentContent = ref("");
 const assignmentSuccessMessage = ref("");
 const assignmentErrorMessage = ref("");
+const isSubmittingAssignment = ref(false);
+const assignmentResult = ref(null);
 
 const isLoadingDropdowns = ref(false);
 const isRunningForecast = ref(false);
@@ -209,10 +212,11 @@ function openAssignmentModal() {
   assignmentContent.value = `Thực hiện bổ sung hàng cho sản phẩm theo đề xuất từ AI dự báo ${selectedHorizon.value} ngày.`;
   assignmentErrorMessage.value = "";
   assignmentSuccessMessage.value = "";
+  assignmentResult.value = null;
   showAssignmentModal.value = true;
 }
 
-function submitLocalAssignment() {
+async function submitAssignment() {
   assignmentErrorMessage.value = "";
   assignmentSuccessMessage.value = "";
 
@@ -225,11 +229,26 @@ function submitLocalAssignment() {
     return;
   }
 
-  assignmentSuccessMessage.value = "Phân công đã được ghi nhận cục bộ (Task 7 Presentation).";
-  setTimeout(() => {
-    showAssignmentModal.value = false;
-    assignmentSuccessMessage.value = "";
-  }, 2000);
+  isSubmittingAssignment.value = true;
+  try {
+    const payload = {
+      productId: Number(selectedProductId.value),
+      warehouseId: Number(selectedWarehouseId.value),
+      horizonDays: Number(selectedHorizon.value),
+      modelMetadataId: recommendation.value?.modelMetadataId || null,
+      aiSuggestedQuantity: recommendation.value?.suggestedQty ?? null,
+      requestedQuantity: Number(humanRequestedQuantity.value),
+      receiverId: Number(selectedEmployeeId.value),
+      content: assignmentContent.value || null
+    };
+    const response = await createAiPurchaseAssignment(payload);
+    assignmentResult.value = response;
+    assignmentSuccessMessage.value = "Phân công đã được tạo thành công.";
+  } catch (error) {
+    assignmentErrorMessage.value = error.message || "Không thể tạo phân công mua hàng.";
+  } finally {
+    isSubmittingAssignment.value = false;
+  }
 }
 
 // Câu tóm tắt bằng lời cho người không rành số liệu vẫn hiểu ngay.
@@ -525,7 +544,7 @@ const summaryText = computed(() => {
             <!-- Editable Form Fields -->
             <div class="field">
               <label class="field-label font-semibold">Nhân viên được phân công *</label>
-              <select v-model="selectedEmployeeId" class="select w-full mt-1">
+              <select v-model="selectedEmployeeId" class="select w-full mt-1" :disabled="isSubmittingAssignment">
                 <option value="">-- Chọn nhân viên --</option>
                 <option v-for="emp in employees" :key="emp.id" :value="emp.id">
                   {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
@@ -535,7 +554,7 @@ const summaryText = computed(() => {
 
             <div class="field mt-3">
               <label class="field-label font-semibold">Số lượng yêu cầu thực tế *</label>
-              <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" />
+              <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" :disabled="isSubmittingAssignment" />
               <span class="text-xs text-zinc-500 mt-1 block">
                 AI đề xuất: {{ recommendation.suggestedQty }}. Bạn có thể điều chỉnh lại.
               </span>
@@ -547,7 +566,7 @@ const summaryText = computed(() => {
 
             <div class="field mt-3">
               <label class="field-label font-semibold">Lời nhắn / Chỉ thị bổ sung</label>
-              <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..."></textarea>
+              <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" placeholder="Nhập chỉ dẫn công việc..." :disabled="isSubmittingAssignment"></textarea>
             </div>
 
             <p v-if="assignmentErrorMessage" class="text-red-500 text-xs font-semibold mt-2">{{ assignmentErrorMessage }}</p>
@@ -557,14 +576,17 @@ const summaryText = computed(() => {
           <div class="modal-foot">
             <button
               class="btn btn-ghost"
+              :disabled="isSubmittingAssignment"
               @click="showAssignmentModal = false"
             >
               Hủy
             </button>
             <button
               class="btn btn-primary"
-              @click="submitLocalAssignment"
+              :disabled="isSubmittingAssignment"
+              @click="submitAssignment"
             >
+              <i v-if="isSubmittingAssignment" class="mdi mdi-loading mdi-spin mr-1"></i>
               Giao việc
             </button>
           </div>
