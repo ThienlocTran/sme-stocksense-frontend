@@ -69,6 +69,10 @@ export function canAccessRoute(path, role) {
     return ['ADMIN', 'MANAGER'].includes(resolvedRole)
   }
 
+  if (path === '/ai-purchase-assignments') {
+    return ['ADMIN', 'MANAGER'].includes(resolvedRole)
+  }
+
   if (path === '/settings') {
     return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
   }
@@ -126,3 +130,8 @@ export function canOperateImportExcel(role) {
 export function canViewAllStockDocuments(role) {
   return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
 }
+
+export function canManageAiPurchaseEmails(role) {
+  return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
+}
+
