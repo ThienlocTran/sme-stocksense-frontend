@@ -376,7 +376,8 @@ const isRecommendationValid = computed(() => {
     !!forecast.value &&
     recommendation.value.modelMetadataId != null &&
     Number(recommendation.value.productId) === Number(appliedProductId.value) &&
-    Number(recommendation.value.warehouseId) === Number(appliedWarehouseId.value)
+    Number(recommendation.value.warehouseId) === Number(appliedWarehouseId.value) &&
+    Number(recommendation.value.horizonDays) === Number(appliedHorizon.value)
   );
 });
 
@@ -440,15 +441,31 @@ async function loadCachedForecast() {
 
     const cachedForecast = await getForecast(runContext.productId, runContext.warehouseId, runContext.source);
     if (cachedForecast) {
+      let recResult = null;
+      recommendationError.value = "";
+      isLoadingRecommendation.value = true;
+      try {
+        recResult = await getReplenishmentRecommendation(
+          runContext.productId,
+          runContext.warehouseId,
+          runContext.horizonDays,
+          runContext.source
+        );
+      } catch (recErr) {
+        console.error("Failed to load recommendation:", recErr);
+        recommendationError.value = recErr.message || "Unknown error";
+      } finally {
+        isLoadingRecommendation.value = false;
+      }
+
       forecast.value = cachedForecast;
+      recommendation.value = recResult;
       appliedProductId.value = runContext.productId;
       appliedWarehouseId.value = runContext.warehouseId;
       appliedSource.value = runContext.source;
       appliedHorizon.value = runContext.horizonDays;
       appliedProductDetail.value = productDetail;
       drift.value = null;
-
-      await fetchRecommendationForContext(runContext);
     } else {
       forecast.value = null;
       recommendation.value = null;
@@ -501,15 +518,32 @@ async function handleRunForecast() {
 
     const newForecast = await runForecast(runContext.productId, runContext.warehouseId, runContext.source);
     if (newForecast) {
+      let recResult = null;
+      recommendationError.value = "";
+      isLoadingRecommendation.value = true;
+      try {
+        recResult = await getReplenishmentRecommendation(
+          runContext.productId,
+          runContext.warehouseId,
+          runContext.horizonDays,
+          runContext.source
+        );
+      } catch (recErr) {
+        console.error("Failed to load recommendation:", recErr);
+        recommendationError.value = recErr.message || "Unknown error";
+        throw recErr;
+      } finally {
+        isLoadingRecommendation.value = false;
+      }
+
       forecast.value = newForecast;
+      recommendation.value = recResult;
       appliedProductId.value = runContext.productId;
       appliedWarehouseId.value = runContext.warehouseId;
       appliedSource.value = runContext.source;
       appliedHorizon.value = runContext.horizonDays;
       appliedProductDetail.value = productDetail;
       drift.value = null;
-
-      await fetchRecommendationForContext(runContext);
     } else {
       forecast.value = null;
       recommendation.value = null;
@@ -943,7 +977,7 @@ const isHistoryUnavailable = computed(() => {
             </div>
 
             <div class="summary-banner__footer">
-              <span class="muted text-xs"><strong>{{ t('forecast.leadTimeCycle', { horizon: appliedHorizon }) }}</strong></span>
+              <span class="muted text-xs"><strong>{{ t('forecast.leadTimeCycle', { horizon: appliedHorizon.value }) }}</strong></span>
               <span v-if="isRecommendationValid" class="summary-banner__badge" :class="{
                 'summary-banner__badge--need': recommendation.suggestedQty > 0,
                 'summary-banner__badge--safe': recommendation.rawSuggestedQty === 0,
@@ -979,7 +1013,7 @@ const isHistoryUnavailable = computed(() => {
       <!-- If recommendation IS valid, show the Summary Statistics Grid -->
       <div v-else class="stat-grid mt-6">
         <div class="card card-pad stat-card">
-          <span class="stat-label">{{ t('forecast.demandForecastLabel', { horizon: appliedHorizon }) }}</span>
+          <span class="stat-label">{{ t('forecast.demandForecastLabel', { horizon: appliedHorizon.value }) }}</span>
           <strong class="stat-value">{{ formatQty(totalHorizonDemand) }}</strong>
           <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t('forecast.demandForecastSub') }}</span>
         </div>
@@ -1104,7 +1138,7 @@ const isHistoryUnavailable = computed(() => {
           :product-detail="appliedProductDetail"
           :warehouse-id="appliedWarehouseId"
           :warehouses="allWarehouses"
-          :horizon="appliedHorizon"
+          :horizon="appliedHorizon.value"
           :recommendation="recommendation"
           :source="appliedSource"
         />
