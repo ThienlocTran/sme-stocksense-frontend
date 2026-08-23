@@ -1605,7 +1605,11 @@
       "saveDraftBeforeSubmit": "Vui lòng lưu nháp trước khi gửi duyệt.",
       "submitSuccess": "Gửi duyệt thành công.",
       "actionFailed": "Thao tác thất bại, vui lòng thử lại.",
-      "cancelSuccess": "Hủy phiếu thành công."
+      "cancelSuccess": "Hủy phiếu thành công.",
+      "assignmentAlreadyLinked": "Yêu cầu nhập hàng này đã được liên kết với phiếu nhập kho khác.",
+      "loadProductDetailError": "Không thể tải chi tiết sản phẩm cho yêu cầu này.",
+      "resolveSupplierError": "Không thể xác định nhà cung cấp cho sản phẩm này.",
+      "loadAssignmentError": "Không thể tải thông tin yêu cầu nhập hàng."
     },
     "validation": {
       "selectWarehouse": "Vui lòng chọn kho {type}.",
