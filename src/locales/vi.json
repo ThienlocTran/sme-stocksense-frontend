@@ -1138,6 +1138,7 @@
     },
     "loadingRecommendation": "Đang tải đề xuất bổ sung hàng từ AI...",
     "noRecommendation": "Chưa có đề xuất bổ sung cho sản phẩm/kho này.",
+    "recommendationError": "Lỗi khi tải đề xuất bổ sung hàng: {message}",
     "demandForecastLabel": "Dự báo nhu cầu ({horizon} ngày)",
     "demandForecastSub": "Tổng nhu cầu bán hàng dự kiến",
     "currentStockLabel": "Tồn kho hiện tại / Tối thiểu",

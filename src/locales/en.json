@@ -1131,6 +1131,7 @@
     },
     "loadingRecommendation": "Loading AI replenishment recommendations...",
     "noRecommendation": "No replenishment recommendations for this product/warehouse.",
+    "recommendationError": "Error loading replenishment recommendation: {message}",
     "demandForecastLabel": "Demand Forecast ({horizon} days)",
     "demandForecastSub": "Total projected sales demand",
     "currentStockLabel": "Current Stock / Min",

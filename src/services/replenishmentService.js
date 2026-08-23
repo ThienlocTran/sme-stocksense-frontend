@@ -30,7 +30,7 @@ export async function getReplenishmentSuggestions({ page = 0, size = 20, keyword
   }
 }
 
-export async function getReplenishmentRecommendation(productId, warehouseId, horizonDays) {
+export async function getReplenishmentRecommendation(productId, warehouseId, horizonDays, source) {
   try {
     const { data } = await replenishmentClient.get('/api/replenishment-suggestions/recommendation', {
       headers: getAuthorizationHeader(),
@@ -38,6 +38,7 @@ export async function getReplenishmentRecommendation(productId, warehouseId, hor
         productId,
         warehouseId,
         horizonDays,
+        source: source || undefined,
       },
     })
     return data

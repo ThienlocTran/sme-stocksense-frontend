@@ -184,6 +184,7 @@ const isRunningForecast = ref(false);
 const isLoadingForecast = ref(false);
 const isCheckingDrift = ref(false);
 const recommendation = ref(null);
+const recommendationError = ref("");
 const isLoadingRecommendation = ref(false);
 
 const forecast = ref(null);
@@ -387,19 +388,9 @@ const totalHorizonDemand = computed(() => {
 });
 
 async function fetchRecommendationForContext(runContext) {
+  recommendationError.value = "";
   recommendation.value = null;
   if (!runContext.productId || !runContext.warehouseId || !runContext.horizonDays) {
-    return;
-  }
-
-  // Guard: only call the API when the forecast has enough daily points.
-  const dailyForecast = forecast.value?.dailyForecast;
-  const hasSufficient = !!forecast.value &&
-    Array.isArray(dailyForecast) &&
-    dailyForecast.length >= runContext.horizonDays;
-
-  if (!hasSufficient) {
-    recommendation.value = null;
     return;
   }
 
@@ -408,10 +399,12 @@ async function fetchRecommendationForContext(runContext) {
     recommendation.value = await getReplenishmentRecommendation(
       runContext.productId,
       runContext.warehouseId,
-      runContext.horizonDays
+      runContext.horizonDays,
+      runContext.source
     );
   } catch (error) {
     console.error("Failed to load recommendation:", error);
+    recommendationError.value = error.message || "Unknown error";
     recommendation.value = null;
   } finally {
     isLoadingRecommendation.value = false;
@@ -971,8 +964,14 @@ const isHistoryUnavailable = computed(() => {
     </div>
 
     <template v-else>
+      <!-- If recommendation request failed, show the error alert -->
+      <div v-if="recommendationError" class="p-4 text-center text-red-700 bg-red-50 dark:bg-red-950/20 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 mt-6 font-medium flex items-center justify-center gap-1.5">
+        <i class="mdi mdi-alert-circle-outline text-lg"></i>
+        <span>{{ t('forecast.recommendationError', { message: recommendationError }) }}</span>
+      </div>
+
       <!-- If recommendation is NOT valid, show the empty recommendation alert, but keep drawing the charts! -->
-      <div v-if="!isRecommendationValid" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700 mt-6">
+      <div v-else-if="!isRecommendationValid" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700 mt-6">
         <i class="mdi mdi-alert-circle-outline text-3xl text-zinc-400 block mb-2"></i>
         {{ t('forecast.noRecommendation') }}
       </div>
