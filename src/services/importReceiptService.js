@@ -271,7 +271,7 @@ export async function getSuppliers() {
   }
 }
 
-export async function getProducts({ page = 0, size = 1000, keyword = '', trangThai = 'HOAT_DONG' } = {}) {
+export async function getProducts({ page = 0, size = 100, keyword = '', trangThai = 'HOAT_DONG' } = {}) {
   try {
     const { data } = await importReceiptClient.get('/api/products', {
       headers: getAuthorizationHeader(),

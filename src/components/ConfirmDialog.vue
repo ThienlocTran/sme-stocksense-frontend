@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 const props = defineProps({
   open: { type: Boolean, default: false },
   title: { type: String, default: "" },
+  subtitle: { type: String, default: "" },
   message: { type: String, default: "" },
   confirmText: { type: String, default: "" },
   loading: { type: Boolean, default: false },
@@ -44,7 +45,7 @@ onBeforeUnmount(() => {
         <div>
           <h2 class="section-title">{{ title || t('common.confirm') }}</h2>
           <p class="modal-subtitle">
-            {{ t('common.confirmActionSubtitle') }}
+            {{ subtitle || t('common.confirmActionSubtitle') }}
           </p>
         </div>
         <button

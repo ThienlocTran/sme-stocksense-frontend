@@ -2,6 +2,7 @@
 import { computed, onMounted } from "vue";
 import { useAuthStore } from "../stores/auth";
 import { useLayoutStore } from "../stores/layout";
+import { useForecastStore } from "../stores/forecast";
 import { canAccessRoute } from "../services/permissionService";
 import StockSenseFullLogo from "./branding/StockSenseFullLogo.vue";
 import StockSenseMark from "./branding/StockSenseMark.vue";
@@ -9,6 +10,7 @@ import { gsap } from "gsap";
 
 const authStore = useAuthStore();
 const layoutStore = useLayoutStore();
+const forecastStore = useForecastStore();
 const currentRole = computed(() => authStore.currentRole);
 
 let isSidebarTracing = false;
@@ -58,6 +60,7 @@ function playSidebarTraceAnimation() {
 
 onMounted(() => {
   setTimeout(playSidebarTraceAnimation, 600);
+  forecastStore.initStore();
 });
 
 const menuSections = [
@@ -158,10 +161,16 @@ const menuSections = [
       { label: "Dự báo AI", labelKey: "forecast", to: "/forecast", icon: "mdi-chart-line" },
       { label: "Cảnh báo tồn kho", labelKey: "alerts", to: "/alerts", icon: "mdi-alert-outline" },
       {
-        label: "Gợi ý nhập hàng",
+        label: "Bổ sung tồn kho",
         labelKey: "replenishment",
         to: "/replenishment-suggestions",
         icon: "mdi-clipboard-text-play-outline",
+      },
+      {
+        label: "Yêu cầu nhập hàng AI",
+        labelKey: "aiPurchaseAssignments",
+        to: "/ai-purchase-assignments",
+        icon: "mdi-robot-outline",
       },
       {
         label: "Lịch sử giao dịch",
@@ -234,11 +243,44 @@ const visibleSections = computed(() =>
             :key="item.to"
             :to="item.to"
             class="nav-item"
+            :class="{ 'forecast-nav-active-job': item.labelKey === 'forecast' && forecastStore.jobStatus !== 'IDLE' }"
             :data-tooltip="$t('sidebar.menu.' + item.labelKey) || item.label"
             @click="layoutStore.closeMobileSidebar"
           >
-            <i class="mdi" :class="item.icon" aria-hidden="true"></i>
-            <span>{{ $t('sidebar.menu.' + item.labelKey) || item.label }}</span>
+            <template v-if="!(item.labelKey === 'forecast' && forecastStore.jobStatus !== 'IDLE')">
+              <i class="mdi" :class="item.icon" aria-hidden="true"></i>
+              <span>{{ $t('sidebar.menu.' + item.labelKey) || item.label }}</span>
+            </template>
+            <template v-else>
+              <div class="flex-1 flex flex-col gap-0.5 min-w-0">
+                <div class="flex items-center justify-between w-full">
+                  <div class="flex items-center gap-12 min-w-0">
+                    <i class="mdi" :class="item.icon" aria-hidden="true"></i>
+                    <span class="truncate">{{ $t('sidebar.menu.' + item.labelKey) || item.label }}</span>
+                  </div>
+                  <div v-if="forecastStore.jobStatus === 'RUNNING'" class="flex items-center text-indigo-600 dark:text-indigo-400 shrink-0" aria-label="Đang sinh dữ liệu demo">
+                    <i class="mdi mdi-loading mdi-spin text-sm"></i>
+                  </div>
+                  <div v-else-if="forecastStore.jobStatus === 'COMPLETED'" class="flex items-center text-green-600 dark:text-green-400 shrink-0" aria-label="Dữ liệu demo đã sẵn sàng">
+                    <i class="mdi mdi-check-circle-outline text-sm animate-pulse"></i>
+                  </div>
+                  <div v-else-if="forecastStore.jobStatus === 'FAILED'" class="flex items-center text-red-600 dark:text-red-400 shrink-0" aria-label="Sinh dữ liệu thất bại">
+                    <i class="mdi mdi-alert-circle-outline text-sm"></i>
+                  </div>
+                </div>
+                <div class="pl-9 text-[10px] leading-tight font-medium text-left truncate collapsed-hidden">
+                  <span v-if="forecastStore.jobStatus === 'RUNNING'" class="text-zinc-500 dark:text-zinc-400">
+                    Đang sinh dữ liệu...
+                  </span>
+                  <span v-else-if="forecastStore.jobStatus === 'COMPLETED'" class="text-green-600 dark:text-green-400">
+                    Dữ liệu demo đã sẵn sàng
+                  </span>
+                  <span v-else-if="forecastStore.jobStatus === 'FAILED'" class="text-red-600 dark:text-red-400">
+                    Sinh dữ liệu thất bại
+                  </span>
+                </div>
+              </div>
+            </template>
           </RouterLink>
         </div>
       </template>
@@ -457,7 +499,8 @@ const visibleSections = computed(() =>
   .brand span,
   .sidebar-heading,
   .nav-item span,
-  .user-info {
+  .user-info,
+  .collapsed-hidden {
     display: none !important;
   }
   .nav-item {

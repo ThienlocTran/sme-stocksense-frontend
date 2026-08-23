@@ -34,7 +34,8 @@ const routes = [
   { path: '/inventory-counts/:id', component: () => import('../views/inventory-counts/InventoryCountDetailView.vue'), props: true, meta: { title: 'Chi tiết kiểm kê kho' } },
   { path: '/inventory-adjustments/:id', component: () => import('../views/inventory-counts/InventoryAdjustmentView.vue'), props: true, meta: { title: 'Phiếu điều chỉnh tồn kho' } },
   { path: '/forecast', component: () => import('../views/AiForecastView.vue'), meta: { title: 'Dự báo AI' } },
-  { path: '/replenishment-suggestions', component: () => import('../views/ReplenishmentSuggestionsView.vue'), meta: { title: 'Gợi ý nhập hàng' } },
+  { path: '/replenishment-suggestions', component: () => import('../views/ReplenishmentSuggestionsView.vue'), meta: { title: 'Bổ sung tồn kho' } },
+  { path: '/ai-purchase-assignments', component: () => import('../views/AiPurchaseAssignmentListView.vue'), meta: { title: 'Yêu cầu nhập hàng AI' } },
   { path: '/settings', component: () => import('../views/SettingsView.vue'), meta: { title: 'Cấu hình hệ thống' } },
 ]
 

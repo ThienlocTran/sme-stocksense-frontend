@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '../components/PageHeader.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
@@ -20,6 +20,7 @@ import {
 import { cancelExportReceipt, createExportReceipt, getExportReceipt, submitExportReceipt, updateExportReceipt } from '../services/exportReceiptService'
 import { getCurrentRoleCode, getCurrentUser } from '../services/authService'
 import { getInventory } from '../services/inventoryService'
+import { getAssignment } from '../services/aiPurchaseAssignmentService'
 
 const props = defineProps({
   type: { type: String, default: 'in' },
@@ -28,6 +29,8 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const route = useRoute()
+const aiPurchaseRequestId = ref(route.query.aiPurchaseRequestId ? Number(route.query.aiPurchaseRequestId) : null)
 const { t } = useI18n()
 const isLoading = ref(false)
 const isSaving = ref(false)
@@ -187,7 +190,28 @@ onMounted(async () => {
     return
   }
   await loadDropdowns()
-  if (isEditMode.value) await loadReceiptDetail()
+  if (isEditMode.value) {
+    await loadReceiptDetail()
+  } else if (aiPurchaseRequestId.value && props.type === 'in') {
+    try {
+      const assignment = await getAssignment(aiPurchaseRequestId.value)
+      if (assignment) {
+        form.warehouseId = assignment.warehouseId
+        const product = products.value.find(p => p.id === assignment.productId)
+        items.value.push({
+          productId: assignment.productId,
+          productCode: assignment.productCode,
+          productName: assignment.productName,
+          quantity: assignment.requestedQuantity,
+          unitPrice: product?.price ?? 0,
+          note: assignment.content || '',
+          lineTotal: assignment.requestedQuantity * (product?.price ?? 0),
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load assignment details:', error)
+    }
+  }
   isDirty.value = false
 })
 
@@ -470,11 +494,15 @@ async function handleSaveDraft() {
         : await createExportReceipt(draftPayload)
       receiptId.value = savedReceipt.id
     } else if (!receiptId.value) {
-      const receipt = await createImportReceipt({
+      const payload = {
         warehouseId: form.warehouseId,
         supplierId: form.supplierId,
         note: form.note.trim() || null,
-      })
+      }
+      if (aiPurchaseRequestId.value) {
+        payload.aiPurchaseRequestId = aiPurchaseRequestId.value
+      }
+      const receipt = await createImportReceipt(payload)
       receiptId.value = receipt.id
       savedReceipt = await saveDraft(receipt.id, draftPayload)
     } else if (receiptStatus.value === 'TU_CHOI') {

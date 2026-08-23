@@ -165,8 +165,8 @@ function formatDate(value) {
 
 const statusOptions = {
   'NHAP': { label: 'Nháp', class: 'status-nhap' },
-  'CHO_DUYET_CAP_1': { label: 'Chờ quản lý duyệt', class: 'status-cho-duyet-cap-1' },
-  'CHO_DUYET_CAP_2': { label: 'Chờ quản lý duyệt', class: 'status-cho-duyet-cap-2' },
+  'CHO_DUYET': { label: 'Chờ duyệt', class: 'status-cho-duyet' },
+  'DA_DUYET': { label: 'Đã duyệt', class: 'status-da-duyet' },
   'HOAN_THANH': { label: 'Hoàn thành', class: 'status-hoan-thanh' },
   'TU_CHOI': { label: 'Từ chối', class: 'status-tu-choi' },
   'HUY': { label: 'Hủy', class: 'status-huy' }
@@ -334,7 +334,8 @@ function getStatusClass(status) {
 /* Badges */
 .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; transition: all 0.3s ease; }
 .status-nhap, .status-huy { background: var(--color-bg); color: var(--color-text-secondary); }
-.status-cho-duyet-cap-1, .status-cho-duyet-cap-2 { background: var(--color-warning-soft); color: var(--color-warning); }
+.status-cho-duyet { background: var(--color-warning-soft); color: var(--color-warning); }
+.status-da-duyet { background: var(--color-info-soft); color: var(--color-info); }
 .status-tu-choi { background: var(--color-danger-soft); color: var(--color-danger); }
 .status-hoan-thanh { background: var(--color-success-soft); color: var(--color-success); }
 
