@@ -462,12 +462,43 @@ function isPendingApproval(status) {
 
 function approveLabel(status) {
   if (documentType.value === "inventory_adjustment") {
-    return "Chốt kiểm kê";
+    return t("approvals.actions.finalizeCount");
   }
   if (documentType.value === "inbound_discrepancy") {
-    return "Duyệt chênh lệch";
+    return t("approvals.actions.approveDiscrepancy");
   }
   return t("approvals.actions.approve");
+}
+
+function translateError(msg) {
+  if (!msg) return "";
+  const cleaned = String(msg).trim();
+  if (cleaned.includes("Nguoi duyet cap 2 phai khac nguoi da duyet cap 1") || cleaned.includes("nguyen tac 4 mat")) {
+    return t("approvals.messages.fourEyesError");
+  }
+  if (cleaned.includes("Nguoi tao phieu khong duoc tu duyet phieu") || cleaned.includes("Nguoi gui duyet khong duoc tu duyet phieu")) {
+    return t("approvals.messages.creatorCannotApprove");
+  }
+  if (cleaned.includes("System error. Please try again later.")) {
+    return t("common.systemError");
+  }
+  return msg;
+}
+
+function getApproveConfirmMessage(receipt) {
+  if (!receipt) return "";
+  const type = receipt.documentType || documentType.value;
+  const code = receipt.code || "";
+  if (type === "inventory_adjustment") {
+    return t("approvals.confirmFinalizeCountMsg", { code });
+  }
+  if (type === "inbound_discrepancy") {
+    return t("approvals.confirmApproveDiscrepancyMsg", { code });
+  }
+  if (type === "out") {
+    return t("approvals.confirmApproveOutMsg", { code });
+  }
+  return t("approvals.confirmApproveInMsg", { code });
 }
 
 function isActionRunning(receipt, action) {
@@ -609,10 +640,10 @@ function getDiscrepancyReportId(receiptId) {
   </div>
 
   <p v-if="errorMessage" class="form-alert form-alert-error">
-    {{ errorMessage }}
+    {{ translateError(errorMessage) }}
   </p>
   <p v-if="actionErrorMessage" class="form-alert form-alert-error">
-    {{ actionErrorMessage }}
+    {{ translateError(actionErrorMessage) }}
   </p>
   <p v-if="actionMessage" class="form-alert form-alert-info">
     {{ actionMessage }}
@@ -809,7 +840,7 @@ function getDiscrepancyReportId(receiptId) {
           {{ t("approvals.modal.loadingDetail") }}
         </p>
         <p v-else-if="detailState.error" class="form-alert form-alert-error">
-          {{ detailState.error }}
+          {{ translateError(detailState.error) }}
         </p>
 
         <template v-else-if="detailState.receipt">
@@ -1043,7 +1074,7 @@ function getDiscrepancyReportId(receiptId) {
         ></textarea>
         <div class="reason-meta">
           <span v-if="rejectState.error" class="reason-error">{{
-            rejectState.error
+            translateError(rejectState.error)
           }}</span>
           <span class="reason-count"
             >{{ rejectState.reason.length }}/{{ REJECT_REASON_MAX }}</span
@@ -1074,16 +1105,12 @@ function getDiscrepancyReportId(receiptId) {
   <!-- Confirm Dialog Duyệt -->
   <ConfirmDialog
     :open="approveConfirmState.open"
-    title="Xác nhận duyệt"
-    :message="
-      approveConfirmState.receipt
-        ? `${approveLabel(approveConfirmState.receipt.status)} phiếu ${approveConfirmState.receipt.code}?`
-        : ''
-    "
+    :title="t('approvals.confirmApprove')"
+    :message="getApproveConfirmMessage(approveConfirmState.receipt)"
     :confirm-text="
       approveConfirmState.receipt
         ? approveLabel(approveConfirmState.receipt.status)
-        : 'Xác nhận'
+        : t('common.confirm')
     "
     @cancel="closeApproveConfirm"
     @confirm="confirmApprove"

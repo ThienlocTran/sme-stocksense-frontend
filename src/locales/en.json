@@ -23,7 +23,11 @@
     "yes": "Yes",
     "no": "No",
     "confirmActionSubtitle": "This action will directly affect current data.",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "retry": "Retry",
+    "system": "System",
+    "unknown": "Unknown",
+    "systemError": "System error. Please try again later."
   },
   "stockDocument": {
     "title": {
@@ -1368,6 +1372,13 @@
     "viewAdjustmentVoucher": "View Adjustment"
   },
   "approvals": {
+    "confirmFinalizeCountMsg": "Finalize count {code}?",
+    "confirmApproveDiscrepancyMsg": "Approve discrepancy {code}?",
+    "confirmApproveInMsg": "Approve receipt {code}?",
+    "confirmApproveOutMsg": "Approve receipt {code}?",
+    "approvalHistoryTitle": "Approval history",
+    "loadingHistory": "Loading history...",
+    "emptyHistory": "No approval history recorded.",
     "titleIn": "Pending Import Receipts",
     "titleOut": "Pending Export Receipts",
     "description": "Manage approvals or rejections of stock documents.",
@@ -1419,7 +1430,10 @@
       "rejectOutError": "Cannot reject export receipt.",
       "rejectInError": "Cannot reject import receipt.",
       "completeSuccess": "Successfully completed receipt {code}.",
-      "rejectSuccessCode": "Successfully rejected receipt {code}."
+      "rejectSuccessCode": "Successfully rejected receipt {code}.",
+      "creatorCannotApprove": "The creator cannot approve this receipt.",
+      "sameApprover": "You approved the first level. The next approval must be performed by another user.",
+      "fourEyesError": "The second-level approver must be different from the first-level approver."
     },
     "filters": {
       "type": "Type",
@@ -1439,7 +1453,9 @@
       "cancel": "Cancel",
       "processing": "Processing...",
       "confirmReject": "Confirm Rejection",
-      "approveLevel": "Approve Level {level}"
+      "approveLevel": "Approve Level {level}",
+      "finalizeCount": "Finalize count",
+      "approveDiscrepancy": "Approve discrepancy"
     },
     "approveReceiptQuestion": "Are you sure you want to approve this export receipt {code}?",
     "complete": "Complete",
