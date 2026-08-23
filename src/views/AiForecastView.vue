@@ -334,7 +334,9 @@ const isRecommendationValid = computed(() => {
   return (
     !!recommendation.value &&
     !!forecast.value &&
-    recommendation.value.modelMetadataId === forecast.value.modelMetadataId
+    recommendation.value.modelMetadataId != null &&
+    Number(recommendation.value.productId) === Number(forecast.value.productId) &&
+    Number(recommendation.value.warehouseId) === Number(forecast.value.warehouseId)
   );
 });
 

@@ -14,10 +14,11 @@ const forecastClient = axios.create({
 })
 
 /** Chạy/train lại dự báo đồng bộ cho 1 sản phẩm/kho. */
-export async function runForecast(productId, warehouseId) {
+export async function runForecast(productId, warehouseId, source) {
   try {
     const { data } = await forecastClient.post(`/api/forecast/${productId}/${warehouseId}`, null, {
       headers: getAuthorizationHeader(),
+      params: { source: source || undefined },
     })
     return data
   } catch (error) {
@@ -27,10 +28,11 @@ export async function runForecast(productId, warehouseId) {
 
 /** Lấy kết quả dự báo mới nhất đã lưu, không train lại.
  *  Trả null khi SP/Kho chưa từng chạy dự báo (204 No Content). */
-export async function getForecast(productId, warehouseId) {
+export async function getForecast(productId, warehouseId, source) {
   try {
     const response = await forecastClient.get(`/api/forecast/${productId}/${warehouseId}`, {
       headers: getAuthorizationHeader(),
+      params: { source: source || undefined },
     })
     return response.status === 204 ? null : response.data
   } catch (error) {
