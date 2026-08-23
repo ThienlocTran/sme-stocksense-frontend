@@ -485,7 +485,7 @@ const boundaryDateStr = computed(() => {
 function openAssignmentModal() {
   selectedEmployeeId.value = "";
   humanRequestedQuantity.value = isRecommendationValid.value ? recommendation.value.suggestedQty : 0;
-  assignmentContent.value = `Thực hiện bổ sung hàng cho sản phẩm theo đề xuất từ AI dự báo ${selectedHorizon.value} ngày.`;
+  assignmentContent.value = t("forecast.assignment.defaultMessage", { horizon: selectedHorizon.value });
   assignmentErrorMessage.value = "";
   assignmentSuccessMessage.value = "";
   assignmentResult.value = null;
@@ -497,11 +497,11 @@ async function submitAssignment() {
   assignmentSuccessMessage.value = "";
 
   if (!selectedEmployeeId.value) {
-    assignmentErrorMessage.value = "Vui lòng chọn nhân viên được bàn giao.";
+    assignmentErrorMessage.value = t("forecast.assignment.validationSelectEmployee");
     return;
   }
   if (!humanRequestedQuantity.value || humanRequestedQuantity.value <= 0) {
-    assignmentErrorMessage.value = "Số lượng yêu cầu phải lớn hơn 0.";
+    assignmentErrorMessage.value = t("forecast.assignment.validationQtyPositive");
     return;
   }
 
@@ -519,9 +519,9 @@ async function submitAssignment() {
     };
     const response = await createAiPurchaseAssignment(payload);
     assignmentResult.value = response;
-    assignmentSuccessMessage.value = "Yêu cầu nhập hàng đã được tạo thành công.";
+    assignmentSuccessMessage.value = t("forecast.assignment.createSuccess");
   } catch (error) {
-    assignmentErrorMessage.value = error.message || "Không thể tạo yêu cầu nhập hàng.";
+    assignmentErrorMessage.value = error.message || t("forecast.assignment.error");
   } finally {
     isSubmittingAssignment.value = false;
   }
@@ -893,14 +893,15 @@ const isHistoryUnavailable = computed(() => {
       <span>{{ t('forecast.loadingRecommendation') }}</span>
     </div>
 
-    <div v-else-if="!isRecommendationValid" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700 mt-6">
-      <i class="mdi mdi-alert-circle-outline text-3xl text-zinc-400 block mb-2"></i>
-      {{ t('forecast.noRecommendation') }}
-    </div>
-
     <template v-else>
-      <!-- Summary Statistics Grid -->
-      <div class="stat-grid mt-6">
+      <!-- If recommendation is NOT valid, show the empty recommendation alert, but keep drawing the charts! -->
+      <div v-if="!isRecommendationValid" class="py-12 text-center text-zinc-500 bg-zinc-50/50 dark:bg-zinc-800/10 rounded border border-dashed border-zinc-300 dark:border-zinc-700 mt-6">
+        <i class="mdi mdi-alert-circle-outline text-3xl text-zinc-400 block mb-2"></i>
+        {{ t('forecast.noRecommendation') }}
+      </div>
+
+      <!-- If recommendation IS valid, show the Summary Statistics Grid -->
+      <div v-else class="stat-grid mt-6">
         <div class="card card-pad stat-card">
           <span class="stat-label">{{ t('forecast.demandForecastLabel', { horizon: selectedHorizon }) }}</span>
           <strong class="stat-value">{{ formatQty(totalHorizonDemand) }}</strong>
@@ -965,236 +966,239 @@ const isHistoryUnavailable = computed(() => {
       <div class="card card-pad chart-card mt-6">
         <h3 class="section-title">{{ t('forecast.projectedInventoryTitle') }}</h3>
         <ProjectedInventoryChart
-          :current-stock="recommendation.currentStock"
-          :daily-forecast="forecast.dailyForecast || []"
-          :effective-min-stock="recommendation.effectiveMinStock"
+          :current-stock="recommendation?.currentStock ?? forecast?.currentStock ?? 0"
+          :daily-forecast="forecast?.dailyForecast || []"
+          :effective-min-stock="recommendation?.effectiveMinStock ?? forecast?.minStock ?? 0"
           :boundary-date="boundaryDateStr"
           :horizon-days="selectedHorizon"
         />
       </div>
 
-      <!-- Recommendation Detail & Capacity Warnings (Task 4 Capacity limitation UX) -->
-      <div class="card card-pad chart-card mt-6">
-        <h3 class="section-title">{{ t('forecast.detailCapacityTitle') }}</h3>
-        <div class="py-2 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
-          <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-            <span>{{ t('forecast.capacityDetail.rawNeed') }}</span>
-            <strong>{{ t('forecast.capacityDetail.rawNeedValue', { qty: formatQty(recommendation.rawSuggestedQty) }) }}</strong>
-          </div>
-          <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-            <span>{{ t('forecast.capacityDetail.suggestedQty') }}</span>
-            <strong>{{ t('forecast.capacityDetail.suggestedQtyValue', { qty: formatQty(recommendation.suggestedQty) }) }}</strong>
-          </div>
-          <div v-if="recommendation.capacityLimited" class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800 text-red-500 font-semibold">
-            <span>{{ t('forecast.capacityDetail.shortfall') }}</span>
-            <strong>{{ t('forecast.capacityDetail.shortfallValue', { qty: formatQty(recommendation.capacityShortfallQty) }) }}</strong>
-          </div>
+      <!-- Recommendation Detail & Capacity Warnings & Replenishment Assignment (Only if recommendation is valid) -->
+      <template v-if="isRecommendationValid">
+        <!-- Recommendation Detail & Capacity Warnings (Task 4 Capacity limitation UX) -->
+        <div class="card card-pad chart-card mt-6">
+          <h3 class="section-title">{{ t('forecast.detailCapacityTitle') }}</h3>
+          <div class="py-2 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
+            <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+              <span>{{ t('forecast.capacityDetail.rawNeed') }}</span>
+              <strong>{{ t('forecast.capacityDetail.rawNeedValue', { qty: formatQty(recommendation.rawSuggestedQty) }) }}</strong>
+            </div>
+            <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+              <span>{{ t('forecast.capacityDetail.suggestedQty') }}</span>
+              <strong>{{ t('forecast.capacityDetail.suggestedQtyValue', { qty: formatQty(recommendation.suggestedQty) }) }}</strong>
+            </div>
+            <div v-if="recommendation.capacityLimited" class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800 text-red-500 font-semibold">
+              <span>{{ t('forecast.capacityDetail.shortfall') }}</span>
+              <strong>{{ t('forecast.capacityDetail.shortfallValue', { qty: formatQty(recommendation.capacityShortfallQty) }) }}</strong>
+            </div>
 
-          <div class="pt-2 border-t border-zinc-200 dark:border-zinc-800">
-            <h4 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">{{ t('forecast.capacityDetail.warehouseCapacityTitle') }}</h4>
-            <div class="grid grid-cols-2 gap-4 text-xs">
-              <div>{{ t('forecast.capacityDetail.totalCapacity', { capacity: formatNumber(recommendation.warehouseCapacityM3) }) }}</div>
-              <div>{{ t('forecast.capacityDetail.usedCapacity', { occupied: formatNumber(recommendation.warehouseOccupiedM3) }) }}</div>
-              <div>{{ t('forecast.capacityDetail.availableCapacity', { available: formatNumber(recommendation.warehouseAvailableM3) }) }}</div>
-              <div>{{ t('forecast.capacityDetail.maxQtyAllowed', { max: formatQty(recommendation.maxAdditionalUnitsByCapacity) }) }}</div>
+            <div class="pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <h4 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">{{ t('forecast.capacityDetail.warehouseCapacityTitle') }}</h4>
+              <div class="grid grid-cols-2 gap-4 text-xs">
+                <div>{{ t('forecast.capacityDetail.totalCapacity', { capacity: formatNumber(recommendation.warehouseCapacityM3) }) }}</div>
+                <div>{{ t('forecast.capacityDetail.usedCapacity', { occupied: formatNumber(recommendation.warehouseOccupiedM3) }) }}</div>
+                <div>{{ t('forecast.capacityDetail.availableCapacity', { available: formatNumber(recommendation.warehouseAvailableM3) }) }}</div>
+                <div>{{ t('forecast.capacityDetail.maxQtyAllowed', { max: formatQty(recommendation.maxAdditionalUnitsByCapacity) }) }}</div>
+              </div>
+            </div>
+
+            <div v-if="recommendation.capacityWarning" class="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-900/30 text-xs">
+              <i class="mdi mdi-alert mr-1"></i>
+              {{ recommendation.capacityWarning }}
             </div>
           </div>
-
-          <div v-if="recommendation.capacityWarning" class="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-900/30 text-xs">
-            <i class="mdi mdi-alert mr-1"></i>
-            {{ recommendation.capacityWarning }}
-          </div>
         </div>
-      </div>
 
-      <!-- Replenishment Assignment (Later Action Area - Task 6 Assignment context) -->
-      <div v-if="canRun" class="card card-pad mt-6">
-        <h3 class="section-title">{{ t('forecast.assignTaskTitle') }}</h3>
-        <p class="text-sm text-zinc-500 mt-1">
-          {{ t('forecast.assignTaskDesc') }}
-        </p>
-        <div class="mt-4">
-          <button
-            class="btn btn-primary"
-            type="button"
-            @click="openAssignmentModal"
-          >
-            <i class="mdi mdi-account-plus-outline mr-1"></i>
-            {{ t('forecast.assignTaskBtn') }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Assignment Modal -->
-      <div
-        v-if="showAssignmentModal"
-        class="modal-backdrop"
-        @click.self="showAssignmentModal = false"
-      >
-        <div class="modal">
-          <div class="modal-head between">
-            <div>
-              <h2 class="section-title">{{ t('forecast.assignmentModal.title') }}</h2>
-              <p class="modal-subtitle">{{ t('forecast.assignmentModal.subtitle') }}</p>
-            </div>
+        <!-- Replenishment Assignment (Later Action Area - Task 6 Assignment context) -->
+        <div v-if="canRun" class="card card-pad mt-6">
+          <h3 class="section-title">{{ t('forecast.assignTaskTitle') }}</h3>
+          <p class="text-sm text-zinc-500 mt-1">
+            {{ t('forecast.assignTaskDesc') }}
+          </p>
+          <div class="mt-4">
             <button
-              class="btn btn-icon"
-              @click="showAssignmentModal = false"
+              class="btn btn-primary"
+              type="button"
+              @click="openAssignmentModal"
             >
-              <i class="mdi mdi-close"></i>
+              <i class="mdi mdi-account-plus-outline mr-1"></i>
+              {{ t('forecast.assignTaskBtn') }}
             </button>
           </div>
+        </div>
 
-          <div class="modal-body space-y-4">
-            <template v-if="!assignmentResult">
-              <!-- Read-only Context Info -->
-              <div class="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
-                <div>{{ t('forecast.assignmentModal.productLabel', { product: products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }) }}</div>
-                <div>{{ t('forecast.assignmentModal.warehouseLabel', { warehouse: warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }) }}</div>
-                <div>{{ t('forecast.assignmentModal.horizonLabel', { horizon: selectedHorizon }) }}</div>
-                <div>{{ t('forecast.assignmentModal.aiQtyLabel', { qty: recommendation.suggestedQty }) }}</div>
-                <div v-if="recommendation.rawSuggestedQty !== recommendation.suggestedQty" class="text-zinc-500">{{ t('forecast.assignmentModal.rawNeedLabel', { qty: recommendation.rawSuggestedQty }) }}</div>
-                <div v-if="recommendation.capacityWarning" class="text-amber-600 dark:text-amber-400 font-semibold mt-1">{{ t('forecast.assignmentModal.capacityWarning', { warning: recommendation.capacityWarning }) }}</div>
+        <!-- Assignment Modal -->
+        <div
+          v-if="showAssignmentModal"
+          class="modal-backdrop"
+          @click.self="showAssignmentModal = false"
+        >
+          <div class="modal">
+            <div class="modal-head between">
+              <div>
+                <h2 class="section-title">{{ t('forecast.assignmentModal.title') }}</h2>
+                <p class="modal-subtitle">{{ t('forecast.assignmentModal.subtitle') }}</p>
               </div>
+              <button
+                class="btn btn-icon"
+                @click="showAssignmentModal = false"
+              >
+                <i class="mdi mdi-close"></i>
+              </button>
+            </div>
 
-              <!-- Editable Form Fields -->
-              <div class="field">
-                <label class="field-label font-semibold">{{ t('forecast.assignmentModal.employeeLabel') }}</label>
-                <select v-model="selectedEmployeeId" class="select w-full mt-1" :disabled="isSubmittingAssignment">
-                  <option value="">{{ t('forecast.assignment.selectEmployee') }}</option>
-                  <option v-for="emp in employees" :key="emp.id" :value="emp.id">
-                    {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
-                  </option>
-                </select>
-              </div>
-
-              <div class="field mt-3">
-                <label class="field-label font-semibold">{{ t('forecast.assignmentModal.requestedQtyLabel') }}</label>
-                <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" :disabled="isSubmittingAssignment" />
-                <span class="text-xs text-zinc-500 mt-1 block">
-                  {{ t('forecast.assignmentModal.qtyHelp', { qty: recommendation.suggestedQty }) }}
-                </span>
-                <div v-if="humanRequestedQuantity > recommendation.suggestedQty" class="p-2 mt-1 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded text-xs border border-amber-200 dark:border-amber-900/30">
-                  <i class="mdi mdi-information-outline mr-0.5"></i>
-                  {{ t('forecast.assignmentModal.qtyExceedWarning', { qty: recommendation.suggestedQty }) }}
+            <div class="modal-body space-y-4">
+              <template v-if="!assignmentResult">
+                <!-- Read-only Context Info -->
+                <div class="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
+                  <div>{{ t('forecast.assignmentModal.productLabel', { product: products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }) }}</div>
+                  <div>{{ t('forecast.assignmentModal.warehouseLabel', { warehouse: warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }) }}</div>
+                  <div>{{ t('forecast.assignmentModal.horizonLabel', { horizon: selectedHorizon }) }}</div>
+                  <div>{{ t('forecast.assignmentModal.aiQtyLabel', { qty: recommendation.suggestedQty }) }}</div>
+                  <div v-if="recommendation.rawSuggestedQty !== recommendation.suggestedQty" class="text-zinc-500">{{ t('forecast.assignmentModal.rawNeedLabel', { qty: recommendation.rawSuggestedQty }) }}</div>
+                  <div v-if="recommendation.capacityWarning" class="text-amber-600 dark:text-amber-400 font-semibold mt-1">{{ t('forecast.assignmentModal.capacityWarning', { warning: recommendation.capacityWarning }) }}</div>
                 </div>
-              </div>
 
-              <div class="field mt-3">
-                <label class="field-label font-semibold">{{ t('forecast.assignmentModal.messageLabel') }}</label>
-                <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" :placeholder="t('forecast.assignmentModal.messagePlaceholder')" :disabled="isSubmittingAssignment"></textarea>
-              </div>
+                <!-- Editable Form Fields -->
+                <div class="field">
+                  <label class="field-label font-semibold">{{ t('forecast.assignmentModal.employeeLabel') }}</label>
+                  <select v-model="selectedEmployeeId" class="select w-full mt-1" :disabled="isSubmittingAssignment">
+                    <option value="">{{ t('forecast.assignment.selectEmployee') }}</option>
+                    <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                      {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
+                    </option>
+                  </select>
+                </div>
 
-              <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs mt-2">
-                <i class="mdi mdi-alert-circle-outline mr-1"></i>
-                {{ assignmentErrorMessage }}
-              </div>
-            </template>
-
-            <template v-else>
-              <!-- Success/Warning Alerts -->
-              <div v-if="assignmentResult.emailStatus === 'DA_GUI'" class="p-3 bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-900/30 text-xs">
-                <i class="mdi mdi-check-circle-outline mr-1"></i>
-                {{ t('forecast.assignment.createSuccess') }} {{ t('forecast.assignment.emailSent') }}
-              </div>
-              <div v-else-if="assignmentResult.emailStatus === 'THAT_BAI'" class="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-900/30 text-xs">
-                <div class="flex justify-between items-center gap-2">
-                  <div class="flex items-center">
-                    <i class="mdi mdi-alert-outline mr-1"></i>
-                    <span>{{ t('forecast.assignment.emailFailed') }}</span>
-                  </div>
-                  <button
-                    v-if="canRun"
-                    class="btn btn-secondary btn-xs shrink-0"
-                    type="button"
-                    :disabled="isRetryingEmail"
-                    @click="handleRetryEmail"
-                  >
-                    <i class="mdi mr-0.5" :class="isRetryingEmail ? 'mdi-loading mdi-spin' : 'mdi-email-sync-outline'"></i>
-                    {{ isRetryingEmail ? t('forecast.assignment.retryingEmail') : t('forecast.assignment.retryEmail') }}
-                  </button>
-                </div>
-              </div>
-              <div v-else class="p-3 bg-zinc-50 dark:bg-zinc-800/20 text-zinc-800 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-800 text-xs">
-                <i class="mdi mdi-clock-outline mr-1"></i>
-                {{ t('forecast.assignment.emailPending') }}
-              </div>
-
-              <!-- Compact Details Table -->
-              <div class="p-4 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs space-y-3">
-                <h4 class="font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[10px]">{{ t('forecast.assignment.resultTitle') }}</h4>
-
-                <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-                  <span class="text-zinc-500">{{ t('forecast.assignment.code') }}:</span>
-                  <strong class="text-zinc-900 dark:text-zinc-100">{{ assignmentResult.code || assignmentResult.id }}</strong>
-                </div>
-                <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-                  <span class="text-zinc-500">{{ t('forecast.assignment.receiver') }}:</span>
-                  <strong>
-                    {{ assignmentResult.receiver?.name || assignmentResult.receiver?.tenNhanVien || employees.find(e => e.id === assignmentResult.receiverId)?.name || employees.find(e => e.id === assignmentResult.receiverId)?.tenNhanVien || assignmentResult.receiverId }}
-                  </strong>
-                </div>
-                <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-                  <span class="text-zinc-500">{{ t('forecast.assignment.aiQty') }}:</span>
-                  <strong>{{ formatQty(assignmentResult.aiSuggestedQuantity ?? assignmentResult.aiSuggestedQty) }}</strong>
-                </div>
-                <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
-                  <span class="text-zinc-500">{{ t('forecast.assignment.reqQty') }}:</span>
-                  <strong class="text-zinc-900 dark:text-zinc-100">{{ formatQty(assignmentResult.requestedQuantity) }}</strong>
-                </div>
-                <div class="flex justify-between py-1">
-                  <span class="text-zinc-500">{{ t('forecast.assignment.emailStatus') }}:</span>
-                  <span class="font-semibold" :class="{
-                    'text-green-600': assignmentResult.emailStatus === 'DA_GUI',
-                    'text-amber-600': assignmentResult.emailStatus === 'THAT_BAI',
-                    'text-zinc-500': assignmentResult.emailStatus === 'CHO_GUI'
-                  }">
-                    {{ assignmentResult.emailStatus === 'DA_GUI' ? t('forecast.assignment.emailStatusSent') : (assignmentResult.emailStatus === 'THAT_BAI' ? t('forecast.assignment.emailStatusFailed') : t('forecast.assignment.emailStatusPending')) }}
+                <div class="field mt-3">
+                  <label class="field-label font-semibold">{{ t('forecast.assignmentModal.requestedQtyLabel') }}</label>
+                  <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" :disabled="isSubmittingAssignment" />
+                  <span class="text-xs text-zinc-500 mt-1 block">
+                    {{ t('forecast.assignmentModal.qtyHelp', { qty: recommendation.suggestedQty }) }}
                   </span>
+                  <div v-if="humanRequestedQuantity > recommendation.suggestedQty" class="p-2 mt-1 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded text-xs border border-amber-200 dark:border-amber-900/30">
+                    <i class="mdi mdi-information-outline mr-0.5"></i>
+                    {{ t('forecast.assignmentModal.qtyExceedWarning', { qty: recommendation.suggestedQty }) }}
+                  </div>
                 </div>
-              </div>
 
-              <!-- General message for retry result/errors -->
-              <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs">
-                <i class="mdi mdi-alert-circle-outline mr-1"></i>
-                {{ assignmentErrorMessage }}
-              </div>
-              <div v-if="assignmentSuccessMessage" class="p-3 bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-900/30 text-xs">
-                <i class="mdi mdi-check-circle-outline mr-1"></i>
-                {{ assignmentSuccessMessage }}
-              </div>
-            </template>
-          </div>
+                <div class="field mt-3">
+                  <label class="field-label font-semibold">{{ t('forecast.assignmentModal.messageLabel') }}</label>
+                  <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" :placeholder="t('forecast.assignmentModal.messagePlaceholder')" :disabled="isSubmittingAssignment"></textarea>
+                </div>
 
-          <div class="modal-foot">
-            <template v-if="!assignmentResult">
-              <button
-                class="btn btn-ghost"
-                :disabled="isSubmittingAssignment"
-                @click="showAssignmentModal = false"
-              >
-                {{ t('forecast.assignmentModal.cancelBtn') }}
-              </button>
-              <button
-                class="btn btn-primary"
-                :disabled="isSubmittingAssignment"
-                @click="submitAssignment"
-              >
-                <i v-if="isSubmittingAssignment" class="mdi mdi-loading mdi-spin mr-1"></i>
-                {{ t('forecast.assignmentModal.assignBtn') }}
-              </button>
-            </template>
-            <template v-else>
-              <button
-                class="btn btn-primary"
-                @click="showAssignmentModal = false"
-              >
-                {{ t('forecast.assignmentModal.closeBtn') }}
-              </button>
-            </template>
+                <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs mt-2">
+                  <i class="mdi mdi-alert-circle-outline mr-1"></i>
+                  {{ assignmentErrorMessage }}
+                </div>
+              </template>
+
+              <template v-else>
+                <!-- Success/Warning Alerts -->
+                <div v-if="assignmentResult.emailStatus === 'DA_GUI'" class="p-3 bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-900/30 text-xs">
+                  <i class="mdi mdi-check-circle-outline mr-1"></i>
+                  {{ t('forecast.assignment.createSuccess') }} {{ t('forecast.assignment.emailSent') }}
+                </div>
+                <div v-else-if="assignmentResult.emailStatus === 'THAT_BAI'" class="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-900/30 text-xs">
+                  <div class="flex justify-between items-center gap-2">
+                    <div class="flex items-center">
+                      <i class="mdi mdi-alert-outline mr-1"></i>
+                      <span>{{ t('forecast.assignment.emailFailed') }}</span>
+                    </div>
+                    <button
+                      v-if="canRun"
+                      class="btn btn-secondary btn-xs shrink-0"
+                      type="button"
+                      :disabled="isRetryingEmail"
+                      @click="handleRetryEmail"
+                    >
+                      <i class="mdi mr-0.5" :class="isRetryingEmail ? 'mdi-loading mdi-spin' : 'mdi-email-sync-outline'"></i>
+                      {{ isRetryingEmail ? t('forecast.assignment.retryingEmail') : t('forecast.assignment.retryEmail') }}
+                    </button>
+                  </div>
+                </div>
+                <div v-else class="p-3 bg-zinc-50 dark:bg-zinc-800/20 text-zinc-800 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-800 text-xs">
+                  <i class="mdi mdi-clock-outline mr-1"></i>
+                  {{ t('forecast.assignment.emailPending') }}
+                </div>
+
+                <!-- Compact Details Table -->
+                <div class="p-4 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs space-y-3">
+                  <h4 class="font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[10px]">{{ t('forecast.assignment.resultTitle') }}</h4>
+
+                  <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+                    <span class="text-zinc-500">{{ t('forecast.assignment.code') }}:</span>
+                    <strong class="text-zinc-900 dark:text-zinc-100">{{ assignmentResult.code || assignmentResult.id }}</strong>
+                  </div>
+                  <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+                    <span class="text-zinc-500">{{ t('forecast.assignment.receiver') }}:</span>
+                    <strong>
+                      {{ assignmentResult.receiver?.name || assignmentResult.receiver?.tenNhanVien || employees.find(e => e.id === assignmentResult.receiverId)?.name || employees.find(e => e.id === assignmentResult.receiverId)?.tenNhanVien || assignmentResult.receiverId }}
+                    </strong>
+                  </div>
+                  <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+                    <span class="text-zinc-500">{{ t('forecast.assignment.aiQty') }}:</span>
+                    <strong>{{ formatQty(assignmentResult.aiSuggestedQuantity ?? assignmentResult.aiSuggestedQty) }}</strong>
+                  </div>
+                  <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
+                    <span class="text-zinc-500">{{ t('forecast.assignment.reqQty') }}:</span>
+                    <strong class="text-zinc-900 dark:text-zinc-100">{{ formatQty(assignmentResult.requestedQuantity) }}</strong>
+                  </div>
+                  <div class="flex justify-between py-1">
+                    <span class="text-zinc-500">{{ t('forecast.assignment.emailStatus') }}:</span>
+                    <span class="font-semibold" :class="{
+                      'text-green-600': assignmentResult.emailStatus === 'DA_GUI',
+                      'text-amber-600': assignmentResult.emailStatus === 'THAT_BAI',
+                      'text-zinc-500': assignmentResult.emailStatus === 'CHO_GUI'
+                    }">
+                      {{ assignmentResult.emailStatus === 'DA_GUI' ? t('forecast.assignment.emailStatusSent') : (assignmentResult.emailStatus === 'THAT_BAI' ? t('forecast.assignment.emailStatusFailed') : t('forecast.assignment.emailStatusPending')) }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- General message for retry result/errors -->
+                <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs">
+                  <i class="mdi mdi-alert-circle-outline mr-1"></i>
+                  {{ assignmentErrorMessage }}
+                </div>
+                <div v-if="assignmentSuccessMessage" class="p-3 bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 rounded border border-green-200 dark:border-green-900/30 text-xs">
+                  <i class="mdi mdi-check-circle-outline mr-1"></i>
+                  {{ assignmentSuccessMessage }}
+                </div>
+              </template>
+            </div>
+
+            <div class="modal-foot">
+              <template v-if="!assignmentResult">
+                <button
+                  class="btn btn-ghost"
+                  :disabled="isSubmittingAssignment"
+                  @click="showAssignmentModal = false"
+                >
+                  {{ t('forecast.assignmentModal.cancelBtn') }}
+                </button>
+                <button
+                  class="btn btn-primary"
+                  :disabled="isSubmittingAssignment"
+                  @click="submitAssignment"
+                >
+                  <i v-if="isSubmittingAssignment" class="mdi mdi-loading mdi-spin mr-1"></i>
+                  {{ t('forecast.assignmentModal.assignBtn') }}
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  class="btn btn-primary"
+                  @click="showAssignmentModal = false"
+                >
+                  {{ t('forecast.assignmentModal.closeBtn') }}
+                </button>
+              </template>
+            </div>
           </div>
         </div>
-      </div>
+      </template>
     </template>
 
     <!-- Drift Card (Drift/Model Drift check results) -->

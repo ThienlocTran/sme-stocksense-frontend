@@ -8,7 +8,7 @@ import SearchFilterBar from "../components/SearchFilterBar.vue";
 import EmptyState from "../components/EmptyState.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import SearchableSelect from "../components/SearchableSelect.vue";
-import { getLowStockInventory } from "../services/inventoryService";
+import { getInventoryAlerts, acknowledgeAlert } from "../services/inventoryAlertService";
 import { getWarehouses, getWarehouseCapacity } from "../services/warehouseService";
 
 const router = useRouter();
@@ -25,11 +25,12 @@ const searchKeyword = ref("");
 const page = ref(0);
 const size = ref(20);
 const totalPages = ref(0);
-const filters = reactive({ warehouseId: "", warehouseStatus: "", alertType: "ALL" });
+const filters = reactive({ warehouseId: "", warehouseStatus: "", alertType: "ALL", alertStatus: "" });
 const fetchRequestId = ref(0);
 const latestRequestId = ref(0);
 const dropdownRequestId = ref(0);
 const latestDropdownRequestId = ref(0);
+const acknowledging = ref(null); // id của alert đang được acknowledge
 
 const columns = [
   { key: "productCode", label: t("alerts.table.productCode"), class: "cell-compact font-semibold text-zinc-900" },
@@ -38,6 +39,7 @@ const columns = [
   { key: "currentQuantity", label: t("alerts.table.currentQuantity"), class: "cell-medium text-right" },
   { key: "severity", label: t("alerts.table.severity"), class: "cell-compact text-center" },
   { key: "status", label: t("alerts.table.status"), class: "cell-nowrap" },
+  { key: "alertStatus", label: t("alerts.table.alertStatus"), class: "cell-nowrap" },
   { key: "lastUpdatedAt", label: t("alerts.table.lastUpdatedAt"), class: "cell-nowrap" },
   { key: "actions", label: t("alerts.table.actions"), class: "cell-compact text-right" },
 ];
@@ -49,7 +51,8 @@ const hasActiveFilters = computed(() => {
     searchKeyword.value.trim() !== "" ||
     filters.warehouseId !== "" ||
     filters.warehouseStatus !== "" ||
-    filters.alertType !== "ALL"
+    filters.alertType !== "ALL" ||
+    filters.alertStatus !== ""
   );
 });
 
@@ -197,12 +200,11 @@ async function fetchAlerts() {
   errorMessage.value = "";
 
   try {
-    const data = await getLowStockInventory({
+    const data = await getInventoryAlerts({
       page: page.value,
       size: size.value,
-      keyword: searchKeyword.value.trim(),
       warehouseId: filters.warehouseId,
-      warehouseStatus: filters.warehouseStatus,
+      status: filters.alertStatus,
     });
 
     if (requestId !== latestRequestId.value) {
@@ -211,13 +213,16 @@ async function fetchAlerts() {
 
     lowStockAlerts.value = (data.content || []).map(a => ({
       ...a,
+      warehouse: a.warehouseName,      // InventoryAlertResponse dùng warehouseName
+      lastUpdatedAt: a.updatedAt,      // DTO dùng updatedAt, slot dùng lastUpdatedAt
       alertType: 'LOW_STOCK',
-      severity: Number(a.currentQuantity ?? 0) === 0 ? 'CRITICAL' : 'WARNING'
+      alertStatus: a.status,           // ACTIVE | ACKNOWLEDGED từ backend
     }));
-    
+
     await loadWarehouseCapacities();
-    
+
     totalPages.value = data.totalPages || 0;
+
   } catch (error) {
     if (requestId !== latestRequestId.value) {
       return;
@@ -275,6 +280,7 @@ async function clearFilters() {
   filters.warehouseId = "";
   filters.warehouseStatus = "";
   filters.alertType = "ALL";
+  filters.alertStatus = "";
   page.value = 0;
 
   const loaded = await loadDropdowns();
@@ -293,23 +299,17 @@ function formatInventoryStatus(row) {
   if (row.alertType === 'CAPACITY') {
     return row.severity === 'CRITICAL' ? t('capacity.status.QUA_TAI') : t('capacity.status.NGUY_HIEM');
   }
-  const status = row.status;
-  if (status === "LOW_STOCK") return t("alerts.status.lowStock");
-  if (status === "OUT_OF_STOCK") return t("alerts.status.outOfStock");
-  if (status === "NORMAL") return t("alerts.status.normal");
-  if (status === "OVER_STOCK") return t("alerts.status.overStock");
-  return status || "-";
+  // InventoryAlertResponse không có trường inventory stock status.
+  // Derive từ severity: CRITICAL = hết hàng, WARNING = sắp hết.
+  if (row.severity === 'CRITICAL') return t('alerts.status.outOfStock');
+  if (row.severity === 'WARNING') return t('alerts.status.lowStock');
+  return '-';
 }
 
 function computeSeverity(row) {
-  if (row.alertType === 'CAPACITY') {
-    return row.severity;
-  }
-  const current = Number(row.currentQuantity ?? 0);
-  if (current <= 0) {
-    return "CRITICAL";
-  }
-  return "WARNING";
+  // severity đã có sẵn từ InventoryAlertResponse (CRITICAL | WARNING).
+  // Capacity alerts tính riêng qua alertType.
+  return row.severity || 'WARNING';
 }
 
 function formatDate(value) {
@@ -341,6 +341,27 @@ function navigateToInventory(row) {
       keyword: row.productCode,
     },
   });
+}
+
+async function acknowledgeRow(row) {
+  if (!row.id || row.alertType === 'CAPACITY') return;
+  acknowledging.value = row.id;
+  try {
+    const updated = await acknowledgeAlert(row.id);
+    // Cập nhật ngay trên danh sách local không cần reload
+    const idx = lowStockAlerts.value.findIndex(a => a.id === row.id);
+    if (idx !== -1) {
+      lowStockAlerts.value[idx] = {
+        ...lowStockAlerts.value[idx],
+        alertStatus: updated.status,
+        status: updated.status,
+      };
+    }
+  } catch (err) {
+    errorMessage.value = err.message || 'Không thể xác nhận cảnh báo.';
+  } finally {
+    acknowledging.value = null;
+  }
 }
 </script>
 
@@ -390,6 +411,17 @@ function navigateToInventory(row) {
         <option value="ALL">{{ t("alerts.filter.allAlertTypes") }}</option>
         <option value="LOW_STOCK">{{ t("alerts.filter.lowStock") }}</option>
         <option value="CAPACITY">{{ t("alerts.filter.capacity") }}</option>
+      </select>
+
+      <select
+        v-model="filters.alertStatus"
+        class="select"
+        :disabled="isLoading || isLoadingDropdowns"
+        @change="applyFilter"
+      >
+        <option value="">{{ t("alerts.filter.allAlertStatuses") }}</option>
+        <option value="ACTIVE">{{ t("alerts.filter.alertActive") }}</option>
+        <option value="ACKNOWLEDGED">{{ t("alerts.filter.alertAcknowledged") }}</option>
       </select>
 
       <select
@@ -489,10 +521,30 @@ function navigateToInventory(row) {
           <template #lastUpdatedAt="{ value }">
             <span class="tabular-num text-xs">{{ formatDate(value) }}</span>
           </template>
+          <template #alertStatus="{ row }">
+            <span
+              v-if="row.alertType !== 'CAPACITY'"
+              class="alert-status-badge"
+              :class="row.alertStatus === 'ACKNOWLEDGED' ? 'badge-acknowledged' : 'badge-active'"
+            >
+              {{ row.alertStatus === 'ACKNOWLEDGED' ? t('alerts.status.acknowledged') : t('alerts.status.active') }}
+            </span>
+            <span v-else class="text-muted text-xs">—</span>
+          </template>
           <template #actions="{ row }">
-            <div class="text-right">
+            <div class="actions-cell">
               <button
-                class="btn btn-secondary btn-sm flex items-center gap-1 ml-auto"
+                v-if="row.alertType !== 'CAPACITY' && row.alertStatus !== 'ACKNOWLEDGED'"
+                class="btn btn-success btn-sm flex items-center gap-1"
+                :disabled="acknowledging === row.id"
+                @click="acknowledgeRow(row)"
+                :title="t('alerts.table.acknowledgeTitle')"
+              >
+                <i class="mdi" :class="acknowledging === row.id ? 'mdi-loading mdi-spin' : 'mdi-check-circle-outline'"></i>
+                {{ t('alerts.table.acknowledge') }}
+              </button>
+              <button
+                class="btn btn-secondary btn-sm flex items-center gap-1"
                 @click="navigateToInventory(row)"
                 :title="row.alertType === 'CAPACITY' ? 'Xem kho hàng' : t('alerts.table.viewInventoryTitle')"
               >
@@ -539,12 +591,34 @@ function navigateToInventory(row) {
               <span class="detail-val"><StatusBadge :status="computeSeverity(row)" variant="severity" /></span>
             </div>
             <div class="detail-row">
+              <span class="detail-label">{{ t("alerts.table.alertStatus") }}</span>
+              <span class="detail-val">
+                <span
+                  v-if="row.alertType !== 'CAPACITY'"
+                  class="alert-status-badge"
+                  :class="row.alertStatus === 'ACKNOWLEDGED' ? 'badge-acknowledged' : 'badge-active'"
+                >
+                  {{ row.alertStatus === 'ACKNOWLEDGED' ? t('alerts.status.acknowledged') : t('alerts.status.active') }}
+                </span>
+                <span v-else>—</span>
+              </span>
+            </div>
+            <div class="detail-row">
               <span class="detail-label">{{ t("alerts.table.lastUpdatedAt") }}</span>
-              <span class="detail-val text-muted text-xs">{{ formatDate(row.lastUpdatedAt) }}</span>
+              <span class="detail-val text-muted text-xs">{{ formatDate(row.lastUpdatedAt || row.updatedAt) }}</span>
             </div>
           </div>
 
           <div class="card-footer-action">
+            <button
+              v-if="row.alertType !== 'CAPACITY' && row.alertStatus !== 'ACKNOWLEDGED'"
+              class="btn btn-success btn-sm w-full justify-center gap-1 mb-2"
+              :disabled="acknowledging === row.id"
+              @click="acknowledgeRow(row)"
+            >
+              <i class="mdi" :class="acknowledging === row.id ? 'mdi-loading mdi-spin' : 'mdi-check-circle-outline'"></i>
+              {{ t('alerts.table.acknowledge') }}
+            </button>
             <button
               class="btn btn-secondary btn-sm w-full justify-center gap-1"
               @click="navigateToInventory(row)"
@@ -610,6 +684,52 @@ function navigateToInventory(row) {
 
 .filter-actions .btn {
   min-width: 108px;
+}
+
+.actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.alert-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-active {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.badge-acknowledged {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.btn-success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  font-weight: 600;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.btn-success:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .loading-state {

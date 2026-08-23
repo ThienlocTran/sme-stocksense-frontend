@@ -75,12 +75,12 @@ const warehouseOptions = computed(() => {
 const columns = computed(() => [
   { key: "productCode", label: t('inventory.columns.productCode'), class: "cell-compact" },
   { key: "productName", label: t('inventory.columns.productName'), class: "cell-long" },
-  { key: "unitVolumeM3", label: "Thể tích (m³)", class: "cell-compact text-right" },
+  { key: "unitVolumeM3", label: t('inventory.columns.unitVolumeM3'), class: "cell-compact text-right" },
   { key: "warehouse", label: t('inventory.columns.warehouse'), class: "cell-medium" },
-  { key: "currentQuantity", label: "Số lượng thực tế", class: "cell-compact text-right font-bold" },
-  { key: "minStock", label: "Tồn tối thiểu hiệu lực", class: "cell-compact text-right" },
-  { key: "thresholdSource", label: "Nguồn định mức", class: "cell-nowrap" },
-  { key: "status", label: "Trạng thái cảnh báo", class: "cell-nowrap" },
+  { key: "currentQuantity", label: t('inventory.columns.currentQuantity'), class: "cell-compact text-right font-bold" },
+  { key: "minStock", label: t('inventory.columns.effectiveMinStock'), class: "cell-compact text-right" },
+  { key: "thresholdSource", label: t('inventory.columns.thresholdSource'), class: "cell-nowrap" },
+  { key: "status", label: t('inventory.columns.alertStatus'), class: "cell-nowrap" },
   { key: "lastUpdatedAt", label: t('inventory.columns.lastUpdated'), class: "cell-nowrap" },
 ]);
 
@@ -299,12 +299,12 @@ function formatDate(value) {
 
 function tooltipText(row) {
   if (row.status === 'OUT_OF_STOCK') {
-    return 'Hết hàng hoàn toàn. Cần nhập hàng khẩn cấp!';
+    return t('inventory.tooltip.outOfStock');
   }
   if (row.status === 'LOW_STOCK') {
-    return 'Tồn kho thực tế thấp hơn định mức tồn tối thiểu hiệu lực.';
+    return t('inventory.tooltip.lowStock');
   }
-  return 'Tồn kho ở mức an toàn.';
+  return t('inventory.tooltip.safeStock');
 }
 
 function preventNonInteger(event) {
@@ -417,7 +417,7 @@ function handleIntegerPaste(event) {
       </template>
       <template #unitVolumeM3="{ value }">
         <span v-if="value !== null && value !== undefined" class="tabular-num text-xs">{{ value.toFixed(3) }} m³</span>
-        <span v-else class="text-slate-400 italic text-xs">Chưa cấu hình</span>
+        <span v-else class="text-slate-400 italic text-xs">{{ t('inventory.labels.unconfigured') }}</span>
       </template>
       <template #warehouse="{ row }">
         <div class="warehouse-cell">
@@ -440,7 +440,7 @@ function handleIntegerPaste(event) {
             class="btn btn-icon btn-xs ml-2 text-blue-600 hover:text-blue-800 transition"
             type="button"
             @click="openMinStockConfig(row)"
-            title="Cấu hình tồn tối thiểu"
+            :title="t('inventory.configModal.title')"
           >
             <i class="mdi mdi-cog-outline text-base"></i>
           </button>
@@ -451,7 +451,7 @@ function handleIntegerPaste(event) {
           class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full"
           :class="row.isOverride ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'"
         >
-          {{ row.isOverride ? 'Ghi đè' : 'Mặc định' }}
+          {{ row.isOverride ? t('inventory.labels.override') : t('inventory.labels.default') }}
         </span>
       </template>
       <template #status="{ value, row }">
@@ -500,7 +500,7 @@ function handleIntegerPaste(event) {
           </span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Số lượng thực tế</span>
+          <span class="detail-label">{{ t('inventory.labels.actualStockMobile') }}</span>
           <span class="detail-val">
             <span class="tabular-num font-semibold text-slate-800" :class="{ 'text-red-600 font-bold': row.status === 'OUT_OF_STOCK', 'text-amber-600 font-bold': row.status === 'LOW_STOCK' }">
               {{ row.currentQuantity ?? 0 }}
@@ -508,23 +508,23 @@ function handleIntegerPaste(event) {
           </span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Thể tích đơn vị</span>
+          <span class="detail-label">{{ t('inventory.labels.unitVolumeMobile') }}</span>
           <span class="detail-val">
             <span v-if="row.unitVolumeM3 !== null && row.unitVolumeM3 !== undefined" class="tabular-num text-xs">{{ row.unitVolumeM3.toFixed(3) }} m³</span>
-            <span v-else class="text-slate-400 italic text-xs">Chưa cấu hình</span>
+            <span v-else class="text-slate-400 italic text-xs">{{ t('inventory.labels.unconfigured') }}</span>
           </span>
         </div>
         <div class="detail-row flex items-center justify-between">
-          <span class="detail-label">Tồn tối thiểu hiệu lực</span>
+          <span class="detail-label">{{ t('inventory.labels.effectiveMinStockMobile') }}</span>
           <span class="detail-val flex items-center gap-1">
             <span class="tabular-num font-semibold">{{ row.minStock ?? 0 }}</span>
-            <span class="text-xs text-slate-400">({{ row.isOverride ? 'Ghi đè' : 'Mặc định' }})</span>
+            <span class="text-xs text-slate-400">({{ row.isOverride ? t('inventory.labels.override') : t('inventory.labels.default') }})</span>
             <button
               v-if="canManage"
               class="btn btn-icon btn-xs ml-2 text-blue-600 hover:text-blue-800 transition"
               type="button"
               @click="openMinStockConfig(row)"
-              title="Cấu hình tồn tối thiểu"
+              :title="t('inventory.configModal.title')"
             >
               <i class="mdi mdi-cog-outline text-sm"></i>
             </button>
@@ -564,7 +564,7 @@ function handleIntegerPaste(event) {
     <div class="modal w-full max-w-md card card-pad">
       <form @submit.prevent="submitConfigForm" class="flex flex-col gap-4">
         <div class="modal-head flex items-center justify-between border-b pb-3 mb-2">
-          <h2 class="section-title" style="font-size: 18px; font-weight: 700;">Cấu hình tồn tối thiểu</h2>
+          <h2 class="section-title" style="font-size: 18px; font-weight: 700;">{{ t('inventory.configModal.title') }}</h2>
           <button class="btn btn-icon text-slate-400 hover:text-slate-600" type="button" @click="closeConfigModal" :disabled="isSavingConfig">
             <i class="mdi mdi-close text-xl"></i>
           </button>
@@ -576,7 +576,7 @@ function handleIntegerPaste(event) {
           </div>
 
           <div class="field">
-            <label class="field-label font-semibold text-slate-700 block mb-1" style="font-weight: 700;">Sản phẩm</label>
+            <label class="field-label font-semibold text-slate-700 block mb-1" style="font-weight: 700;">{{ t('inventory.configModal.productLabel') }}</label>
             <input
               type="text"
               class="input bg-slate-100 cursor-not-allowed"
@@ -586,7 +586,7 @@ function handleIntegerPaste(event) {
           </div>
 
           <div class="field">
-            <label class="field-label font-semibold text-slate-700 block mb-1" style="font-weight: 700;">Kho hàng</label>
+            <label class="field-label font-semibold text-slate-700 block mb-1" style="font-weight: 700;">{{ t('inventory.configModal.warehouseLabel') }}</label>
             <input
               type="text"
               class="input bg-slate-100 cursor-not-allowed"
@@ -597,13 +597,13 @@ function handleIntegerPaste(event) {
 
           <!-- Default stock information -->
           <div class="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30 rounded text-sm text-blue-800 dark:text-blue-200 flex justify-between items-center" style="border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
-            <span>Tồn tối thiểu mặc định sản phẩm:</span>
+            <span>{{ t('inventory.configModal.defaultMinStockLabel') }}</span>
             <strong class="text-base" style="font-size: 16px;">{{ configForm.defaultMinStock }}</strong>
           </div>
 
           <!-- Configuration Choice -->
           <div class="field flex flex-col gap-2" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-            <span class="field-label font-semibold text-slate-700 block" style="font-weight: 700;">Cấu hình định mức</span>
+            <span class="field-label font-semibold text-slate-700 block" style="font-weight: 700;">{{ t('inventory.configModal.thresholdConfigLabel') }}</span>
             
             <div class="flex items-center gap-2" style="display: flex; align-items: center; gap: 8px;">
               <input
@@ -615,7 +615,7 @@ function handleIntegerPaste(event) {
                 style="width: 18px; height: 18px; cursor: pointer;"
               />
               <label for="use-default" class="text-sm cursor-pointer select-none font-medium text-slate-700" style="cursor: pointer; user-select: none;">
-                Sử dụng tồn tối thiểu mặc định ({{ configForm.defaultMinStock }})
+                {{ t('inventory.configModal.useDefaultRadio', { default: configForm.defaultMinStock }) }}
               </label>
             </div>
 
@@ -629,25 +629,25 @@ function handleIntegerPaste(event) {
                 style="width: 18px; height: 18px; cursor: pointer;"
               />
               <label for="use-override" class="text-sm cursor-pointer select-none font-medium text-slate-700" style="cursor: pointer; user-select: none;">
-                Ghi đè định mức tồn tối thiểu riêng cho kho này
+                {{ t('inventory.configModal.useOverrideRadio') }}
               </label>
             </div>
           </div>
 
           <!-- Override input field -->
           <div class="field mt-1" v-if="!configForm.useDefault" style="margin-top: 8px;">
-            <label class="field-label font-semibold text-slate-700 block mb-1" style="font-weight: 700;">Giá trị định mức ghi đè *</label>
+            <label class="field-label font-semibold text-slate-700 block mb-1" style="font-weight: 700;">{{ t('inventory.configModal.overrideValueLabel') }}</label>
             <input
               v-model="configForm.overrideValue"
               class="input"
               type="text"
               required
               :disabled="isSavingConfig"
-              placeholder="Nhập định mức tồn tối thiểu..."
+              :placeholder="t('inventory.configModal.overrideValuePlaceholder')"
               @keypress="preventNonInteger"
               @paste="handleIntegerPaste"
             />
-            <small class="field-note text-slate-400 block mt-1" style="color: var(--muted); font-size: 12px;">Định mức này chỉ áp dụng riêng tại kho {{ configForm.warehouseName }}.</small>
+            <small class="field-note text-slate-400 block mt-1" style="color: var(--muted); font-size: 12px;">{{ t('inventory.configModal.overrideValueHelp', { warehouse: configForm.warehouseName }) }}</small>
           </div>
         </div>
 
@@ -658,11 +658,11 @@ function handleIntegerPaste(event) {
             :disabled="isSavingConfig"
             @click="closeConfigModal"
           >
-            Hủy
+            {{ t('inventory.configModal.cancelBtn') }}
           </button>
           <button class="btn btn-primary" type="submit" :disabled="isSavingConfig">
             <i v-if="isSavingConfig" class="mdi mdi-loading mdi-spin mr-1"></i>
-            Lưu cấu hình
+            {{ t('inventory.configModal.saveBtn') }}
           </button>
         </div>
       </form>
