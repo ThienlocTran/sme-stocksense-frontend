@@ -10,7 +10,7 @@ import { getInventoryCountById, finalizeInventoryCount } from '../../services/in
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const countId = Number(route.params.id)
 
 const authStore = useAuthStore()
@@ -245,7 +245,7 @@ function getDiffText(diff) {
 
 function formatDate(dateString) {
   if (!dateString) return '—'
-  return new Date(dateString).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US')
+  return new Date(dateString).toLocaleString(locale.value === 'vi' ? 'vi-VN' : 'en-US')
 }
 </script>
 
