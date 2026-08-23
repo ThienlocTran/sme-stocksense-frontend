@@ -504,6 +504,7 @@ const boundaryDateStr = computed(() => {
 });
 
 function openAssignmentModal() {
+  if (!canRun.value) return;
   selectedEmployeeId.value = "";
   humanRequestedQuantity.value = isRecommendationValid.value ? recommendation.value.suggestedQty : 0;
   assignmentContent.value = t("forecast.assignment.defaultMessage", { horizon: selectedHorizon.value });
@@ -514,6 +515,7 @@ function openAssignmentModal() {
 }
 
 async function submitAssignment() {
+  if (!canRun.value) return;
   assignmentErrorMessage.value = "";
   assignmentSuccessMessage.value = "";
 
@@ -1030,24 +1032,18 @@ const isHistoryUnavailable = computed(() => {
               <i class="mdi mdi-alert mr-1"></i>
               {{ recommendation.capacityWarning }}
             </div>
-          </div>
-        </div>
 
-        <!-- Replenishment Assignment (Later Action Area - Task 6 Assignment context) -->
-        <div v-if="canRun" class="card card-pad mt-6">
-          <h3 class="section-title">{{ t('forecast.assignTaskTitle') }}</h3>
-          <p class="text-sm text-zinc-500 mt-1">
-            {{ t('forecast.assignTaskDesc') }}
-          </p>
-          <div class="mt-4">
-            <button
-              class="btn btn-primary"
-              type="button"
-              @click="openAssignmentModal"
-            >
-              <i class="mdi mdi-account-plus-outline mr-1"></i>
-              {{ t('forecast.assignTaskBtn') }}
-            </button>
+            <!-- Replenishment Assignment CTA -->
+            <div v-if="canRun" class="pt-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+              <button
+                class="btn btn-primary"
+                type="button"
+                @click="openAssignmentModal"
+              >
+                <i class="mdi mdi-account-plus-outline mr-1"></i>
+                {{ t('forecast.assignTaskBtn') }}
+              </button>
+            </div>
           </div>
         </div>
 

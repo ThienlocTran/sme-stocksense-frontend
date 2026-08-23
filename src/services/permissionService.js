@@ -135,3 +135,7 @@ export function canManageAiPurchaseEmails(role) {
   return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
 }
 
+export function canCreateAiPurchaseAssignment(role) {
+  return ['ADMIN', 'MANAGER'].includes(resolveRole(role))
+}
+

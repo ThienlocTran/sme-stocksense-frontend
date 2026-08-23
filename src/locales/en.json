@@ -1063,6 +1063,8 @@
       "aiQtyColumn": "AI Suggested",
       "reqQtyColumn": "Requested Qty",
       "emailStatusColumn": "Email Status",
+      "warehouseSupplierColumn": "Warehouse / Supplier",
+      "quantitiesColumn": "Quantity",
       "detailTitle": "AI Replenishment Task Details",
       "sectionTaskInfo": "Task Information",
       "sectionItemInfo": "Product & Warehouse Details",

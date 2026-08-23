@@ -29,15 +29,12 @@ const hasNextPage = computed(() => page.value + 1 < totalPages.value);
 const canManageEmails = computed(() => canManageAiPurchaseEmails());
 
 const columns = computed(() => [
-  { key: "code", label: t("forecast.assignment.codeColumn") || "Mã nhiệm vụ", class: "cell-medium" },
+  { key: "code", label: t("forecast.assignment.codeColumn") || "Nhiệm vụ", class: "cell-medium" },
   { key: "productName", label: t("inventory.columns.productName") || "Sản phẩm", class: "cell-long" },
-  { key: "warehouseName", label: t("stockDocument.columns.warehouse") || "Kho", class: "cell-medium" },
-  { key: "supplierName", label: t("stockDocument.columns.supplier") || "Nhà cung cấp", class: "cell-medium" },
+  { key: "warehouseName", label: t("forecast.assignment.warehouseSupplierColumn") || "Kho / Nhà cung cấp", class: "cell-long" },
   { key: "receiverName", label: t("forecast.assignment.receiverColumn") || "Người phụ trách", class: "cell-medium" },
-  { key: "aiSuggestedQuantity", label: t("forecast.assignment.aiQtyColumn") || "AI đề xuất", class: "cell-medium text-right" },
-  { key: "requestedQuantity", label: t("forecast.assignment.reqQtyColumn") || "SL yêu cầu", class: "cell-medium text-right" },
-  { key: "status", label: t("stockDocument.columns.status") || "Trạng thái nhiệm vụ", class: "cell-medium" },
-  { key: "emailStatus", label: t("forecast.assignment.emailStatusColumn") || "Trạng thái email", class: "cell-medium" },
+  { key: "quantities", label: t("forecast.assignment.quantitiesColumn") || "Số lượng", class: "cell-medium text-right" },
+  { key: "status", label: t("stockDocument.columns.status") || "Trạng thái", class: "cell-medium" },
   { key: "createdAt", label: t("stockDocument.columns.createdAt") || "Ngày tạo", class: "cell-nowrap" },
   { key: "actions", label: t("stockDocument.columns.actions") || "Thao tác", class: "cell-compact text-right" },
 ]);
@@ -146,7 +143,7 @@ onMounted(() => {
     <!-- Table -->
     <div v-else-if="assignments.length > 0">
       <div class="ai-desktop-table animate-in fade-in duration-200">
-        <DataTable :columns="columns" :rows="assignments" min-width="1200px">
+        <DataTable :columns="columns" :rows="assignments" min-width="1000px">
           <template #code="{ row }">
             <router-link :to="'/ai-purchase-assignments/' + row.id" class="text-link font-bold text-primary">
               {{ row.code || row.id }}
@@ -154,51 +151,63 @@ onMounted(() => {
           </template>
 
           <template #productName="{ row }">
-            <div class="product-cell">
-              <i class="mdi mdi-package-variant-closed text-muted"></i>
-              <span class="font-semibold">[{{ row.productCode }}] {{ row.productName || '—' }}</span>
+            <div class="product-cell flex flex-col max-w-[280px]">
+              <span class="font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-2" :title="row.productName">
+                {{ row.productName || '—' }}
+              </span>
+              <span class="text-[11px] text-zinc-400 mt-0.5 font-mono">
+                {{ row.productCode || '—' }}
+              </span>
             </div>
           </template>
 
           <template #warehouseName="{ row }">
-            <span>[{{ row.warehouseCode }}] {{ row.warehouseName || '—' }}</span>
-          </template>
-
-          <template #supplierName="{ value }">
-            <span>{{ value || t('forecast.assignment.supplierUnknown') }}</span>
-          </template>
-
-          <template #receiverName="{ row }">
-            <div>
-              <div class="font-medium text-zinc-900 dark:text-zinc-100">
-                {{ row.receiverName || row.receiverEmail || '—' }}
-              </div>
-              <div class="text-[11px] text-zinc-400 mt-0.5" v-if="row.receiverName && row.receiverEmail">
-                {{ row.receiverEmail }}
-              </div>
+            <div class="flex flex-col">
+              <span class="font-semibold text-zinc-900 dark:text-zinc-100">
+                {{ row.warehouseName || '—' }}
+              </span>
+              <span class="text-[11px] text-zinc-400 font-mono mt-0.5">
+                Code: {{ row.warehouseCode || '—' }}
+              </span>
+              <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1">
+                {{ row.supplierName || t('forecast.assignment.supplierUnknown') }}
+              </span>
             </div>
           </template>
 
-          <template #aiSuggestedQuantity="{ value }">
-            <span class="tabular-num font-semibold text-indigo-700 dark:text-indigo-400">{{ formatQty(value) }}</span>
+          <template #receiverName="{ row }">
+            <div class="flex flex-col">
+              <span class="font-medium text-zinc-900 dark:text-zinc-100">
+                {{ row.receiverName || row.receiverEmail || '—' }}
+              </span>
+              <span class="text-[11px] text-zinc-400 font-mono mt-0.5" v-if="row.receiverName && row.receiverEmail">
+                {{ row.receiverEmail }}
+              </span>
+            </div>
           </template>
 
-          <template #requestedQuantity="{ value }">
-            <span class="tabular-num font-bold text-zinc-900 dark:text-zinc-100">{{ formatQty(value) }}</span>
+          <template #quantities="{ row }">
+            <div class="flex flex-col text-right">
+              <strong class="text-zinc-900 dark:text-zinc-100 tabular-num" :title="t('forecast.assignment.reqQty')">
+                {{ formatQty(row.requestedQuantity) }}
+              </strong>
+              <span class="text-[11px] text-indigo-500 dark:text-indigo-400 font-semibold mt-0.5 tabular-num" :title="t('forecast.assignment.aiQty')">
+                AI: {{ formatQty(row.aiSuggestedQuantity) }}
+              </span>
+            </div>
           </template>
 
-          <template #status="{ value }">
-            <StatusBadge :status="statusLabel(value)" />
-          </template>
-
-          <template #emailStatus="{ row }">
-            <span class="email-badge" :class="emailStatusClass(row.emailStatus)">
-              {{ emailStatusLabel(row.emailStatus) }}
-            </span>
+          <template #status="{ row }">
+            <div class="flex flex-col gap-1 items-start">
+              <StatusBadge :status="statusLabel(row.status)" />
+              <span class="email-badge-inline text-[10px] mt-0.5" :class="emailStatusClass(row.emailStatus)">
+                Email: {{ emailStatusLabel(row.emailStatus) }}
+              </span>
+            </div>
           </template>
 
           <template #createdAt="{ value }">
-            <span class="tabular-num text-xs">{{ formatDate(value) }}</span>
+            <span class="tabular-num text-xs text-zinc-500">{{ formatDate(value) }}</span>
           </template>
 
           <template #actions="{ row }">
@@ -245,12 +254,10 @@ onMounted(() => {
               <span class="detail-val text-xs text-right font-medium">{{ row.receiverName || row.receiverEmail || '—' }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">AI đề xuất</span>
-              <span class="detail-val tabular-num font-semibold text-indigo-700">{{ formatQty(row.aiSuggestedQuantity) }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Số lượng yêu cầu</span>
-              <span class="detail-val tabular-num font-bold text-zinc-900 dark:text-zinc-100">{{ formatQty(row.requestedQuantity) }}</span>
+              <span class="detail-label">Số lượng (Yêu cầu / AI)</span>
+              <span class="detail-val tabular-num font-bold text-zinc-900 dark:text-zinc-100">
+                {{ formatQty(row.requestedQuantity) }} <span class="text-zinc-400 font-normal text-xs">/ AI: {{ formatQty(row.aiSuggestedQuantity) }}</span>
+              </span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Trạng thái email</span>
@@ -332,8 +339,19 @@ onMounted(() => {
 
 .product-cell {
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.email-badge-inline {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .actions-cell {

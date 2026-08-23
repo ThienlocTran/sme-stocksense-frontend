@@ -1070,6 +1070,8 @@
       "aiQtyColumn": "AI đề xuất",
       "reqQtyColumn": "SL yêu cầu",
       "emailStatusColumn": "Trạng thái email",
+      "warehouseSupplierColumn": "Kho / Nhà cung cấp",
+      "quantitiesColumn": "Số lượng",
       "detailTitle": "Chi tiết nhiệm vụ bổ sung hàng AI",
       "sectionTaskInfo": "Thông tin nhiệm vụ",
       "sectionItemInfo": "Thông tin hàng hóa",
