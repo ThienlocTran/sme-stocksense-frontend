@@ -69,8 +69,8 @@ export function canAccessRoute(path, role) {
     return ['ADMIN', 'MANAGER'].includes(resolvedRole)
   }
 
-  if (path === '/ai-purchase-assignments') {
-    return ['ADMIN', 'MANAGER'].includes(resolvedRole)
+  if (path === '/ai-purchase-assignments' || /^\/ai-purchase-assignments\/[^/]+$/.test(path)) {
+    return ['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(resolvedRole)
   }
 
   if (path === '/settings') {

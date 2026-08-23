@@ -10,6 +10,7 @@ import ActualForecastChart from "../components/ActualForecastChart.vue";
 import ProjectedInventoryChart from "../components/ProjectedInventoryChart.vue";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
 import { getEmployees } from "../services/employeeService";
+import { getProduct } from "../services/productService";
 import { getReplenishmentRecommendation } from "../services/replenishmentService";
 import { createAiPurchaseAssignment, retryEmail } from "../services/aiPurchaseAssignmentService";
 import {
@@ -132,6 +133,8 @@ const warehouses = computed(() => {
 });
 
 const selectedProductId = ref("");
+const selectedProductDetail = ref(null);
+const isLoadingProductDetail = ref(false);
 const selectedWarehouseId = ref("");
 const selectedHorizon = ref(30);
 const successMessage = ref("");
@@ -265,6 +268,22 @@ watch(selectedSource, async (newSource) => {
     errorMessage.value = error.message;
   } finally {
     isLoadingDropdowns.value = false;
+  }
+});
+
+watch(selectedProductId, async (newProductId) => {
+  if (newProductId) {
+    isLoadingProductDetail.value = true;
+    try {
+      selectedProductDetail.value = await getProduct(newProductId);
+    } catch (err) {
+      console.error("Failed to load product detail:", err);
+      selectedProductDetail.value = null;
+    } finally {
+      isLoadingProductDetail.value = false;
+    }
+  } else {
+    selectedProductDetail.value = null;
   }
 });
 
@@ -502,7 +521,8 @@ async function submitAssignment() {
     assignmentErrorMessage.value = t("forecast.assignment.validationSelectEmployee");
     return;
   }
-  if (!humanRequestedQuantity.value || humanRequestedQuantity.value <= 0) {
+  const qty = Number(humanRequestedQuantity.value);
+  if (!humanRequestedQuantity.value || !Number.isInteger(qty) || qty <= 0) {
     assignmentErrorMessage.value = t("forecast.assignment.validationQtyPositive");
     return;
   }
@@ -517,7 +537,8 @@ async function submitAssignment() {
       aiSuggestedQuantity: isRecommendationValid.value ? recommendation.value.suggestedQty : null,
       requestedQuantity: Number(humanRequestedQuantity.value),
       receiverId: Number(selectedEmployeeId.value),
-      content: assignmentContent.value || null
+      content: assignmentContent.value || null,
+      source: selectedSource.value || null
     };
     const response = await createAiPurchaseAssignment(payload);
     assignmentResult.value = response;
@@ -1052,42 +1073,88 @@ const isHistoryUnavailable = computed(() => {
 
             <div class="modal-body space-y-4">
               <template v-if="!assignmentResult">
-                <!-- Read-only Context Info -->
-                <div class="p-3 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
-                  <div>{{ t('forecast.assignmentModal.productLabel', { product: products.find(p => p.id === selectedProductId)?.name || products.find(p => p.id === selectedProductId)?.tenSanPham || selectedProductId }) }}</div>
-                  <div>{{ t('forecast.assignmentModal.warehouseLabel', { warehouse: warehouses.find(w => w.id === selectedWarehouseId)?.name || warehouses.find(w => w.id === selectedWarehouseId)?.tenKho || selectedWarehouseId }) }}</div>
-                  <div>{{ t('forecast.assignmentModal.horizonLabel', { horizon: selectedHorizon }) }}</div>
-                  <div>{{ t('forecast.assignmentModal.aiQtyLabel', { qty: recommendation.suggestedQty }) }}</div>
-                  <div v-if="recommendation.rawSuggestedQty !== recommendation.suggestedQty" class="text-zinc-500">{{ t('forecast.assignmentModal.rawNeedLabel', { qty: recommendation.rawSuggestedQty }) }}</div>
-                  <div v-if="recommendation.capacityWarning" class="text-amber-600 dark:text-amber-400 font-semibold mt-1">{{ t('forecast.assignmentModal.capacityWarning', { warning: recommendation.capacityWarning }) }}</div>
+                <!-- A. Thông tin đề xuất -->
+                <div class="p-4 bg-zinc-50 dark:bg-zinc-800/10 rounded border border-zinc-200 dark:border-zinc-800 space-y-3">
+                  <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">{{ t('forecast.assignment.sectionItemInfo') }}</h3>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span class="text-zinc-500 block mb-0.5">{{ t('stockDocument.columns.product') }}:</span>
+                      <strong class="text-zinc-900 dark:text-zinc-100 font-semibold">
+                        [{{ selectedProductDetail?.code || '—' }}] {{ selectedProductDetail?.name || '—' }}
+                      </strong>
+                    </div>
+                    <div>
+                      <span class="text-zinc-500 block mb-0.5">{{ t('stockDocument.columns.warehouse') }}:</span>
+                      <strong class="text-zinc-900 dark:text-zinc-100 font-semibold">
+                        [{{ warehouses.find(w => w.id === selectedWarehouseId)?.code || '—' }}] {{ warehouses.find(w => w.id === selectedWarehouseId)?.name || '—' }}
+                      </strong>
+                    </div>
+                    <div>
+                      <span class="text-zinc-500 block mb-0.5">{{ t('forecast.assignment.supplier') }}:</span>
+                      <strong class="text-zinc-900 dark:text-zinc-100 font-semibold">
+                        {{ selectedProductDetail?.partnerName || t('forecast.assignment.supplierUnknown') }}
+                      </strong>
+                    </div>
+                    <div>
+                      <span class="text-zinc-500 block mb-0.5">{{ t('forecast.assignment.forecastHorizon') }}:</span>
+                      <strong class="text-zinc-900 dark:text-zinc-100 font-semibold">
+                        {{ selectedHorizon }} {{ t('forecast.daysCount', { days: selectedHorizon }).replace(/[0-9]/g, '').trim() }}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div v-if="recommendation.capacityWarning" class="p-2 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 font-semibold rounded text-xs border border-amber-200 dark:border-amber-900/30">
+                    <i class="mdi mdi-alert-outline mr-0.5"></i>
+                    {{ t('forecast.assignmentModal.capacityWarning', { warning: recommendation.capacityWarning }) }}
+                  </div>
                 </div>
 
-                <!-- Editable Form Fields -->
+                <!-- B. Quyết định AI và quản lý -->
+                <div class="p-4 bg-indigo-50/30 dark:bg-indigo-950/5 rounded border border-indigo-100 dark:border-indigo-900/20 space-y-3">
+                  <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider">{{ t('forecast.assignment.sectionDecisions') }}</h3>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex flex-col justify-center">
+                      <span class="text-xs text-zinc-500">{{ t('forecast.assignment.aiSuggested') }}:</span>
+                      <strong class="text-lg font-bold text-indigo-700 dark:text-indigo-400 mt-1">
+                        {{ formatQty(recommendation.suggestedQty) }} {{ t('forecast.assignmentModal.productLabel', { product: '' }).replace(/.*:/, '').trim() }}
+                      </strong>
+                      <span class="text-[10px] text-zinc-400 mt-0.5" v-if="recommendation.rawSuggestedQty !== recommendation.suggestedQty">
+                        {{ t('forecast.assignmentModal.rawNeedLabel', { qty: formatQty(recommendation.rawSuggestedQty) }) }}
+                      </span>
+                    </div>
+
+                    <div class="field">
+                      <label class="field-label font-semibold text-xs">{{ t('forecast.assignmentModal.requestedQtyLabel') }}</label>
+                      <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1.5" :disabled="isSubmittingAssignment" />
+                      <span class="text-[10px] text-zinc-400 mt-1 block leading-relaxed">
+                        {{ t('forecast.assignmentModal.qtyHelp', { qty: formatQty(recommendation.suggestedQty) }) }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div v-if="humanRequestedQuantity > recommendation.suggestedQty" class="p-2 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded text-[11px] border border-amber-200 dark:border-amber-900/30">
+                    <i class="mdi mdi-information-outline mr-0.5"></i>
+                    {{ t('forecast.assignmentModal.qtyExceedWarning', { qty: formatQty(recommendation.suggestedQty) }) }}
+                  </div>
+                </div>
+
+                <!-- C. Phân công -->
                 <div class="field">
-                  <label class="field-label font-semibold">{{ t('forecast.assignmentModal.employeeLabel') }}</label>
-                  <select v-model="selectedEmployeeId" class="select w-full mt-1" :disabled="isSubmittingAssignment">
+                  <label class="field-label font-semibold text-xs">{{ t('forecast.assignmentModal.employeeLabel') }}</label>
+                  <select v-model="selectedEmployeeId" class="select w-full mt-1.5" :disabled="isSubmittingAssignment">
                     <option value="">{{ t('forecast.assignment.selectEmployee') }}</option>
                     <option v-for="emp in employees" :key="emp.id" :value="emp.id">
-                      {{ emp.name || emp.tenNhanVien }} ({{ emp.email }})
+                      {{ emp.fullName || emp.name }} (Employee) - {{ emp.email }}
                     </option>
                   </select>
                 </div>
 
+                <!-- D. Chỉ thị -->
                 <div class="field mt-3">
-                  <label class="field-label font-semibold">{{ t('forecast.assignmentModal.requestedQtyLabel') }}</label>
-                  <input v-model.number="humanRequestedQuantity" type="number" min="1" class="input w-full mt-1" :disabled="isSubmittingAssignment" />
-                  <span class="text-xs text-zinc-500 mt-1 block">
-                    {{ t('forecast.assignmentModal.qtyHelp', { qty: recommendation.suggestedQty }) }}
-                  </span>
-                  <div v-if="humanRequestedQuantity > recommendation.suggestedQty" class="p-2 mt-1 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded text-xs border border-amber-200 dark:border-amber-900/30">
-                    <i class="mdi mdi-information-outline mr-0.5"></i>
-                    {{ t('forecast.assignmentModal.qtyExceedWarning', { qty: recommendation.suggestedQty }) }}
-                  </div>
-                </div>
-
-                <div class="field mt-3">
-                  <label class="field-label font-semibold">{{ t('forecast.assignmentModal.messageLabel') }}</label>
-                  <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1" :placeholder="t('forecast.assignmentModal.messagePlaceholder')" :disabled="isSubmittingAssignment"></textarea>
+                  <label class="field-label font-semibold text-xs">{{ t('forecast.assignmentModal.messageLabel') }}</label>
+                  <textarea v-model="assignmentContent" rows="3" class="textarea w-full mt-1.5" :placeholder="t('forecast.assignmentModal.messagePlaceholder')" :disabled="isSubmittingAssignment"></textarea>
                 </div>
 
                 <div v-if="assignmentErrorMessage" class="p-3 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 rounded border border-red-200 dark:border-red-900/30 text-xs mt-2">

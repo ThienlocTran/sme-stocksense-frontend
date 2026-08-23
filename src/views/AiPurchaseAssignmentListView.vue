@@ -10,7 +10,10 @@ import {
 } from "../services/aiPurchaseAssignmentService";
 import { canManageAiPurchaseEmails } from "../services/permissionService";
 
+import { useRouter } from "vue-router";
+
 const { t } = useI18n();
+const router = useRouter();
 
 const assignments = ref([]);
 const isLoading = ref(false);
@@ -26,12 +29,15 @@ const hasNextPage = computed(() => page.value + 1 < totalPages.value);
 const canManageEmails = computed(() => canManageAiPurchaseEmails());
 
 const columns = computed(() => [
-  { key: "id", label: "ID", class: "cell-compact" },
+  { key: "code", label: t("forecast.assignment.codeColumn") || "Mã nhiệm vụ", class: "cell-medium" },
   { key: "productName", label: t("inventory.columns.productName") || "Sản phẩm", class: "cell-long" },
   { key: "warehouseName", label: t("stockDocument.columns.warehouse") || "Kho", class: "cell-medium" },
-  { key: "supplierName", label: t("stockDocument.columns.supplier") || "Nhà cung cấp", class: "cell-long" },
-  { key: "suggestedQuantity", label: t("forecast.assignment.aiQty") || "Số lượng đề xuất", class: "cell-medium text-right" },
-  { key: "emailStatus", label: t("forecast.assignment.emailStatus") || "Trạng thái email", class: "cell-medium" },
+  { key: "supplierName", label: t("stockDocument.columns.supplier") || "Nhà cung cấp", class: "cell-medium" },
+  { key: "receiverName", label: t("forecast.assignment.receiverColumn") || "Người phụ trách", class: "cell-medium" },
+  { key: "aiSuggestedQuantity", label: t("forecast.assignment.aiQtyColumn") || "AI đề xuất", class: "cell-medium text-right" },
+  { key: "requestedQuantity", label: t("forecast.assignment.reqQtyColumn") || "SL yêu cầu", class: "cell-medium text-right" },
+  { key: "status", label: t("stockDocument.columns.status") || "Trạng thái nhiệm vụ", class: "cell-medium" },
+  { key: "emailStatus", label: t("forecast.assignment.emailStatusColumn") || "Trạng thái email", class: "cell-medium" },
   { key: "createdAt", label: t("stockDocument.columns.createdAt") || "Ngày tạo", class: "cell-nowrap" },
   { key: "actions", label: t("stockDocument.columns.actions") || "Thao tác", class: "cell-compact text-right" },
 ]);
@@ -81,6 +87,24 @@ function formatDate(value) {
   return new Date(value).toLocaleString("vi-VN", { hour12: false });
 }
 
+function formatQty(value) {
+  if (value === null || value === undefined) return "—";
+  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(Math.round(value));
+}
+
+function statusLabel(status) {
+  if (status === "DA_GUI") return t("forecast.assignment.status_DA_GUI") || "Đã giao việc";
+  if (status === "DA_TIEP_NHAN") return t("forecast.assignment.status_DA_TIEP_NHAN") || "Đã tiếp nhận";
+  if (status === "DA_TAO_PHIEU") return t("forecast.assignment.status_DA_TAO_PHIEU") || "Đã tạo phiếu";
+  if (status === "DA_HOAN_THANH") return t("forecast.assignment.status_DA_HOAN_THANH") || "Đã hoàn thành";
+  if (status === "HUY") return t("forecast.assignment.status_HUY") || "Đã hủy";
+  return status || "—";
+}
+
+function goDetail(row) {
+  router.push("/ai-purchase-assignments/" + row.id);
+}
+
 function emailStatusLabel(status) {
   if (status === "DA_GUI") return t("forecast.assignment.emailStatus_DA_GUI") || "Đã gửi";
   if (status === "THAT_BAI") return t("forecast.assignment.emailStatus_THAT_BAI") || "Gửi thất bại";
@@ -122,16 +146,49 @@ onMounted(() => {
     <!-- Table -->
     <div v-else-if="assignments.length > 0">
       <div class="ai-desktop-table animate-in fade-in duration-200">
-        <DataTable :columns="columns" :rows="assignments" min-width="1000px">
+        <DataTable :columns="columns" :rows="assignments" min-width="1200px">
+          <template #code="{ row }">
+            <router-link :to="'/ai-purchase-assignments/' + row.id" class="text-link font-bold text-primary">
+              {{ row.code || row.id }}
+            </router-link>
+          </template>
+
           <template #productName="{ row }">
             <div class="product-cell">
               <i class="mdi mdi-package-variant-closed text-muted"></i>
-              <span class="font-semibold">{{ row.productName || "—" }}</span>
+              <span class="font-semibold">[{{ row.productCode }}] {{ row.productName || '—' }}</span>
             </div>
           </template>
 
-          <template #suggestedQuantity="{ value }">
-            <span class="tabular-num font-semibold text-indigo-700">{{ value ?? "—" }}</span>
+          <template #warehouseName="{ row }">
+            <span>[{{ row.warehouseCode }}] {{ row.warehouseName || '—' }}</span>
+          </template>
+
+          <template #supplierName="{ value }">
+            <span>{{ value || t('forecast.assignment.supplierUnknown') }}</span>
+          </template>
+
+          <template #receiverName="{ row }">
+            <div>
+              <div class="font-medium text-zinc-900 dark:text-zinc-100">
+                {{ row.receiverName || row.receiverEmail || '—' }}
+              </div>
+              <div class="text-[11px] text-zinc-400 mt-0.5" v-if="row.receiverName && row.receiverEmail">
+                {{ row.receiverEmail }}
+              </div>
+            </div>
+          </template>
+
+          <template #aiSuggestedQuantity="{ value }">
+            <span class="tabular-num font-semibold text-indigo-700 dark:text-indigo-400">{{ formatQty(value) }}</span>
+          </template>
+
+          <template #requestedQuantity="{ value }">
+            <span class="tabular-num font-bold text-zinc-900 dark:text-zinc-100">{{ formatQty(value) }}</span>
+          </template>
+
+          <template #status="{ value }">
+            <StatusBadge :status="statusLabel(value)" />
           </template>
 
           <template #emailStatus="{ row }">
@@ -146,32 +203,13 @@ onMounted(() => {
 
           <template #actions="{ row }">
             <div class="actions-cell">
-              <template v-if="canManageEmails">
-                <button
-                  v-if="row.emailStatus === 'CHO_GUI'"
-                  class="btn btn-primary btn-sm flex items-center gap-1"
-                  :disabled="retrying === row.id"
-                  :title="'Gửi email thông báo cho nhà cung cấp'"
-                  @click="handleRetryEmail(row.id)"
-                >
-                  <i class="mdi" :class="retrying === row.id ? 'mdi-loading mdi-spin' : 'mdi-email-outline'"></i>
-                  Gửi email
-                </button>
-                <button
-                  v-else-if="row.emailStatus === 'THAT_BAI'"
-                  class="btn btn-warning btn-sm flex items-center gap-1"
-                  :disabled="retrying === row.id"
-                  :title="'Gửi lại email thông báo cho nhà cung cấp'"
-                  @click="handleRetryEmail(row.id)"
-                >
-                  <i class="mdi" :class="retrying === row.id ? 'mdi-loading mdi-spin' : 'mdi-email-sync-outline'"></i>
-                  Gửi lại
-                </button>
-                <span v-else-if="row.emailStatus === 'DA_GUI'" class="text-emerald-600 flex items-center gap-1 text-sm font-medium">
-                  <i class="mdi mdi-check-circle"></i>
-                  Đã gửi
-                </span>
-              </template>
+              <button
+                class="btn btn-secondary btn-sm"
+                type="button"
+                @click="goDetail(row)"
+              >
+                {{ t('stockDocument.actionView') }}
+              </button>
             </div>
           </template>
         </DataTable>
@@ -186,50 +224,49 @@ onMounted(() => {
         >
           <div class="card-header-row">
             <div>
-              <span class="font-semibold text-zinc-900">{{ row.productName || "—" }}</span>
-              <div class="text-xs text-muted mt-0.5">{{ row.warehouseName || "—" }}</div>
+              <button class="text-link font-bold text-base text-primary" type="button" @click="goDetail(row)">
+                {{ row.code || row.id }}
+              </button>
+              <div class="text-xs text-muted mt-0.5">[{{ row.productCode }}] {{ row.productName || "—" }}</div>
             </div>
-            <span class="email-badge" :class="emailStatusClass(row.emailStatus)">
-              {{ emailStatusLabel(row.emailStatus) }}
-            </span>
+            <StatusBadge :status="statusLabel(row.status)" />
           </div>
           <div class="card-body-details">
             <div class="detail-row">
-              <span class="detail-label">Nhà cung cấp</span>
-              <span class="detail-val">{{ row.supplierName || "—" }}</span>
+              <span class="detail-label">Kho hàng</span>
+              <span class="detail-val">[{{ row.warehouseCode }}] {{ row.warehouseName || "—" }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Số lượng đề xuất</span>
-              <span class="detail-val tabular-num font-semibold text-indigo-700">{{ row.suggestedQuantity ?? "—" }}</span>
+              <span class="detail-label">Nhà cung cấp</span>
+              <span class="detail-val">{{ row.supplierName || t('forecast.assignment.supplierUnknown') }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Người phụ trách</span>
+              <span class="detail-val text-xs text-right font-medium">{{ row.receiverName || row.receiverEmail || '—' }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">AI đề xuất</span>
+              <span class="detail-val tabular-num font-semibold text-indigo-700">{{ formatQty(row.aiSuggestedQuantity) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Số lượng yêu cầu</span>
+              <span class="detail-val tabular-num font-bold text-zinc-900 dark:text-zinc-100">{{ formatQty(row.requestedQuantity) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Trạng thái email</span>
+              <span class="email-badge" :class="emailStatusClass(row.emailStatus)">
+                {{ emailStatusLabel(row.emailStatus) }}
+              </span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Ngày tạo</span>
               <span class="detail-val text-xs text-muted">{{ formatDate(row.createdAt) }}</span>
             </div>
           </div>
-          <div v-if="canManageEmails && (row.emailStatus === 'CHO_GUI' || row.emailStatus === 'THAT_BAI')" class="card-footer-action">
-            <button
-              v-if="row.emailStatus === 'CHO_GUI'"
-              class="btn btn-primary btn-sm w-full justify-center gap-1"
-              :disabled="retrying === row.id"
-              @click="handleRetryEmail(row.id)"
-            >
-              <i class="mdi" :class="retrying === row.id ? 'mdi-loading mdi-spin' : 'mdi-email-outline'"></i>
-              Gửi email
+          <div class="card-footer-action">
+            <button class="btn btn-secondary btn-sm w-full justify-center" type="button" @click="goDetail(row)">
+              {{ t('stockDocument.actionView') }}
             </button>
-            <button
-              v-else-if="row.emailStatus === 'THAT_BAI'"
-              class="btn btn-warning btn-sm w-full justify-center gap-1"
-              :disabled="retrying === row.id"
-              @click="handleRetryEmail(row.id)"
-            >
-              <i class="mdi" :class="retrying === row.id ? 'mdi-loading mdi-spin' : 'mdi-email-sync-outline'"></i>
-              Gửi lại email
-            </button>
-          </div>
-          <div v-else-if="row.emailStatus === 'DA_GUI'" class="card-footer-action text-center text-emerald-600 font-medium text-sm flex items-center justify-center gap-1">
-            <i class="mdi mdi-check-circle"></i>
-            Đã gửi
           </div>
         </div>
       </div>

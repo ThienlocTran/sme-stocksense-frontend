@@ -36,6 +36,7 @@ const routes = [
   { path: '/forecast', component: () => import('../views/AiForecastView.vue'), meta: { title: 'Dự báo AI' } },
   { path: '/replenishment-suggestions', component: () => import('../views/ReplenishmentSuggestionsView.vue'), meta: { title: 'Bổ sung tồn kho' } },
   { path: '/ai-purchase-assignments', component: () => import('../views/AiPurchaseAssignmentListView.vue'), meta: { title: 'Yêu cầu nhập hàng AI' } },
+  { path: '/ai-purchase-assignments/:id', component: () => import('../views/AiPurchaseAssignmentDetailView.vue'), meta: { title: 'Chi tiết yêu cầu nhập hàng AI' } },
   { path: '/settings', component: () => import('../views/SettingsView.vue'), meta: { title: 'Cấu hình hệ thống' } },
 ]
 
