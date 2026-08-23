@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getImportReceiptHistory } from '../services/importReceiptService'
 import { getExportReceiptHistory } from '../services/exportReceiptService'
 
@@ -20,9 +21,25 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const { t } = useI18n()
 const historyList = ref([])
 const isLoading = ref(false)
 const errorMessage = ref('')
+
+function translateError(msg) {
+  if (!msg) return ""
+  const cleaned = String(msg).trim()
+  if (cleaned.includes("Nguoi duyet cap 2 phai khac nguoi da duyet cap 1") || cleaned.includes("nguyen tac 4 mat")) {
+    return t("approvals.messages.fourEyesError")
+  }
+  if (cleaned.includes("Nguoi tao phieu khong duoc tu duyet phieu") || cleaned.includes("Nguoi gui duyet khong duoc tu duyet phieu")) {
+    return t("approvals.messages.creatorCannotApprove")
+  }
+  if (cleaned.includes("System error. Please try again later.")) {
+    return t("common.systemError")
+  }
+  return msg
+}
 
 watch(
   () => props.receiptId,
@@ -34,7 +51,7 @@ watch(
     try {
       historyList.value = await (props.documentType === 'out' ? getExportReceiptHistory : getImportReceiptHistory)(id)
     } catch (err) {
-      errorMessage.value = err.message || 'Không thể tải lịch sử duyệt.'
+      errorMessage.value = err.message || t('approvals.messages.loadDetailError')
     } finally {
       isLoading.value = false
     }
@@ -42,13 +59,14 @@ watch(
   { immediate: true },
 )
 
-const ACTION_LABELS = {
-  GUI_DUYET: 'Người tạo gửi duyệt',
-  DUYET_CAP_1: 'Đã duyệt',
-  DUYET_CAP_2: 'Đã duyệt',
-  TU_CHOI: 'Quản lý từ chối phiếu',
-  HUY: 'Huỷ phiếu',
-}
+const ACTION_LABELS = computed(() => ({
+  GUI_DUYET: t('stockDocument.actionSubmit'),
+  DUYET: t('approvals.actions.approve'),
+  DUYET_CAP_1: t('approvals.actions.approveLevel', { level: 1 }),
+  DUYET_CAP_2: t('approvals.actions.approveLevel', { level: 2 }),
+  TU_CHOI: t('stockDocument.status.rejected'),
+  HUY: t('stockDocument.actionCancel'),
+}))
 
 const ACTION_ICONS = {
   GUI_DUYET: '📤',
@@ -67,7 +85,7 @@ const ACTION_CLASSES = {
 }
 
 function actionLabel(action) {
-  return ACTION_LABELS[action] || action
+  return ACTION_LABELS.value[action] || action
 }
 function actionIcon(action) {
   return ACTION_ICONS[action] || '📌'
@@ -96,23 +114,23 @@ function formatDateTime(value) {
       <div class="modal-head between">
         <h2 class="modal-title">
           <span class="title-icon">🕐</span>
-          Lịch sử duyệt phiếu
+          {{ t('approvals.approvalHistoryTitle') }}
           <span v-if="receiptCode" class="receipt-code-tag">{{ receiptCode }}</span>
         </h2>
-        <button class="btn btn-icon" aria-label="Đóng" @click="$emit('close')">
+        <button class="btn btn-icon" :aria-label="t('common.close')" @click="$emit('close')">
           <i class="mdi mdi-close" />
         </button>
       </div>
 
       <div class="modal-body">
         <p v-if="isLoading" class="loading-text">
-          <span class="spin">⏳</span> Đang tải lịch sử...
+          <span class="spin">⏳</span> {{ t('approvals.loadingHistory') }}
         </p>
-        <p v-else-if="errorMessage" class="error-msg">{{ errorMessage }}</p>
+        <p v-else-if="errorMessage" class="error-msg">{{ translateError(errorMessage) }}</p>
 
         <div v-else-if="historyList.length === 0" class="empty-state">
           <span class="empty-icon">📋</span>
-          <p>Chưa có lịch sử thao tác nào.</p>
+          <p>{{ t('approvals.emptyHistory') }}</p>
         </div>
 
         <div v-else class="timeline">
@@ -138,10 +156,10 @@ function formatDateTime(value) {
               </div>
               <div class="timeline-actor">
                 <span class="actor-avatar">{{ (item.actorName || '?')[0].toUpperCase() }}</span>
-                <span class="actor-name">{{ item.actorName || 'Không rõ' }}</span>
+                <span class="actor-name">{{ item.actorName || t('common.unknown') }}</span>
               </div>
               <div v-if="item.note" class="timeline-note">
-                <span class="note-label">Lý do:</span> {{ item.note }}
+                <span class="note-label">{{ t('importInspection.reasonLabel') }}</span> {{ item.note }}
               </div>
             </div>
           </div>
@@ -149,7 +167,7 @@ function formatDateTime(value) {
       </div>
 
       <div class="modal-foot modal-foot-end">
-        <button class="btn" type="button" @click="$emit('close')">Đóng</button>
+        <button class="btn" type="button" @click="$emit('close')">{{ t('common.close') }}</button>
       </div>
     </div>
   </div>

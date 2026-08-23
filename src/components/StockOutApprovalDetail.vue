@@ -394,6 +394,21 @@ watch(
   },
   { immediate: true },
 );
+
+function translateError(msg) {
+  if (!msg) return "";
+  const cleaned = String(msg).trim();
+  if (cleaned.includes("Nguoi duyet cap 2 phai khac nguoi da duyet cap 1") || cleaned.includes("nguyen tac 4 mat")) {
+    return t("approvals.messages.fourEyesError");
+  }
+  if (cleaned.includes("Nguoi tao phieu khong duoc tu duyet phieu") || cleaned.includes("Nguoi gui duyet khong duoc tu duyet phieu")) {
+    return t("approvals.messages.creatorCannotApprove");
+  }
+  if (cleaned.includes("System error. Please try again later.")) {
+    return t("common.systemError");
+  }
+  return msg;
+}
 </script>
 
 <template>
@@ -403,7 +418,7 @@ watch(
 
   <div v-else-if="error" class="card card-pad error-card">
     <div class="error-title">{{ t('stockOutApprovalDetail.messages.loadFailed') }}</div>
-    <div class="error-message">{{ error }}</div>
+    <div class="error-message">{{ translateError(error) }}</div>
   </div>
 
   <div v-else-if="!receipt" class="card card-pad">
@@ -624,7 +639,7 @@ watch(
         {{ actionMessage }}
       </div>
       <div v-if="actionError" class="action-error">
-        {{ actionError }}
+        {{ translateError(actionError) }}
       </div>
 
       <div
@@ -716,7 +731,7 @@ watch(
         ></textarea>
         <div class="reason-meta">
           <span v-if="rejectState.error" class="reason-error">{{
-            rejectState.error
+            translateError(rejectState.error)
           }}</span>
           <span class="reason-count"
             >{{ rejectState.reason.length }}/{{ REJECT_REASON_MAX }}</span
