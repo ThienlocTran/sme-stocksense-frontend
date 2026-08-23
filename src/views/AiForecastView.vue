@@ -103,7 +103,7 @@ const products = computed(() => {
     }
   }
   if (selectedWarehouseId.value) {
-    return list.filter(p => 
+    return list.filter(p =>
       availableCombinations.value.some(c => c.productId === p.id && c.warehouseId === selectedWarehouseId.value)
     ).sort(sortByCode);
   }
@@ -124,7 +124,7 @@ const warehouses = computed(() => {
     }
   }
   if (selectedProductId.value) {
-    return list.filter(w => 
+    return list.filter(w =>
       availableCombinations.value.some(c => c.productId === selectedProductId.value && c.warehouseId === w.id)
     ).sort(sortByCode);
   }
@@ -136,6 +136,45 @@ const selectedProductDetail = ref(null);
 const isLoadingProductDetail = ref(false);
 const selectedWarehouseId = ref("");
 const selectedHorizon = ref(30);
+
+const appliedProductId = ref("");
+const appliedWarehouseId = ref("");
+const appliedSource = ref("");
+const appliedHorizon = ref(30);
+const appliedProductDetail = ref(null);
+
+const isFilterDirty = computed(() => {
+  return (
+    forecast.value !== null &&
+    (selectedProductId.value !== appliedProductId.value ||
+     selectedWarehouseId.value !== appliedWarehouseId.value ||
+     selectedSource.value !== appliedSource.value ||
+     selectedHorizon.value !== appliedHorizon.value)
+  );
+});
+
+const allWarehouses = computed(() => {
+  const seenIds = new Set();
+  const list = [];
+  for (const c of availableCombinations.value) {
+    if (!seenIds.has(c.warehouseId)) {
+      seenIds.add(c.warehouseId);
+      list.push({
+        id: c.warehouseId,
+        code: c.warehouseCode,
+        name: c.warehouseName
+      });
+    }
+  }
+  return list.sort(sortByCode);
+});
+
+const rate = computed(() => {
+  if (!forecast.value) return 0;
+  if (appliedHorizon.value === 7) return Number(forecast.value.forecast7d ?? 0);
+  if (appliedHorizon.value === 14) return Number(forecast.value.forecast14d ?? 0);
+  return Number(forecast.value.forecast30d ?? 0);
+});
 const successMessage = ref("");
 
 const showAssignmentModal = ref(false);
@@ -164,7 +203,7 @@ function subtractDaysFromDateStr(dateStr, days) {
   const day = parseInt(parts[2], 10);
   const date = new Date(year, month, day);
   date.setDate(date.getDate() - days);
-  
+
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
@@ -220,13 +259,8 @@ onMounted(async () => {
 });
 
 watch(selectedSource, async (newSource) => {
-  forecast.value = null;
-  drift.value = null;
-  recommendation.value = null;
   errorMessage.value = "";
   successMessage.value = "";
-  chartStartDate.value = "";
-  chartEndDate.value = "";
 
   isLoadingDropdowns.value = true;
   try {
@@ -234,18 +268,32 @@ watch(selectedSource, async (newSource) => {
     availableCombinations.value = res.combinations || [];
 
     if (selectedProductId.value && selectedWarehouseId.value) {
-      const isValid = availableCombinations.value.some(c => 
+      const isValid = availableCombinations.value.some(c =>
         c.productId === selectedProductId.value && c.warehouseId === selectedWarehouseId.value
       );
       if (!isValid) {
         selectedProductId.value = "";
         selectedWarehouseId.value = "";
+        forecast.value = null;
+        drift.value = null;
+        recommendation.value = null;
+        appliedProductId.value = "";
+        appliedWarehouseId.value = "";
+        appliedSource.value = "";
+        appliedProductDetail.value = null;
       } else {
         await loadCachedForecast();
       }
     } else {
       selectedProductId.value = "";
       selectedWarehouseId.value = "";
+      forecast.value = null;
+      drift.value = null;
+      recommendation.value = null;
+      appliedProductId.value = "";
+      appliedWarehouseId.value = "";
+      appliedSource.value = "";
+      appliedProductDetail.value = null;
     }
   } catch (error) {
     errorMessage.value = error.message;
@@ -272,7 +320,7 @@ watch(selectedProductId, async (newProductId) => {
 
 watch([selectedProductId, selectedWarehouseId], async ([productId, warehouseId]) => {
   if (productId && warehouseId) {
-    const isValid = availableCombinations.value.some(c => 
+    const isValid = availableCombinations.value.some(c =>
       c.productId === productId && c.warehouseId === warehouseId
     );
     if (!isValid) {
@@ -281,35 +329,24 @@ watch([selectedProductId, selectedWarehouseId], async ([productId, warehouseId])
       forecast.value = null;
       drift.value = null;
       recommendation.value = null;
+      appliedProductId.value = "";
+      appliedWarehouseId.value = "";
+      appliedSource.value = "";
+      appliedProductDetail.value = null;
       errorMessage.value = "";
       return;
     }
   }
 
-  forecast.value = null;
-  drift.value = null;
-  recommendation.value = null;
   errorMessage.value = "";
   successMessage.value = "";
-  if (!productId || !warehouseId) {
-    return;
-  }
   await loadCachedForecast();
 });
 
-watch(selectedHorizon, async () => {
-  recommendation.value = null;
-  if (hasSufficientForecast(selectedHorizon.value)) {
-    await loadRecommendation();
-  } else {
-    recommendation.value = null;
-  }
-});
-
-watch([forecast, selectedHorizon], () => {
+watch([forecast, appliedHorizon], () => {
   if (forecast.value && forecast.value.historyEndDate) {
     chartEndDate.value = forecast.value.historyEndDate;
-    chartStartDate.value = subtractDaysFromDateStr(forecast.value.historyEndDate, selectedHorizon.value - 1);
+    chartStartDate.value = subtractDaysFromDateStr(forecast.value.historyEndDate, appliedHorizon.value - 1);
   } else {
     chartStartDate.value = "";
     chartEndDate.value = "";
@@ -337,39 +374,43 @@ const isRecommendationValid = computed(() => {
     !!recommendation.value &&
     !!forecast.value &&
     recommendation.value.modelMetadataId != null &&
-    Number(recommendation.value.productId) === Number(forecast.value.productId) &&
-    Number(recommendation.value.warehouseId) === Number(forecast.value.warehouseId)
+    Number(recommendation.value.productId) === Number(appliedProductId.value) &&
+    Number(recommendation.value.warehouseId) === Number(appliedWarehouseId.value)
   );
 });
 
 const totalHorizonDemand = computed(() => {
   if (!forecast.value || !Array.isArray(forecast.value.dailyForecast)) return 0;
-  const horizon = selectedHorizon.value;
+  const horizon = appliedHorizon.value;
   const dailyPoints = forecast.value.dailyForecast.slice(0, horizon);
   return dailyPoints.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
 });
 
-async function loadRecommendation() {
+async function fetchRecommendationForContext(runContext) {
   recommendation.value = null;
-  if (!selectedProductId.value || !selectedWarehouseId.value || !selectedHorizon.value) {
+  if (!runContext.productId || !runContext.warehouseId || !runContext.horizonDays) {
     return;
   }
-  // Guard: only call the API when the cached forecast has enough daily points.
-  // Avoids a guaranteed 400 when forecast history is absent or too short.
-  if (!hasSufficientForecast(selectedHorizon.value)) {
+
+  // Guard: only call the API when the forecast has enough daily points.
+  const dailyForecast = forecast.value?.dailyForecast;
+  const hasSufficient = !!forecast.value &&
+    Array.isArray(dailyForecast) &&
+    dailyForecast.length >= runContext.horizonDays;
+
+  if (!hasSufficient) {
     recommendation.value = null;
     return;
   }
+
   isLoadingRecommendation.value = true;
   try {
     recommendation.value = await getReplenishmentRecommendation(
-      selectedProductId.value,
-      selectedWarehouseId.value,
-      selectedHorizon.value
+      runContext.productId,
+      runContext.warehouseId,
+      runContext.horizonDays
     );
   } catch (error) {
-    // Only log truly unexpected errors; expected "no data" cases are
-    // filtered out by hasSufficientForecast above.
     console.error("Failed to load recommendation:", error);
     recommendation.value = null;
   } finally {
@@ -378,26 +419,68 @@ async function loadRecommendation() {
 }
 
 async function loadCachedForecast() {
+  if (!selectedProductId.value || !selectedWarehouseId.value) {
+    forecast.value = null;
+    recommendation.value = null;
+    drift.value = null;
+    appliedProductId.value = "";
+    appliedWarehouseId.value = "";
+    appliedSource.value = "";
+    appliedProductDetail.value = null;
+    return;
+  }
+
+  const runContext = {
+    productId: selectedProductId.value,
+    warehouseId: selectedWarehouseId.value,
+    source: selectedSource.value,
+    horizonDays: selectedHorizon.value
+  };
+
   isLoadingForecast.value = true;
   errorMessage.value = "";
   try {
-    forecast.value = await getForecast(selectedProductId.value, selectedWarehouseId.value, selectedSource.value);
-    if (forecast.value) {
-      await loadRecommendation();
+    let productDetail = selectedProductDetail.value;
+    if (!productDetail || productDetail.id !== runContext.productId) {
+      productDetail = await getProduct(runContext.productId);
+    }
+
+    const cachedForecast = await getForecast(runContext.productId, runContext.warehouseId, runContext.source);
+    if (cachedForecast) {
+      forecast.value = cachedForecast;
+      appliedProductId.value = runContext.productId;
+      appliedWarehouseId.value = runContext.warehouseId;
+      appliedSource.value = runContext.source;
+      appliedHorizon.value = runContext.horizonDays;
+      appliedProductDetail.value = productDetail;
+      drift.value = null;
+
+      await fetchRecommendationForContext(runContext);
     } else {
+      forecast.value = null;
       recommendation.value = null;
+      appliedProductId.value = runContext.productId;
+      appliedWarehouseId.value = runContext.warehouseId;
+      appliedSource.value = runContext.source;
+      appliedHorizon.value = runContext.horizonDays;
+      appliedProductDetail.value = productDetail;
+      drift.value = null;
     }
   } catch (error) {
     if (error.message && (error.message.includes("lịch sử") || error.message.includes("history") || error.message.includes("dữ liệu") || error.message.includes("data"))) {
       forecast.value = { dataDays: 0, historical: [], dailyForecast: [] };
       recommendation.value = null;
+      appliedProductId.value = runContext.productId;
+      appliedWarehouseId.value = runContext.warehouseId;
+      appliedSource.value = runContext.source;
+      appliedHorizon.value = runContext.horizonDays;
+      appliedProductDetail.value = null;
+      drift.value = null;
     } else {
       errorMessage.value = error.message;
       if (error.status === 401) {
         router.replace("/login");
       }
-      forecast.value = null;
-      recommendation.value = null;
     }
   } finally {
     isLoadingForecast.value = false;
@@ -405,29 +488,60 @@ async function loadCachedForecast() {
 }
 
 async function handleRunForecast() {
-  if (!canSelect.value) return;
+  if (!canSelect.value || isRunningForecast.value) return;
+
+  const runContext = {
+    productId: selectedProductId.value,
+    warehouseId: selectedWarehouseId.value,
+    source: selectedSource.value,
+    horizonDays: selectedHorizon.value
+  };
+
   isRunningForecast.value = true;
   errorMessage.value = "";
-  forecast.value = null;
-  drift.value = null;
-  recommendation.value = null;
+
   try {
-    forecast.value = await runForecast(selectedProductId.value, selectedWarehouseId.value, selectedSource.value);
-    if (forecast.value) {
-      await loadRecommendation();
+    let productDetail = selectedProductDetail.value;
+    if (!productDetail || productDetail.id !== runContext.productId) {
+      productDetail = await getProduct(runContext.productId);
+    }
+
+    const newForecast = await runForecast(runContext.productId, runContext.warehouseId, runContext.source);
+    if (newForecast) {
+      forecast.value = newForecast;
+      appliedProductId.value = runContext.productId;
+      appliedWarehouseId.value = runContext.warehouseId;
+      appliedSource.value = runContext.source;
+      appliedHorizon.value = runContext.horizonDays;
+      appliedProductDetail.value = productDetail;
+      drift.value = null;
+
+      await fetchRecommendationForContext(runContext);
     } else {
+      forecast.value = null;
       recommendation.value = null;
+      appliedProductId.value = runContext.productId;
+      appliedWarehouseId.value = runContext.warehouseId;
+      appliedSource.value = runContext.source;
+      appliedHorizon.value = runContext.horizonDays;
+      appliedProductDetail.value = productDetail;
+      drift.value = null;
     }
   } catch (error) {
     if (error.message && (error.message.includes("lịch sử") || error.message.includes("history") || error.message.includes("dữ liệu") || error.message.includes("data"))) {
       forecast.value = { dataDays: 0, historical: [], dailyForecast: [] };
       recommendation.value = null;
+      appliedProductId.value = runContext.productId;
+      appliedWarehouseId.value = runContext.warehouseId;
+      appliedSource.value = runContext.source;
+      appliedHorizon.value = runContext.horizonDays;
+      appliedProductDetail.value = null;
+      drift.value = null;
     } else {
       errorMessage.value = error.message;
       if (error.status === 401) {
         router.replace("/login");
       }
-      recommendation.value = null;
     }
   } finally {
     isRunningForecast.value = false;
@@ -435,14 +549,23 @@ async function handleRunForecast() {
 }
 
 async function handleCheckDrift() {
-  if (!canSelect.value) return;
+  if (!canSelect.value || isCheckingDrift.value) return;
+
+  const runContext = {
+    productId: selectedProductId.value,
+    warehouseId: selectedWarehouseId.value
+  };
+
   isCheckingDrift.value = true;
   errorMessage.value = "";
   try {
-    drift.value = await checkDrift(selectedProductId.value, selectedWarehouseId.value);
-    await nextTick();
-    if (driftCardRef.value) {
-      driftCardRef.value.scrollIntoView({ behavior: "smooth", block: "center" });
+    const result = await checkDrift(runContext.productId, runContext.warehouseId);
+    if (selectedProductId.value === runContext.productId && selectedWarehouseId.value === runContext.warehouseId) {
+      drift.value = result;
+      await nextTick();
+      if (driftCardRef.value) {
+        driftCardRef.value.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
   } catch (error) {
     if (error.message && (error.message.includes("lịch sử") || error.message.includes("history") || error.message.includes("dữ liệu") || error.message.includes("data"))) {
@@ -498,14 +621,14 @@ const summaryText = computed(() => {
   if (isRecommendationValid.value) {
     const rec = recommendation.value;
     if (rec.rawSuggestedQty === 0) {
-      const stockLabel = forecast.value.source === 'EXTERNAL_STORE_ITEM' 
-        ? t('forecast.currentStockAtForecastLabel') 
+      const stockLabel = forecast.value.source === 'EXTERNAL_STORE_ITEM'
+        ? t('forecast.currentStockAtForecastLabel')
         : t('forecast.stats.currentStock');
       return t('forecast.summaryMessages.sufficientStock', {
         stockLabel,
         stock: formatQty(rec.currentStock),
         demand: formatQty(totalHorizonDemand.value),
-        days: selectedHorizon.value
+        days: appliedHorizon.value
       });
     }
     if (rec.rawSuggestedQty > 0 && rec.suggestedQty === 0) {
@@ -526,20 +649,26 @@ const summaryText = computed(() => {
     });
   }
 
-  const rate = Number(forecast.value.forecast30d ?? 0);
+  const currentRate = rate.value;
   const stock = forecast.value.currentStock ?? 0;
   const minStock = forecast.value.minStock ?? 0;
-  const rateText = formatNumber(rate);
+  const rateText = formatNumber(currentRate);
 
-  if (rate <= 0) {
+  if (currentRate <= 0) {
     return t("forecast.summary.noData");
   }
   let text = "";
   if (stock <= minStock) {
     text = t("forecast.summary.urgent", { rate: rateText, stock: formatQty(stock), min: formatQty(minStock) });
   } else {
-    const daysUntilMin = Math.max(0, Math.floor((stock - minStock) / rate));
-    text = t("forecast.summary.normal", { rate: rateText, stock: formatQty(stock), days: daysUntilMin, min: formatQty(minStock) });
+    const daysUntilMin = Math.max(0, Math.floor((stock - minStock) / currentRate));
+    text = t("forecast.summary.normal", {
+      rate: rateText,
+      stock: formatQty(stock),
+      days: daysUntilMin,
+      min: formatQty(minStock),
+      horizon: appliedHorizon.value
+    });
   }
   return text;
 });
@@ -573,13 +702,14 @@ const displayDatasetType = computed(() => {
 });
 
 const isStoreItemSupported = computed(() => {
-  if (!selectedProductId.value || !selectedWarehouseId.value) return true;
-  const prod = products.value.find(p => p.id === selectedProductId.value);
-  const wh = warehouses.value.find(w => w.id === selectedWarehouseId.value);
-  if (!prod || !wh) return true;
+  if (!appliedProductId.value || !appliedWarehouseId.value) return true;
+  const combo = availableCombinations.value.find(c =>
+    c.productId === appliedProductId.value && c.warehouseId === appliedWarehouseId.value
+  );
+  if (!combo) return true;
 
-  const prodCode = (prod.code || prod.maSanPham || "").trim().toUpperCase();
-  const whCode = (wh.code || wh.maKho || "").trim().toUpperCase();
+  const prodCode = (combo.productCode || combo.maSanPham || "").trim().toUpperCase();
+  const whCode = (combo.warehouseCode || combo.maKho || "").trim().toUpperCase();
 
   const prodMatch = prodCode.match(/^SP0*([1-9]\d*)$/);
   const whMatch = whCode.match(/^K0*([1-9]\d*)$/);
@@ -593,7 +723,7 @@ const isStoreItemSupported = computed(() => {
 });
 
 const showNoStoreItemHistoryState = computed(() => {
-  if (!selectedProductId.value || !selectedWarehouseId.value) return false;
+  if (!appliedProductId.value || !appliedWarehouseId.value) return false;
   return !isStoreItemSupported.value;
 });
 
@@ -678,6 +808,11 @@ const isHistoryUnavailable = computed(() => {
             {{ t("forecast.button.checkDrift") }}
           </button>
         </div>
+      </div>
+      <!-- Dirty State Hint -->
+      <div v-if="isFilterDirty" class="text-xs text-amber-600 dark:text-amber-400 mt-3 flex items-center gap-1.5 font-medium">
+        <i class="mdi mdi-alert-circle-outline"></i>
+        <span>{{ t('forecast.dirtyStateHint') }}</span>
       </div>
     </template>
   </div>
@@ -783,7 +918,7 @@ const isHistoryUnavailable = computed(() => {
                 </span>
               </span>
             </div>
-            
+
             <div class="card card-pad stat-card">
               <span class="stat-label">{{ t('forecast.accuracyLabel') }}</span>
               <strong class="stat-value text-green-600 dark:text-green-400">
@@ -791,7 +926,7 @@ const isHistoryUnavailable = computed(() => {
               </strong>
               <span class="muted text-xs">{{ t('forecast.stats.smapeNote') }}</span>
             </div>
-            
+
             <div class="card card-pad stat-card" v-if="(forecast.mae !== null && forecast.mae !== undefined) || (forecast.rmse !== null && forecast.rmse !== undefined)">
               <span class="stat-label">{{ t('forecast.maeRmseLabel') }}</span>
               <strong class="stat-value text-zinc-900 dark:text-zinc-100">
@@ -809,13 +944,13 @@ const isHistoryUnavailable = computed(() => {
               <i class="mdi mdi-lightbulb-on-outline summary-banner__icon animate-pulse"></i>
               <span class="summary-banner__title">{{ t('forecast.recommendationTitle') }}</span>
             </div>
-            
+
             <div class="summary-banner__body">
               <p class="summary-banner__text">{{ summaryText }}</p>
             </div>
-            
+
             <div class="summary-banner__footer">
-              <span class="muted text-xs"><strong>{{ t('forecast.leadTimeCycle', { horizon: selectedHorizon }) }}</strong></span>
+              <span class="muted text-xs"><strong>{{ t('forecast.leadTimeCycle', { horizon: appliedHorizon }) }}</strong></span>
               <span v-if="isRecommendationValid" class="summary-banner__badge" :class="{
                 'summary-banner__badge--need': recommendation.suggestedQty > 0,
                 'summary-banner__badge--safe': recommendation.rawSuggestedQty === 0,
@@ -845,7 +980,7 @@ const isHistoryUnavailable = computed(() => {
       <!-- If recommendation IS valid, show the Summary Statistics Grid -->
       <div v-else class="stat-grid mt-6">
         <div class="card card-pad stat-card">
-          <span class="stat-label">{{ t('forecast.demandForecastLabel', { horizon: selectedHorizon }) }}</span>
+          <span class="stat-label">{{ t('forecast.demandForecastLabel', { horizon: appliedHorizon }) }}</span>
           <strong class="stat-value">{{ formatQty(totalHorizonDemand) }}</strong>
           <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t('forecast.demandForecastSub') }}</span>
         </div>
@@ -900,7 +1035,7 @@ const isHistoryUnavailable = computed(() => {
           :historical="filteredHistorical"
           :forecast="forecast.dailyForecast || []"
           :boundary-date="boundaryDateStr"
-          :horizon-days="selectedHorizon"
+          :horizon-days="appliedHorizon"
         />
       </div>
 
@@ -912,7 +1047,7 @@ const isHistoryUnavailable = computed(() => {
           :daily-forecast="forecast?.dailyForecast || []"
           :effective-min-stock="recommendation?.effectiveMinStock ?? forecast?.minStock ?? 0"
           :boundary-date="boundaryDateStr"
-          :horizon-days="selectedHorizon"
+          :horizon-days="appliedHorizon"
         />
       </div>
 
@@ -967,12 +1102,12 @@ const isHistoryUnavailable = computed(() => {
         <!-- Extracted Assignment Creation Modal Component -->
         <AiPurchaseAssignmentCreateModal
           v-model:show="showAssignmentModal"
-          :product-detail="selectedProductDetail"
-          :warehouse-id="selectedWarehouseId"
-          :warehouses="warehouses"
-          :horizon="selectedHorizon"
+          :product-detail="appliedProductDetail"
+          :warehouse-id="appliedWarehouseId"
+          :warehouses="allWarehouses"
+          :horizon="appliedHorizon"
           :recommendation="recommendation"
-          :source="selectedSource"
+          :source="appliedSource"
         />
       </template>
     </template>

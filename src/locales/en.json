@@ -1024,8 +1024,9 @@
     "summary": {
       "noData": "Not enough data to estimate average daily consumption rate.",
       "urgent": "Expected average consumption of {rate} products/day. Current stock ({stock}) is at or below the minimum threshold ({min}) — restock immediately.",
-      "normal": "Expected average consumption of {rate} products/day over the next 30 days. With current stock ({stock}), it will last for about {days} days before hitting the minimum threshold ({min})."
+      "normal": "Expected average consumption of {rate} products/day over the next {horizon} days. With current stock ({stock}), it will last for about {days} days before hitting the minimum threshold ({min})."
     },
+    "dirtyStateHint": "Filters changed. Click Run Forecast to update results.",
     "msg": {
       "seedSuccess": "Successfully seeded demo data for {products} product/warehouse pairs ({rows} rows)."
     },

@@ -1031,8 +1031,9 @@
     "summary": {
       "noData": "Chưa đủ dữ liệu để ước lượng tốc độ tiêu thụ trung bình mỗi ngày.",
       "urgent": "Dự kiến tiêu thụ trung bình {rate} sản phẩm/ngày. Tồn kho hiện tại ({stock}) đã ở mức tối thiểu hoặc thấp hơn ({min}) — nên nhập hàng ngay.",
-      "normal": "Dự kiến tiêu thụ trung bình {rate} sản phẩm/ngày trong 30 ngày tới. Với tồn kho hiện tại ({stock}), đủ dùng khoảng {days} ngày trước khi chạm ngưỡng tối thiểu ({min})."
+      "normal": "Dự kiến tiêu thụ trung bình {rate} sản phẩm/ngày trong {horizon} ngày tới. Với tồn kho hiện tại ({stock}), đủ dùng khoảng {days} ngày trước khi chạm ngưỡng tối thiểu ({min})."
     },
+    "dirtyStateHint": "Bộ lọc đã thay đổi. Bấm Dự báo ngay để cập nhật kết quả.",
     "msg": {
       "seedSuccess": "Đã sinh dữ liệu demo cho {products} cặp sản phẩm/kho ({rows} dòng)."
     },
