@@ -518,32 +518,31 @@ async function handleRunForecast() {
 
     const newForecast = await runForecast(runContext.productId, runContext.warehouseId, runContext.source);
     if (newForecast) {
-      let recResult = null;
-      recommendationError.value = "";
-      isLoadingRecommendation.value = true;
-      try {
-        recResult = await getReplenishmentRecommendation(
-          runContext.productId,
-          runContext.warehouseId,
-          runContext.horizonDays,
-          runContext.source
-        );
-      } catch (recErr) {
-        console.error("Failed to load recommendation:", recErr);
-        recommendationError.value = recErr.message || "Unknown error";
-        throw recErr;
-      } finally {
-        isLoadingRecommendation.value = false;
-      }
-
       forecast.value = newForecast;
-      recommendation.value = recResult;
       appliedProductId.value = runContext.productId;
       appliedWarehouseId.value = runContext.warehouseId;
       appliedSource.value = runContext.source;
       appliedHorizon.value = runContext.horizonDays;
       appliedProductDetail.value = productDetail;
       drift.value = null;
+
+      recommendation.value = null;
+      recommendationError.value = "";
+      isLoadingRecommendation.value = true;
+      try {
+        const recResult = await getReplenishmentRecommendation(
+          runContext.productId,
+          runContext.warehouseId,
+          runContext.horizonDays,
+          runContext.source
+        );
+        recommendation.value = recResult;
+      } catch (recErr) {
+        console.error("Failed to load recommendation:", recErr);
+        recommendationError.value = recErr.message || "Unknown error";
+      } finally {
+        isLoadingRecommendation.value = false;
+      }
     } else {
       forecast.value = null;
       recommendation.value = null;
