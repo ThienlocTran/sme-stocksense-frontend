@@ -118,8 +118,38 @@ function formatQty(value) {
   return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(Math.round(value));
 }
 
+function formatEmployeeOption(emp) {
+  if (!emp) return "";
+  let name = emp.fullName || emp.email || "";
+  // Clean standard role suffixes in parenthesis like (Employee), (Manager), (Admin)
+  name = name.replace(/\s*\((employee|admin|manager)\)/gi, "").trim();
+  const email = emp.email || "";
+  if (!name || name === email) {
+    return email;
+  }
+  if (email) {
+    return `${name} — ${email}`;
+  }
+  return name;
+}
+
 function closeModal() {
   emit("update:show", false);
+}
+
+function formatReceiverName(result) {
+  if (!result) return "";
+  const rawName = result.receiverName || result.receiver?.name || result.receiver?.tenNhanVien || "";
+  if (rawName) {
+    return rawName.replace(/\s*\((employee|admin|manager)\)/gi, "").trim();
+  }
+  const emp = employees.value.find(e => e.id === result.receiverId);
+  if (emp) {
+    let cleaned = emp.fullName || emp.email || "";
+    cleaned = cleaned.replace(/\s*\((employee|admin|manager)\)/gi, "").trim();
+    return cleaned;
+  }
+  return result.receiverId || "";
 }
 </script>
 
@@ -218,7 +248,7 @@ function closeModal() {
             <select v-model="selectedEmployeeId" class="select w-full mt-1.5" :disabled="isSubmittingAssignment">
               <option value="">{{ t('forecast.assignment.selectEmployee') }}</option>
               <option v-for="emp in employees" :key="emp.id" :value="emp.id">
-                {{ emp.fullName || emp.name }} (Employee) - {{ emp.email }}
+                {{ formatEmployeeOption(emp) }}
               </option>
             </select>
           </div>
@@ -275,7 +305,7 @@ function closeModal() {
             <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
               <span class="text-zinc-500">{{ t('forecast.assignment.receiver') }}:</span>
               <strong>
-                {{ assignmentResult.receiverName || assignmentResult.receiver?.name || assignmentResult.receiver?.tenNhanVien || employees.find(e => e.id === assignmentResult.receiverId)?.fullName || assignmentResult.receiverId }}
+                {{ formatReceiverName(assignmentResult) }}
               </strong>
             </div>
             <div class="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800">
