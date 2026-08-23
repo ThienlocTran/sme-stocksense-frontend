@@ -51,8 +51,8 @@ watch(
 
 onMounted(async () => {
   try {
-    const data = await getEmployees({ status: "HOAT_DONG", roleCode: "EMPLOYEE" });
-    employees.value = data || [];
+    const data = await getEmployees({ page: 0, size: 100, status: "HOAT_DONG", roleCode: "EMPLOYEE" });
+    employees.value = data?.content || [];
   } catch (err) {
     console.error("Failed to load employees for assignment:", err);
   }

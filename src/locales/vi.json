@@ -55,6 +55,7 @@
     "columns": {
       "code": "Mã phiếu",
       "warehouse": "Kho",
+      "product": "Sản phẩm",
       "supplier": "Nhà cung cấp",
       "partner": "Đối tác",
       "createdAt": "Ngày tạo",

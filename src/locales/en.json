@@ -52,6 +52,7 @@
     "columns": {
       "code": "Document Code",
       "warehouse": "Warehouse",
+      "product": "Product",
       "supplier": "Supplier",
       "partner": "Partner",
       "createdAt": "Created Date",
