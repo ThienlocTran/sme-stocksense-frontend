@@ -226,7 +226,7 @@
       "importExcel": "Import Excel",
       "warehouses": "Warehouses",
       "replenishment": "Stock Replenishment",
-      "aiPurchaseAssignments": "AI Replenishment Requests",
+      "aiPurchaseAssignments": "AI Replenishment Tasks",
       "settings": "System Settings"
     }
   },
@@ -281,7 +281,8 @@
     "Phiếu điều chỉnh tồn kho": "Inventory Adjustment",
     "Bổ sung tồn kho": "Stock Replenishment",
     "Cấu hình hệ thống": "System Settings",
-    "Yêu cầu nhập hàng AI": "AI Replenishment Requests"
+    "aiPurchaseAssignments": "AI Replenishment Tasks",
+    "aiPurchaseAssignmentDetail": "AI Replenishment Task Details"
   },
   "dashboard": {
     "greeting": "Good morning",
@@ -1052,10 +1053,10 @@
       "emailStatus_CHO_GUI": "Pending",
       "emailStatus_DA_GUI": "Sent",
       "emailStatus_THAT_BAI": "Failed",
-      "pageTitle": "AI Replenishment Requests",
-      "pageDesc": "List of replenishment requests created from AI forecast recommendations and assigned to staff for processing.",
-      "emptyTitle": "No Replenishment Requests Yet",
-      "emptyDesc": "The AI system has not created any replenishment requests yet. Run replenishment suggestions from the AI Forecast screen.",
+      "pageTitle": "AI Replenishment Tasks",
+      "pageDesc": "List of replenishment tasks created from AI forecast recommendations and assigned to staff for processing.",
+      "emptyTitle": "No AI Replenishment Tasks Yet",
+      "emptyDesc": "The AI system has not created any replenishment tasks yet. Run replenishment suggestions from the AI Forecast screen.",
       "aiQty": "AI Suggested Qty",
       "reqQty": "Actual Requested Qty",
       "codeColumn": "Task Code",

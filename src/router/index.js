@@ -35,8 +35,8 @@ const routes = [
   { path: '/inventory-adjustments/:id', component: () => import('../views/inventory-counts/InventoryAdjustmentView.vue'), props: true, meta: { title: 'Phiếu điều chỉnh tồn kho' } },
   { path: '/forecast', component: () => import('../views/AiForecastView.vue'), meta: { title: 'Dự báo AI' } },
   { path: '/replenishment-suggestions', component: () => import('../views/ReplenishmentSuggestionsView.vue'), meta: { title: 'Bổ sung tồn kho' } },
-  { path: '/ai-purchase-assignments', component: () => import('../views/AiPurchaseAssignmentListView.vue'), meta: { title: 'Yêu cầu nhập hàng AI' } },
-  { path: '/ai-purchase-assignments/:id', component: () => import('../views/AiPurchaseAssignmentDetailView.vue'), meta: { title: 'Chi tiết yêu cầu nhập hàng AI' } },
+  { path: '/ai-purchase-assignments', name: 'aiPurchaseAssignments', component: () => import('../views/AiPurchaseAssignmentListView.vue'), meta: { title: 'aiPurchaseAssignments' } },
+  { path: '/ai-purchase-assignments/:id', name: 'aiPurchaseAssignmentDetail', component: () => import('../views/AiPurchaseAssignmentDetailView.vue'), meta: { title: 'aiPurchaseAssignmentDetail', activeMenu: '/ai-purchase-assignments' } },
   { path: '/settings', component: () => import('../views/SettingsView.vue'), meta: { title: 'Cấu hình hệ thống' } },
 ]
 

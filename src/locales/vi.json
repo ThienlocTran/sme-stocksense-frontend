@@ -233,7 +233,7 @@
       "importExcel": "Import Excel",
       "warehouses": "Kho hàng",
       "replenishment": "Bổ sung tồn kho",
-      "aiPurchaseAssignments": "Yêu cầu nhập hàng AI",
+      "aiPurchaseAssignments": "Nhiệm vụ bổ sung hàng AI",
       "settings": "Cấu hình hệ thống"
     }
   },
@@ -288,7 +288,8 @@
     "Phiếu điều chỉnh tồn kho": "Phiếu điều chỉnh tồn kho",
     "Bổ sung tồn kho": "Bổ sung tồn kho",
     "Cấu hình hệ thống": "Cấu hình hệ thống",
-    "Yêu cầu nhập hàng AI": "Yêu cầu nhập hàng AI"
+    "aiPurchaseAssignments": "Nhiệm vụ bổ sung hàng AI",
+    "aiPurchaseAssignmentDetail": "Chi tiết nhiệm vụ bổ sung hàng AI"
   },
   "dashboard": {
     "greeting": "Chào buổi sáng",
@@ -1059,10 +1060,10 @@
       "emailStatus_CHO_GUI": "Chờ gửi",
       "emailStatus_DA_GUI": "Đã gửi",
       "emailStatus_THAT_BAI": "Gửi thất bại",
-      "pageTitle": "Yêu cầu nhập hàng AI",
-      "pageDesc": "Danh sách yêu cầu nhập hàng được tạo từ khuyến nghị dự báo AI và giao cho nhân viên xử lý.",
-      "emptyTitle": "Chưa có yêu cầu nhập hàng",
-      "emptyDesc": "Hệ thống AI chưa tạo yêu cầu nhập hàng nào. Hãy chạy gợi ý bổ sung tồn kho từ màn hình Dự báo AI.",
+      "pageTitle": "Nhiệm vụ bổ sung hàng AI",
+      "pageDesc": "Danh sách nhiệm vụ bổ sung hàng được tạo từ khuyến nghị dự báo AI và giao cho nhân viên xử lý.",
+      "emptyTitle": "Chưa có nhiệm vụ bổ sung hàng",
+      "emptyDesc": "Hệ thống AI chưa tạo nhiệm vụ bổ sung hàng nào. Hãy chạy gợi ý bổ sung tồn kho từ màn hình Dự báo AI.",
       "aiQty": "Số lượng AI đề xuất",
       "reqQty": "Số lượng yêu cầu thực tế",
       "codeColumn": "Mã nhiệm vụ",

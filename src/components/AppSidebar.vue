@@ -243,7 +243,10 @@ const visibleSections = computed(() =>
             :key="item.to"
             :to="item.to"
             class="nav-item"
-            :class="{ 'forecast-nav-active-job': item.labelKey === 'forecast' && forecastStore.jobStatus !== 'IDLE' }"
+            :class="{
+              'forecast-nav-active-job': item.labelKey === 'forecast' && forecastStore.jobStatus !== 'IDLE',
+              'router-link-active': $route.meta.activeMenu === item.to
+            }"
             :data-tooltip="$t('sidebar.menu.' + item.labelKey) || item.label"
             @click="layoutStore.closeMobileSidebar"
           >
