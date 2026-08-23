@@ -976,7 +976,7 @@ const isHistoryUnavailable = computed(() => {
             </div>
 
             <div class="summary-banner__footer">
-              <span class="muted text-xs"><strong>{{ t('forecast.leadTimeCycle', { horizon: appliedHorizon.value }) }}</strong></span>
+              <span class="muted text-xs"><strong>{{ t('forecast.leadTimeCycle', { horizon: appliedHorizon }) }}</strong></span>
               <span v-if="isRecommendationValid" class="summary-banner__badge" :class="{
                 'summary-banner__badge--need': recommendation.suggestedQty > 0,
                 'summary-banner__badge--safe': recommendation.rawSuggestedQty === 0,
@@ -1012,7 +1012,7 @@ const isHistoryUnavailable = computed(() => {
       <!-- If recommendation IS valid, show the Summary Statistics Grid -->
       <div v-else class="stat-grid mt-6">
         <div class="card card-pad stat-card">
-          <span class="stat-label">{{ t('forecast.demandForecastLabel', { horizon: appliedHorizon.value }) }}</span>
+          <span class="stat-label">{{ t('forecast.demandForecastLabel', { horizon: appliedHorizon }) }}</span>
           <strong class="stat-value">{{ formatQty(totalHorizonDemand) }}</strong>
           <span class="text-xs text-[var(--color-text-secondary)] mt-1">{{ t('forecast.demandForecastSub') }}</span>
         </div>
@@ -1137,7 +1137,7 @@ const isHistoryUnavailable = computed(() => {
           :product-detail="appliedProductDetail"
           :warehouse-id="appliedWarehouseId"
           :warehouses="allWarehouses"
-          :horizon="appliedHorizon.value"
+          :horizon="appliedHorizon"
           :recommendation="recommendation"
           :source="appliedSource"
         />
