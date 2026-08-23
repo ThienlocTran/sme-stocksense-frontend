@@ -25,13 +25,14 @@ export async function runForecast(productId, warehouseId) {
   }
 }
 
-/** Lấy kết quả dự báo mới nhất đã lưu, không train lại. */
+/** Lấy kết quả dự báo mới nhất đã lưu, không train lại.
+ *  Trả null khi SP/Kho chưa từng chạy dự báo (204 No Content). */
 export async function getForecast(productId, warehouseId) {
   try {
-    const { data } = await forecastClient.get(`/api/forecast/${productId}/${warehouseId}`, {
+    const response = await forecastClient.get(`/api/forecast/${productId}/${warehouseId}`, {
       headers: getAuthorizationHeader(),
     })
-    return data
+    return response.status === 204 ? null : response.data
   } catch (error) {
     throw normalizeForecastError(error, 'Không thể tải dự báo AI.')
   }
@@ -49,17 +50,40 @@ export async function checkDrift(productId, warehouseId) {
   }
 }
 
-/** Công cụ demo (ADMIN): sinh dữ liệu lịch sử bán hàng giả lập cho các sản phẩm/kho chưa đủ dữ liệu. */
-export async function seedForecastHistory() {
+/** Lấy danh sách sản phẩm/kho khả dụng cho nguồn dữ liệu dự báo. */
+export async function getForecastAvailability(source) {
   try {
-    const { data } = await forecastClient.post('/api/forecast/seed-history', null, {
+    const { data } = await forecastClient.get('/api/forecasts/availability', {
       headers: getAuthorizationHeader(),
+      params: { source },
     })
     return data
   } catch (error) {
-    throw normalizeForecastError(error, 'Không thể sinh dữ liệu lịch sử demo.')
+    throw normalizeForecastError(error, 'Không thể tải danh sách sản phẩm/kho khả dụng.')
   }
 }
+
+/** Sinh dữ liệu demo lịch sử bán hàng. */
+export async function seedDemoHistory() {
+  try {
+    const { data } = await forecastClient.post('/api/forecast/seed-history', null, {
+      headers: getAuthorizationHeader(),
+      timeout: 300000,
+    })
+    return data
+  } catch (error) {
+    if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout') || error.isTimeout) {
+      throw {
+        status: 408,
+        message: 'Quá trình sinh dữ liệu đang mất nhiều thời gian hơn dự kiến. Vui lòng chờ và kiểm tra lại.',
+        errors: {},
+        isTimeout: true,
+      }
+    }
+    throw normalizeForecastError(error, 'Không thể sinh dữ liệu demo.')
+  }
+}
+
 
 function normalizeForecastError(error, fallbackMessage) {
   const status = error.response?.status
@@ -81,6 +105,15 @@ function normalizeForecastError(error, fallbackMessage) {
       status,
       message: fallbackMessage,
       errors: {},
+    }
+  }
+
+  if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout') || error.isTimeout) {
+    return {
+      status: 408,
+      message: 'Yêu cầu xử lý quá thời gian quy định. Vui lòng thử lại.',
+      errors: {},
+      isTimeout: true,
     }
   }
 

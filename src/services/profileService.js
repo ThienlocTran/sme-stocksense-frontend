@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { clearAuth, getAuthorizationHeader, getCurrentUser } from './authService'
+import { clearAuth, getAuthorizationHeader, getCurrentUser, cleanRoleSuffix } from './authService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const API_TIMEOUT_MS = 15000
@@ -110,7 +110,7 @@ function normalizeProfile(data = {}, fallback = {}) {
   return {
     id: data?.id ?? data?.employeeId ?? fallback?.id ?? fallback?.employeeId ?? null,
     employeeId: data?.employeeId ?? data?.id ?? fallback?.employeeId ?? fallback?.id ?? null,
-    fullName: data?.fullName ?? fallback?.fullName ?? '',
+    fullName: cleanRoleSuffix(data?.fullName ?? fallback?.fullName ?? ''),
     email: data?.email ?? fallback?.email ?? '',
     phone: data?.phone ?? fallback?.phone ?? '',
     role: data?.roleName ?? data?.role ?? data?.roleCode ?? fallback?.roleName ?? fallback?.role ?? fallback?.roleCode ?? '',

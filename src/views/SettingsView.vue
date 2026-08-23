@@ -85,7 +85,7 @@ async function loadData() {
 
     // Load employees to map IDs to names
     try {
-      const empData = await getEmployees({ page: 0, size: 1000 });
+      const empData = await getEmployees({ page: 0, size: 100 });
       if (empData && empData.content) {
         empData.content.forEach(emp => {
           employeeMap.value[emp.id] = emp.hoTen || emp.fullName || emp.username || emp.id;

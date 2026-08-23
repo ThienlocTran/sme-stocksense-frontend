@@ -97,6 +97,62 @@ const calendarMonth = ref(new Date().getMonth());
 const calendarYear = ref(new Date().getFullYear());
 const selectedTempDate = ref(new Date());
 
+const availableYears = computed(() => {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let y = currentYear - 10; y <= currentYear; y++) {
+    years.push(y);
+  }
+  return years;
+});
+
+const availableMonths = computed(() => {
+  if (locale.value === "en") {
+    return [
+      { value: 0, label: "Jan" },
+      { value: 1, label: "Feb" },
+      { value: 2, label: "Mar" },
+      { value: 3, label: "Apr" },
+      { value: 4, label: "May" },
+      { value: 5, label: "Jun" },
+      { value: 6, label: "Jul" },
+      { value: 7, label: "Aug" },
+      { value: 8, label: "Sep" },
+      { value: 9, label: "Oct" },
+      { value: 10, label: "Nov" },
+      { value: 11, label: "Dec" },
+    ];
+  } else {
+    return [
+      { value: 0, label: "Tháng 01" },
+      { value: 1, label: "Tháng 02" },
+      { value: 2, label: "Tháng 03" },
+      { value: 3, label: "Tháng 04" },
+      { value: 4, label: "Tháng 05" },
+      { value: 5, label: "Tháng 06" },
+      { value: 6, label: "Tháng 07" },
+      { value: 7, label: "Tháng 08" },
+      { value: 8, label: "Tháng 09" },
+      { value: 9, label: "Tháng 10" },
+      { value: 10, label: "Tháng 11" },
+      { value: 11, label: "Tháng 12" },
+    ];
+  }
+});
+
+function isInvalidStartDate(date) {
+  const maxStart = new Date();
+  maxStart.setDate(maxStart.getDate() - selectedDaysRange.value + 1);
+  const maxStartZero = new Date(maxStart.getFullYear(), maxStart.getMonth(), maxStart.getDate());
+  return date.getTime() > maxStartZero.getTime();
+}
+
+const isNextDaysDisabled = computed(() => {
+  const today = new Date();
+  const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return movementEndDate.value.getTime() >= todayZero.getTime();
+});
+
 const currentUser = computed(() => authStore.currentUser);
 const currentUserName = computed(() => currentUser.value?.hoTen || currentUser.value?.fullName || "");
 
@@ -801,6 +857,10 @@ function getDayClass(day) {
     classes += " other-month";
   }
 
+  if (isInvalidStartDate(day.date)) {
+    classes += " text-zinc-300 dark:text-zinc-600 cursor-not-allowed pointer-events-none opacity-50";
+  }
+
   return classes;
 }
 
@@ -1323,7 +1383,24 @@ const warehouseDistOptions = computed(() => {
                       <button class="btn btn-ghost btn-icon btn-sm" type="button" @click="prevMonth">
                         <i class="mdi mdi-chevron-left"></i>
                       </button>
-                      <span class="calendar-header-title">{{ calendarTitle }}</span>
+                      <div class="flex items-center gap-1">
+                        <select 
+                          v-model="calendarMonth" 
+                          class="text-xs p-1 border rounded bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 font-semibold cursor-pointer text-zinc-800 dark:text-zinc-200"
+                        >
+                          <option v-for="m in availableMonths" :key="m.value" :value="m.value">
+                            {{ m.label }}
+                          </option>
+                        </select>
+                        <select 
+                          v-model="calendarYear" 
+                          class="text-xs p-1 border rounded bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 font-semibold cursor-pointer text-zinc-800 dark:text-zinc-200"
+                        >
+                          <option v-for="y in availableYears" :key="y" :value="y">
+                            {{ y }}
+                          </option>
+                        </select>
+                      </div>
                       <button class="btn btn-ghost btn-icon btn-sm" type="button" @click="nextMonth">
                         <i class="mdi mdi-chevron-right"></i>
                       </button>
@@ -1342,6 +1419,7 @@ const warehouseDistOptions = computed(() => {
                         class="calendar-day-btn"
                         :class="getDayClass(day)"
                         type="button"
+                        :disabled="isInvalidStartDate(day.date)"
                         @click="selectTempDate(day.date)"
                       >
                         {{ day.dayNumber }}
@@ -1364,7 +1442,7 @@ const warehouseDistOptions = computed(() => {
                   class="btn btn-secondary btn-icon btn-sm" 
                   type="button"
                   @click="next90Days" 
-                  :disabled="isMovementLoading"
+                  :disabled="isMovementLoading || isNextDaysDisabled" 
                   :title="selectedDaysRange + ' ngày tiếp theo'"
                 >
                   <i class="mdi mdi-chevron-right text-base"></i>
@@ -2462,6 +2540,12 @@ const warehouseDistOptions = computed(() => {
   transition: all 150ms ease;
   font-weight: 500;
   cursor: pointer;
+}
+
+.calendar-day-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .calendar-day-btn.selected {

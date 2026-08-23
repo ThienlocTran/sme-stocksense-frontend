@@ -285,6 +285,7 @@ const statusHelpers = {
 
 const ACTION_LABELS = {
   GUI_DUYET: t('stockDocument.actionSubmit'),
+  DUYET: t('approvals.actions.approve'),
   DUYET_CAP_1: t('approvals.actions.approveLevel', { level: 1 }),
   DUYET_CAP_2: t('approvals.actions.approveLevel', { level: 2 }),
   TU_CHOI: t('stockDocument.status.rejected'),
@@ -292,6 +293,7 @@ const ACTION_LABELS = {
 };
 const ACTION_ICONS = {
   GUI_DUYET: "📤",
+  DUYET: "✅",
   DUYET_CAP_1: "✅",
   DUYET_CAP_2: "✅",
   TU_CHOI: "❌",
@@ -299,6 +301,7 @@ const ACTION_ICONS = {
 };
 const ACTION_CLASSES = {
   GUI_DUYET: "actor-submit",
+  DUYET: "actor-approve",
   DUYET_CAP_1: "actor-approve",
   DUYET_CAP_2: "actor-approve",
   TU_CHOI: "actor-reject",
@@ -317,12 +320,6 @@ function getHistoryActionClass(action) {
 
 function approveButtonLabel() {
   if (actionLoading.value) return t('approvals.actions.approving');
-  if (receipt.value?.approvalLevelLabel) {
-    const levelStr = receipt.value.approvalLevelLabel.toLowerCase();
-    if (levelStr.includes('cấp 1') || levelStr.includes('level 1')) return t('approvals.actions.approveLevel', { level: 1 });
-    if (levelStr.includes('cấp 2') || levelStr.includes('level 2')) return t('approvals.actions.approveLevel', { level: 2 });
-    return `${t('approvals.actions.approve')} ${receipt.value.approvalLevelLabel}`;
-  }
   return t('approvals.actions.approve');
 }
 
@@ -513,12 +510,7 @@ watch(
           <span class="detail-label">{{ t('stockDocument.columns.warehouse') }}</span>
           <span class="detail-value">{{ receipt.warehouseName || "-" }}</span>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">{{ t('approvals.columns.approvalLevel') }}</span>
-          <span class="detail-value">{{
-            receipt.approvalLevelLabel || "-"
-          }}</span>
-        </div>
+
       </div>
     </div>
 

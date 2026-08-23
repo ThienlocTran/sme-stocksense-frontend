@@ -149,7 +149,12 @@
       "lastUpdated": "Cập nhật",
       "minStock": "tối thiểu {count}",
       "minStockThreshold": "Ngưỡng tối thiểu",
-      "currentStock": "Tồn hiện tại"
+      "currentStock": "Tồn hiện tại",
+      "unitVolumeM3": "Thể tích (m³)",
+      "currentQuantity": "Số lượng thực tế",
+      "effectiveMinStock": "Tồn tối thiểu hiệu lực",
+      "thresholdSource": "Nguồn định mức",
+      "alertStatus": "Trạng thái cảnh báo"
     },
     "status": {
       "outOfStock": "Hết hàng",
@@ -167,6 +172,33 @@
     },
     "errors": {
       "invalidMinStock": "Định mức tồn tối thiểu phải là số nguyên không âm."
+    },
+    "tooltip": {
+      "outOfStock": "Hết hàng hoàn toàn. Cần nhập hàng khẩn cấp!",
+      "lowStock": "Tồn kho thực tế thấp hơn định mức tồn tối thiểu hiệu lực.",
+      "safeStock": "Tồn kho ở mức an toàn."
+    },
+    "labels": {
+      "unconfigured": "Chưa cấu hình",
+      "override": "Ghi đè",
+      "default": "Mặc định",
+      "unitVolumeMobile": "Thể tích đơn vị",
+      "effectiveMinStockMobile": "Tồn tối thiểu hiệu lực",
+      "actualStockMobile": "Số lượng thực tế"
+    },
+    "configModal": {
+      "title": "Cấu hình tồn tối thiểu",
+      "productLabel": "Sản phẩm",
+      "warehouseLabel": "Kho hàng",
+      "defaultMinStockLabel": "Tồn tối thiểu mặc định sản phẩm:",
+      "thresholdConfigLabel": "Cấu hình định mức",
+      "useDefaultRadio": "Sử dụng tồn tối thiểu mặc định ({default})",
+      "useOverrideRadio": "Ghi đè định mức tồn tối thiểu riêng cho kho này",
+      "overrideValueLabel": "Giá trị định mức ghi đè *",
+      "overrideValuePlaceholder": "Nhập định mức tồn tối thiểu...",
+      "overrideValueHelp": "Định mức này chỉ áp dụng riêng tại kho {warehouse}.",
+      "cancelBtn": "Hủy",
+      "saveBtn": "Lưu cấu hình"
     }
   },
   "sidebar": {
@@ -200,7 +232,8 @@
       "employees": "Nhân viên",
       "importExcel": "Import Excel",
       "warehouses": "Kho hàng",
-      "replenishment": "Gợi ý nhập hàng",
+      "replenishment": "Bổ sung tồn kho",
+      "aiPurchaseAssignments": "Yêu cầu nhập hàng AI",
       "settings": "Cấu hình hệ thống"
     }
   },
@@ -251,7 +284,11 @@
     "Nhân viên": "Nhân viên",
     "Kiểm kê kho": "Kiểm kê kho",
     "Chi tiết kiểm kê kho": "Chi tiết kiểm kê kho",
-    "Dự báo AI": "Dự báo AI"
+    "Dự báo AI": "Dự báo AI",
+    "Phiếu điều chỉnh tồn kho": "Phiếu điều chỉnh tồn kho",
+    "Bổ sung tồn kho": "Bổ sung tồn kho",
+    "Cấu hình hệ thống": "Cấu hình hệ thống",
+    "Yêu cầu nhập hàng AI": "Yêu cầu nhập hàng AI"
   },
   "dashboard": {
     "greeting": "Chào buổi sáng",
@@ -789,8 +826,8 @@
     "minimumStockConflictExceeded": "Vượt: {amount} m³"
   },
   "replenishment": {
-    "title": "Gợi ý nhập hàng",
-    "description": "Đề xuất số lượng cần nhập dựa trên mức tồn tối thiểu - tối đa thiết lập.",
+    "title": "Bổ sung tồn kho",
+    "description": "Đề xuất bổ sung các sản phẩm đang dưới ngưỡng tồn kho tối thiểu.",
     "searchPlaceholder": "Tìm theo mã hoặc tên sản phẩm...",
     "filters": {
       "allWarehouses": "Tất cả kho hàng",
@@ -798,11 +835,11 @@
       "searchBtn": "Tìm kiếm",
       "clearFiltersBtn": "Xóa lọc"
     },
-    "loading": "Đang tải đề xuất nhập hàng...",
+    "loading": "Đang tải đề xuất bổ sung tồn kho...",
     "table": {
       "product": "Sản phẩm",
       "warehouse": "Kho hàng",
-      "stockInfo": "Tồn kho thực tế / Min - Max",
+      "stockInfo": "Tồn kho thực tế / Tối thiểu",
       "shortage": "Số lượng thiếu",
       "suggested": "Số lượng gợi ý",
       "priority": "Mức độ ưu tiên",
@@ -819,7 +856,7 @@
       "MEDIUM": "Trung bình"
     },
     "empty": {
-      "title": "Không có đề xuất nhập hàng",
+      "title": "Không có đề xuất bổ sung tồn kho",
       "desc": "Tất cả các sản phẩm hiện có mức tồn kho an toàn và nằm ngoài ngưỡng cần bổ sung."
     },
     "suggested": "Đề xuất: ",
@@ -845,7 +882,10 @@
       "clear": "Xóa lọc",
       "allAlertTypes": "Tất cả loại cảnh báo",
       "lowStock": "Cảnh báo tồn kho thấp",
-      "capacity": "Cảnh báo sức chứa"
+      "capacity": "Cảnh báo sức chứa",
+      "allAlertStatuses": "Tất cả trạng thái cảnh báo",
+      "alertActive": "Chưa tiếp nhận",
+      "alertAcknowledged": "Đã tiếp nhận"
     },
     "table": {
       "productCode": "Mã SP",
@@ -855,17 +895,22 @@
       "currentQuantityLabel": "Tồn hiện tại",
       "minStock": "tối thiểu",
       "severity": "Mức độ ưu tiên",
-      "status": "Trạng thái",
+      "status": "Trạng thái tồn kho",
+      "alertStatus": "Xử lý cảnh báo",
       "lastUpdatedAt": "Cập nhật",
       "actions": "Thao tác",
       "viewInventory": "Xem tồn kho",
-      "viewInventoryTitle": "Xem chi tiết thẻ kho"
+      "viewInventoryTitle": "Xem chi tiết thẻ kho",
+      "acknowledge": "Tiếp nhận",
+      "acknowledgeTitle": "Xác nhận đã tiếp nhận cảnh báo này"
     },
     "status": {
       "lowStock": "Sắp hết",
       "outOfStock": "Thiếu hàng",
       "normal": "Đủ hàng",
-      "overStock": "Thừa hàng"
+      "overStock": "Thừa hàng",
+      "active": "Chưa tiếp nhận",
+      "acknowledged": "Đã tiếp nhận"
     },
     "pagination": {
       "records": "bản ghi",
@@ -882,12 +927,22 @@
   },
   "forecast": {
     "title": "Dự báo AI",
+    "mode": {
+      "XGBOOST": "XGBoost",
+      "XGBoost": "XGBoost",
+      "xgboost": "XGBoost",
+      "COLD_START_AVG": "Khởi động lạnh (Trung bình động)",
+      "ColdStart": "Khởi động lạnh (Trung bình động)",
+      "cold_start_avg": "Khởi động lạnh (Trung bình động)",
+      "COLD_START": "Khởi động lạnh (Trung bình động)"
+    },
     "description": "Dự báo nhu cầu tiêu thụ 7/14/30 ngày bằng XGBoost và đề xuất số lượng cần đặt hàng.",
     "loading": "Đang tính toán dự báo...",
     "button": {
       "seed": "Sinh dữ liệu demo",
       "run": "Dự báo ngay",
       "running": "Đang dự báo...",
+      "seeding": "Đang sinh dữ liệu...",
       "checkDrift": "Kiểm tra lệch mô hình"
     },
     "filter": {
@@ -896,13 +951,30 @@
       "loadingProduct": "Đang tải sản phẩm...",
       "warehouse": "Kho hàng *",
       "selectWarehouse": "Chọn kho",
-      "loadingWarehouse": "Đang tải kho..."
+      "loadingWarehouse": "Đang tải kho...",
+      "source": "Nguồn dữ liệu *",
+      "selectSource": "Chọn nguồn dữ liệu"
     },
+    "helpText": {
+      "externalStoreItem": "5 năm dữ liệu benchmark bên ngoài dùng để đánh giá và trình diễn mô hình.",
+      "demo": "Dữ liệu giả lập do StockSense sinh để trình diễn chức năng dự báo.",
+      "actual": "5 năm dữ liệu thực tế dùng để đánh giá và chạy dự báo."
+    },
+    "demoSourceActionTitle": "Khởi tạo dữ liệu demo",
+    "demoSourceActionDesc": "Tạo dữ liệu lịch sử giả lập cho các sản phẩm/kho chưa có dữ liệu demo.",
+    "hasDemoDataStatus": "Đã có lịch sử bán hàng demo",
+    "seedConfirmationTitle": "Sinh dữ liệu demo?",
+    "seedConfirmationSubtitle": "Hành động này sẽ tạo lịch sử bán hàng giả lập phục vụ chạy dự báo.",
+    "seedConfirmationBody": "Hệ thống sẽ tạo lịch sử giả lập cho các sản phẩm và kho chưa có dữ liệu demo. Dữ liệu thực tế sẽ không bị thay đổi.",
+    "seedConfirmBtn": "Sinh dữ liệu",
+    "seedSuccessMsg": "Đã sinh dữ liệu demo thành công cho {seeded} cặp sản phẩm/kho ({rows} dòng).",
     "empty": {
       "noResultTitle": "Chưa có kết quả dự báo",
       "noResultDesc": "Vui lòng bấm nút 'Dự báo ngay' để bắt đầu tính toán dự báo lần đầu cho sản phẩm và kho này.",
       "selectTitle": "Lựa chọn sản phẩm & kho hàng",
-      "selectDesc": "Chọn một cặp sản phẩm và kho hàng hoạt động ở bộ lọc trên để xem biểu đồ và đề xuất tồn kho."
+      "selectDesc": "Chọn một cặp sản phẩm và kho hàng hoạt động ở bộ lọc trên để xem biểu đồ và đề xuất tồn kho.",
+      "actualNoDataTitle": "Chưa có dữ liệu xuất kho thực tế để chạy dự báo.",
+      "actualNoDataDesc": "Khi hệ thống tích lũy đủ lịch sử xuất kho, nguồn dữ liệu thực tế sẽ khả dụng."
     },
     "stats": {
       "mode": "Chế độ dự báo",
@@ -934,7 +1006,25 @@
       "note": "sMAPE thực tế 30 ngày gần đây: {smape}% (ngưỡng giới hạn cho phép: {threshold}%, dựa trên {days} ngày đối chiếu).",
       "approved": "Đã duyệt",
       "rejected": "Từ chối",
-      "pending": "Chờ duyệt"
+      "pending": "Chờ duyệt",
+      "status": {
+        "OK": "Ổn định",
+        "DRIFT": "Lệch - cần train lại",
+        "NO_FORECAST_DATA": "Chưa có dự báo để so sánh",
+        "NO_ACTUAL_DATA": "Chưa có dữ liệu xuất kho thực tế",
+        "INSUFFICIENT_OVERLAP": "Chưa đủ dữ liệu trùng ngày để so sánh"
+      },
+      "rollingSmape": "sMAPE thực tế",
+      "driftThreshold": "Ngưỡng lệch",
+      "comparisonDays": "Ngày so sánh",
+      "daysValue": "{days} ngày",
+      "rules": {
+        "noActualData": "Chưa có giao dịch xuất kho thực tế trong 30 ngày qua để so sánh với dự báo đã lưu.",
+        "noForecastData": "Chưa có bản ghi dự báo nào được lưu. Hãy bấm Dự báo ngay trước.",
+        "insufficientOverlap": "Chỉ có {days} ngày trùng nhau giữa dự báo và thực tế (cần tối thiểu 7 ngày). Cần thêm dữ liệu.",
+        "driftCondition": "Mô hình bị đánh dấu Lệch khi sMAPE > {threshold}% trên ít nhất 7 ngày có dữ liệu cả hai phía.",
+        "driftAction": "Mô hình đang lệch – nên bấm Dự báo ngay để train lại với dữ liệu mới nhất."
+      }
     },
     "summary": {
       "noData": "Chưa đủ dữ liệu để ước lượng tốc độ tiêu thụ trung bình mỗi ngày.",
@@ -944,8 +1034,132 @@
     "msg": {
       "seedSuccess": "Đã sinh dữ liệu demo cho {products} cặp sản phẩm/kho ({rows} dòng)."
     },
+    "assignment": {
+      "selectEmployee": "-- Chọn nhân viên --",
+      "createSuccess": "Yêu cầu nhập hàng đã được tạo thành công.",
+      "emailSent": "Đã gửi email thông báo thành công cho nhân viên.",
+      "emailFailed": "Yêu cầu nhập hàng đã được tạo thành công, nhưng gửi email thông báo thất bại.",
+      "emailPending": "Yêu cầu nhập hàng đã được tạo thành công, đang chờ gửi email thông báo.",
+      "error": "Không thể tạo yêu cầu nhập hàng.",
+      "retryEmail": "Gửi lại email",
+      "retryingEmail": "Đang gửi lại...",
+      "retrySuccess": "Gửi lại email thành công!",
+      "retryFailed": "Gửi lại email thất bại.",
+      "code": "Mã yêu cầu",
+      "receiver": "Nhân viên nhận",
+      "resultTitle": "Kết quả tạo yêu cầu nhập hàng",
+      "status": "Trạng thái",
+      "emailStatus": "Trạng thái Email",
+      "emailStatusSent": "Đã gửi",
+      "emailStatusFailed": "Thất bại",
+      "emailStatusPending": "Chờ gửi",
+      "emailStatus_CHO_GUI": "Chờ gửi",
+      "emailStatus_DA_GUI": "Đã gửi",
+      "emailStatus_THAT_BAI": "Gửi thất bại",
+      "pageTitle": "Yêu cầu nhập hàng AI",
+      "pageDesc": "Danh sách yêu cầu nhập hàng được tạo từ khuyến nghị dự báo AI và giao cho nhân viên xử lý.",
+      "emptyTitle": "Chưa có yêu cầu nhập hàng",
+      "emptyDesc": "Hệ thống AI chưa tạo yêu cầu nhập hàng nào. Hãy chạy gợi ý bổ sung tồn kho từ màn hình Dự báo AI.",
+      "aiQty": "Số lượng AI đề xuất",
+      "reqQty": "Số lượng yêu cầu thực tế"
+    },
     "capacityAllowed": "Duyệt (Sức chứa): ",
-    "capacityLimitedDesc": "Sức chứa kho bị giới hạn! Một số đề xuất đã được giảm để phù hợp với không gian trống của kho."
+    "capacityLimitedDesc": "Sức chứa kho bị giới hạn! Một số đề xuất đã được giảm để phù hợp với không gian trống của kho.",
+    "horizonLabel": "Thời gian dự báo",
+    "daysCount": "{days} ngày",
+    "runForecastBtn": "Dự báo ngay",
+    "runningBtn": "Đang dự báo...",
+    "checkDriftBtn": "Kiểm tra lệch mô hình",
+    "infoTitle": "Thông tin mô hình dự báo",
+    "dataSourceLabel": "Nguồn dữ liệu: {source}",
+    "dataTypeLabel": "Loại dữ liệu: {type}",
+    "modeLabel": "Chế độ",
+    "accuracyLabel": "Độ chính xác (sMAPE)",
+    "maeRmseLabel": "Chỉ số MAE / RMSE",
+    "maeRmseSub": "Sai số tuyệt đối / bình phương",
+    "recommendationTitle": "Khuyến nghị bổ sung hàng từ AI",
+    "leadTimeCycle": "Chu kỳ dự phòng: {horizon} ngày",
+    "badge": {
+      "needRestock": "Cần nhập hàng",
+      "safe": "Tồn kho an toàn",
+      "cannotRestock": "Không thể nhập thêm"
+    },
+    "loadingRecommendation": "Đang tải đề xuất bổ sung hàng từ AI...",
+    "noRecommendation": "Chưa có đề xuất bổ sung cho sản phẩm/kho này.",
+    "demandForecastLabel": "Dự báo nhu cầu ({horizon} ngày)",
+    "demandForecastSub": "Tổng nhu cầu bán hàng dự kiến",
+    "currentStockLabel": "Tồn kho hiện tại / Tối thiểu",
+    "currentStockSub": "Ngưỡng tối thiểu: {min}",
+    "currentStockAtForecastLabel": "Tồn kho tại mốc dự báo",
+    "rawNeedLabel": "Nhu cầu bổ sung (Raw Need)",
+    "rawNeedSub": "Lượng cần nhập theo định mức an toàn",
+    "actualProposalLabel": "Đề xuất thực tế (AI)",
+    "actualProposalSub": "Lượng duyệt sau khi kiểm tra dung tích",
+    "actualVsForecastTitle": "Nhu cầu bán hàng thực tế & Dự báo (Actual vs Forecast)",
+    "historyLabel": "Lịch sử:",
+    "toLabel": "đến",
+    "projectedInventoryTitle": "Dự báo diễn biến tồn kho (Projected Inventory)",
+    "detailCapacityTitle": "Chi tiết đề xuất & Dung tích kho hàng",
+    "capacityDetail": {
+      "rawNeed": "Nhu cầu bổ sung theo định mức (Raw Need):",
+      "rawNeedValue": "{qty} sản phẩm",
+      "suggestedQty": "Số lượng AI đề xuất nhập:",
+      "suggestedQtyValue": "{qty} sản phẩm",
+      "shortfall": "Thiếu hụt do dung tích kho đầy (Shortfall):",
+      "shortfallValue": "{qty} sản phẩm",
+      "warehouseCapacityTitle": "Trạng thái dung tích kho",
+      "totalCapacity": "Tổng dung tích kho: {capacity} m³",
+      "usedCapacity": "Dung tích đã sử dụng: {occupied} m³",
+      "availableCapacity": "Dung tích còn trống: {available} m³",
+      "maxQtyAllowed": "Khả năng nhận tối đa sản phẩm này: {max} sản phẩm"
+    },
+    "assignTaskTitle": "Giao nhiệm vụ bổ sung hàng",
+    "assignTaskDesc": "Bàn giao nhiệm vụ bổ sung hàng dựa trên đề xuất số lượng từ AI.",
+    "assignTaskBtn": "Tạo phân công công việc",
+    "assignmentModal": {
+      "title": "Giao nhiệm vụ bổ sung hàng",
+      "subtitle": "Bàn giao công việc xử lý bổ sung kho hàng",
+      "productLabel": "Sản phẩm: {product}",
+      "warehouseLabel": "Kho hàng: {warehouse}",
+      "horizonLabel": "Chu kỳ dự báo: {horizon} ngày",
+      "aiQtyLabel": "Số lượng đề xuất từ AI: {qty}",
+      "rawNeedLabel": "Nhu cầu bổ sung thực tế (Raw Need): {qty}",
+      "capacityWarning": "⚠️ Cảnh báo dung tích: {warning}",
+      "employeeLabel": "Nhân viên được phân công *",
+      "requestedQtyLabel": "Số lượng yêu cầu thực tế *",
+      "qtyHelp": "AI đề xuất: {qty}. Bạn có thể điều chỉnh lại.",
+      "qtyExceedWarning": "Lưu ý: Số lượng yêu cầu vượt quá đề xuất của AI (Số lượng AI đề xuất: {qty}). Vui lòng đảm bảo kho hàng có thể tiếp nhận.",
+      "messageLabel": "Lời nhắn / Chỉ thị bổ sung",
+      "messagePlaceholder": "Nhập chỉ dẫn công việc...",
+      "cancelBtn": "Hủy",
+      "assignBtn": "Giao việc",
+      "closeBtn": "Đóng"
+    },
+    "datasetType": {
+      "external": "Ngoại cảnh (External)",
+      "actual": "Dữ liệu thực tế",
+      "coldStart": "Khởi động lạnh (Cold Start)",
+      "unknown": "Không xác định"
+    },
+    "dataSource": {
+      "externalStoreItem": "Store-Item Benchmark",
+      "externalRetail": "External Retail Benchmark",
+      "actual": "Dữ liệu thực tế",
+      "demo": "Dữ liệu demo",
+      "unknown": "Nguồn dữ liệu không xác định"
+    },
+    "summaryMessages": {
+      "sufficientStock": "{stockLabel} ({stock}) đủ đáp ứng nhu cầu bán hàng dự báo ({demand}) trong {days} ngày tới.",
+      "capacityFull": "Cần bổ sung thêm {raw} sản phẩm, nhưng do dung tích kho đã đầy (Dung tích còn trống: {avail} m³), hệ thống không đề xuất nhập thêm.",
+      "capacityLimited": "Hạn chế dung tích kho: Nhu cầu thực tế cần {raw} sản phẩm, nhưng hệ thống đề xuất nhập tối đa {suggested} sản phẩm. Thiếu hụt: {shortfall} sản phẩm.",
+      "suggestedRestock": "Đề xuất bổ sung {suggested} sản phẩm để đáp ứng nhu cầu dự báo và duy trì tồn kho an toàn."
+    },
+    "noHistoryState": {
+      "title": "Chưa có dữ liệu dự báo Store-Item cho sản phẩm này.",
+      "desc": "Hệ thống dự báo AI hiện tại chưa hỗ trợ dữ liệu Store-Item Demand Benchmark cho sản phẩm và kho hàng đã chọn.",
+      "insufficientTitle": "Chưa có đủ lịch sử dữ liệu",
+      "insufficientDesc": "Chưa có đủ lịch sử dữ liệu cho sản phẩm và kho đã chọn."
+    }
   },
   "transactions": {
     "title": "Lịch sử giao dịch kho",
@@ -1235,6 +1449,8 @@
       "invalidFileType": "Chỉ chấp nhận file định dạng .xlsx",
       "downloadTemplateError": "Không thể tải file mẫu.",
       "selectFileFirst": "Vui lòng chọn file Excel trước.",
+      "selectWarehouseFirst": "Vui lòng chọn kho hàng nhận tồn đầu kỳ.",
+      "fileTooLarge": "Dung lượng file không được vượt quá 10MB.",
       "allRowsValid": "Tất cả {count} dòng dữ liệu hợp lệ. Nhấn \"Xác nhận Import\" để hoàn tất.",
       "hasErrors": "File có {count} dòng lỗi. Vui lòng sửa file và tải lại.",
       "validateError": "Không thể kiểm tra file Excel.",
@@ -1304,7 +1520,8 @@
       "note": "Ghi chú",
       "importingBtn": "Đang import...",
       "confirmBtn": "Xác nhận Import vào hệ thống",
-      "importAnotherBtn": "Import file khác"
+      "importAnotherBtn": "Import file khác",
+      "backToProductsBtn": "Quay lại danh sách sản phẩm"
     },
     "confirmDialog": {
       "title": "Xác nhận import dữ liệu",

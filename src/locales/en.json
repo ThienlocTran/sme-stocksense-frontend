@@ -142,7 +142,12 @@
       "lastUpdated": "Last Updated",
       "minStock": "min {count}",
       "minStockThreshold": "Min Threshold",
-      "currentStock": "Current Stock"
+      "currentStock": "Current Stock",
+      "unitVolumeM3": "Volume (m³)",
+      "currentQuantity": "Actual Stock",
+      "effectiveMinStock": "Effective Min Stock",
+      "thresholdSource": "Threshold Source",
+      "alertStatus": "Alert Status"
     },
     "status": {
       "outOfStock": "Out of Stock",
@@ -160,6 +165,33 @@
     },
     "errors": {
       "invalidMinStock": "Minimum stock must be a non-negative integer."
+    },
+    "tooltip": {
+      "outOfStock": "Out of stock. Urgent restock needed!",
+      "lowStock": "Actual stock is below the effective minimum stock threshold.",
+      "safeStock": "Stock level is safe."
+    },
+    "labels": {
+      "unconfigured": "Unconfigured",
+      "override": "Override",
+      "default": "Default",
+      "unitVolumeMobile": "Unit Volume",
+      "effectiveMinStockMobile": "Effective Min Stock",
+      "actualStockMobile": "Actual Stock"
+    },
+    "configModal": {
+      "title": "Configure Minimum Stock",
+      "productLabel": "Product",
+      "warehouseLabel": "Warehouse",
+      "defaultMinStockLabel": "Default minimum stock of product:",
+      "thresholdConfigLabel": "Threshold Configuration",
+      "useDefaultRadio": "Use default minimum stock ({default})",
+      "useOverrideRadio": "Override minimum stock threshold for this warehouse",
+      "overrideValueLabel": "Override threshold value *",
+      "overrideValuePlaceholder": "Enter minimum stock threshold...",
+      "overrideValueHelp": "This threshold only applies to warehouse {warehouse}.",
+      "cancelBtn": "Cancel",
+      "saveBtn": "Save Configuration"
     }
   },
   "sidebar": {
@@ -193,7 +225,8 @@
       "employees": "Employees",
       "importExcel": "Import Excel",
       "warehouses": "Warehouses",
-      "replenishment": "Replenishment Suggestions",
+      "replenishment": "Stock Replenishment",
+      "aiPurchaseAssignments": "AI Replenishment Requests",
       "settings": "System Settings"
     }
   },
@@ -244,7 +277,11 @@
     "Nhân viên": "Employees",
     "Kiểm kê kho": "Stock Takes",
     "Chi tiết kiểm kê kho": "Stock Take Details",
-    "Dự báo AI": "AI Forecast"
+    "Dự báo AI": "AI Forecast",
+    "Phiếu điều chỉnh tồn kho": "Inventory Adjustment",
+    "Bổ sung tồn kho": "Stock Replenishment",
+    "Cấu hình hệ thống": "System Settings",
+    "Yêu cầu nhập hàng AI": "AI Replenishment Requests"
   },
   "dashboard": {
     "greeting": "Good morning",
@@ -782,8 +819,8 @@
     "minimumStockConflictExceeded": "Exceeded: {amount} m³"
   },
   "replenishment": {
-    "title": "Replenishment Suggestions",
-    "description": "Recommended order quantities based on configured Min-Max thresholds.",
+    "title": "Stock Replenishment",
+    "description": "Replenishment suggestions based on current inventory levels falling below minimum stock thresholds.",
     "searchPlaceholder": "Search by product name or code...",
     "filters": {
       "allWarehouses": "All warehouses",
@@ -791,11 +828,11 @@
       "searchBtn": "Search",
       "clearFiltersBtn": "Clear filters"
     },
-    "loading": "Loading replenishment suggestions...",
+    "loading": "Loading stock replenishment suggestions...",
     "table": {
       "product": "Product",
       "warehouse": "Warehouse",
-      "stockInfo": "Current Stock / Min - Max",
+      "stockInfo": "Current Stock / Min",
       "shortage": "Shortage Qty",
       "suggested": "Suggested Qty",
       "priority": "Priority",
@@ -812,7 +849,7 @@
       "MEDIUM": "Medium"
     },
     "empty": {
-      "title": "No replenishment suggestions",
+      "title": "No stock replenishment suggestions",
       "desc": "All products currently have safe stock levels above minimum thresholds."
     },
     "suggested": "Suggested: ",
@@ -838,7 +875,10 @@
       "clear": "Clear filters",
       "allAlertTypes": "All Alert Types",
       "lowStock": "Low Stock Alerts",
-      "capacity": "Capacity Alerts"
+      "capacity": "Capacity Alerts",
+      "allAlertStatuses": "All alert statuses",
+      "alertActive": "Unacknowledged",
+      "alertAcknowledged": "Acknowledged"
     },
     "table": {
       "productCode": "Product Code",
@@ -848,17 +888,22 @@
       "currentQuantityLabel": "Current Stock",
       "minStock": "min",
       "severity": "Severity",
-      "status": "Status",
+      "status": "Stock Status",
+      "alertStatus": "Alert Status",
       "lastUpdatedAt": "Last Updated",
       "actions": "Actions",
       "viewInventory": "View Inventory",
-      "viewInventoryTitle": "View inventory details"
+      "viewInventoryTitle": "View inventory details",
+      "acknowledge": "Acknowledge",
+      "acknowledgeTitle": "Mark this alert as acknowledged"
     },
     "status": {
       "lowStock": "Low Stock",
       "outOfStock": "Out of Stock",
       "normal": "Normal",
-      "overStock": "Over Stock"
+      "overStock": "Over Stock",
+      "active": "Unacknowledged",
+      "acknowledged": "Acknowledged"
     },
     "pagination": {
       "records": "records",
@@ -875,12 +920,22 @@
   },
   "forecast": {
     "title": "AI Forecast",
+    "mode": {
+      "XGBOOST": "XGBoost",
+      "XGBoost": "XGBoost",
+      "xgboost": "XGBoost",
+      "COLD_START_AVG": "Cold Start (Moving Average)",
+      "ColdStart": "Cold Start (Moving Average)",
+      "cold_start_avg": "Cold Start (Moving Average)",
+      "COLD_START": "Cold Start (Moving Average)"
+    },
     "description": "Forecast 7/14/30 days consumption demand using XGBoost and recommend order quantity.",
     "loading": "Calculating forecast...",
     "button": {
       "seed": "Seed Demo Data",
       "run": "Run Forecast",
       "running": "Running...",
+      "seeding": "Seeding...",
       "checkDrift": "Check Model Drift"
     },
     "filter": {
@@ -889,13 +944,30 @@
       "loadingProduct": "Loading products...",
       "warehouse": "Warehouse *",
       "selectWarehouse": "Select warehouse",
-      "loadingWarehouse": "Loading warehouses..."
+      "loadingWarehouse": "Loading warehouses...",
+      "source": "Data Source *",
+      "selectSource": "Select data source"
     },
+    "helpText": {
+      "externalStoreItem": "5 years of external benchmark data used to evaluate and demonstrate the model.",
+      "demo": "Synthetic data generated by StockSense to demonstrate forecasting capabilities.",
+      "actual": "5 years of actual sales data used to evaluate and run forecasts."
+    },
+    "demoSourceActionTitle": "Initialize Demo Data",
+    "demoSourceActionDesc": "Create synthetic history data for products/warehouses without demo data.",
+    "hasDemoDataStatus": "Demo sales history exists",
+    "seedConfirmationTitle": "Generate demo data?",
+    "seedConfirmationSubtitle": "This action will generate synthetic sales history to run forecasts.",
+    "seedConfirmationBody": "The system will generate synthetic history for products and warehouses without demo data. Actual data will not be affected.",
+    "seedConfirmBtn": "Generate data",
+    "seedSuccessMsg": "Successfully generated demo data for {seeded} product/warehouse pairs ({rows} rows).",
     "empty": {
       "noResultTitle": "No forecast results yet",
       "noResultDesc": "Please click 'Run Forecast' to calculate the initial forecast for this product and warehouse.",
       "selectTitle": "Select Product & Warehouse",
-      "selectDesc": "Choose an active product and warehouse from the filters above to view charts and inventory recommendations."
+      "selectDesc": "Choose an active product and warehouse from the filters above to view charts and inventory recommendations.",
+      "actualNoDataTitle": "No actual stock-out data available to run forecast.",
+      "actualNoDataDesc": "Once the system accumulates enough stock-out history, the actual data source will become available."
     },
     "stats": {
       "mode": "Forecast Mode",
@@ -927,7 +999,25 @@
       "note": "Actual sMAPE over the last 30 days: {smape}% (allowed threshold limit: {threshold}%, based on {days} comparison days).",
       "approved": "Approved",
       "rejected": "Rejected",
-      "pending": "Pending"
+      "pending": "Pending",
+      "status": {
+        "OK": "Stable",
+        "DRIFT": "Drifted - Retrain recommended",
+        "NO_FORECAST_DATA": "No forecast comparison data",
+        "NO_ACTUAL_DATA": "No actual stock-out data",
+        "INSUFFICIENT_OVERLAP": "Insufficient overlapping days to compare"
+      },
+      "rollingSmape": "Actual sMAPE",
+      "driftThreshold": "Drift Threshold",
+      "comparisonDays": "Comparison Days",
+      "daysValue": "{days} days",
+      "rules": {
+        "noActualData": "No actual outbound transactions in the last 30 days to compare with saved forecast.",
+        "noForecastData": "No forecast record saved. Please run forecast first.",
+        "insufficientOverlap": "Only {days} overlapping days between forecast and actuals (minimum 7 days required). More data needed.",
+        "driftCondition": "The model is flagged as Drifted when sMAPE > {threshold}% over at least 7 days with data on both sides.",
+        "driftAction": "Model is drifting - click 'Run Forecast' to retrain with latest data."
+      }
     },
     "summary": {
       "noData": "Not enough data to estimate average daily consumption rate.",
@@ -937,8 +1027,132 @@
     "msg": {
       "seedSuccess": "Successfully seeded demo data for {products} product/warehouse pairs ({rows} rows)."
     },
+    "assignment": {
+      "selectEmployee": "-- Select Employee --",
+      "createSuccess": "Replenishment request has been created successfully.",
+      "emailSent": "Notification email has been successfully sent to the employee.",
+      "emailFailed": "Replenishment request has been created successfully, but sending the notification email failed.",
+      "emailPending": "Replenishment request has been created successfully, pending notification email sending.",
+      "error": "Failed to create replenishment request.",
+      "retryEmail": "Resend email",
+      "retryingEmail": "Resending...",
+      "retrySuccess": "Resend email successfully!",
+      "retryFailed": "Failed to resend email.",
+      "code": "Request Code",
+      "receiver": "Receiver",
+      "resultTitle": "Replenishment Request Result",
+      "status": "Status",
+      "emailStatus": "Email Status",
+      "emailStatusSent": "Sent",
+      "emailStatusFailed": "Failed",
+      "emailStatusPending": "Pending",
+      "emailStatus_CHO_GUI": "Pending",
+      "emailStatus_DA_GUI": "Sent",
+      "emailStatus_THAT_BAI": "Failed",
+      "pageTitle": "AI Replenishment Requests",
+      "pageDesc": "List of replenishment requests created from AI forecast recommendations and assigned to staff for processing.",
+      "emptyTitle": "No Replenishment Requests Yet",
+      "emptyDesc": "The AI system has not created any replenishment requests yet. Run replenishment suggestions from the AI Forecast screen.",
+      "aiQty": "AI Suggested Qty",
+      "reqQty": "Actual Requested Qty"
+    },
     "capacityAllowed": "Allowed (Capacity): ",
-    "capacityLimitedDesc": "Warehouse capacity limited! Some reorder suggestions have been reduced to fit the remaining space."
+    "capacityLimitedDesc": "Warehouse capacity limited! Some reorder suggestions have been reduced to fit the remaining space.",
+    "horizonLabel": "Forecast Horizon",
+    "daysCount": "{days} days",
+    "runForecastBtn": "Run Forecast",
+    "runningBtn": "Running...",
+    "checkDriftBtn": "Check Model Drift",
+    "infoTitle": "Forecast Model Info",
+    "dataSourceLabel": "Data Source: {source}",
+    "dataTypeLabel": "Data Type: {type}",
+    "modeLabel": "Mode",
+    "accuracyLabel": "Accuracy (sMAPE)",
+    "maeRmseLabel": "MAE / RMSE Index",
+    "maeRmseSub": "Absolute / squared error",
+    "recommendationTitle": "AI Stock Replenishment Recommendation",
+    "leadTimeCycle": "Lead time cycle: {horizon} days",
+    "badge": {
+      "needRestock": "Restock Needed",
+      "safe": "Safe Inventory",
+      "cannotRestock": "Cannot Restock"
+    },
+    "loadingRecommendation": "Loading AI replenishment recommendations...",
+    "noRecommendation": "No replenishment recommendations for this product/warehouse.",
+    "demandForecastLabel": "Demand Forecast ({horizon} days)",
+    "demandForecastSub": "Total projected sales demand",
+    "currentStockLabel": "Current Stock / Min",
+    "currentStockSub": "Min threshold: {min}",
+    "currentStockAtForecastLabel": "Stock at forecast horizon",
+    "rawNeedLabel": "Replenishment Need (Raw Need)",
+    "rawNeedSub": "Quantity needed per safety threshold",
+    "actualProposalLabel": "Actual Recommendation (AI)",
+    "actualProposalSub": "Approved quantity matching capacity",
+    "actualVsForecastTitle": "Actual Sales vs Forecast",
+    "historyLabel": "History:",
+    "toLabel": "to",
+    "projectedInventoryTitle": "Projected Inventory Trend",
+    "detailCapacityTitle": "Recommendation Detail & Warehouse Capacity",
+    "capacityDetail": {
+      "rawNeed": "Replenishment need per threshold (Raw Need):",
+      "rawNeedValue": "{qty} units",
+      "suggestedQty": "AI recommended order quantity:",
+      "suggestedQtyValue": "{qty} units",
+      "shortfall": "Capacity shortage (Shortfall):",
+      "shortfallValue": "{qty} units",
+      "warehouseCapacityTitle": "Warehouse Capacity Status",
+      "totalCapacity": "Total warehouse capacity: {capacity} m³",
+      "usedCapacity": "Used capacity: {occupied} m³",
+      "availableCapacity": "Available capacity: {available} m³",
+      "maxQtyAllowed": "Max units allowed for this product: {max} units"
+    },
+    "assignTaskTitle": "Assign Replenishment Task",
+    "assignTaskDesc": "Assign replenishment task based on AI recommended quantity.",
+    "assignTaskBtn": "Create Assignment Task",
+    "assignmentModal": {
+      "title": "Assign Replenishment Task",
+      "subtitle": "Delegate work to handle stock replenishment",
+      "productLabel": "Product: {product}",
+      "warehouseLabel": "Warehouse: {warehouse}",
+      "horizonLabel": "Forecast Horizon: {horizon} days",
+      "aiQtyLabel": "AI Suggested Quantity: {qty}",
+      "rawNeedLabel": "Actual Replenishment Need (Raw Need): {qty}",
+      "capacityWarning": "⚠️ Capacity Warning: {warning}",
+      "employeeLabel": "Assigned Employee *",
+      "requestedQtyLabel": "Actual Requested Quantity *",
+      "qtyHelp": "AI recommended: {qty}. You can adjust this value.",
+      "qtyExceedWarning": "Note: Requested quantity exceeds AI recommendation (AI suggestion: {qty}). Please ensure the warehouse can accommodate this.",
+      "messageLabel": "Instructions / Additional Notes",
+      "messagePlaceholder": "Enter work instructions...",
+      "cancelBtn": "Cancel",
+      "assignBtn": "Assign Task",
+      "closeBtn": "Close"
+    },
+    "datasetType": {
+      "external": "External",
+      "actual": "Actual Data",
+      "coldStart": "Cold Start",
+      "unknown": "Unknown"
+    },
+    "dataSource": {
+      "externalStoreItem": "Store-Item Benchmark",
+      "externalRetail": "External Retail Benchmark",
+      "actual": "Actual Data",
+      "demo": "Demo Data",
+      "unknown": "Unknown data source"
+    },
+    "summaryMessages": {
+      "sufficientStock": "{stockLabel} ({stock}) is sufficient to cover forecasted sales demand ({demand}) for the next {days} days.",
+      "capacityFull": "Need to restock {raw} products, but since warehouse capacity is full (Available capacity: {avail} m³), system recommends no restock.",
+      "capacityLimited": "Warehouse capacity limited: Actual demand is {raw} units, but recommended restock is capped at {suggested} units. Shortage: {shortfall} units.",
+      "suggestedRestock": "Recommended restock of {suggested} units to meet forecast demand and maintain safe stock levels."
+    },
+    "noHistoryState": {
+      "title": "No Store-Item forecast data for this product.",
+      "desc": "The AI forecast system currently does not support Store-Item Demand Benchmark data for the selected product and warehouse.",
+      "insufficientTitle": "Insufficient history data",
+      "insufficientDesc": "Not enough data history for the selected product and warehouse."
+    }
   },
   "transactions": {
     "title": "Inventory Transaction History",
@@ -1228,6 +1442,8 @@
       "invalidFileType": "Only .xlsx files are accepted",
       "downloadTemplateError": "Cannot download template.",
       "selectFileFirst": "Please select an Excel file first.",
+      "selectWarehouseFirst": "Please select a warehouse for opening stock.",
+      "fileTooLarge": "File size cannot exceed 10MB.",
       "allRowsValid": "All {count} rows are valid. Click \"Confirm Import\" to complete.",
       "hasErrors": "The file contains {count} invalid rows. Please fix and re-upload.",
       "validateError": "Cannot validate Excel file.",
@@ -1295,7 +1511,8 @@
       "note": "Note",
       "importingBtn": "Importing...",
       "confirmBtn": "Confirm Import",
-      "importAnotherBtn": "Import Another File"
+      "importAnotherBtn": "Import Another File",
+      "backToProductsBtn": "Back to Product List"
     },
     "confirmDialog": {
       "title": "Confirm Data Import",
