@@ -1596,7 +1596,11 @@
       "saveDraftBeforeSubmit": "Please save as draft before submitting.",
       "submitSuccess": "Successfully submitted.",
       "actionFailed": "Action failed, please try again.",
-      "cancelSuccess": "Receipt cancelled successfully."
+      "cancelSuccess": "Receipt cancelled successfully.",
+      "assignmentAlreadyLinked": "This purchase assignment has already been linked to another import receipt.",
+      "loadProductDetailError": "Cannot load product details for this assignment.",
+      "resolveSupplierError": "Cannot resolve the supplier for this product.",
+      "loadAssignmentError": "Cannot load purchase assignment information."
     },
     "validation": {
       "selectWarehouse": "Please select {type} warehouse.",

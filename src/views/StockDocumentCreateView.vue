@@ -21,6 +21,7 @@ import { cancelExportReceipt, createExportReceipt, getExportReceipt, submitExpor
 import { getCurrentRoleCode, getCurrentUser } from '../services/authService'
 import { getInventory } from '../services/inventoryService'
 import { getAssignment } from '../services/aiPurchaseAssignmentService'
+import { getProduct } from '../services/productService'
 
 const props = defineProps({
   type: { type: String, default: 'in' },
@@ -193,23 +194,69 @@ onMounted(async () => {
   if (isEditMode.value) {
     await loadReceiptDetail()
   } else if (aiPurchaseRequestId.value && props.type === 'in') {
+    isLoading.value = true
     try {
       const assignment = await getAssignment(aiPurchaseRequestId.value)
       if (assignment) {
+        if (assignment.importReceiptId) {
+          errorMessage.value = t('stockDocumentCreate.messages.assignmentAlreadyLinked')
+          isLoading.value = false
+          return
+        }
         form.warehouseId = assignment.warehouseId
-        const product = products.value.find(p => p.id === assignment.productId)
+
+        const product = await getProduct(assignment.productId)
+        if (!product) {
+          errorMessage.value = t('stockDocumentCreate.messages.loadProductDetailError')
+          isLoading.value = false
+          return
+        }
+
+        const supplierId = assignment.supplierId || product.partnerId
+        if (!supplierId) {
+          errorMessage.value = t('stockDocumentCreate.messages.resolveSupplierError')
+          isLoading.value = false
+          return
+        }
+
+        const supplierExists = suppliers.value.some(s => s.id === supplierId)
+        if (!supplierExists) {
+          suppliers.value.push({
+            id: supplierId,
+            tenDoiTac: assignment.supplierName || product.partnerName || 'Supplier',
+            maDoiTac: '',
+            soDienThoai: ''
+          })
+        }
+        form.supplierId = supplierId
+        form.note = assignment.content || ''
+
+        const productExists = products.value.some(p => p.id === assignment.productId)
+        if (!productExists) {
+          products.value.push({
+            id: product.id,
+            name: product.name,
+            code: product.code,
+            sku: product.sku,
+            price: product.price
+          })
+        }
+
         items.value.push({
           productId: assignment.productId,
-          productCode: assignment.productCode,
-          productName: assignment.productName,
+          productCode: product.code || product.sku || assignment.productCode,
+          productName: product.name || assignment.productName,
           quantity: assignment.requestedQuantity,
-          unitPrice: product?.price ?? 0,
+          unitPrice: product.price ?? 0,
           note: assignment.content || '',
-          lineTotal: assignment.requestedQuantity * (product?.price ?? 0),
+          lineTotal: assignment.requestedQuantity * (product.price ?? 0),
         })
       }
     } catch (error) {
       console.error('Failed to load assignment details:', error)
+      errorMessage.value = error.message || t('stockDocumentCreate.messages.loadAssignmentError')
+    } finally {
+      isLoading.value = false
     }
   }
   isDirty.value = false
