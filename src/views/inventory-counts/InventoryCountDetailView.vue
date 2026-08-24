@@ -61,6 +61,7 @@ const isCreatingAdjustment = ref(false)
 const canCreateAdjustment = computed(() => ['ADMIN', 'EMPLOYEE'].includes(authStore.currentRole))
 const isEditable = computed(() => {
   if (!isActive.value) return false
+  if (!['ADMIN', 'EMPLOYEE'].includes(authStore.currentRole)) return false
   if (!adjustment.value) return true
   const status = adjustment.value.status
   return status === 'NHAP' || status === 'TU_CHOI'
@@ -106,7 +107,7 @@ async function fetchDetail() {
 }
 
 async function handleCreateOrViewAdjustment() {
-  if (count.value && count.value.status === 'DA_CHOT') {
+  if ((count.value && count.value.status === 'DA_CHOT') || adjustment.value) {
     router.push(`/inventory-adjustments/${countId}`)
     return
   }
