@@ -20,6 +20,7 @@ const currentRole = computed(() => authStore.currentRole)
 // Roles
 const isAdminOrManager = computed(() => ['ADMIN', 'MANAGER'].includes(currentRole.value))
 const isEmployee = computed(() => currentRole.value === 'EMPLOYEE')
+const canSubmit = computed(() => ['ADMIN', 'EMPLOYEE'].includes(currentRole.value))
 
 // States
 const count = ref(null)
@@ -279,7 +280,7 @@ function formatDate(dateString) {
         </button>
 
         <!-- Submission Actions -->
-        <template v-if="adjustment && adjustment.status === 'NHAP'">
+        <template v-if="adjustment && adjustment.status === 'NHAP' && canSubmit">
           <button 
             class="btn btn-primary" 
             @click="submitVoucher" 
@@ -400,7 +401,7 @@ function formatDate(dateString) {
                 </td>
                 <td class="px-4 py-3 text-sm">
                   <input 
-                    v-if="adjustment.status === 'NHAP'"
+                    v-if="adjustment.status === 'NHAP' && canSubmit"
                     type="text" 
                     class="input note-input" 
                     v-model="d.note" 
