@@ -32,6 +32,7 @@ const routes = [
   { path: '/users', redirect: '/employees' },
   { path: '/inventory-counts', component: () => import('../views/inventory-counts/InventoryCountListView.vue'), meta: { title: 'Kiểm kê kho' } },
   { path: '/inventory-counts/:id', component: () => import('../views/inventory-counts/InventoryCountDetailView.vue'), props: true, meta: { title: 'Chi tiết kiểm kê kho' } },
+  { path: '/inventory-adjustments', redirect: '/inventory-counts' },
   { path: '/inventory-adjustments/:id', component: () => import('../views/inventory-counts/InventoryAdjustmentView.vue'), props: true, meta: { title: 'Phiếu điều chỉnh tồn kho' } },
   { path: '/forecast', component: () => import('../views/AiForecastView.vue'), meta: { title: 'Dự báo AI' } },
   { path: '/replenishment-suggestions', component: () => import('../views/ReplenishmentSuggestionsView.vue'), meta: { title: 'Bổ sung tồn kho' } },

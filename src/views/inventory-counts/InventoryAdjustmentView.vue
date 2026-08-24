@@ -74,6 +74,9 @@ async function loadVoucher() {
   isLoading.value = true
   errorMessage.value = ''
   try {
+    if (isNaN(countId) || countId <= 0) {
+      throw new Error(t('inventoryCountDetail.errorLoadDetail'))
+    }
     const countData = await getInventoryCountById(countId)
     count.value = countData
 
@@ -92,6 +95,21 @@ async function loadVoucher() {
     if (!localAdj) {
       // Auto initialize
       localAdj = initializeLocalAdjustment(countData)
+      saveAdjustment(localAdj)
+    } else if (localAdj.status === 'NHAP') {
+      // Sync draft details with latest count data from database
+      const freshAdj = initializeLocalAdjustment(countData)
+      freshAdj.details.forEach(freshDetail => {
+        const oldDetail = localAdj.details?.find(d => d.id === freshDetail.id)
+        if (oldDetail) {
+          freshDetail.note = oldDetail.note
+        }
+      })
+      localAdj.details = freshAdj.details
+      localAdj.code = freshAdj.code
+      localAdj.countCode = freshAdj.countCode
+      localAdj.warehouseName = freshAdj.warehouseName
+      localAdj.warehouseId = freshAdj.warehouseId
       saveAdjustment(localAdj)
     }
 
@@ -256,12 +274,12 @@ function formatDate(dateString) {
       :description="t('adjustment.description')"
     >
       <div class="actions-header-group">
-        <button class="btn btn-outline" @click="router.push(`/inventory-counts/${countId}`)">
+        <button class="btn btn-outline" @click="router.push(isNaN(countId) || countId <= 0 ? '/inventory-counts' : `/inventory-counts/${countId}`)">
           <i class="mdi mdi-arrow-left"></i> {{ t('inventoryCountDetail.back') }}
         </button>
 
-        <!-- Employee Actions -->
-        <template v-if="adjustment && adjustment.status === 'NHAP' && isEmployee">
+        <!-- Submission Actions -->
+        <template v-if="adjustment && adjustment.status === 'NHAP'">
           <button 
             class="btn btn-primary" 
             @click="submitVoucher" 
@@ -382,7 +400,7 @@ function formatDate(dateString) {
                 </td>
                 <td class="px-4 py-3 text-sm">
                   <input 
-                    v-if="adjustment.status === 'NHAP' && isEmployee"
+                    v-if="adjustment.status === 'NHAP'"
                     type="text" 
                     class="input note-input" 
                     v-model="d.note" 
