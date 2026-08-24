@@ -6,7 +6,14 @@ import PageHeader from '../../components/PageHeader.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import { useAuthStore } from '../../stores/auth'
-import { getInventoryCountById, finalizeInventoryCount } from '../../services/inventoryCountService'
+import { getInventoryCountById, updateInventoryCountDetail } from '../../services/inventoryCountService'
+import {
+  getAdjustmentByCount,
+  submitAdjustment,
+  approveAdjustment,
+  rejectAdjustment,
+  applyAdjustment
+} from '../../services/inventoryAdjustmentService'
 
 const route = useRoute()
 const router = useRouter()
@@ -48,29 +55,6 @@ function showToast(message, color = 'success') {
 
 onMounted(loadVoucher)
 
-// Local Storage Helper
-const STORAGE_KEY = 'stocksense-adjustments'
-
-function getSavedAdjustments() {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY)
-    return data ? JSON.parse(data) : {}
-  } catch (e) {
-    console.error('Failed to parse adjustments from localStorage:', e)
-    return {}
-  }
-}
-
-function saveAdjustment(adj) {
-  try {
-    const adjs = getSavedAdjustments()
-    adjs[countId] = adj
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(adjs))
-  } catch (e) {
-    console.error('Failed to save adjustment to localStorage:', e)
-  }
-}
-
 async function loadVoucher() {
   isLoading.value = true
   errorMessage.value = ''
@@ -81,73 +65,12 @@ async function loadVoucher() {
     const countData = await getInventoryCountById(countId)
     count.value = countData
 
-    const adjs = getSavedAdjustments()
-    let localAdj = adjs[countId]
-
-    // If backend is already finalized, the adjustment is considered APPLIED
-    if (countData.status === 'DA_CHOT') {
-      if (!localAdj) {
-        localAdj = initializeLocalAdjustment(countData)
-      }
-      localAdj.status = 'DA_AP_DUNG'
-      saveAdjustment(localAdj)
-    }
-
-    if (!localAdj) {
-      // Auto initialize
-      localAdj = initializeLocalAdjustment(countData)
-      saveAdjustment(localAdj)
-    } else if (localAdj.status === 'NHAP') {
-      // Sync draft details with latest count data from database
-      const freshAdj = initializeLocalAdjustment(countData)
-      freshAdj.details.forEach(freshDetail => {
-        const oldDetail = localAdj.details?.find(d => d.id === freshDetail.id)
-        if (oldDetail) {
-          freshDetail.note = oldDetail.note
-        }
-      })
-      localAdj.details = freshAdj.details
-      localAdj.code = freshAdj.code
-      localAdj.countCode = freshAdj.countCode
-      localAdj.warehouseName = freshAdj.warehouseName
-      localAdj.warehouseId = freshAdj.warehouseId
-      saveAdjustment(localAdj)
-    }
-
-    adjustment.value = localAdj
+    const adjData = await getAdjustmentByCount(countId)
+    adjustment.value = adjData
   } catch (error) {
     errorMessage.value = error.message || t('inventoryCountDetail.errorLoadDetail')
   } finally {
     isLoading.value = false
-  }
-}
-
-function initializeLocalAdjustment(countData) {
-  const details = (countData.details || [])
-    .filter(d => d.actualQuantity !== d.systemQuantity)
-    .map(d => ({
-      id: d.id,
-      productId: d.productId,
-      productCode: d.productCode,
-      productName: d.productName,
-      systemQuantity: d.systemQuantity,
-      actualQuantity: d.actualQuantity,
-      adjustmentQuantity: (d.actualQuantity !== null ? d.actualQuantity : 0) - d.systemQuantity,
-      discrepancyReason: d.note || '',
-      note: ''
-    }))
-
-  return {
-    id: countId,
-    code: `DC-${countData.code}`,
-    countCode: countData.code,
-    warehouseName: countData.warehouseName,
-    warehouseId: countData.warehouseId,
-    status: 'NHAP',
-    createdById: currentUser.value?.employeeId || currentUser.value?.id,
-    createdByName: currentUser.value?.hoTen || currentUser.value?.fullName || 'Employee',
-    createdAt: new Date().toISOString(),
-    details
   }
 }
 
@@ -156,8 +79,8 @@ async function submitVoucher() {
   if (!adjustment.value) return
   isActionLoading.value = true
   try {
-    adjustment.value.status = 'CHO_DUYET'
-    saveAdjustment(adjustment.value)
+    const updated = await submitAdjustment(adjustment.value.id)
+    adjustment.value = updated
     showToast(t('adjustment.msg.submitted') || 'Đã nộp phiếu điều chỉnh chờ duyệt.', 'success')
   } catch (error) {
     showToast(error.message, 'error')
@@ -170,8 +93,8 @@ async function approveVoucher() {
   if (!adjustment.value) return
   isActionLoading.value = true
   try {
-    adjustment.value.status = 'DA_DUYET'
-    saveAdjustment(adjustment.value)
+    const updated = await approveAdjustment(adjustment.value.id)
+    adjustment.value = updated
     showToast(t('adjustment.msg.approved') || 'Đã duyệt phiếu điều chỉnh tồn kho.', 'success')
   } catch (error) {
     showToast(error.message, 'error')
@@ -194,9 +117,9 @@ async function rejectVoucher() {
   isRejectDialogOpen.value = false
   isActionLoading.value = true
   try {
-    adjustment.value.status = 'TU_CHOI'
-    adjustment.value.rejectReason = rejectReason.value.trim()
-    saveAdjustment(adjustment.value)
+    const payload = { rejectionReason: rejectReason.value.trim() }
+    const updated = await rejectAdjustment(adjustment.value.id, payload)
+    adjustment.value = updated
     showToast(t('adjustment.msg.rejected') || 'Đã từ chối phiếu điều chỉnh.', 'info')
   } catch (error) {
     showToast(error.message, 'error')
@@ -213,32 +136,37 @@ async function applyVoucher() {
   isApplyDialogOpen.value = false
   isActionLoading.value = true
   try {
-    // Check if already finalized on backend
-    if (count.value.status === 'DA_CHOT') {
-      adjustment.value.status = 'DA_AP_DUNG'
-      saveAdjustment(adjustment.value)
-      showToast(t('adjustment.msg.alreadyApplied') || 'Phiếu điều chỉnh này đã được áp dụng trước đó.', 'info')
-      return
+    const updated = await applyAdjustment(adjustment.value.id)
+    adjustment.value = updated
+    // Sync count status to DA_CHOT
+    if (updated.inventoryCount) {
+      count.value = {
+        ...count.value,
+        status: updated.inventoryCount.status
+      }
     }
-
-    // Call backend API to finalize count
-    const updatedCount = await finalizeInventoryCount(countId, { version: count.value.version })
-    count.value = updatedCount
-
-    // Update local status to DA_AP_DUNG
-    adjustment.value.status = 'DA_AP_DUNG'
-    saveAdjustment(adjustment.value)
     showToast(t('adjustment.msg.appliedSuccess') || 'Đã áp dụng điều chỉnh và cập nhật tồn kho thực tế!', 'success')
   } catch (error) {
-    if (error.message && error.message.includes('already finalized')) {
-      adjustment.value.status = 'DA_AP_DUNG'
-      saveAdjustment(adjustment.value)
-      showToast(t('adjustment.msg.alreadyApplied') || 'Đợt kiểm kê đã chốt.', 'info')
-    } else {
-      showToast(error.message || t('inventoryCountDetail.finalizeFailed'), 'error')
-    }
+    showToast(error.message || t('inventoryCountDetail.finalizeFailed'), 'error')
   } finally {
     isActionLoading.value = false
+  }
+}
+
+async function handleDetailNoteChange(d) {
+  const countDetail = count.value?.details?.find(item => item.id === d.id)
+  const version = countDetail ? countDetail.version : 0
+
+  try {
+    const updatedCount = await updateInventoryCountDetail(countId, d.id, {
+      actualQuantity: d.actualQuantity,
+      note: d.note,
+      version: version
+    })
+    count.value = updatedCount
+    showToast(t('inventoryCountDetail.updateLineSuccess') || 'Cập nhật ghi chú thành công.', 'success')
+  } catch (error) {
+    showToast(error.message || 'Không thể cập nhật ghi chú.', 'error')
   }
 }
 
@@ -280,7 +208,7 @@ function formatDate(dateString) {
         </button>
 
         <!-- Submission Actions -->
-        <template v-if="adjustment && adjustment.status === 'NHAP' && canSubmit">
+        <template v-if="adjustment && (adjustment.status === 'NHAP' || adjustment.status === 'TU_CHOI') && canSubmit">
           <button 
             class="btn btn-primary" 
             @click="submitVoucher" 
@@ -358,11 +286,20 @@ function formatDate(dateString) {
             <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{{ t('inventoryCounts.createdAt') }}</span>
             <span class="text-sm text-zinc-700 dark:text-zinc-300 font-mono">{{ formatDate(adjustment.createdAt) }}</span>
           </div>
+
+          <div class="flex flex-col gap-1" v-if="adjustment.submittedByName">
+            <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Người gửi duyệt</span>
+            <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{{ adjustment.submittedByName }}</span>
+          </div>
+          <div class="flex flex-col gap-1" v-if="adjustment.approvedByName">
+            <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Người duyệt</span>
+            <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{{ adjustment.approvedByName }}</span>
+          </div>
           
           <!-- Reject Reason -->
-          <div class="col-span-1 md:col-span-2 flex flex-col gap-1" v-if="adjustment.status === 'TU_CHOI' && adjustment.rejectReason">
+          <div class="col-span-1 md:col-span-2 flex flex-col gap-1" v-if="adjustment.status === 'TU_CHOI' && adjustment.rejectionReason">
             <span class="text-xs font-semibold text-rose-500 uppercase tracking-wider">{{ t('adjustment.rejectReason') || 'Lý do từ chối' }}</span>
-            <span class="text-sm font-semibold text-rose-600 dark:text-rose-400">{{ adjustment.rejectReason }}</span>
+            <span class="text-sm font-semibold text-rose-600 dark:text-rose-400">{{ adjustment.rejectionReason }}</span>
           </div>
         </div>
       </div>
@@ -397,16 +334,17 @@ function formatDate(dateString) {
                   {{ getDiffText(d.adjustmentQuantity) }}
                 </td>
                 <td class="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
-                  {{ d.discrepancyReason }}
+                  {{ d.discrepancyReason || d.reason || '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm">
                   <input 
-                    v-if="adjustment.status === 'NHAP' && canSubmit"
+                    v-if="(adjustment.status === 'NHAP' || adjustment.status === 'TU_CHOI') && canSubmit"
                     type="text" 
                     class="input note-input" 
                     v-model="d.note" 
                     :placeholder="t('inventoryCountDetail.placeholderNote')"
                     style="height: 32px; font-size: 13px;"
+                    @change="handleDetailNoteChange(d)"
                   />
                   <span v-else class="text-zinc-600 dark:text-zinc-400">{{ d.note || '—' }}</span>
                 </td>
