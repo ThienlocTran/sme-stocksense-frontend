@@ -376,7 +376,8 @@ const isRecommendationValid = computed(() => {
     !!forecast.value &&
     recommendation.value.modelMetadataId != null &&
     Number(recommendation.value.productId) === Number(appliedProductId.value) &&
-    Number(recommendation.value.warehouseId) === Number(appliedWarehouseId.value)
+    Number(recommendation.value.warehouseId) === Number(appliedWarehouseId.value) &&
+    Number(recommendation.value.horizonDays) === Number(appliedHorizon.value)
   );
 });
 
@@ -440,15 +441,31 @@ async function loadCachedForecast() {
 
     const cachedForecast = await getForecast(runContext.productId, runContext.warehouseId, runContext.source);
     if (cachedForecast) {
+      let recResult = null;
+      recommendationError.value = "";
+      isLoadingRecommendation.value = true;
+      try {
+        recResult = await getReplenishmentRecommendation(
+          runContext.productId,
+          runContext.warehouseId,
+          runContext.horizonDays,
+          runContext.source
+        );
+      } catch (recErr) {
+        console.error("Failed to load recommendation:", recErr);
+        recommendationError.value = recErr.message || "Unknown error";
+      } finally {
+        isLoadingRecommendation.value = false;
+      }
+
       forecast.value = cachedForecast;
+      recommendation.value = recResult;
       appliedProductId.value = runContext.productId;
       appliedWarehouseId.value = runContext.warehouseId;
       appliedSource.value = runContext.source;
       appliedHorizon.value = runContext.horizonDays;
       appliedProductDetail.value = productDetail;
       drift.value = null;
-
-      await fetchRecommendationForContext(runContext);
     } else {
       forecast.value = null;
       recommendation.value = null;
@@ -509,7 +526,23 @@ async function handleRunForecast() {
       appliedProductDetail.value = productDetail;
       drift.value = null;
 
-      await fetchRecommendationForContext(runContext);
+      recommendation.value = null;
+      recommendationError.value = "";
+      isLoadingRecommendation.value = true;
+      try {
+        const recResult = await getReplenishmentRecommendation(
+          runContext.productId,
+          runContext.warehouseId,
+          runContext.horizonDays,
+          runContext.source
+        );
+        recommendation.value = recResult;
+      } catch (recErr) {
+        console.error("Failed to load recommendation:", recErr);
+        recommendationError.value = recErr.message || "Unknown error";
+      } finally {
+        isLoadingRecommendation.value = false;
+      }
     } else {
       forecast.value = null;
       recommendation.value = null;

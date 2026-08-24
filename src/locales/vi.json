@@ -26,7 +26,8 @@
     "viewAll": "Xem tất cả",
     "retry": "Thử lại",
     "system": "Hệ thống",
-    "unknown": "Không xác định"
+    "unknown": "Không xác định",
+    "systemError": "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau."
   },
   "stockDocument": {
     "title": {
@@ -1308,6 +1309,7 @@
     "actualQuantity": "Thực tế",
     "differenceQuantity": "Chênh lệch",
     "note": "Ghi chú",
+    "reason": "Lý do chênh lệch",
     "save": "Lưu",
     "errorLoadDetail": "Không thể tải chi tiết đợt kiểm kê.",
     "errorInvalidActual": "Dòng sản phẩm {productCode} chưa nhập số lượng thực tế hợp lệ.",
@@ -1375,6 +1377,13 @@
     "viewAdjustmentVoucher": "Xem phiếu điều chỉnh"
   },
   "approvals": {
+    "confirmFinalizeCountMsg": "Chốt kiểm kê {code}?",
+    "confirmApproveDiscrepancyMsg": "Duyệt chênh lệch {code}?",
+    "confirmApproveInMsg": "Duyệt phiếu {code}?",
+    "confirmApproveOutMsg": "Duyệt phiếu {code}?",
+    "approvalHistoryTitle": "Lịch sử duyệt",
+    "loadingHistory": "Đang tải lịch sử...",
+    "emptyHistory": "Chưa có lịch sử thao tác nào.",
     "titleIn": "Phiếu nhập chờ duyệt",
     "titleOut": "Phiếu xuất chờ duyệt",
     "description": "Quản lý duyệt hoặc từ chối phiếu kho theo cấp.",
@@ -1426,7 +1435,10 @@
       "rejectOutError": "Không thể từ chối phiếu xuất.",
       "rejectInError": "Không thể từ chối phiếu nhập.",
       "completeSuccess": "Đã hoàn thành phiếu {code} thành công.",
-      "rejectSuccessCode": "Đã từ chối phiếu {code} thành công."
+      "rejectSuccessCode": "Đã từ chối phiếu {code} thành công.",
+      "creatorCannotApprove": "Người tạo phiếu không thể tự duyệt phiếu này.",
+      "sameApprover": "Bạn đã duyệt cấp 1. Cấp duyệt tiếp theo phải do người khác thực hiện.",
+      "fourEyesError": "Người duyệt cấp 2 phải khác người đã duyệt cấp 1."
     },
     "filters": {
       "type": "Loại",
@@ -1446,7 +1458,9 @@
       "cancel": "Hủy",
       "processing": "Đang xử lý...",
       "confirmReject": "Xác nhận từ chối",
-      "approveLevel": "Duyệt cấp {level}"
+      "approveLevel": "Duyệt cấp {level}",
+      "finalizeCount": "Chốt kiểm kê",
+      "approveDiscrepancy": "Duyệt chênh lệch"
     },
     "approveReceiptQuestion": "Bạn có chắc chắn muốn duyệt phiếu xuất {code} này không?",
     "complete": "Hoàn thành",
@@ -1605,7 +1619,11 @@
       "saveDraftBeforeSubmit": "Vui lòng lưu nháp trước khi gửi duyệt.",
       "submitSuccess": "Gửi duyệt thành công.",
       "actionFailed": "Thao tác thất bại, vui lòng thử lại.",
-      "cancelSuccess": "Hủy phiếu thành công."
+      "cancelSuccess": "Hủy phiếu thành công.",
+      "assignmentAlreadyLinked": "Yêu cầu nhập hàng này đã được liên kết với phiếu nhập kho khác.",
+      "loadProductDetailError": "Không thể tải chi tiết sản phẩm cho yêu cầu này.",
+      "resolveSupplierError": "Không thể xác định nhà cung cấp cho sản phẩm này.",
+      "loadAssignmentError": "Không thể tải thông tin yêu cầu nhập hàng."
     },
     "validation": {
       "selectWarehouse": "Vui lòng chọn kho {type}.",

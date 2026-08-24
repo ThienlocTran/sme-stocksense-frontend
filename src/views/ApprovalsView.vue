@@ -16,6 +16,7 @@ import {
   getDetail,
   approveDiscrepancyReport,
   rejectDiscrepancyReport,
+  getImportReceiptHistory,
 } from "../services/importReceiptService";
 import {
   approveExportReceipt,
@@ -30,10 +31,12 @@ import {
   cancelInventoryCount,
 } from "../services/inventoryCountService";
 import { getWarehouses } from "../services/warehouseService";
+import { useAuthStore } from "../stores/auth";
 
 const router = useRouter();
 const route = useRoute();
 const { t } = useI18n();
+const authStore = useAuthStore();
 const documentType = ref(
   route.query.type === "out" ? "out" :
   route.query.type === "inbound_discrepancy" ? "inbound_discrepancy" :
@@ -42,6 +45,8 @@ const documentType = ref(
 );
 
 const receipts = ref([]);
+const level1ActorByReceiptId = reactive({});
+const historyLoadingByReceiptId = reactive({});
 const isLoading = ref(false);
 const errorMessage = ref("");
 const actionMessage = ref("");
@@ -260,6 +265,7 @@ async function fetchPendingApprovals() {
     }));
     totalPages.value = data.totalPages || 0;
     totalElements.value = data.totalElements || 0;
+    fetchL1HistoryForL2Receipts(receipts.value);
   } catch (error) {
     if (token !== requestToken.value) return;
     receipts.value = [];
@@ -326,6 +332,9 @@ async function openDetail(receipt) {
     }
     if (token !== detailState.requestToken) return;
     detailState.receipt = detail;
+    if (detail && detail.documentType === "in" && detail.status === "CHO_DUYET_CAP_2") {
+      fetchL1HistoryForL2Receipts([detail]);
+    }
   } catch (error) {
     if (token !== detailState.requestToken) return;
     detailState.error = error.message || t("approvals.messages.loadDetailError");
@@ -460,14 +469,108 @@ function isPendingApproval(status) {
   return status === "CHO_DUYET" || status === "CHO_DUYET_CAP_1" || status === "CHO_DUYET_CAP_2";
 }
 
+async function fetchL1HistoryForL2Receipts(receiptsList) {
+  if (!receiptsList || !Array.isArray(receiptsList)) return;
+  const targetReceipts = receiptsList.filter(
+    (r) => (r.documentType === "in" || r.documentType === undefined) && r.status === "CHO_DUYET_CAP_2"
+  );
+  for (const receipt of targetReceipts) {
+    const rid = receipt.id;
+    if (level1ActorByReceiptId[rid] !== undefined || historyLoadingByReceiptId[rid] === true) {
+      continue;
+    }
+    historyLoadingByReceiptId[rid] = true;
+    try {
+      const history = await getImportReceiptHistory(rid);
+      const l1Row = history && Array.isArray(history) ? history.find((h) => h.action === "DUYET_CAP_1") : null;
+      if (l1Row && l1Row.actorId) {
+        level1ActorByReceiptId[rid] = String(l1Row.actorId);
+      } else {
+        level1ActorByReceiptId[rid] = "NONE";
+      }
+    } catch (error) {
+      console.error(`Failed to fetch history for receipt ${rid}:`, error);
+    } finally {
+      historyLoadingByReceiptId[rid] = false;
+    }
+  }
+}
+
+function getApprovalEligibility(receipt) {
+  if (!receipt) {
+    return { allowed: false, loading: false, reason: null };
+  }
+  const type = receipt.documentType || documentType.value;
+  const status = receipt.status;
+
+  if (type === "out") {
+    const allowed = ["ADMIN", "MANAGER"].includes(authStore.currentRole) && status === "CHO_DUYET";
+    return { allowed, loading: false, reason: null };
+  }
+
+  if (type === "in" || type === undefined) {
+    if (!["ADMIN", "MANAGER"].includes(authStore.currentRole)) {
+      return { allowed: false, loading: false, reason: null };
+    }
+    if (receipt.createdById && String(receipt.createdById) === String(authStore.currentUser?.employeeId)) {
+      return { allowed: false, loading: false, reason: "creator" };
+    }
+    if (status === "CHO_DUYET_CAP_2") {
+      const rid = receipt.id;
+      if (historyLoadingByReceiptId[rid] === true || level1ActorByReceiptId[rid] === undefined) {
+        return { allowed: false, loading: true, reason: null };
+      }
+      const l1ActorId = level1ActorByReceiptId[rid];
+      if (l1ActorId !== "NONE" && String(l1ActorId) === String(authStore.currentUser?.employeeId)) {
+        return { allowed: false, loading: false, reason: "sameApprover" };
+      }
+    }
+    return { allowed: true, loading: false, reason: null };
+  }
+
+  const allowed = isPendingApproval(status);
+  return { allowed, loading: false, reason: null };
+}
+
 function approveLabel(status) {
   if (documentType.value === "inventory_adjustment") {
-    return "Chốt kiểm kê";
+    return t("approvals.actions.finalizeCount");
   }
   if (documentType.value === "inbound_discrepancy") {
-    return "Duyệt chênh lệch";
+    return t("approvals.actions.approveDiscrepancy");
   }
   return t("approvals.actions.approve");
+}
+
+function translateError(msg) {
+  if (!msg) return "";
+  const cleaned = String(msg).trim();
+  if (cleaned.includes("Nguoi duyet cap 2 phai khac nguoi da duyet cap 1") || cleaned.includes("nguyen tac 4 mat")) {
+    return t("approvals.messages.fourEyesError");
+  }
+  if (cleaned.includes("Nguoi tao phieu khong duoc tu duyet phieu") || cleaned.includes("Nguoi gui duyet khong duoc tu duyet phieu")) {
+    return t("approvals.messages.creatorCannotApprove");
+  }
+  if (cleaned.includes("System error. Please try again later.")) {
+    return t("common.systemError");
+  }
+  return msg;
+}
+
+function getApproveConfirmMessage(receipt) {
+  if (!receipt) return "";
+  const type = receipt.documentType || documentType.value;
+  const code = receipt.code || "";
+  if (type === "inventory_adjustment") {
+    return t("approvals.confirmFinalizeCountMsg", { code });
+  }
+  if (type === "inbound_discrepancy") {
+    return t("approvals.confirmApproveDiscrepancyMsg", { code });
+  }
+  if (type === "out") {
+    return t("approvals.confirmApproveOutMsg", { code });
+  }
+  return t("approvals.confirmApproveInMsg", { code });
 }
 
 function isActionRunning(receipt, action) {
@@ -609,10 +712,10 @@ function getDiscrepancyReportId(receiptId) {
   </div>
 
   <p v-if="errorMessage" class="form-alert form-alert-error">
-    {{ errorMessage }}
+    {{ translateError(errorMessage) }}
   </p>
   <p v-if="actionErrorMessage" class="form-alert form-alert-error">
-    {{ actionErrorMessage }}
+    {{ translateError(actionErrorMessage) }}
   </p>
   <p v-if="actionMessage" class="form-alert form-alert-info">
     {{ actionMessage }}
@@ -672,15 +775,28 @@ function getDiscrepancyReportId(receiptId) {
               class="btn btn-sm btn-success"
               type="button"
               :disabled="
-                isAnyActionRunning(row) || !isPendingApproval(row.status)
+                isAnyActionRunning(row) ||
+                !isPendingApproval(row.status) ||
+                !getApprovalEligibility(row).allowed
+              "
+              :title="
+                getApprovalEligibility(row).reason === 'creator'
+                  ? t('approvals.messages.creatorCannotApprove')
+                  : getApprovalEligibility(row).reason === 'sameApprover'
+                  ? t('approvals.messages.sameApprover')
+                  : ''
               "
               @click="handleApprove(row)"
             >
-              {{
-                isActionRunning(row, "approve")
-                  ? "Đang duyệt..."
-                  : approveLabel(row.status)
-              }}
+              <template v-if="isActionRunning(row, 'approve')">
+                Đang duyệt...
+              </template>
+              <template v-else-if="getApprovalEligibility(row).loading">
+                {{ t('common.loading') }}
+              </template>
+              <template v-else>
+                {{ approveLabel(row.status) }}
+              </template>
             </button>
             <button
               class="btn btn-sm btn-danger"
@@ -739,14 +855,32 @@ function getDiscrepancyReportId(receiptId) {
         <div class="border-t border-gray-100 pt-3 flex justify-end gap-2 flex-wrap">
           <button class="btn btn-sm btn-secondary" type="button" @click="openDetail(row)">Xem</button>
           <button v-if="row.documentType !== 'inventory_adjustment' && row.documentType !== 'inbound_discrepancy'" class="btn btn-sm btn-secondary" type="button" @click="openHistory(row)">Lịch sử</button>
-          <button 
-            v-if="isPendingApproval(row.status)" 
-            class="btn btn-sm btn-success" 
-            type="button" 
-            :disabled="isAnyActionRunning(row)" 
+          <button
+            v-if="isPendingApproval(row.status)"
+            class="btn btn-sm btn-success"
+            type="button"
+            :disabled="
+              isAnyActionRunning(row) ||
+              !getApprovalEligibility(row).allowed
+            "
+            :title="
+              getApprovalEligibility(row).reason === 'creator'
+                ? t('approvals.messages.creatorCannotApprove')
+                : getApprovalEligibility(row).reason === 'sameApprover'
+                ? t('approvals.messages.sameApprover')
+                : ''
+            "
             @click="handleApprove(row)"
           >
-            {{ approveLabel(row.status) }}
+            <template v-if="isActionRunning(row, 'approve')">
+              Đang duyệt...
+            </template>
+            <template v-else-if="getApprovalEligibility(row).loading">
+              {{ t('common.loading') }}
+            </template>
+            <template v-else>
+              {{ approveLabel(row.status) }}
+            </template>
           </button>
           <button 
             v-if="isPendingApproval(row.status)" 
@@ -809,7 +943,7 @@ function getDiscrepancyReportId(receiptId) {
           {{ t("approvals.modal.loadingDetail") }}
         </p>
         <p v-else-if="detailState.error" class="form-alert form-alert-error">
-          {{ detailState.error }}
+          {{ translateError(detailState.error) }}
         </p>
 
         <template v-else-if="detailState.receipt">
@@ -981,6 +1115,20 @@ function getDiscrepancyReportId(receiptId) {
                 </template>
               </tbody>
             </table>
+          <!-- Warning for ineligible approvers (four-eyes principle) -->
+          <div
+            v-if="getApprovalEligibility(detailState.receipt).reason === 'creator'"
+            class="form-alert form-alert-error mt-4"
+          >
+            {{ t('approvals.messages.creatorCannotApprove') }}
+          </div>
+          <div
+            v-else-if="getApprovalEligibility(detailState.receipt).reason === 'sameApprover'"
+            class="form-alert form-alert-error mt-4"
+          >
+            {{ t('approvals.messages.sameApprover') }}
+          </div>
+
           </div>
         </template>
       </div>
@@ -1000,9 +1148,28 @@ function getDiscrepancyReportId(receiptId) {
         <button
           class="btn btn-success"
           type="button"
+          :disabled="
+            isAnyActionRunning(detailState.receipt) ||
+            !getApprovalEligibility(detailState.receipt).allowed
+          "
+          :title="
+            getApprovalEligibility(detailState.receipt).reason === 'creator'
+              ? t('approvals.messages.creatorCannotApprove')
+              : getApprovalEligibility(detailState.receipt).reason === 'sameApprover'
+              ? t('approvals.messages.sameApprover')
+              : ''
+          "
           @click="handleApprove(detailState.receipt)"
         >
-          {{ approveLabel(detailState.receipt.status) }}
+          <template v-if="isActionRunning(detailState.receipt, 'approve')">
+            Đang duyệt...
+          </template>
+          <template v-else-if="getApprovalEligibility(detailState.receipt).loading">
+            {{ t('common.loading') }}
+          </template>
+          <template v-else>
+            {{ approveLabel(detailState.receipt.status) }}
+          </template>
         </button>
       </div>
     </div>
@@ -1043,7 +1210,7 @@ function getDiscrepancyReportId(receiptId) {
         ></textarea>
         <div class="reason-meta">
           <span v-if="rejectState.error" class="reason-error">{{
-            rejectState.error
+            translateError(rejectState.error)
           }}</span>
           <span class="reason-count"
             >{{ rejectState.reason.length }}/{{ REJECT_REASON_MAX }}</span
@@ -1074,16 +1241,12 @@ function getDiscrepancyReportId(receiptId) {
   <!-- Confirm Dialog Duyệt -->
   <ConfirmDialog
     :open="approveConfirmState.open"
-    title="Xác nhận duyệt"
-    :message="
-      approveConfirmState.receipt
-        ? `${approveLabel(approveConfirmState.receipt.status)} phiếu ${approveConfirmState.receipt.code}?`
-        : ''
-    "
+    :title="t('approvals.confirmApprove')"
+    :message="getApproveConfirmMessage(approveConfirmState.receipt)"
     :confirm-text="
       approveConfirmState.receipt
         ? approveLabel(approveConfirmState.receipt.status)
-        : 'Xác nhận'
+        : t('common.confirm')
     "
     @cancel="closeApproveConfirm"
     @confirm="confirmApprove"

@@ -12,6 +12,7 @@ import {
   finalizeInventoryCount,
   cancelInventoryCount
 } from '../../services/inventoryCountService'
+import { getAdjustmentByCount, createAdjustment } from '../../services/inventoryAdjustmentService'
 import { canManageInventoryCounts } from '../../services/permissionService'
 import { useAuthStore } from '../../stores/auth'
 
@@ -37,7 +38,7 @@ const savingAll = ref(false)
 
 // Local edit values
 const localActuals = ref({})
-const localNotes = ref({})
+const localReasons = ref({})
 
 const toast = reactive({
   show: false,
@@ -55,13 +56,24 @@ const authStore = useAuthStore()
 const canManage = computed(() => canManageInventoryCounts(authStore.currentUser))
 const isActive = computed(() => count.value && count.value.status === 'DANG_KIEM_KE')
 
+const adjustment = ref(null)
+const isCreatingAdjustment = ref(false)
+const canCreateAdjustment = computed(() => ['ADMIN', 'EMPLOYEE'].includes(authStore.currentRole))
+const isEditable = computed(() => {
+  if (!isActive.value) return false
+  if (!['ADMIN', 'EMPLOYEE'].includes(authStore.currentRole)) return false
+  if (!adjustment.value) return true
+  const status = adjustment.value.status
+  return status === 'NHAP' || status === 'TU_CHOI'
+})
+
 const columns = [
   { key: 'productCode', label: t('inventoryCountDetail.productCode'), class: 'cell-compact' },
   { key: 'productName', label: t('inventoryCountDetail.productName') },
   { key: 'systemQuantity', label: t('inventoryCountDetail.systemQuantity'), class: 'cell-right tabular-num' },
   { key: 'actualQuantity', label: t('inventoryCountDetail.actualQuantity'), class: 'cell-nowrap' },
   { key: 'differenceQuantity', label: t('inventoryCountDetail.differenceQuantity'), class: 'cell-right tabular-num' },
-  { key: 'note', label: t('inventoryCountDetail.note') },
+  { key: 'reason', label: t('inventoryCountDetail.reason') },
   { key: 'actions', label: t('inventoryCountDetail.save'), class: 'cell-compact text-center' }
 ]
 
@@ -77,13 +89,38 @@ async function fetchDetail() {
     if (data.details) {
       data.details.forEach(d => {
         localActuals.value[d.id] = d.actualQuantity !== null ? d.actualQuantity : ''
-        localNotes.value[d.id] = d.note || ''
+        localReasons.value[d.id] = d.reason || d.note || ''
       })
+    }
+
+    try {
+      const adjData = await getAdjustmentByCount(countId)
+      adjustment.value = adjData
+    } catch (adjErr) {
+      adjustment.value = null
     }
   } catch (error) {
     errorMessage.value = error.message || t('inventoryCountDetail.errorLoadDetail')
   } finally {
     isLoading.value = false
+  }
+}
+
+async function handleCreateOrViewAdjustment() {
+  if ((count.value && count.value.status === 'DA_CHOT') || adjustment.value) {
+    router.push(`/inventory-adjustments/${countId}`)
+    return
+  }
+
+  isCreatingAdjustment.value = true
+  try {
+    const adj = await createAdjustment(countId)
+    adjustment.value = adj
+    router.push(`/inventory-adjustments/${countId}`)
+  } catch (error) {
+    showToast(error.message || 'Không thể lập phiếu điều chỉnh.', 'error')
+  } finally {
+    isCreatingAdjustment.value = false
   }
 }
 
@@ -136,12 +173,12 @@ async function saveAllLines() {
   
   for (const d of count.value.details) {
     const localActual = localActuals.value[d.id]
-    const localNote = localNotes.value[d.id]
+    const localReason = localReasons.value[d.id]
     
     const origActual = d.actualQuantity !== null ? d.actualQuantity : ''
-    const origNote = d.note || ''
+    const origReason = d.reason || d.note || ''
     
-    const isModified = localActual !== origActual || localNote !== origNote
+    const isModified = localActual !== origActual || localReason !== origReason
     
     if (isModified) {
       if (localActual === '' || localActual === null || localActual === undefined) {
@@ -155,8 +192,8 @@ async function saveAllLines() {
       }
       
       const diff = actualQty - d.systemQuantity
-      const noteVal = localNote ? localNote.trim() : ''
-      if (diff !== 0 && !noteVal) {
+      const reasonVal = localReason ? localReason.trim() : ''
+      if (diff !== 0 && !reasonVal) {
         showToast(t('inventoryCountDetail.reasonRequired'), 'error')
         return
       }
@@ -164,7 +201,7 @@ async function saveAllLines() {
       modifiedLines.push({
         detail: d,
         actualQuantity: actualQty,
-        note: noteVal || null
+        reason: reasonVal || null
       })
     }
   }
@@ -179,11 +216,11 @@ async function saveAllLines() {
   let failCount = 0
   let lastErrorMessage = ''
 
-  const savePromises = modifiedLines.map(async ({ detail, actualQuantity, note }) => {
+  const savePromises = modifiedLines.map(async ({ detail, actualQuantity, reason }) => {
     try {
       const payload = {
         actualQuantity,
-        note,
+        reason,
         version: detail.version
       }
       await updateInventoryCountDetail(countId, detail.id, payload)
@@ -203,7 +240,7 @@ async function saveAllLines() {
     if (data.details) {
       data.details.forEach(d => {
         localActuals.value[d.id] = d.actualQuantity !== null ? d.actualQuantity : ''
-        localNotes.value[d.id] = d.note || ''
+        localReasons.value[d.id] = d.reason || d.note || ''
       })
     }
   } catch (error) {
@@ -234,8 +271,8 @@ async function saveLine(detail) {
   }
 
   const diff = actualQty - detail.systemQuantity
-  const noteVal = localNotes.value[detail.id] ? localNotes.value[detail.id].trim() : ''
-  if (diff !== 0 && !noteVal) {
+  const reasonVal = localReasons.value[detail.id] ? localReasons.value[detail.id].trim() : ''
+  if (diff !== 0 && !reasonVal) {
     showToast(t('inventoryCountDetail.reasonRequired'), 'error')
     return
   }
@@ -244,7 +281,7 @@ async function saveLine(detail) {
   try {
     const payload = {
       actualQuantity: actualQty,
-      note: noteVal || null,
+      reason: reasonVal || null,
       version: detail.version
     }
     const updatedCount = await updateInventoryCountDetail(countId, detail.id, payload)
@@ -254,7 +291,7 @@ async function saveLine(detail) {
     if (updatedCount.details) {
       updatedCount.details.forEach(d => {
         localActuals.value[d.id] = d.actualQuantity !== null ? d.actualQuantity : ''
-        localNotes.value[d.id] = d.note || ''
+        localReasons.value[d.id] = d.reason || d.note || ''
       })
     }
     showToast(t('inventoryCountDetail.updateLineSuccess'), 'success')
@@ -361,7 +398,7 @@ function formatDate(dateString) {
           <i class="mdi mdi-arrow-left"></i> {{ t("inventoryCountDetail.back") }} </button>
         
         <button
-          v-if="isActive"
+          v-if="isEditable"
           class="btn btn-secondary"
           @click="saveAllLines"
           :disabled="savingAll"
@@ -371,18 +408,19 @@ function formatDate(dateString) {
         <template v-if="isActive && canManage">
           <button class="btn btn-danger" @click="openCancel">
             <i class="mdi mdi-close-circle-outline"></i> {{ t("inventoryCountDetail.cancelCount") }} </button>
-          <button v-if="matchingLines === totalLines" class="btn btn-primary" @click="openFinalize">
+          <button v-if="matchingLines === totalLines && isEditable" class="btn btn-primary" @click="openFinalize">
             <i class="mdi mdi-check-all"></i> {{ t("inventoryCountDetail.finalizeCount") }} </button>
         </template>
 
         <!-- CTA for discrepancy adjustment -->
         <button
-          v-if="count && count.status !== 'DA_HUY' && (matchingLines !== totalLines || count.status === 'DA_CHOT') && uncountedLines === 0"
+          v-if="count && count.status !== 'DA_HUY' && (matchingLines !== totalLines || count.status === 'DA_CHOT') && uncountedLines === 0 && (adjustment || canCreateAdjustment)"
           class="btn btn-warning text-zinc-900"
-          @click="router.push(`/inventory-adjustments/${countId}`)"
+          @click="handleCreateOrViewAdjustment"
+          :disabled="isCreatingAdjustment"
         >
-          <i class="mdi mdi-clipboard-text-play-outline"></i>
-          <span>{{ count.status === 'DA_CHOT' ? t('inventoryCountDetail.viewAdjustmentVoucher') : t('inventoryCountDetail.createAdjustmentVoucher') }}</span>
+          <i class="mdi" :class="isCreatingAdjustment ? 'mdi-loading mdi-spin' : 'mdi-clipboard-text-play-outline'"></i>
+          <span>{{ adjustment ? t('inventoryCountDetail.viewAdjustmentVoucher') : t('inventoryCountDetail.createAdjustmentVoucher') }}</span>
         </button>
       </div>
     </PageHeader>
@@ -488,7 +526,7 @@ function formatDate(dateString) {
               <span class="font-semibold text-zinc-700">{{ row.systemQuantity }}</span>
             </template>
             <template #actualQuantity="{ row }">
-              <div class="flex items-center gap-2" v-if="isActive">
+              <div class="flex items-center gap-2" v-if="isEditable">
                 <input
                   type="number"
                   min="0"
@@ -505,19 +543,19 @@ function formatDate(dateString) {
                 {{ getDiffText(localDifference(row.id, row.systemQuantity)) }}
               </span>
             </template>
-            <template #note="{ row }">
+            <template #reason="{ row }">
               <input
-                v-if="isActive"
+                v-if="isEditable"
                 type="text"
-                class="input note-input"
-                v-model="localNotes[row.id]"
+                class="input reason-input"
+                v-model="localReasons[row.id]"
                 :placeholder="t('inventoryCountDetail.placeholderNote')"
-                :aria-label="t('inventoryCountDetail.ariaNote')"
+                :aria-label="t('inventoryCountDetail.ariaReason')"
               />
-              <span v-else class="text-zinc-600">{{ row.note || '—' }}</span>
+              <span v-else class="text-zinc-600">{{ row.reason || row.note || '—' }}</span>
             </template>
             <template #actions="{ row }">
-              <div class="text-center" v-if="isActive">
+              <div class="text-center" v-if="isEditable">
                 <button
                   class="btn btn-ghost btn-icon btn-sm"
                   @click="saveLine(row)"
@@ -553,7 +591,7 @@ function formatDate(dateString) {
                 <span class="qty-label">{{ t("inventoryCountDetail.systemQuantity") }}</span>
                 <span class="qty-val">{{ row.systemQuantity }}</span>
               </div>
-              <div class="qty-box-input" v-if="isActive">
+              <div class="qty-box-input" v-if="isEditable">
                 <span class="qty-label required">{{ t("inventoryCountDetail.actualQuantity") }}</span>
                 <input
                   type="number"
@@ -569,21 +607,21 @@ function formatDate(dateString) {
               </div>
             </div>
 
-            <!-- Notes Field -->
-            <div class="item-notes-field mt-3">
-              <span class="qty-label">{{ t("inventoryCountDetail.note") }}</span>
+            <!-- Reason Field -->
+            <div class="item-reasons-field mt-3">
+              <span class="qty-label">{{ t("inventoryCountDetail.reason") || 'Lý do chênh lệch' }}</span>
               <input
-                v-if="isActive"
+                v-if="isEditable"
                 type="text"
-                class="input note-input-mobile"
-                v-model="localNotes[row.id]"
+                class="input reason-input-mobile"
+                v-model="localReasons[row.id]"
                 :placeholder="t('inventoryCountDetail.placeholderNoteMobile')"
               />
-              <span v-else class="text-zinc-700 block text-xs mt-1">{{ row.note || '—' }}</span>
+              <span v-else class="text-zinc-700 block text-xs mt-1">{{ row.reason || row.note || '—' }}</span>
             </div>
 
             <!-- Individual Save Trigger on Mobile -->
-            <div class="item-save-action mt-3 border-t pt-3 flex justify-end" v-if="isActive">
+            <div class="item-save-action mt-3 border-t pt-3 flex justify-end" v-if="isEditable">
               <button
                 class="btn btn-secondary btn-sm flex items-center gap-1"
                 @click="saveLine(row)"
