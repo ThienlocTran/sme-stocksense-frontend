@@ -66,6 +66,11 @@ async function loadVoucher() {
     count.value = countData
 
     const adjData = await getAdjustmentByCount(countId)
+    if (adjData && adjData.details) {
+      adjData.details.forEach(d => {
+        d.reason = d.reason || d.note || ''
+      })
+    }
     adjustment.value = adjData
   } catch (error) {
     errorMessage.value = error.message || t('inventoryCountDetail.errorLoadDetail')
@@ -153,20 +158,20 @@ async function applyVoucher() {
   }
 }
 
-async function handleDetailNoteChange(d) {
+async function handleDetailReasonChange(d) {
   const countDetail = count.value?.details?.find(item => item.id === d.id)
   const version = countDetail ? countDetail.version : 0
 
   try {
     const updatedCount = await updateInventoryCountDetail(countId, d.id, {
       actualQuantity: d.actualQuantity,
-      note: d.note,
+      reason: d.reason,
       version: version
     })
     count.value = updatedCount
-    showToast(t('inventoryCountDetail.updateLineSuccess') || 'Cập nhật ghi chú thành công.', 'success')
+    showToast(t('inventoryCountDetail.updateLineSuccess') || 'Cập nhật lý do chênh lệch thành công.', 'success')
   } catch (error) {
-    showToast(error.message || 'Không thể cập nhật ghi chú.', 'error')
+    showToast(error.message || 'Không thể cập nhật lý do chênh lệch.', 'error')
   }
 }
 
@@ -321,7 +326,6 @@ function formatDate(dateString) {
                 <th class="px-4 py-3 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wider">{{ t('inventoryCountDetail.actualQuantity') }}</th>
                 <th class="px-4 py-3 text-right text-xs font-semibold text-zinc-500 uppercase tracking-wider">{{ t('adjustment.columns.adjustmentQty') || 'Lượng điều chỉnh' }}</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider">{{ t('adjustment.columns.discrepancyReason') || 'Lý do chênh lệch' }}</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider">{{ t('inventoryCountDetail.note') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -333,20 +337,17 @@ function formatDate(dateString) {
                 <td class="px-4 py-3 text-sm text-right font-mono" :class="getDiffClass(d.adjustmentQuantity)">
                   {{ getDiffText(d.adjustmentQuantity) }}
                 </td>
-                <td class="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
-                  {{ d.discrepancyReason || d.reason || '—' }}
-                </td>
                 <td class="px-4 py-3 text-sm">
-                  <input 
+                  <input
                     v-if="(adjustment.status === 'NHAP' || adjustment.status === 'TU_CHOI') && canSubmit"
-                    type="text" 
-                    class="input note-input" 
-                    v-model="d.note" 
+                    type="text"
+                    class="input note-input"
+                    v-model="d.reason"
                     :placeholder="t('inventoryCountDetail.placeholderNote')"
                     style="height: 32px; font-size: 13px;"
-                    @change="handleDetailNoteChange(d)"
+                    @change="handleDetailReasonChange(d)"
                   />
-                  <span v-else class="text-zinc-600 dark:text-zinc-400">{{ d.note || '—' }}</span>
+                  <span v-else class="text-zinc-600 dark:text-zinc-400">{{ d.reason || '—' }}</span>
                 </td>
               </tr>
             </tbody>
