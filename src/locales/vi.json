@@ -1309,6 +1309,7 @@
     "actualQuantity": "Thực tế",
     "differenceQuantity": "Chênh lệch",
     "note": "Ghi chú",
+    "reason": "Lý do chênh lệch",
     "save": "Lưu",
     "errorLoadDetail": "Không thể tải chi tiết đợt kiểm kê.",
     "errorInvalidActual": "Dòng sản phẩm {productCode} chưa nhập số lượng thực tế hợp lệ.",

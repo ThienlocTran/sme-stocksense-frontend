@@ -1305,6 +1305,7 @@
     "actualQuantity": "Actual",
     "differenceQuantity": "Diff",
     "note": "Note",
+    "reason": "Discrepancy reason",
     "save": "Save",
     "errorLoadDetail": "Failed to load inventory count details.",
     "errorInvalidActual": "Product {productCode} has invalid actual quantity.",
