@@ -271,6 +271,17 @@ export async function getSuppliers() {
   }
 }
 
+export async function getCustomers() {
+  try {
+    const { data } = await importReceiptClient.get('/api/partners/dropdown/customers', {
+      headers: getAuthorizationHeader(),
+    })
+    return data || []
+  } catch (error) {
+    throw normalizeImportReceiptError(error, 'Không thể tải danh sách khách hàng.')
+  }
+}
+
 export async function getProducts({ page = 0, size = 100, keyword = '', trangThai = 'HOAT_DONG' } = {}) {
   try {
     const { data } = await importReceiptClient.get('/api/products', {

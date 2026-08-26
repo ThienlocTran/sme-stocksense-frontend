@@ -9,6 +9,7 @@ import SearchableSelect from '../components/SearchableSelect.vue'
 import {
   cancelDraft,
   createImportReceipt,
+  getCustomers,
   getDetail,
   getProducts,
   getSuppliers,
@@ -308,7 +309,7 @@ async function loadDropdowns() {
 
   const results = await Promise.allSettled([
     getWarehouses(),
-    getSuppliers(),
+    props.type === 'out' ? getCustomers() : getSuppliers(),
     getProducts({ page: 0, size: 20 }),
   ])
 

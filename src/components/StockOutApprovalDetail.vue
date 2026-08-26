@@ -525,6 +525,10 @@ function translateError(msg) {
           <span class="detail-label">{{ t('stockDocument.columns.warehouse') }}</span>
           <span class="detail-value">{{ receipt.warehouseName || "-" }}</span>
         </div>
+        <div class="detail-item">
+          <span class="detail-label">{{ t('stockDocument.columns.partner') }}</span>
+          <span class="detail-value">{{ receipt.partnerName || "-" }}</span>
+        </div>
 
       </div>
     </div>
